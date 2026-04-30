@@ -1,8 +1,9 @@
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback } from 'react';
 import { Trash2 } from 'lucide-react';
 import { useNetworkStore } from '../../stores/network-store';
 import { useEditorStore } from '../../stores/editor-store';
 import { useI18n } from '../../hooks/useI18n';
+import { WorkspaceContextMenuSurface } from './WorkspaceContextMenuSurface';
 
 interface EdgeContextMenuProps {
   x: number;
@@ -15,14 +16,6 @@ export function EdgeContextMenu({ x, y, edgeId, onClose }: EdgeContextMenuProps)
   const { t } = useI18n();
   const { removeEdge } = useNetworkStore();
 
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    document.addEventListener('keydown', handler);
-    return () => document.removeEventListener('keydown', handler);
-  }, [onClose]);
-
   const handleDelete = useCallback(async () => {
     const tabId = `edge:${edgeId}`;
     const tab = useEditorStore.getState().tabs.find((t) => t.id === tabId);
@@ -33,11 +26,7 @@ export function EdgeContextMenu({ x, y, edgeId, onClose }: EdgeContextMenuProps)
   }, [edgeId, removeEdge, onClose]);
 
   return (
-    <div
-      className="fixed z-50 bg-surface-floating border border-default rounded-md shadow-lg py-1 min-w-[180px]"
-      style={{ left: x, top: y }}
-      onMouseDown={(e) => e.stopPropagation()}
-    >
+    <WorkspaceContextMenuSurface x={x} y={y} onClose={onClose}>
       <button
         className="flex w-full items-center gap-2 px-3 py-1 text-xs text-red-400 hover:bg-state-hover cursor-pointer"
         onClick={handleDelete}
@@ -45,6 +34,6 @@ export function EdgeContextMenu({ x, y, edgeId, onClose }: EdgeContextMenuProps)
         <Trash2 size={14} />
         {t('edge.delete')}
       </button>
-    </div>
+    </WorkspaceContextMenuSurface>
   );
 }

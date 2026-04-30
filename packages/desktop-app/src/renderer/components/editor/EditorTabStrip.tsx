@@ -496,7 +496,7 @@ export function EditorTabStrip({
       <div
         ref={scrollRef}
         className={`tab-scroll flex min-w-0 flex-1 items-end pr-2 ${leftSlot ? 'pl-1' : 'pl-6'}`}
-        style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
+        style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
       >
         {leftSlot && (
           <div

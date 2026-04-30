@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback } from 'react';
 import { ExternalLink, FileText, Link, Plus, Trash2 } from 'lucide-react';
 import { useNetworkStore } from '../../stores/network-store';
 import { useEditorStore } from '../../stores/editor-store';
@@ -6,6 +6,7 @@ import { useProjectStore } from '../../stores/project-store';
 import { useI18n } from '../../hooks/useI18n';
 import type { NetworkObjectType } from '@netior/shared/types';
 import type { WorkspaceMode } from '../../stores/ui-store';
+import { WorkspaceContextMenuSurface } from './WorkspaceContextMenuSurface';
 
 interface NodeContextMenuProps {
   x: number;
@@ -109,14 +110,6 @@ export function NodeContextMenu({
     !!objectTargetId &&
     ['network', 'project', 'concept', 'schema', 'model', 'context', 'file'].includes(objectType);
 
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    document.addEventListener('keydown', handler);
-    return () => document.removeEventListener('keydown', handler);
-  }, [onClose]);
-
   const handleOpenNetwork = useCallback(() => {
     if (networkId) onOpenNetwork?.(networkId);
     onClose();
@@ -167,11 +160,7 @@ export function NodeContextMenu({
   }, [currentNetwork?.kind, currentNetwork?.parent_network_id, deleteProject, nodeId, objectTargetId, objectType, onClose, onDeleteNode]);
 
   return (
-    <div
-      className="fixed z-50 bg-surface-floating border border-default rounded-md shadow-lg py-1 min-w-[180px]"
-      style={{ left: x, top: y }}
-      onMouseDown={(e) => e.stopPropagation()}
-    >
+    <WorkspaceContextMenuSurface x={x} y={y} onClose={onClose}>
       {/* Portal: open network */}
       {networkId && (
         <button
@@ -262,6 +251,6 @@ export function NodeContextMenu({
         <Trash2 size={14} />
         {t('common.delete')}
       </button>
-    </div>
+    </WorkspaceContextMenuSurface>
   );
 }

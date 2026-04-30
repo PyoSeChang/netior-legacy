@@ -391,6 +391,11 @@ export function ModelEditor({ tab }: ModelEditorProps): JSX.Element {
     });
   }, [fieldsBySchema, meaningsBySchema, model, projectSchemas]);
 
+  const fieldTypeLabelByValue = useMemo(
+    () => new Map(FIELD_TYPE_OPTIONS.map((option) => [option.value, t(option.labelKey as never)])),
+    [t],
+  );
+
   if (!model) {
     return (
       <div className="flex h-full items-center justify-center text-xs text-muted">
@@ -488,10 +493,6 @@ export function ModelEditor({ tab }: ModelEditorProps): JSX.Element {
   const previewFields = session.state.recipe.meanings.flatMap((meaning) => (
     meaning.fields.map((field) => ({ meaning, field }))
   ));
-  const fieldTypeLabelByValue = useMemo(
-    () => new Map(FIELD_TYPE_OPTIONS.map((option) => [option.value, t(option.labelKey as never)])),
-    [t],
-  );
   const formatFieldTypes = (fieldTypes: FieldType[] | undefined): string => {
     const normalizedFieldTypes = fieldTypes && fieldTypes.length > 0 ? fieldTypes : ['text' as FieldType];
     return normalizedFieldTypes

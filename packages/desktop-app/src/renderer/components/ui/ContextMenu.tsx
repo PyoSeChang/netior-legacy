@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 
 export interface ContextMenuItem {
   label: string;
@@ -65,11 +66,11 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps): JSX.Ele
     }
   }, [x, y]);
 
-  return (
+  return createPortal(
     <div
       ref={menuRef}
-      className="fixed z-50 min-w-[180px] rounded-md border border-default bg-surface-floating py-1 shadow-lg"
-      style={{ left: x, top: y, WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+      className="fixed min-w-[180px] rounded-md border border-default bg-surface-floating py-1 shadow-lg"
+      style={{ left: x, top: y, zIndex: 10050, WebkitAppRegion: 'no-drag' } as React.CSSProperties}
       onMouseDown={(e) => e.stopPropagation()}
     >
       {items.map((item, i) => {
@@ -103,6 +104,7 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps): JSX.Ele
           </button>
         );
       })}
-    </div>
+    </div>,
+    document.body,
   );
 }

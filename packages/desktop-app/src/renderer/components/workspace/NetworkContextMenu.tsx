@@ -3,6 +3,7 @@ import { Plus, Shapes, ArrowRightLeft, File } from 'lucide-react';
 import type { Network } from '@netior/shared/types';
 import { useNetworkStore } from '../../stores/network-store';
 import { useI18n } from '../../hooks/useI18n';
+import { WorkspaceContextMenuSurface } from './WorkspaceContextMenuSurface';
 
 interface NetworkContextMenuProps {
   x: number;
@@ -25,14 +26,6 @@ export function NetworkContextMenu({
   const { currentNetwork, networks, openNetwork } = useNetworkStore();
   const [siblingNetworks, setSiblingNetworks] = useState<Network[]>([]);
 
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    document.addEventListener('keydown', handler);
-    return () => document.removeEventListener('keydown', handler);
-  }, [onClose]);
-
   // Load sibling networks (same parent_network_id)
   useEffect(() => {
     if (!currentNetwork) return;
@@ -47,11 +40,7 @@ export function NetworkContextMenu({
   };
 
   return (
-    <div
-      className="fixed z-50 rounded-md border border-default bg-surface-floating py-1 shadow-lg min-w-[180px]"
-      style={{ left: x, top: y }}
-      onMouseDown={(e) => e.stopPropagation()}
-    >
+    <WorkspaceContextMenuSurface x={x} y={y} onClose={onClose}>
       {onCreateConcept && (
         <button
           className="flex w-full items-center gap-2 px-3 py-1 text-xs text-default hover:bg-state-hover cursor-pointer"
@@ -109,6 +98,6 @@ export function NetworkContextMenu({
           ))}
         </>
       )}
-    </div>
+    </WorkspaceContextMenuSurface>
   );
 }

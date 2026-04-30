@@ -417,7 +417,7 @@ body,
   padding-bottom: var(--tab-curve-size);
   overflow-x: scroll;
   overflow-y: hidden;
-  pointer-events: none;
+  pointer-events: auto;
 }
 
 .tab-scroll > * {
