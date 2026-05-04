@@ -1,4 +1,4 @@
-export interface ChangeEvent {
+﻿export interface ChangeEvent {
   type: string;
   action: string;
   id: string;

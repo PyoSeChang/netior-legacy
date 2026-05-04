@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+﻿import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import type { Project, EditorViewMode, SplitLeaf, EditorTab } from '@netior/shared/types';
 import { ActivityBar } from '../sidebar/ActivityBar';
@@ -164,12 +164,12 @@ export function WorkspaceShell({ project, rightChrome = null }: WorkspaceShellPr
 
   // Listen for detached window close events (host-level).
   // Window close semantics: closing a detached window destroys its tabs,
-  // similar to closing a browser window. This is intentional — the user
+  // similar to closing a browser window. This is intentional ??the user
   // explicitly closes the OS window, and tabs are not silently reattached
   // to main. Use "Move to Main Window" to preserve tabs before closing.
   useEffect(() => {
     const cleanupClosed = window.electron.editor.onDetachedClosed((hostId: string) => {
-      console.log(`[MainWindow] onDetachedClosed — hostId=${hostId}`);
+      console.log(`[MainWindow] onDetachedClosed ??hostId=${hostId}`);
       const store = useEditorStore.getState();
       const hostTabs = store.tabs.filter((t) => t.hostId === hostId);
       console.log(`[MainWindow] cleaning up ${hostTabs.length} tabs for closed host`);
@@ -278,7 +278,7 @@ export function WorkspaceShell({ project, rightChrome = null }: WorkspaceShellPr
           ? (ev.clientX - rect.left) / rect.width
           : (rect.right - ev.clientX) / rect.width;
         const ratio = Math.max(0.2, Math.min(0.8, rawRatio));
-        // Direct DOM update — no React re-render during drag
+        // Direct DOM update ??no React re-render during drag
         if (workspacePane) workspacePane.style.width = `${ratio * 100}%`;
         if (editorPane) editorPane.style.width = `${(1 - ratio) * 100}%`;
         (container as any).__pendingRatio = ratio;
@@ -452,7 +452,7 @@ export function WorkspaceShell({ project, rightChrome = null }: WorkspaceShellPr
     updateFloatRect(tabId, { x: e.clientX - 50, y: e.clientY - 20 });
   }, [applyDropModeToMain, clearShellDropState, updateFloatRect]);
 
-  // Side drop hint: drop on right edge → side mode
+  // Side drop hint: drop on right edge ??side mode
   const handleSideHintDrop = useCallback(async (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();

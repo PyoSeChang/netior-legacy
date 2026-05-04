@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { Input, type InputProps } from './Input';
 
 export interface NumberInputProps extends Omit<InputProps, 'type' | 'onChange'> {

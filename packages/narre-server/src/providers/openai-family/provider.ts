@@ -1,4 +1,4 @@
-import type { NarreProviderAdapter, NarreProviderRunContext, NarreProviderRunResult } from '../../runtime/provider-adapter.js';
+﻿import type { NarreProviderAdapter, NarreProviderRunContext, NarreProviderRunResult } from '../../runtime/provider-adapter.js';
 import type { OpenAIFamilyTransport } from './transport.js';
 import { NarreUiBridge } from '../shared/ui-bridge.js';
 

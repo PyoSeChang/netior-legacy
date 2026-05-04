@@ -1,4 +1,4 @@
-import type { EditorTab, EditorViewMode } from '@netior/shared/types';
+﻿import type { EditorTab, EditorViewMode } from '@netior/shared/types';
 
 const DEFAULT_ALLOWED_VIEW_MODES: EditorViewMode[] = ['side', 'full', 'float', 'detached'];
 

@@ -6,7 +6,7 @@ import {
   toConceptOptionValue,
 } from '../lib/schema-field-options';
 
-describe('schema field options', () => {
+describe('model field options', () => {
   it('parses empty field options as empty choices and concept sources', () => {
     expect(parseSchemaFieldOptions(null)).toEqual({
       choices: [],
@@ -17,12 +17,12 @@ describe('schema field options', () => {
   it('round-trips direct choices and concept option sources together', () => {
     const serialized = stringifySchemaFieldOptions({
       choices: ['manual'],
-      conceptOptionSourceIds: ['job-schema'],
+      conceptOptionSourceIds: ['job-model'],
     });
 
     expect(parseSchemaFieldOptions(serialized)).toEqual({
       choices: ['manual'],
-      conceptOptionSourceIds: ['job-schema'],
+      conceptOptionSourceIds: ['job-model'],
     });
   });
 

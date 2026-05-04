@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+﻿import React, { useState, useCallback, useEffect } from 'react';
 import { Boxes, Plus, Trash2, Waypoints, ChevronRight, ChevronDown, ExternalLink, Pin, PinOff } from 'lucide-react';
 import type { NetworkKind, NetworkTreeNode } from '@netior/shared/types';
 import { useNetworkStore } from '../../stores/network-store';
@@ -30,7 +30,7 @@ function filterTreeByKind(nodes: NetworkTreeNode[], kinds: NetworkKind | Network
   return visit(nodes);
 }
 
-// ─── Context Menu ────────────────────────────────────────────────
+// ??? Context Menu ????????????????????????????????????????????????
 
 interface NetworkContextMenuState {
   x: number;
@@ -41,7 +41,7 @@ interface NetworkContextMenuState {
   networkProjectId: string | null;
 }
 
-// ─── Tree Item ───────────────────────────────────────────────────
+// ??? Tree Item ???????????????????????????????????????????????????
 
 function TreeNode({
   treeNode,
@@ -107,7 +107,7 @@ function TreeNode({
   );
 }
 
-// ─── NetworkList Root ─────────────────────────────────────────────
+// ??? NetworkList Root ?????????????????????????????????????????????
 
 export function NetworkList({ projectId, kindFilter, title, canCreate }: NetworkListProps): JSX.Element {
   const { t } = useI18n();

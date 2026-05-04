@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron';
+﻿import { ipcMain } from 'electron';
 import type { IpcResult, TypeGroupKind } from '@netior/shared/types';
 import {
   createRemoteTypeGroup,

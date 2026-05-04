@@ -1,6 +1,10 @@
-import { create } from 'zustand';
+﻿import { create } from 'zustand';
 import type { Model, ModelCreate, ModelUpdate } from '@netior/shared/types';
 import { modelService } from '../services/model-service';
+
+function normalizeModels(value: unknown): Model[] {
+  return Array.isArray(value) ? value.filter((item): item is Model => !!item && typeof item === 'object') : [];
+}
 
 interface ModelStore {
   models: Model[];
@@ -20,7 +24,7 @@ export const useModelStore = create<ModelStore>((set) => ({
   loadByProject: async (projectId) => {
     set({ loading: true });
     try {
-      const models = await modelService.list(projectId);
+      const models = normalizeModels(await modelService.list(projectId));
       set({ models, loading: false });
     } catch (error) {
       console.error('[ModelStore] Failed to load models:', error);
@@ -30,21 +34,23 @@ export const useModelStore = create<ModelStore>((set) => ({
 
   createModel: async (data) => {
     const created = await modelService.create(data);
-    set((s) => ({ models: [...s.models, created] }));
+    set((s) => ({ models: [...normalizeModels(s.models), created] }));
     return created;
   },
 
   updateModel: async (id, data) => {
     const updated = await modelService.update(id, data);
     set((s) => ({
-      models: s.models.map((model) => (model.id === id ? updated : model)),
+      models: normalizeModels(s.models).map((model) => (model.id === id ? updated : model)),
     }));
   },
 
   deleteModel: async (id) => {
-    await modelService.delete(id);
+    console.info('[ModelDelete][renderer-store] start', { id });
+    const deleted = await modelService.delete(id);
+    console.info('[ModelDelete][renderer-store] result', { id, deleted });
     set((s) => ({
-      models: s.models.filter((model) => model.id !== id),
+      models: normalizeModels(s.models).filter((model) => model.id !== id),
     }));
   },
 

@@ -36,10 +36,12 @@ import {
   Plus,
   SlidersHorizontal,
   Sparkles,
+  Trash2,
 } from 'lucide-react';
 import { useI18n } from '../../hooks/useI18n';
 import { Checkbox } from '../ui/Checkbox';
 import { Badge } from '../ui/Badge';
+import { Select } from '../ui/Select';
 import { SchemaFieldRow } from './SchemaFieldRow';
 import { getFieldMeaningSlot } from '../../lib/field-meaning-bindings';
 
@@ -61,9 +63,16 @@ interface SchemaSlotDesignerProps {
     binding: SchemaMeaningSlotBinding,
     meaning: SchemaMeaning,
   ) => void | Promise<void>;
+  onBindFieldToSlot: (
+    binding: SchemaMeaningSlotBinding,
+    fieldId: string,
+  ) => void | Promise<void>;
+  onCreateField: () => void | Promise<void>;
+  onDeleteMeaning: (meaningId: string) => void | Promise<void>;
   onUpdateField: (id: string, data: SchemaFieldUpdate) => void;
   onDeleteField: (id: string) => void;
   onOpenSettings: () => void;
+  modelCategories?: readonly ModelCategoryOption[];
 }
 
 const CATEGORY_KEYS = Object.keys(SEMANTIC_CATEGORY_LABELS) as SemanticCategoryKey[];
@@ -79,6 +88,12 @@ export interface ModelOptionDefinition {
   builtIn?: boolean;
 }
 
+export interface ModelCategoryOption {
+  key: SemanticCategoryRefKey;
+  label: string;
+  description?: string;
+}
+
 const FIELD_TYPE_LABEL_KEYS: Record<FieldType, TranslationKey> = {
   text: 'typeSelector.text',
   textarea: 'typeSelector.textarea',
@@ -91,6 +106,7 @@ const FIELD_TYPE_LABEL_KEYS: Record<FieldType, TranslationKey> = {
   radio: 'typeSelector.radio',
   relation: 'typeSelector.relation',
   schema_ref: 'typeSelector.schema_ref',
+  model_ref: 'typeSelector.model_ref',
   file: 'typeSelector.file',
   url: 'typeSelector.url',
   color: 'typeSelector.color',
@@ -100,10 +116,6 @@ const FIELD_TYPE_LABEL_KEYS: Record<FieldType, TranslationKey> = {
 
 function sortFields(fields: SchemaField[]): SchemaField[] {
   return [...fields].sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name));
-}
-
-function isVisibleSchemaField(field: SchemaField): boolean {
-  return !getFieldMeaningSlot(field)?.startsWith('recurrence_');
 }
 
 function sourceLabelKey(source: SchemaMeaning['source']): TranslationKey {
@@ -125,12 +137,16 @@ export function SchemaSlotDesigner({
   onToggleModel,
   onEnsureMeaning,
   onCreateFieldForSlot,
+  onBindFieldToSlot,
+  onCreateField,
+  onDeleteMeaning,
   onUpdateField,
   onDeleteField,
   onOpenSettings,
+  modelCategories = [],
 }: SchemaSlotDesignerProps): JSX.Element {
   const { t } = useI18n();
-  const sortedFields = useMemo(() => sortFields(fields.filter(isVisibleSchemaField)), [fields]);
+  const sortedFields = useMemo(() => sortFields(fields), [fields]);
   const fieldById = useMemo(() => new Map(fields.map((field) => [field.id, field])), [fields]);
   const fieldBySlot = useMemo(() => {
     const map = new Map<string, SchemaField>();
@@ -140,6 +156,13 @@ export function SchemaSlotDesigner({
     }
     return map;
   }, [fields]);
+  const bindableFieldOptions = useMemo(() => {
+    const options = sortFields(fields).map((field) => ({
+      value: field.id,
+      label: field.name || t('schema.fieldName'),
+    }));
+    return [{ value: '', label: t('semantic.ui.selectField' as never) }, ...options];
+  }, [fields, t]);
   const meaningByKey = useMemo(() => (
     new Map(meanings.map((meaning) => [meaning.meaning_key, meaning]))
   ), [meanings]);
@@ -157,38 +180,49 @@ export function SchemaSlotDesigner({
   );
 
   const getModelLabel = (definition: ModelOptionDefinition): string => {
-    if (definition.builtIn) return t(getModelLabelKey(definition.key as ModelKey) as never);
+    if (definition.builtIn) {
+      const key = getModelLabelKey(definition.key as ModelKey);
+      const label = t(key as never);
+      return label === key ? definition.label : label;
+    }
     return definition.label;
   };
 
   const getModelDescription = (definition: ModelOptionDefinition): string => {
-    if (definition.builtIn) return t(getModelDescriptionKey(definition.key as ModelKey) as never);
+    if (definition.builtIn) {
+      const key = getModelDescriptionKey(definition.key as ModelKey);
+      const description = t(key as never);
+      return description === key ? definition.description ?? '' : description;
+    }
     return definition.description ?? '';
   };
 
   const categoryModels = useMemo(() => {
-    const modelCategoryKeys = availableModelDefinitions
-      .map((definition) => definition.category)
-      .filter((categoryKey) => !CATEGORY_KEYS.includes(categoryKey as SemanticCategoryKey));
-    const allCategoryKeys = [...CATEGORY_KEYS, ...new Set(modelCategoryKeys)];
+    const categoryOptionByKey = new Map(modelCategories.map((category) => [category.key, category]));
+    const categoryKeys = modelCategories.map((category) => category.key);
 
-    return allCategoryKeys.map((categoryKey) => {
-    const categoryModelDefinitions = availableModelDefinitions.filter((definition) => definition.category === categoryKey);
-    const isSystemCategory = CATEGORY_KEYS.includes(categoryKey as SemanticCategoryKey);
-    const meaningDefinitions = isSystemCategory
-      ? SEMANTIC_MEANING_DEFINITIONS.filter((definition) => definition.category === categoryKey)
-      : [];
-    const activeMeanings = meaningDefinitions.filter((definition) => meaningByKey.has(definition.key));
-    return {
-      categoryKey,
-      categoryLabel: isSystemCategory ? t(getSemanticCategoryLabelKey(categoryKey as SemanticCategoryKey) as never) : categoryKey,
-      categoryDescription: isSystemCategory ? t(getSemanticCategoryDescriptionKey(categoryKey as SemanticCategoryKey) as never) : '',
-      modelDefinitions: categoryModelDefinitions,
-      meaningDefinitions,
-      activeMeanings,
-    };
+    return categoryKeys.map((categoryKey) => {
+      const categoryModelDefinitions = availableModelDefinitions.filter((definition) => definition.category === categoryKey);
+      const isSystemCategory = CATEGORY_KEYS.includes(categoryKey as SemanticCategoryKey);
+      const categoryOption = categoryOptionByKey.get(categoryKey);
+      const meaningDefinitions = isSystemCategory
+        ? SEMANTIC_MEANING_DEFINITIONS.filter((definition) => definition.category === categoryKey)
+        : [];
+      const activeMeanings = meaningDefinitions.filter((definition) => meaningByKey.has(definition.key));
+      return {
+        categoryKey,
+        categoryLabel: categoryOption?.label ?? (
+          isSystemCategory ? t(getSemanticCategoryLabelKey(categoryKey as SemanticCategoryKey) as never) : categoryKey
+        ),
+        categoryDescription: categoryOption?.description ?? (
+          isSystemCategory ? t(getSemanticCategoryDescriptionKey(categoryKey as SemanticCategoryKey) as never) : ''
+        ),
+        modelDefinitions: categoryModelDefinitions,
+        meaningDefinitions,
+        activeMeanings,
+      };
     });
-  }, [availableModelDefinitions, meaningByKey, t]);
+  }, [availableModelDefinitions, meaningByKey, modelCategories, t]);
 
   const activeModel = categoryModels.find((category) => category.categoryKey === activeCategory) ?? categoryModels[0];
 
@@ -242,11 +276,30 @@ export function SchemaSlotDesigner({
               <span className="truncate">{boundField.name || t('schema.fieldName')}</span>
             </div>
           ) : (
-            <span className="text-muted">{t('semantic.ui.noFieldBound' as never)}</span>
+            <Select
+              value=""
+              options={bindableFieldOptions}
+              onChange={(event) => {
+                if (event.target.value) {
+                  void onBindFieldToSlot(binding, event.target.value);
+                }
+              }}
+              selectSize="sm"
+            />
           )}
         </div>
 
-        {!boundField && (
+        {boundField ? (
+          <button
+            type="button"
+            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted transition-colors hover:bg-state-hover hover:text-status-error"
+            title={t('schema.deleteField')}
+            aria-label={t('schema.deleteField')}
+            onClick={() => { onDeleteField(boundField.id); }}
+          >
+            <Trash2 size={14} />
+          </button>
+        ) : (
           <button
             type="button"
             className="inline-flex h-8 shrink-0 items-center justify-center gap-1 rounded-lg border border-subtle px-2 text-xs text-secondary transition-colors hover:border-accent hover:text-accent"
@@ -259,6 +312,10 @@ export function SchemaSlotDesigner({
       </div>
     );
   };
+
+  if (!activeModel) {
+    return <div className="flex flex-col gap-6" />;
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -324,33 +381,39 @@ export function SchemaSlotDesigner({
               {t('semantic.ui.modelPresets' as never)}
             </div>
             <div className="grid gap-2 md:grid-cols-2">
-              {activeModel.modelDefinitions.map((modelDefinition) => {
-                const enabled = selectedModels.includes(modelDefinition.key);
-                return (
-                  <div
-                    key={modelDefinition.key}
-                    className={`rounded-lg border px-3 py-3 transition-colors ${
-                      enabled ? 'border-accent/40 bg-accent-muted/20' : 'border-subtle bg-surface-card'
-                    }`}
-                  >
-                    <Checkbox
-                      checked={enabled}
-                      onChange={(checked) => { void onToggleModel(modelDefinition.key, checked); }}
-                      label={getModelLabel(modelDefinition)}
-                    />
-                    <div className="mt-2 text-xs leading-relaxed text-secondary">
-                      {getModelDescription(modelDefinition)}
+              {activeModel.modelDefinitions.length === 0 ? (
+                <div className="rounded-lg border border-dashed border-subtle bg-surface-editor px-3 py-4 text-xs leading-relaxed text-secondary md:col-span-2">
+                  {t('semantic.ui.noModelsInCategory' as never)}
+                </div>
+              ) : (
+                activeModel.modelDefinitions.map((modelDefinition) => {
+                  const enabled = selectedModels.includes(modelDefinition.key);
+                  return (
+                    <div
+                      key={modelDefinition.key}
+                      className={`rounded-lg border px-3 py-3 transition-colors ${
+                        enabled ? 'border-accent/40 bg-accent-muted/20' : 'border-subtle bg-surface-card'
+                      }`}
+                    >
+                      <Checkbox
+                        checked={enabled}
+                        onChange={(checked) => { void onToggleModel(modelDefinition.key, checked); }}
+                        label={getModelLabel(modelDefinition)}
+                      />
+                      <div className="mt-2 text-xs leading-relaxed text-secondary">
+                        {getModelDescription(modelDefinition)}
+                      </div>
+                      <div className="mt-2 flex flex-wrap gap-1">
+                        {modelDefinition.meanings.map((meaning) => (
+                          <span key={`${modelDefinition.key}:${meaning}`} className="rounded bg-surface-editor px-2 py-0.5 text-[11px] text-secondary">
+                            {t(getSemanticMeaningLabelKey(meaning) as never)}
+                          </span>
+                        ))}
+                      </div>
                     </div>
-                    <div className="mt-2 flex flex-wrap gap-1">
-                      {modelDefinition.meanings.map((meaning) => (
-                        <span key={`${modelDefinition.key}:${meaning}`} className="rounded bg-surface-editor px-2 py-0.5 text-[11px] text-secondary">
-                          {t(getSemanticMeaningLabelKey(meaning) as never)}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })
+              )}
             </div>
           </div>
 
@@ -360,48 +423,66 @@ export function SchemaSlotDesigner({
               {t('semantic.ui.meaningsTitle' as never)}
             </div>
             <div className="grid gap-3">
-              {activeModel.meaningDefinitions.map((definition) => {
-                const meaning = meaningByKey.get(definition.key);
-                const isActive = Boolean(meaning);
-                return (
-                  <div
-                    key={definition.key}
-                    className={`rounded-lg border px-3 py-3 ${
-                      isActive ? 'border-default bg-surface-card' : 'border-subtle bg-surface-editor'
-                    }`}
-                  >
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="flex min-w-0 flex-wrap items-center gap-2">
-                          <span className="truncate text-sm font-medium text-default">
-                            {t(getSemanticMeaningLabelKey(definition.key) as never)}
-                          </span>
-                          {meaning && <Badge>{t(sourceLabelKey(meaning.source) as never)}</Badge>}
+              {activeModel.meaningDefinitions.length === 0 ? (
+                <div className="rounded-lg border border-dashed border-subtle bg-surface-editor px-3 py-4 text-xs leading-relaxed text-secondary">
+                  {t('semantic.ui.noMeaningsInCategory' as never)}
+                </div>
+              ) : (
+                activeModel.meaningDefinitions.map((definition) => {
+                  const meaning = meaningByKey.get(definition.key);
+                  const isActive = Boolean(meaning);
+                  return (
+                    <div
+                      key={definition.key}
+                      className={`rounded-lg border px-3 py-3 ${
+                        isActive ? 'border-default bg-surface-card' : 'border-subtle bg-surface-editor'
+                      }`}
+                    >
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="flex min-w-0 flex-wrap items-center gap-2">
+                            <span className="truncate text-sm font-medium text-default">
+                              {t(getSemanticMeaningLabelKey(definition.key) as never)}
+                            </span>
+                            {meaning && <Badge>{t(sourceLabelKey(meaning.source) as never)}</Badge>}
+                          </div>
+                          <div className="mt-1 text-xs leading-relaxed text-secondary">
+                            {t(getSemanticMeaningDescriptionKey(definition.key) as never)}
+                          </div>
                         </div>
-                        <div className="mt-1 text-xs leading-relaxed text-secondary">
-                          {t(getSemanticMeaningDescriptionKey(definition.key) as never)}
+                        <div className="flex shrink-0 items-center gap-2">
+                          {!meaning ? (
+                            <button
+                              type="button"
+                              className="inline-flex h-8 items-center gap-1 rounded-lg border border-subtle px-2 text-xs text-secondary transition-colors hover:border-accent hover:text-accent"
+                              onClick={() => { void onEnsureMeaning(definition.key); }}
+                            >
+                              <Plus size={13} />
+                              {t('semantic.ui.addMeaning' as never)}
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted transition-colors hover:bg-state-hover hover:text-status-error"
+                              title={t('semantic.ui.deleteMeaning' as never)}
+                              aria-label={t('semantic.ui.deleteMeaning' as never)}
+                              onClick={() => { void onDeleteMeaning(meaning.id); }}
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          )}
                         </div>
                       </div>
-                      {!meaning && (
-                        <button
-                          type="button"
-                          className="inline-flex h-8 shrink-0 items-center gap-1 rounded-lg border border-subtle px-2 text-xs text-secondary transition-colors hover:border-accent hover:text-accent"
-                          onClick={() => { void onEnsureMeaning(definition.key); }}
-                        >
-                          <Plus size={13} />
-                          {t('semantic.ui.addMeaning' as never)}
-                        </button>
+
+                      {meaning && (
+                        <div className="mt-3 grid gap-2">
+                          {meaning.slots.map((binding) => renderBinding(binding, meaning))}
+                        </div>
                       )}
                     </div>
-
-                    {meaning && (
-                      <div className="mt-3 grid gap-2">
-                        {meaning.slots.map((binding) => renderBinding(binding, meaning))}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+                  );
+                })
+              )}
             </div>
           </div>
         </div>
@@ -415,6 +496,14 @@ export function SchemaSlotDesigner({
               {`${sortedFields.length} ${t('semantic.ui.fieldCount' as never)}`}
             </div>
           </div>
+          <button
+            type="button"
+            className="inline-flex h-8 shrink-0 items-center gap-1 rounded-lg border border-subtle px-2 text-xs text-secondary transition-colors hover:border-accent hover:text-accent"
+            onClick={() => { void onCreateField(); }}
+          >
+            <Plus size={13} />
+            {t('semantic.ui.addField' as never)}
+          </button>
         </div>
         {sortedFields.length > 0 ? (
           <div className="flex flex-col gap-2">

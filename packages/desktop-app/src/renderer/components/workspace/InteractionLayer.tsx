@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+﻿import { useState, useCallback, useEffect } from 'react';
 import type { RenderNode } from './types';
 import type { WorkspaceMode } from '../../stores/ui-store';
 import type { InteractionConstraints, LayoutViewportMode } from './layout-plugins/types';

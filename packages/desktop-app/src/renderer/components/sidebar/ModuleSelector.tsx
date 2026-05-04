@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+﻿import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Package, Plus, Trash2, ChevronDown, Pencil, FolderOpen } from 'lucide-react';
 import { useModuleStore } from '../../stores/module-store';
 import { useI18n } from '../../hooks/useI18n';
@@ -113,7 +113,7 @@ export function ModuleSelector({ projectId, projectRootDir }: ModuleSelectorProp
           className={`shrink-0 text-muted transition-transform ${open ? 'rotate-180' : ''}`}
         />
       </button>
-      {/* Dropdown — uses fixed positioning to avoid parent overflow clipping */}
+      {/* Dropdown ??uses fixed positioning to avoid parent overflow clipping */}
       {open && (
         <div
           className="fixed z-50 rounded-md border border-subtle bg-surface-card shadow-lg"

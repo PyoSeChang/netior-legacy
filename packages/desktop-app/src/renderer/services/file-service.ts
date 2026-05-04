@@ -1,4 +1,4 @@
-import type { FileEntity, FileEntityCreate, FileEntityUpdate } from '@netior/shared/types';
+﻿import type { FileEntity, FileEntityCreate, FileEntityUpdate } from '@netior/shared/types';
 import { unwrapIpc } from './ipc';
 
 export async function createFileEntity(data: FileEntityCreate): Promise<FileEntity> {

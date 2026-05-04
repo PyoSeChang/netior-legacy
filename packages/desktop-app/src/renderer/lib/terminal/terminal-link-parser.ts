@@ -1,4 +1,4 @@
-export interface FileLink {
+﻿export interface FileLink {
   path: string;
   line?: number;
   col?: number;

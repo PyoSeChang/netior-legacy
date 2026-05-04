@@ -1,4 +1,4 @@
-let measureContext: CanvasRenderingContext2D | null = null;
+﻿let measureContext: CanvasRenderingContext2D | null = null;
 
 function getMeasureContext(): CanvasRenderingContext2D | null {
   if (measureContext) return measureContext;

@@ -7,6 +7,7 @@ import { useSchemaStore } from '../../stores/schema-store';
 import { useConceptStore } from '../../stores/concept-store';
 import { useProjectStore } from '../../stores/project-store';
 import { useAnchoredDropdown } from '../../hooks/useAnchoredDropdown';
+import { NodeVisual } from '../workspace/node-components/NodeVisual';
 
 interface SchemaRefPickerProps {
   mode: 'schema' | 'concept';
@@ -65,6 +66,7 @@ export function SchemaRefPicker({
         .map((schema) => ({
           id: schema.id,
           label: schema.name,
+          icon: schema.icon,
           color: schema.color,
           detail: t('schema.title'),
         }));
@@ -77,6 +79,7 @@ export function SchemaRefPicker({
         return {
           id: concept.id,
           label: concept.title,
+          icon: concept.icon,
           color: concept.color,
           detail: schema?.name ?? t('concept.properties'),
         };
@@ -117,7 +120,11 @@ export function SchemaRefPicker({
         className={`flex items-center gap-2 px-3 py-1.5 bg-surface-input border border-input rounded-lg text-sm transition-all ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:border-strong'} ${open ? 'border-accent' : ''}`}
         onClick={handleOpen}
       >
-        <Icon size={14} className="shrink-0 text-muted" />
+        {selected?.icon ? (
+          <NodeVisual icon={selected.icon} size={14} imageSize={18} className="shrink-0" />
+        ) : (
+          <Icon size={14} className="shrink-0 text-muted" />
+        )}
         <span className={`flex-1 truncate ${selected ? 'text-default' : 'text-muted'}`}>
           {selected?.label ?? placeholder}
         </span>
@@ -171,7 +178,9 @@ export function SchemaRefPicker({
                 }}
               >
                 <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded border border-subtle bg-surface-editor">
-                  {item.color ? (
+                  {item.icon ? (
+                    <NodeVisual icon={item.icon} size={12} imageSize={20} className="shrink-0" />
+                  ) : item.color ? (
                     <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: item.color }} />
                   ) : (
                     <Icon size={12} className="text-muted" />

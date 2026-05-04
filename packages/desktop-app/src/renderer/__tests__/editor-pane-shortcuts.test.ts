@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+﻿import { describe, it, expect, beforeEach, vi } from 'vitest';
 import type { SplitLeaf, SplitBranch, SplitNode } from '@netior/shared/types';
 
 // Minimal window.electron mock for editor-store import
@@ -21,7 +21,7 @@ const { collectLeaves, getActiveLeaf, useEditorStore, containsTab } = await impo
 const { cycleTab, activateTabByNumber, cyclePane } = await import('../shortcuts/useGlobalShortcuts');
 const { openFileInPane, openFileTab } = await import('../lib/open-file-tab');
 
-// ── Test fixtures ──
+// ?? Test fixtures ??
 
 function makeLeaf(tabIds: string[], activeTabId?: string): SplitLeaf {
   return { type: 'leaf', tabIds, activeTabId: activeTabId ?? tabIds[0] };
@@ -43,7 +43,7 @@ function makeTabs(...ids: string[]) {
   return ids.map(makeTab);
 }
 
-// ── collectLeaves ──
+// ?? collectLeaves ??
 
 describe('collectLeaves', () => {
   it('returns single leaf as array', () => {
@@ -68,7 +68,7 @@ describe('collectLeaves', () => {
   });
 });
 
-// ── getActiveLeaf ──
+// ?? getActiveLeaf ??
 
 describe('getActiveLeaf', () => {
   beforeEach(() => {
@@ -107,7 +107,7 @@ describe('getActiveLeaf', () => {
   });
 });
 
-// ── closeTab fallback ──
+// ?? closeTab fallback ??
 
 describe('closeTab fallback', () => {
   beforeEach(() => {
@@ -141,8 +141,8 @@ describe('closeTab fallback', () => {
     expect(useEditorStore.getState().activeTabId).toBe('t2');
   });
 
-  it('falls to nearest sibling in nested layout ((A | B) | C), close C → B', () => {
-    // ((A | B) | C) — closing C should go to B (nearest), not A
+  it('falls to nearest sibling in nested layout ((A | B) | C), close C ??B', () => {
+    // ((A | B) | C) ??closing C should go to B (nearest), not A
     useEditorStore.setState({
       tabs: makeTabs('a', 'b', 'c'),
       activeTabId: 'c',
@@ -156,8 +156,8 @@ describe('closeTab fallback', () => {
     expect(useEditorStore.getState().activeTabId).toBe('b');
   });
 
-  it('falls to nearest sibling in nested layout (A | (B | C)), close A → B', () => {
-    // (A | (B | C)) — closing A should go to B (nearest), not C
+  it('falls to nearest sibling in nested layout (A | (B | C)), close A ??B', () => {
+    // (A | (B | C)) ??closing A should go to B (nearest), not C
     useEditorStore.setState({
       tabs: makeTabs('a', 'b', 'c'),
       activeTabId: 'a',
@@ -222,7 +222,7 @@ describe('setViewMode float fallback', () => {
   });
 });
 
-// ── cycleTab (actual function) ──
+// ?? cycleTab (actual function) ??
 
 describe('cycleTab', () => {
   it('cycles forward within current pane only', () => {
@@ -276,7 +276,7 @@ describe('cycleTab', () => {
   });
 });
 
-// ── activateTabByNumber (actual function) ──
+// ?? activateTabByNumber (actual function) ??
 
 describe('activateTabByNumber', () => {
   it('selects by pane-local index, not global index', () => {
@@ -327,7 +327,7 @@ describe('activateTabByNumber', () => {
   });
 });
 
-// ── cyclePane (actual function) ──
+// ?? cyclePane (actual function) ??
 
 describe('cyclePane', () => {
   it('switches to next pane', () => {

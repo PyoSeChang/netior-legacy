@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 
 export function NetiorTitleMark({ className = '' }: { className?: string }): JSX.Element {
   return (

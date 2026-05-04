@@ -1,4 +1,4 @@
-import type { NodeConfig, NodeSortConfig } from '@netior/shared/types';
+﻿import type { NodeConfig, NodeSortConfig } from '@netior/shared/types';
 import type { RenderEdge } from '../../types';
 import type { WorkspaceLayoutPlugin, LayoutRenderNode } from '../types';
 import { extractNodeConfig } from '../../../../lib/node-config';
@@ -342,7 +342,7 @@ export const freeformPlugin: WorkspaceLayoutPlugin = {
   key: 'freeform',
   displayName: 'Freeform',
 
-  configSchema: [],
+  configModel: [],
   getDefaultConfig: () => ({}),
 
   interactionConstraints: {

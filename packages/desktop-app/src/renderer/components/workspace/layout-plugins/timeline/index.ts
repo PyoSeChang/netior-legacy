@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { CalendarDays } from 'lucide-react';
 import type {
   LayoutRenderNode,
@@ -101,7 +101,7 @@ export const timelinePlugin: WorkspaceLayoutPlugin = {
   key: 'timeline',
   displayName: 'Timeline',
 
-  configSchema: [],
+  configModel: [],
 
   getDefaultConfig() {
     return {

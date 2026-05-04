@@ -32,7 +32,7 @@ import {
 import { getFieldMeaningSlot } from '../../lib/field-meaning-bindings';
 
 interface ConceptPropertiesPanelProps {
-  schemaId: string;
+  modelId: string;
   properties: Record<string, string | null>;
   onChange: (fieldId: string, value: string | null) => void;
 }
@@ -72,6 +72,7 @@ const FIELD_TYPE_LABEL_KEYS: Record<FieldType, TranslationKey> = {
   radio: 'typeSelector.radio',
   relation: 'typeSelector.relation',
   schema_ref: 'typeSelector.schema_ref',
+  model_ref: 'typeSelector.model_ref',
   file: 'typeSelector.file',
   url: 'typeSelector.url',
   color: 'typeSelector.color',
@@ -133,13 +134,13 @@ function getSlotValidationMessage(
   }
 }
 
-export function ConceptPropertiesPanel({ schemaId, properties, onChange }: ConceptPropertiesPanelProps): JSX.Element {
-  const fields = useSchemaStore((s) => s.fields[schemaId] ?? []);
+export function ConceptPropertiesPanel({ modelId, properties, onChange }: ConceptPropertiesPanelProps): JSX.Element {
+  const fields = useSchemaStore((s) => s.fields[modelId] ?? []);
   const loadFields = useSchemaStore((s) => s.loadFields);
 
   useEffect(() => {
-    loadFields(schemaId);
-  }, [schemaId, loadFields]);
+    loadFields(modelId);
+  }, [modelId, loadFields]);
 
   if (fields.length === 0) return <></>;
 
@@ -465,7 +466,7 @@ export function FieldInput({ field, value, onChange }: FieldInputProps): JSX.Ele
       );
     case 'schema_ref':
       return (
-        <EmbeddedSchemaPropertiesInput
+        <EmbeddedModelPropertiesInput
           field={field}
           value={value}
           onChange={onChange}
@@ -589,7 +590,7 @@ function FieldMeta({
   );
 }
 
-interface EmbeddedSchemaPropertiesInputProps {
+interface EmbeddedModelPropertiesInputProps {
   field: SchemaField;
   value: string | null;
   onChange: (value: string | null) => void;
@@ -597,13 +598,13 @@ interface EmbeddedSchemaPropertiesInputProps {
   emptyMessage: string;
 }
 
-function EmbeddedSchemaPropertiesInput({
+function EmbeddedModelPropertiesInput({
   field,
   value,
   onChange,
   missingTargetMessage,
   emptyMessage,
-}: EmbeddedSchemaPropertiesInputProps): JSX.Element {
+}: EmbeddedModelPropertiesInputProps): JSX.Element {
   const { t } = useI18n();
   const nestedFields = useSchemaStore((state) => (
     field.ref_schema_id ? state.fields[field.ref_schema_id] ?? [] : []
@@ -677,7 +678,7 @@ function EmbeddedSchemaPropertiesInput({
   );
 }
 
-function useFieldChoiceOptions(field: SchemaField): { value: string; label: string }[] {
+function useFieldChoiceOptions(field: SchemaField): { value: string; label: string; icon?: string | null }[] {
   const currentProjectId = useProjectStore((state) => state.currentProject?.id ?? null);
   const concepts = useConceptStore((state) => state.concepts);
   const loadConcepts = useConceptStore((state) => state.loadByProject);
@@ -695,10 +696,11 @@ function useFieldChoiceOptions(field: SchemaField): { value: string; label: stri
       label: choice,
     }));
     const conceptOptions = concepts
-      .filter((concept) => concept.schema_id && sourceIds.includes(concept.schema_id))
+      .filter((concept) => concept.model_id && sourceIds.includes(concept.model_id))
       .map((concept) => ({
         value: toConceptOptionValue(concept.id),
         label: concept.title,
+        icon: concept.icon,
       }));
 
     return [...staticOptions, ...conceptOptions];

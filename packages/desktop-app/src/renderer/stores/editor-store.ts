@@ -1,4 +1,4 @@
-import { create } from 'zustand';
+﻿import { create } from 'zustand';
 import type {
   EditorViewMode,
   EditorTab,
@@ -191,7 +191,7 @@ function closeDetachedHostSoon(hostId: string): void {
   }, 0);
 }
 
-// ── Split layout tree helpers ──
+// ?? Split layout tree helpers ??
 
 export function containsTab(node: SplitNode, tabId: string): boolean {
   if (node.type === 'leaf') return node.tabIds.includes(tabId);
@@ -233,7 +233,7 @@ function getLastLeaf(node: SplitNode): SplitLeaf {
   return getLastLeaf(node.children[1]);
 }
 
-/** Collect all leaves in document order (left→right, top→bottom) */
+/** Collect all leaves in document order (left?뭨ight, top?뭕ottom) */
 export function collectLeaves(node: SplitNode): SplitLeaf[] {
   if (node.type === 'leaf') return [node];
   return [...collectLeaves(node.children[0]), ...collectLeaves(node.children[1])];
@@ -619,7 +619,7 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
     // Resolve view mode
     let resolvedMode: EditorViewMode;
     if (resolvedHostId !== MAIN_HOST_ID) {
-      // Detached hosts don't use side/full/float — tabs just live in the host
+      // Detached hosts don't use side/full/float ??tabs just live in the host
       resolvedMode = 'side';
     } else if (viewMode) {
       resolvedMode = coerceViewModeForTab({ type }, viewMode);
@@ -860,7 +860,7 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
 
         const hostTabs = tabs.filter((t) => t.hostId === hostId);
         if (hostTabs.length === 0) {
-          // Last tab closed — remove host, close window
+          // Last tab closed ??remove host, close window
           const { [hostId]: _, ...remainingHosts } = s.hosts;
           closeDetachedHostSoon(hostId);
           return {
@@ -940,7 +940,7 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
     const oldMode = oldTab.viewMode;
     if (nextMode === oldMode) return;
 
-    // Detached mode → use detachTab instead
+    // Detached mode ??use detachTab instead
     if (nextMode === 'detached') {
       get().detachTab(tabId);
       return;
@@ -960,7 +960,7 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
       return;
     }
 
-    // full ↔ side: group switch
+    // full ??side: group switch
     if ((oldMode === 'side' || oldMode === 'full') && (nextMode === 'side' || nextMode === 'full')) {
       const tabsInOldMode = get().tabs.filter((t) => t.viewMode === oldMode && t.hostId === MAIN_HOST_ID);
       const tabIds = tabsInOldMode.map((t) => t.id);
@@ -1183,7 +1183,7 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
     }));
   },
 
-  // ── Close confirmation ──
+  // ?? Close confirmation ??
 
   requestCloseTab: (tabId) => {
     const tab = get().tabs.find((t) => t.id === tabId);
@@ -1217,7 +1217,7 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
     set({ pendingCloseTabId: null });
   },
 
-  // ── Split layout operations (main host only) ──
+  // ?? Split layout operations (main host only) ??
 
   splitTab: (targetTabId, newTabId, direction, position) => {
     if (targetTabId === newTabId) return;
@@ -1464,7 +1464,7 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
     set(setLayoutForMode(mode, newLayout));
   },
 
-  // ── Host operations ──
+  // ?? Host operations ??
 
   createHost: (label) => {
     const hostId = makeHostId();
@@ -1582,7 +1582,7 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
 
         // Update source host
         if (remainingHostTabs.length === 0) {
-          // Last tab removed — clean up host
+          // Last tab removed ??clean up host
           const { [sourceHostId]: _, ...rest } = hostsUpdate;
           hostsUpdate = rest;
           closeDetachedHostSoon(sourceHostId);

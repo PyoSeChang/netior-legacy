@@ -1,4 +1,4 @@
-import type { ShortcutDefinition } from './shortcut-types';
+﻿import type { ShortcutDefinition } from './shortcut-types';
 
 export const SHORTCUT_REGISTRY: ShortcutDefinition[] = [
   {
@@ -116,7 +116,7 @@ export const SHORTCUT_REGISTRY: ShortcutDefinition[] = [
     id: 'shortcut.global.nextPane',
     labelKey: 'shortcuts.items.global.nextPaneLabel',
     descriptionKey: 'shortcuts.items.global.nextPane',
-    keybinding: 'Ctrl/Cmd+Alt+→',
+    keybinding: 'Ctrl/Cmd+Alt+]',
     scope: 'global',
     owner: 'globalDispatcher',
     priority: 'global',
@@ -126,7 +126,7 @@ export const SHORTCUT_REGISTRY: ShortcutDefinition[] = [
     id: 'shortcut.global.previousPane',
     labelKey: 'shortcuts.items.global.previousPaneLabel',
     descriptionKey: 'shortcuts.items.global.previousPane',
-    keybinding: 'Ctrl/Cmd+Alt+←',
+    keybinding: 'Ctrl/Cmd+Alt+[',
     scope: 'global',
     owner: 'globalDispatcher',
     priority: 'global',

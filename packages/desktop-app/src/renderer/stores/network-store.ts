@@ -1,4 +1,4 @@
-import { create } from 'zustand';
+﻿import { create } from 'zustand';
 import type {
   Network, NetworkCreate, NetworkUpdate,
   NetworkNode, NetworkNodeCreate, NetworkNodeUpdate,
@@ -22,7 +22,7 @@ export interface NetworkNodeWithObject extends NetworkNode {
   file?: FileEntity;
 }
 
-export type EdgeWithRelationType = EdgeWithModel;
+export type NetworkEdgeWithModel = EdgeWithModel;
 
 interface ParsedNodePosition {
   x: number;
@@ -55,7 +55,7 @@ function buildPositionMap(positions: NodePosition[]): Map<string, ParsedNodePosi
   return map;
 }
 
-function buildContainsParentMap(edges: EdgeWithRelationType[]): Map<string, string> {
+function buildContainsParentMap(edges: NetworkEdgeWithModel[]): Map<string, string> {
   const map = new Map<string, string>();
   for (const edge of edges) {
     if (!isContainsEdge(edge)) continue;
@@ -97,7 +97,7 @@ function getHierarchySourceContainerId(
 
 function buildHierarchyParentMap(
   nodes: NetworkNodeWithObject[],
-  edges: EdgeWithRelationType[],
+  edges: NetworkEdgeWithModel[],
   containsParentByChild: Map<string, string>,
 ): Map<string, string> {
   const hierarchyContainerIds = getHierarchyContainerIds(nodes);
@@ -170,7 +170,7 @@ function resolveWorldPosition(
 
 function buildWorldPositionMap(
   nodes: NetworkNodeWithObject[],
-  edges: EdgeWithRelationType[],
+  edges: NetworkEdgeWithModel[],
   rawPosMap: Map<string, ParsedNodePosition>,
   containsParentByChild: Map<string, string>,
 ): Map<string, ParsedNodePosition> {
@@ -201,7 +201,7 @@ async function healHierarchyOrphans(networkId: string): Promise<void> {
   if (!full) return;
 
   const nodes = full.nodes as NetworkNodeWithObject[];
-  const edges = full.edges as EdgeWithRelationType[];
+  const edges = full.edges as NetworkEdgeWithModel[];
   const containsParentByChild = buildContainsParentMap(edges);
   const hierarchyContainerIds = getHierarchyContainerIds(nodes);
   const nodeById = new Map(nodes.map((node) => [node.id, node]));
@@ -276,7 +276,7 @@ interface NetworkStore {
   currentNetwork: Network | null;
   currentLayout: Layout | null;
   nodes: NetworkNodeWithObject[];
-  edges: EdgeWithRelationType[];
+  edges: NetworkEdgeWithModel[];
   nodePositions: NodePosition[];
   edgeVisuals: EdgeVisual[];
   loading: boolean;

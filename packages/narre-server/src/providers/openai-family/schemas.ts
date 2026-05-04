@@ -1,9 +1,9 @@
-export {
-  askToolSchema,
-  confirmToolSchema,
-  draftToolSchema,
-  proposalCellTypeSchema,
+﻿export {
+  askToolModel,
+  confirmToolModel,
+  draftToolModel,
+  proposalCellTypeModel,
   type AskToolArgs,
   type ConfirmToolArgs,
   type DraftToolArgs,
-} from '../shared/ui-schemas.js';
+} from '../shared/ui-models.js';

@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, unlinkSync, writeFileSync } from 'fs';
+﻿import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, unlinkSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import {
   getHookRuntimeScopeDir,

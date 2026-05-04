@@ -1,4 +1,4 @@
-export interface HyperTerminalSurfaceHandle {
+﻿export interface HyperTerminalSurfaceHandle {
   focus(): void;
 }
 

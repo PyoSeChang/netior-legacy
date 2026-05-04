@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron';
+﻿import { ipcMain } from 'electron';
 import type { IpcResult, NetworkObjectType } from '@netior/shared/types';
 import { getRemoteObject, getRemoteObjectByRef } from '../netior-service/netior-service-client';
 

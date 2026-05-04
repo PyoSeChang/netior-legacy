@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import type { NarreCard, NarreDraftResponse, NarreInterviewResponse, ProposalRow } from '@netior/shared/types';
 import { DraftCard } from './DraftCard';
 import { ProposalCard } from './ProposalCard';

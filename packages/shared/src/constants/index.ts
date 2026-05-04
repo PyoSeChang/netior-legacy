@@ -250,6 +250,14 @@ export const IPC_CHANNELS = {
   NARRE_SUPERVISOR_LIST_SKILLS: 'narre:supervisorListSkills',
   NARRE_SUPERVISOR_LIST_SESSIONS: 'narre:supervisorListSessions',
   NARRE_SUPERVISOR_LIST_EVENTS: 'narre:supervisorListEvents',
+  NARRE_SUPERVISOR_LIST_RUNS: 'narre:supervisorListRuns',
+  NARRE_SUPERVISOR_CREATE_RUN: 'narre:supervisorCreateRun',
+  NARRE_SUPERVISOR_GET_RUN: 'narre:supervisorGetRun',
+  NARRE_SUPERVISOR_PLAN_RUN: 'narre:supervisorPlanRun',
+  NARRE_SUPERVISOR_RUN_RUN: 'narre:supervisorRunRun',
+  NARRE_SUPERVISOR_CANCEL_RUN: 'narre:supervisorCancelRun',
+  NARRE_SUPERVISOR_LIST_APPROVALS: 'narre:supervisorListApprovals',
+  NARRE_SUPERVISOR_RESOLVE_APPROVAL: 'narre:supervisorResolveApproval',
   NARRE_GET_SESSION: 'narre:getSession',
   NARRE_CREATE_SESSION: 'narre:createSession',
   NARRE_DELETE_SESSION: 'narre:deleteSession',
@@ -322,6 +330,7 @@ export interface ModelDefinition {
   targetKind?: ModelTargetKind;
   label: string;
   description?: string;
+  icon?: string;
   meanings: readonly SemanticMeaningKey[];
   coreSlots: readonly MeaningSlotKey[];
   optionalSlots: readonly MeaningSlotKey[];
@@ -413,29 +422,29 @@ export const SEMANTIC_MEANING_DEFINITIONS: readonly SemanticMeaningDefinition[] 
 ] as const;
 
 export const MODEL_DEFINITIONS: readonly ModelDefinition[] = [
-  { key: 'temporal', category: 'time', label: 'Temporal', description: 'Represents objects that occupy time with a start point and optional end context.', meanings: ['time_interval'], coreSlots: ['start_at'], optionalSlots: ['end_at', 'all_day', 'timezone'] },
-  { key: 'dueable', category: 'time', label: 'Dueable', description: 'Represents objects that have one deadline or due point.', meanings: ['deadline'], coreSlots: ['due_at'], optionalSlots: [] },
-  { key: 'recurring', category: 'time', label: 'Recurring', description: 'Represents objects that repeat through frequency, interval, calendar constraints, and end conditions.', meanings: ['recurrence'], coreSlots: ['recurrence_frequency', 'recurrence_interval'], optionalSlots: ['recurrence_weekdays', 'recurrence_monthday', 'recurrence_until', 'recurrence_count'] },
-  { key: 'statusful', category: 'workflow', label: 'Statusful', description: 'Represents objects whose workflow state can be read by boards, lists, and filters.', meanings: ['workflow_state'], coreSlots: ['status'], optionalSlots: ['status_changed_at'] },
-  { key: 'assignable', category: 'workflow', label: 'Assignable', description: 'Represents objects that can be assigned to one or more responsible actors.', meanings: ['assignment'], coreSlots: ['assignee_refs'], optionalSlots: ['primary_assignee_ref'] },
-  { key: 'prioritizable', category: 'workflow', label: 'Prioritizable', description: 'Represents objects that carry a priority value for ranking and triage.', meanings: ['priority'], coreSlots: ['priority'], optionalSlots: [] },
-  { key: 'progressable', category: 'workflow', label: 'Progressable', description: 'Represents objects with measurable progress and completion timing.', meanings: ['progress'], coreSlots: ['progress_ratio'], optionalSlots: ['completed_at'] },
-  { key: 'estimable', category: 'workflow', label: 'Estimable', description: 'Represents objects with estimated and actual effort, cost, or resource values.', meanings: ['estimate'], coreSlots: ['estimate_value'], optionalSlots: ['estimate_unit', 'actual_value'] },
-  { key: 'hierarchical', category: 'structure', label: 'Hierarchical', description: 'Represents objects arranged in parent-child structures.', meanings: ['hierarchy'], coreSlots: ['parent_ref'], optionalSlots: ['order_index'] },
-  { key: 'ordered', category: 'structure', label: 'Ordered', description: 'Represents objects with an explicit manual sort position.', meanings: ['ordering'], coreSlots: ['order_index'], optionalSlots: [] },
-  { key: 'taggable', category: 'structure', label: 'Taggable', description: 'Represents objects classified by a lightweight set of tags.', meanings: ['tagging'], coreSlots: ['tag_keys'], optionalSlots: [] },
-  { key: 'categorizable', category: 'structure', label: 'Categorizable', description: 'Represents objects classified by one category or taxonomy key.', meanings: ['classification'], coreSlots: ['category_key'], optionalSlots: [] },
-  { key: 'sourceable', category: 'knowledge', label: 'Sourceable', description: 'Represents objects that can cite where their information came from.', meanings: ['source'], coreSlots: ['source_url'], optionalSlots: ['source_ref', 'citation'] },
-  { key: 'attachable', category: 'knowledge', label: 'Attachable', description: 'Represents objects that can reference attached files or external assets.', meanings: ['attachment'], coreSlots: ['attachment_refs'], optionalSlots: [] },
-  { key: 'versioned', category: 'knowledge', label: 'Versioned', description: 'Represents objects with version, revision, and supersession metadata.', meanings: ['versioning'], coreSlots: ['version'], optionalSlots: ['revision', 'supersedes_ref'] },
-  { key: 'locatable', category: 'space', label: 'Locatable', description: 'Represents objects that can be placed by location, address, or coordinates.', meanings: ['location'], coreSlots: ['place_ref'], optionalSlots: ['address', 'lat', 'lng'] },
-  { key: 'measurable', category: 'quant', label: 'Measurable', description: 'Represents objects with measured values, units, and optional targets.', meanings: ['measurement'], coreSlots: ['measure_value'], optionalSlots: ['measure_unit', 'target_value'] },
-  { key: 'budgeted', category: 'quant', label: 'Budgeted', description: 'Represents objects with budget amount, currency, and limit metadata.', meanings: ['budget'], coreSlots: ['budget_amount'], optionalSlots: ['budget_currency', 'budget_limit'] },
-  { key: 'ownable', category: 'governance', label: 'Ownable', description: 'Represents objects with an accountable owner.', meanings: ['ownership'], coreSlots: ['owner_ref'], optionalSlots: [] },
-  { key: 'approvable', category: 'governance', label: 'Approvable', description: 'Represents objects with approval state, approver, and approval time.', meanings: ['approval'], coreSlots: ['approval_state'], optionalSlots: ['approved_by_ref', 'approved_at'] },
-  { key: 'contains_relation', category: 'structure', targetKind: 'edge', label: 'Contains', description: 'Represents containment, composition, or membership between two nodes.', meanings: [], coreSlots: [], optionalSlots: [], lineStyle: 'solid', directed: true },
-  { key: 'entry_portal_relation', category: 'structure', targetKind: 'edge', label: 'Entry Portal', description: 'Marks the node that should open as the entry point for a contained structure.', meanings: [], coreSlots: [], optionalSlots: [], lineStyle: 'dashed', directed: true },
-  { key: 'parent_relation', category: 'structure', targetKind: 'edge', label: 'Parent Relation', description: 'Represents a hierarchy parent-child relation between nodes.', meanings: [], coreSlots: [], optionalSlots: [], lineStyle: 'solid', directed: true },
+  { key: 'temporal', category: 'time', icon: 'calendar-clock', label: 'Temporal', description: 'Represents objects that occupy time with a start point and optional end context.', meanings: ['time_interval'], coreSlots: ['start_at'], optionalSlots: ['end_at', 'all_day', 'timezone'] },
+  { key: 'dueable', category: 'time', icon: 'alarm-clock', label: 'Dueable', description: 'Represents objects that have one deadline or due point.', meanings: ['deadline'], coreSlots: ['due_at'], optionalSlots: [] },
+  { key: 'recurring', category: 'time', icon: 'repeat-2', label: 'Recurring', description: 'Represents objects that repeat through frequency, interval, calendar constraints, and end conditions.', meanings: ['recurrence'], coreSlots: ['recurrence_frequency', 'recurrence_interval'], optionalSlots: ['recurrence_weekdays', 'recurrence_monthday', 'recurrence_until', 'recurrence_count'] },
+  { key: 'statusful', category: 'workflow', icon: 'list-checks', label: 'Statusful', description: 'Represents objects whose workflow state can be read by boards, lists, and filters.', meanings: ['workflow_state'], coreSlots: ['status'], optionalSlots: ['status_changed_at'] },
+  { key: 'assignable', category: 'workflow', icon: 'user-check', label: 'Assignable', description: 'Represents objects that can be assigned to one or more responsible actors.', meanings: ['assignment'], coreSlots: ['assignee_refs'], optionalSlots: ['primary_assignee_ref'] },
+  { key: 'prioritizable', category: 'workflow', icon: 'flag', label: 'Prioritizable', description: 'Represents objects that carry a priority value for ranking and triage.', meanings: ['priority'], coreSlots: ['priority'], optionalSlots: [] },
+  { key: 'progressable', category: 'workflow', icon: 'gauge', label: 'Progressable', description: 'Represents objects with measurable progress and completion timing.', meanings: ['progress'], coreSlots: ['progress_ratio'], optionalSlots: ['completed_at'] },
+  { key: 'estimable', category: 'workflow', icon: 'calculator', label: 'Estimable', description: 'Represents objects with estimated and actual effort, cost, or resource values.', meanings: ['estimate'], coreSlots: ['estimate_value'], optionalSlots: ['estimate_unit', 'actual_value'] },
+  { key: 'hierarchical', category: 'structure', icon: 'git-fork', label: 'Hierarchical', description: 'Represents objects arranged in parent-child structures.', meanings: ['hierarchy'], coreSlots: ['parent_ref'], optionalSlots: ['order_index'] },
+  { key: 'ordered', category: 'structure', icon: 'arrow-down-az', label: 'Ordered', description: 'Represents objects with an explicit manual sort position.', meanings: ['ordering'], coreSlots: ['order_index'], optionalSlots: [] },
+  { key: 'taggable', category: 'structure', icon: 'tags', label: 'Taggable', description: 'Represents objects classified by a lightweight set of tags.', meanings: ['tagging'], coreSlots: ['tag_keys'], optionalSlots: [] },
+  { key: 'categorizable', category: 'structure', icon: 'folder-tree', label: 'Categorizable', description: 'Represents objects classified by one category or taxonomy key.', meanings: ['classification'], coreSlots: ['category_key'], optionalSlots: [] },
+  { key: 'sourceable', category: 'knowledge', icon: 'link', label: 'Sourceable', description: 'Represents objects that can cite where their information came from.', meanings: ['source'], coreSlots: ['source_url'], optionalSlots: ['source_ref', 'citation'] },
+  { key: 'attachable', category: 'knowledge', icon: 'paperclip', label: 'Attachable', description: 'Represents objects that can reference attached files or external assets.', meanings: ['attachment'], coreSlots: ['attachment_refs'], optionalSlots: [] },
+  { key: 'versioned', category: 'knowledge', icon: 'history', label: 'Versioned', description: 'Represents objects with version, revision, and supersession metadata.', meanings: ['versioning'], coreSlots: ['version'], optionalSlots: ['revision', 'supersedes_ref'] },
+  { key: 'locatable', category: 'space', icon: 'map-pin', label: 'Locatable', description: 'Represents objects that can be placed by location, address, or coordinates.', meanings: ['location'], coreSlots: ['place_ref'], optionalSlots: ['address', 'lat', 'lng'] },
+  { key: 'measurable', category: 'quant', icon: 'ruler', label: 'Measurable', description: 'Represents objects with measured values, units, and optional targets.', meanings: ['measurement'], coreSlots: ['measure_value'], optionalSlots: ['measure_unit', 'target_value'] },
+  { key: 'budgeted', category: 'quant', icon: 'wallet-cards', label: 'Budgeted', description: 'Represents objects with budget amount, currency, and limit metadata.', meanings: ['budget'], coreSlots: ['budget_amount'], optionalSlots: ['budget_currency', 'budget_limit'] },
+  { key: 'ownable', category: 'governance', icon: 'badge-check', label: 'Ownable', description: 'Represents objects with an accountable owner.', meanings: ['ownership'], coreSlots: ['owner_ref'], optionalSlots: [] },
+  { key: 'approvable', category: 'governance', icon: 'stamp', label: 'Approvable', description: 'Represents objects with approval state, approver, and approval time.', meanings: ['approval'], coreSlots: ['approval_state'], optionalSlots: ['approved_by_ref', 'approved_at'] },
+  { key: 'contains_relation', category: 'structure', targetKind: 'edge', icon: 'box', label: 'Contains', description: 'Represents containment, composition, or membership between two nodes.', meanings: [], coreSlots: [], optionalSlots: [], lineStyle: 'solid', directed: true },
+  { key: 'entry_portal_relation', category: 'structure', targetKind: 'edge', icon: 'door-open', label: 'Entry Portal', description: 'Marks the node that should open as the entry point for a contained structure.', meanings: [], coreSlots: [], optionalSlots: [], lineStyle: 'dashed', directed: true },
+  { key: 'parent_relation', category: 'structure', targetKind: 'edge', icon: 'git-branch', label: 'Parent Relation', description: 'Represents a hierarchy parent-child relation between nodes.', meanings: [], coreSlots: [], optionalSlots: [], lineStyle: 'solid', directed: true },
 ] as const;
 
 export const MEANING_SLOT_TO_FIELD_MEANING: Readonly<Record<MeaningSlotKey, FieldMeaningKey>> =

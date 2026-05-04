@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { CalendarDays } from 'lucide-react';
 import type {
   WorkspaceLayoutPlugin,
@@ -21,7 +21,7 @@ export const ganttPlugin: WorkspaceLayoutPlugin = {
   key: 'gantt',
   displayName: 'Gantt Chart',
 
-  configSchema: [],
+  configModel: [],
 
   getDefaultConfig() {
     return {

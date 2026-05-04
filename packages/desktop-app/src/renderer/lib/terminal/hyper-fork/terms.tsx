@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import type { TerminalEngineLaunchConfig, TerminalRawXterm, TerminalSearchController } from '../engine/terminal-engine';
 import type { TerminalAppearanceSnapshot } from './terminal-appearance';
 import { ForkedHyperStyleSheet } from './style-sheet';

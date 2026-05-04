@@ -1,4 +1,4 @@
-import { meaningBindingToMeaningSlot } from '@netior/shared/constants';
+﻿import { meaningBindingToMeaningSlot } from '@netior/shared/constants';
 import type { FieldMeaningBindingKey, FieldMeaningKey } from '@netior/shared/types';
 import type { LayoutRenderNode } from './types';
 

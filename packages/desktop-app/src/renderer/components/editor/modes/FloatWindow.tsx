@@ -1,4 +1,4 @@
-import React, { useCallback, useRef } from 'react';
+﻿import React, { useCallback, useRef } from 'react';
 import { X, GripVertical } from 'lucide-react';
 import type { EditorTab } from '@netior/shared/types';
 import { useEditorStore } from '../../../stores/editor-store';
@@ -110,7 +110,7 @@ export function FloatWindow({ tab, isActive, onActivate }: FloatWindowProps): JS
         className="flex shrink-0 cursor-grab items-center gap-1 border-b border-subtle bg-surface-card px-1.5 active:cursor-grabbing"
         onMouseDown={handleDragStart}
       >
-        {/* Drag handle for tab mode conversion (float → side/full) */}
+        {/* Drag handle for tab mode conversion (float ??side/full) */}
         <div
           data-tab-drag
           draggable

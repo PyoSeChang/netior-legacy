@@ -1,4 +1,4 @@
-const knownSignatureRegistry = new Map<string, string>();
+﻿const knownSignatureRegistry = new Map<string, string>();
 const suppressUntilRegistry = new Map<string, number>();
 
 export function getKnownFileTabSignature(tabId: string): string | undefined {

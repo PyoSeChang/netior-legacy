@@ -48,10 +48,13 @@ export function registerModelIpc(): void {
 
   ipcMain.handle('model:delete', async (_e, id: string): Promise<IpcResult<unknown>> => {
     try {
+      console.info('[ModelDelete][main-ipc] start', { id });
       const result = await deleteRemoteModel(id);
+      console.info('[ModelDelete][main-ipc] result', { id, result });
       broadcastChange({ type: 'models', action: 'deleted', id });
       return { success: true, data: result };
     } catch (err) {
+      console.error('[ModelDelete][main-ipc] failed', { id, error: (err as Error).message });
       return { success: false, error: (err as Error).message };
     }
   });

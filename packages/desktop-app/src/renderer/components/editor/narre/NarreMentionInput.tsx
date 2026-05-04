@@ -1,5 +1,5 @@
 import React, { useRef, useState, useCallback, useEffect } from 'react';
-import { Send, X } from 'lucide-react';
+import { Plus, Send, Square, X } from 'lucide-react';
 import type { NarreMention, SkillDefinition } from '@netior/shared/types';
 import { SLASH_TRIGGER_SKILLS } from '@netior/shared/constants';
 import type { MentionResult } from '../../../services/narre-service';
@@ -24,12 +24,18 @@ interface NarreMentionInputProps {
   onSend: (payload: NarreComposerSubmit) => Promise<boolean | void> | boolean | void;
   disabled?: boolean;
   sendDisabled?: boolean;
+  isStreaming?: boolean;
+  stopDisabled?: boolean;
   placeholder?: string;
   draftHtml?: string;
   availableSkills?: readonly SkillDefinition[];
   pendingSkillInvocation?: NarrePendingSkillInvocationState | null;
+  allowMentions?: boolean;
+  allowSlashSkills?: boolean;
+  footerLabel?: string;
   onDraftChange?: (draftHtml: string) => void;
   onPendingSkillInvocationChange?: (pendingSkillInvocation: NarrePendingSkillInvocationState | null) => void;
+  onStop?: () => Promise<void> | void;
 }
 
 interface PickerState {
@@ -153,17 +159,24 @@ export function NarreMentionInput({
   onSend,
   disabled = false,
   sendDisabled = false,
+  isStreaming = false,
+  stopDisabled = false,
   placeholder,
   draftHtml = '',
   availableSkills = SLASH_TRIGGER_SKILLS,
   pendingSkillInvocation = null,
+  allowMentions = true,
+  allowSlashSkills = true,
+  footerLabel,
   onDraftChange,
   onPendingSkillInvocationChange,
+  onStop,
 }: NarreMentionInputProps): JSX.Element {
   const { t } = useI18n();
   const editorRef = useRef<HTMLDivElement>(null);
   const [snapshot, setSnapshot] = useState<ComposerSnapshot>(EMPTY_SNAPSHOT);
   const [isEmpty, setIsEmpty] = useState(true);
+  const [pickerCategory, setPickerCategory] = useState('all');
   const [picker, setPicker] = useState<PickerState>({
     isOpen: false,
     query: '',
@@ -350,7 +363,7 @@ export function NarreMentionInput({
 
     // Check for "/" at the start of input (slash-triggered skill)
     const fullText = (editor.textContent || '').replace(/\u200B/g, '');
-    if (!pendingSkillInvocation && fullText.startsWith('/')) {
+    if (allowSlashSkills && !pendingSkillInvocation && fullText.startsWith('/')) {
       const slashBody = fullText.slice(1);
       const slashQuery = slashBody.split(/\s+/, 1)[0] ?? '';
 
@@ -382,7 +395,7 @@ export function NarreMentionInput({
       if (ch === ' ' || ch === '\n') break;
     }
 
-    if (atPos >= 0) {
+    if (allowMentions && atPos >= 0) {
       const query = text.slice(atPos + 1, cursorPos);
       mentionSearchStart.current = atPos;
 
@@ -406,7 +419,7 @@ export function NarreMentionInput({
         mentionSearchStart.current = null;
       }
     }
-  }, [pendingSkillInvocation, picker.isOpen, slashPicker.isOpen, onDraftChange, syncComposerState]);
+  }, [allowMentions, allowSlashSkills, pendingSkillInvocation, picker.isOpen, slashPicker.isOpen, onDraftChange, syncComposerState]);
 
   const handleMentionSelect = useCallback((mention: MentionResult) => {
     const el = editorRef.current;
@@ -456,12 +469,49 @@ export function NarreMentionInput({
   const handlePickerClose = useCallback(() => {
     setPicker((p) => ({ ...p, isOpen: false }));
     mentionSearchStart.current = null;
+    setPickerCategory('all');
   }, []);
+
+  const openMentionPickerFromMenu = useCallback((category: 'all' | 'agent') => {
+    if (!allowMentions || disabled) return;
+
+    const el = editorRef.current;
+    if (!el) return;
+
+    el.focus();
+    const currentText = (el.textContent || '').replace(/\u200B/g, '');
+    const needsSpace = currentText.length > 0 && !/\s$/.test(currentText);
+    const triggerText = `${needsSpace ? ' ' : ''}@`;
+    const triggerNode = document.createTextNode(triggerText);
+    el.appendChild(triggerNode);
+
+    const selection = window.getSelection();
+    const range = document.createRange();
+    range.setStart(triggerNode, triggerText.length);
+    range.collapse(true);
+    selection?.removeAllRanges();
+    selection?.addRange(range);
+
+    mentionSearchStart.current = triggerText.length - 1;
+    const rect = el.getBoundingClientRect();
+    setPickerCategory(category);
+    setPicker({
+      isOpen: true,
+      query: '',
+      position: {
+        bottom: window.innerHeight - rect.top + 4,
+        left: rect.left,
+      },
+    });
+    syncComposerState();
+    onDraftChange?.(el.innerHTML);
+  }, [allowMentions, disabled, onDraftChange, syncComposerState]);
 
   // Focus editor on mount
   useEffect(() => {
     editorRef.current?.focus();
   }, []);
+
 
   useEffect(() => {
     const wasDisabled = previousDisabled.current;
@@ -490,16 +540,14 @@ export function NarreMentionInput({
   }, [draftHtml, syncComposerState]);
 
   return (
-    <div className="flex w-full items-end gap-2">
-      <div className="relative flex-1">
+    <div className="mx-auto w-full max-w-[860px]">
+      <div className="relative rounded-2xl border border-input bg-surface-input px-3 pb-2 pt-2 shadow-sm transition-colors hover:border-strong focus-within:border-accent">
         <div
           ref={editorRef}
           contentEditable={!disabled}
           role="textbox"
           className={[
-            'min-h-[36px] max-h-[120px] overflow-y-auto rounded-lg border border-input bg-surface-input px-3 py-2 text-sm text-default outline-none transition-all',
-            'hover:border-strong focus:border-accent',
-            'placeholder:text-muted',
+            'min-h-[44px] max-h-[140px] overflow-y-auto rounded-md bg-transparent px-0 py-1 text-sm text-default outline-none',
             disabled ? 'opacity-50 cursor-not-allowed' : '',
           ].join(' ')}
           onInput={handleInput}
@@ -507,7 +555,7 @@ export function NarreMentionInput({
           suppressContentEditableWarning
         />
         {isEmpty && !disabled && (
-          <div className="pointer-events-none absolute left-3 top-2 text-sm text-muted">
+          <div className="pointer-events-none absolute left-3 top-3 text-sm text-muted">
             {placeholder || t('narre.inputPlaceholder')}
           </div>
         )}
@@ -560,17 +608,55 @@ export function NarreMentionInput({
             )}
           </div>
         )}
+        <div className="mt-2 flex items-center gap-2">
+          <IconButton
+            label={t('narre.composer.addContext' as never)}
+            disabled={disabled || !allowMentions}
+            className="h-7 w-7 rounded-md"
+            onClick={() => openMentionPickerFromMenu('all')}
+          >
+            <Plus size={15} />
+          </IconButton>
+          {footerLabel && (
+            <span className="truncate text-xs text-muted">{footerLabel}</span>
+          )}
+          <div className="ml-auto flex items-center gap-2">
+            {allowMentions && (
+              <span className="text-xs text-muted">@</span>
+            )}
+            {isStreaming ? (
+              <IconButton
+                label={t('narre.stopMessage' as never)}
+                disabled={stopDisabled || !onStop}
+                className="h-8 w-8 rounded-full bg-surface-hover text-default hover:enabled:bg-state-hover"
+                onClick={() => { void onStop?.(); }}
+              >
+                <Square size={14} />
+              </IconButton>
+            ) : (
+              <IconButton
+                label={t('narre.sendMessage')}
+                disabled={disabled || sendDisabled || !canSubmit}
+                className="h-8 w-8 rounded-full bg-accent text-on-accent hover:enabled:bg-accent-hover disabled:bg-surface-hover disabled:text-muted"
+                onClick={() => { void handleSend(); }}
+              >
+                <Send size={16} />
+              </IconButton>
+            )}
+          </div>
+        </div>
       </div>
-      {picker.isOpen && (
+      {allowMentions && picker.isOpen && (
         <NarreMentionPicker
           query={picker.query}
           projectId={projectId}
           position={picker.position}
+          initialCategory={pickerCategory}
           onSelect={handleMentionSelect}
           onClose={handlePickerClose}
         />
       )}
-      {slashPicker.isOpen && !picker.isOpen && !pendingSkillInvocation && (
+      {allowSlashSkills && slashPicker.isOpen && !picker.isOpen && !pendingSkillInvocation && (
         <NarreSlashPicker
           query={slashPicker.query}
           position={slashPicker.position}
@@ -579,13 +665,6 @@ export function NarreMentionInput({
           onClose={handleSlashPickerClose}
         />
       )}
-      <IconButton
-        label={t('narre.sendMessage')}
-        disabled={disabled || sendDisabled || !canSubmit}
-        onClick={() => { void handleSend(); }}
-      >
-        <Send size={16} />
-      </IconButton>
     </div>
   );
 }

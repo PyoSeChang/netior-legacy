@@ -1,4 +1,4 @@
-import { useNetworkStore, type NetworkNodeWithObject, type EdgeWithRelationType } from './network-store';
+import { useNetworkStore, type NetworkNodeWithObject, type NetworkEdgeWithModel } from './network-store';
 import { useEditorStore } from './editor-store';
 import { useModuleStore } from './module-store';
 import { useConceptStore } from './concept-store';
@@ -7,12 +7,12 @@ import { useModelStore } from './model-store';
 import { useTypeGroupStore } from './type-group-store';
 import { useFileStore, type OpenFile, type ClipboardAction, type ClipboardState } from './file-store';
 import type {
-  Network, NetworkNode, Edge, Concept, Model,
+  Network, NetworkNode, Edge, Concept,
   NetworkBreadcrumbItem, NetworkTreeNode,
   EditorTab, SplitNode,
   Module, ModuleDirectory,
   ConceptProperty,
-  Schema, SchemaField,
+  Model, SchemaField,
   TypeGroup,
   FileTreeNode,
 } from '@netior/shared/types';
@@ -21,7 +21,7 @@ interface NetworkSnapshot {
   networks: Network[];
   currentNetwork: Network | null;
   nodes: NetworkNodeWithObject[];
-  edges: EdgeWithRelationType[];
+  edges: NetworkEdgeWithModel[];
   breadcrumbs: NetworkBreadcrumbItem[];
   networkHistory: string[];
   networkTree: NetworkTreeNode[];
@@ -49,8 +49,8 @@ interface ConceptSnapshot {
   properties: Record<string, ConceptProperty[]>;
 }
 
-interface SchemaSnapshot {
-  schemas: Schema[];
+interface SchemaStructureSnapshot {
+  schemas: Model[];
   fields: Record<string, SchemaField[]>;
 }
 
@@ -78,7 +78,7 @@ interface WorkspaceSnapshot {
   editor: EditorSnapshot;
   module: ModuleSnapshot;
   concept: ConceptSnapshot;
-  schema: SchemaSnapshot;
+  schemaStructure: SchemaStructureSnapshot;
   model: ModelSnapshot;
   typeGroup: TypeGroupSnapshot;
   file: FileSnapshot;
@@ -120,7 +120,7 @@ function capture(): WorkspaceSnapshot {
   const editor = useEditorStore.getState();
   const module = useModuleStore.getState();
   const concept = useConceptStore.getState();
-  const schema = useSchemaStore.getState();
+  const schemaStructure = useSchemaStore.getState();
   const model = useModelStore.getState();
   const typeGroup = useTypeGroupStore.getState();
   const file = useFileStore.getState();
@@ -154,9 +154,9 @@ function capture(): WorkspaceSnapshot {
       concepts: concept.concepts,
       properties: concept.properties,
     },
-    schema: {
-      schemas: schema.schemas,
-      fields: schema.fields,
+    schemaStructure: {
+      schemas: schemaStructure.schemas,
+      fields: schemaStructure.fields,
     },
     model: {
       models: model.models,
@@ -180,7 +180,7 @@ function restore(snapshot: WorkspaceSnapshot): void {
   useEditorStore.setState({ ...normalizeEditorSnapshot(snapshot.editor), pendingCloseTabId: null });
   useModuleStore.setState(snapshot.module);
   useConceptStore.setState(snapshot.concept);
-  useSchemaStore.setState(snapshot.schema);
+  useSchemaStore.setState(snapshot.schemaStructure);
   useModelStore.setState(snapshot.model);
   useTypeGroupStore.setState(snapshot.typeGroup);
   useFileStore.setState(snapshot.file);

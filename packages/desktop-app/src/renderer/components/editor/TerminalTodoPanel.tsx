@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
+﻿import React, { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { X, Plus, GripVertical } from 'lucide-react';
 import { Checkbox } from '../ui/Checkbox';
 import { useI18n } from '../../hooks/useI18n';
@@ -93,7 +93,7 @@ export function TerminalTodoPanel({ sessionId, autoShowSeconds = 0 }: TerminalTo
   );
 }
 
-// ── Tree node (recursive) ──
+// ?? Tree node (recursive) ??
 
 interface TodoTreeProps {
   item: TodoItem;

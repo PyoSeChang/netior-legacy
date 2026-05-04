@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import type { EditorTab } from '@netior/shared/types';
 import { fsService, fileService } from '../../services';
 import { useI18n } from '../../hooks/useI18n';
@@ -54,7 +54,7 @@ export function FileEditor({ tab }: FileEditorProps): JSX.Element {
       if (cancelled) return;
       if (entity) { setFileId(entity.id); return; }
 
-      // Exact match failed — try matching against all project files
+      // Exact match failed ??try matching against all project files
       const allFiles = await fileService.getByProject(currentProject.id);
       const match = allFiles.find((f) => {
         const dbPath = f.path.replace(/\\/g, '/');

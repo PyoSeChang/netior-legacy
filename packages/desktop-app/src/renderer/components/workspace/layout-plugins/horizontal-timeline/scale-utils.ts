@@ -1,5 +1,5 @@
-/**
- * Timeline Scale Utilities — Calendar-based (date only)
+﻿/**
+ * Timeline Scale Utilities ??Calendar-based (date only)
  *
  * All time values are epoch days (days since 1970-01-01).
  * Axis always shows real dates: years, months, days.
@@ -21,7 +21,7 @@ export function epochDaysToDate(days: number): Date {
 
 /** Convert ISO date string to epoch days */
 export function isoToEpochDays(iso: string): number | null {
-  // Parse as local date: "2024-03-15" → local March 15
+  // Parse as local date: "2024-03-15" ??local March 15
   const parts = iso.split('-');
   if (parts.length < 3) return null;
   const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
@@ -34,7 +34,7 @@ export function todayEpochDays(): number {
   return dateToEpochDays(new Date());
 }
 
-// ── Zoom level thresholds ──
+// ?? Zoom level thresholds ??
 // pixelsPerDay = PIXELS_PER_DAY * zoom
 // At different pixelsPerDay ranges, show different granularity
 
@@ -64,7 +64,7 @@ export function getGranularity(zoom: number): { major: TimeGranularity; minor: T
   }
 }
 
-// ── Header cell generation ──
+// ?? Header cell generation ??
 
 export interface HeaderCell {
   label: string;
@@ -122,7 +122,7 @@ export function generateHeaderCells(params: {
       const screenWidth = (endDay - startDay) * pxPerDay;
 
       cells.push({
-        label: `${current.getMonth() + 1}월`,
+        label: `${current.getMonth() + 1}M`,
         screenX,
         screenWidth,
         epochDay: startDay,

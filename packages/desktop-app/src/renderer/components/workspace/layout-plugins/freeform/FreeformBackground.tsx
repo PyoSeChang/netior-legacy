@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { Background } from '../../Background';
 import type { LayoutLayerProps } from '../types';
 

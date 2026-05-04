@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+﻿import React, { useMemo, useState } from 'react';
 import type { LayoutLayerProps } from '../types';
 import { PIXELS_PER_DAY, todayEpochDays } from './scale-utils';
 import { HEADER_TOTAL_HEIGHT } from './TimelineBackground';
@@ -76,7 +76,7 @@ export const TimelineOverlay: React.FC<LayoutLayerProps> = ({
       });
     }
 
-    // Lane assignment: longest → lane 0 (top)
+    // Lane assignment: longest ??lane 0 (top)
     rawBands.sort((a, b) => b.duration - a.duration);
     const bandLanes: Array<Array<{ start: number; end: number }>> = [];
     const result: Array<typeof rawBands[0] & { lane: number }> = [];

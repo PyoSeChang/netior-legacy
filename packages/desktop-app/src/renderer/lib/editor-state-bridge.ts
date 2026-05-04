@@ -2,25 +2,25 @@
  * Cross-window editor state sync bridge.
  *
  * Problem: each BrowserWindow has its own renderer process with its own Zustand store.
- * The detached window's store starts empty — it has no tabs or hosts.
+ * The detached window's store starts empty ??it has no tabs or hosts.
  *
  * Solution: main process caches the serializable portion of editor state and relays
  * changes between windows. Each window pushes state on mutation and applies incoming
  * state from the relay. A `_isSyncing` guard prevents echo loops.
  *
  * Flow:
- *   Window mutates store → subscribe fires → pushState to main process
+ *   Window mutates store ??subscribe fires ??pushState to main process
  *   Main process caches + broadcasts to all OTHER windows
- *   Other windows receive → apply to local store (guarded)
+ *   Other windows receive ??apply to local store (guarded)
  *
  * Detached window boot:
- *   getState from main process → hydrate local store → start listening
+ *   getState from main process ??hydrate local store ??start listening
  */
 
 import { useEditorStore } from '../stores/editor-store';
 import { useProjectStore } from '../stores/project-store';
 import { useConceptStore } from '../stores/concept-store';
-import { useSchemaStore } from '../stores/schema-store';
+import { useSchemaStore as useModelStore } from '../stores/schema-store';
 import { useModelStore } from '../stores/model-store';
 import { useTypeGroupStore } from '../stores/type-group-store';
 import { useNetworkStore } from '../stores/network-store';
@@ -58,7 +58,7 @@ function getSyncState(): SyncState {
 
 function applySyncState(state: SyncState): void {
   _isSyncing = true;
-  console.log(`[Bridge] applySyncState — hosts=${JSON.stringify(Object.keys(state.hosts))}, tabs=${state.tabs.length}, focusedHost=${state.focusedHostId}`);
+  console.log(`[Bridge] applySyncState ??hosts=${JSON.stringify(Object.keys(state.hosts))}, tabs=${state.tabs.length}, focusedHost=${state.focusedHostId}`);
   useEditorStore.setState({
     tabs: state.tabs,
     activeTabId: state.activeTabId,
@@ -87,7 +87,7 @@ function bootstrapWorkspaceStores(project: Project): void {
 
   const pid = project.id;
   useConceptStore.getState().loadByProject(pid);
-  useSchemaStore.getState().loadByProject(pid);
+  useModelStore.getState().loadByProject(pid);
   useModelStore.getState().loadByProject(pid);
   useTypeGroupStore.getState().loadByProject(pid);
   useNetworkStore.getState().loadNetworks(pid);
@@ -101,7 +101,7 @@ function schedulePush(): void {
     _syncScheduled = false;
     if (!_isSyncing) {
       const state = getSyncState();
-      console.log(`[Bridge] pushState — hosts=${JSON.stringify(Object.keys(state.hosts))}, tabs=${state.tabs.length}`);
+      console.log(`[Bridge] pushState ??hosts=${JSON.stringify(Object.keys(state.hosts))}, tabs=${state.tabs.length}`);
       window.electron.editor.pushState(state);
     }
   });
@@ -163,7 +163,7 @@ export function initMainBridge(): () => void {
  *  message that does (up to a timeout). This prevents hydrating with stale state. */
 export async function initDetachedBridge(expectedHostId?: string): Promise<() => void> {
   const cached = await window.electron.editor.getState();
-  console.log(`[Bridge] initDetachedBridge — cached=${cached ? 'yes' : 'null'}, hosts=${cached ? JSON.stringify(Object.keys((cached as SyncState).hosts)) : 'N/A'}, expecting=${expectedHostId}`);
+  console.log(`[Bridge] initDetachedBridge ??cached=${cached ? 'yes' : 'null'}, hosts=${cached ? JSON.stringify(Object.keys((cached as SyncState).hosts)) : 'N/A'}, expecting=${expectedHostId}`);
 
   const cachedState = cached as SyncState | null;
   const hostFound = !expectedHostId || (cachedState && expectedHostId in cachedState.hosts);
@@ -175,7 +175,7 @@ export async function initDetachedBridge(expectedHostId?: string): Promise<() =>
     return cleanup;
   }
 
-  // Host not in cache yet — start listener and wait for a sync that includes it
+  // Host not in cache yet ??start listener and wait for a sync that includes it
   if (cachedState) {
     applySyncState(cachedState);
   }
@@ -185,7 +185,7 @@ export async function initDetachedBridge(expectedHostId?: string): Promise<() =>
     const timeoutId = setTimeout(() => {
       if (resolved) return;
       resolved = true;
-      console.log(`[Bridge] initDetachedBridge — timeout waiting for host ${expectedHostId}, proceeding with current state`);
+      console.log(`[Bridge] initDetachedBridge ??timeout waiting for host ${expectedHostId}, proceeding with current state`);
       startSubscription();
       resolve(cleanup);
     }, 2000);
@@ -198,7 +198,7 @@ export async function initDetachedBridge(expectedHostId?: string): Promise<() =>
       if (!resolved && expectedHostId && expectedHostId in state.hosts) {
         resolved = true;
         clearTimeout(timeoutId);
-        console.log(`[Bridge] initDetachedBridge — host ${expectedHostId} found via sync`);
+        console.log(`[Bridge] initDetachedBridge ??host ${expectedHostId} found via sync`);
         startSubscription();
         resolve(cleanup);
       }

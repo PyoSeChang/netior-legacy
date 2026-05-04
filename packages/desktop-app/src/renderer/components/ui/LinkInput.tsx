@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { ExternalLink } from 'lucide-react';
 import { openExternal } from '../../lib/open-external';
 

@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { X } from 'lucide-react';
 import { useEditorStore, MAIN_HOST_ID } from '../../stores/editor-store';
 import { useI18n } from '../../hooks/useI18n';

@@ -1,6 +1,6 @@
-export type EditorType = 'code' | 'markdown' | 'image' | 'pdf' | 'unsupported';
+﻿export type EditorType = 'code' | 'markdown' | 'image' | 'pdf' | 'unsupported';
 
-/** 1:N mapping — first element is the default editor for the extension */
+/** 1:N mapping ??first element is the default editor for the extension */
 const EDITOR_MAP: Record<string, EditorType[]> = {
   md: ['markdown', 'code'], mdx: ['markdown', 'code'],
   txt: ['code'], json: ['code'], yaml: ['code'], yml: ['code'],

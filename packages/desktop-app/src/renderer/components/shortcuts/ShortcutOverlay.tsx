@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+﻿import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Search, X } from 'lucide-react';
 import { useI18n } from '../../hooks/useI18n';
@@ -50,7 +50,7 @@ function ShortcutRow({
   t: ReturnType<typeof useI18n>['t'];
 }): JSX.Element {
   const detailText = shortcut.whenKey
-    ? `${t(shortcut.descriptionKey)} · ${t(shortcut.whenKey)}`
+    ? `${t(shortcut.descriptionKey)} 쨌 ${t(shortcut.whenKey)}`
     : t(shortcut.descriptionKey);
 
   return (

@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+﻿import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { ZoomIn, ZoomOut, Maximize } from 'lucide-react';
 
 interface ImageViewerProps {
@@ -89,7 +89,7 @@ export function ImageViewer({ absolutePath }: ImageViewerProps): JSX.Element {
 
         <div className="flex items-center gap-1">
           {dimensions.w > 0 && (
-            <span className="text-xs text-muted mr-2">{dimensions.w} × {dimensions.h}</span>
+            <span className="text-xs text-muted mr-2">{dimensions.w} 횞 {dimensions.h}</span>
           )}
           <button
             className="rounded p-1 text-muted hover:bg-state-hover hover:text-default"

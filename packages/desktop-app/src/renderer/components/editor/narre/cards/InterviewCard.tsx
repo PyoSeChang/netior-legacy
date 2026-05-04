@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+﻿import React, { useState, useCallback, useEffect } from 'react';
 import { Check } from 'lucide-react';
 import type { NarreInterviewCard, NarreInterviewResponse } from '@netior/shared/types';
 import { useI18n } from '../../../../hooks/useI18n';

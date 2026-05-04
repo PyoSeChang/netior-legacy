@@ -87,8 +87,12 @@
     "scales": "스케일",
     "scaleFactor": "Factor",
     "scaleSubdivisions": "세분",
-    "deleteSubtreeTitle": "노드 삭제",
-    "deleteSubtreeMessage": "선택한 노드를 포함해 총 {count}개 노드를 삭제합니다.",
+    "excludeFromNetwork": "네트워크에서 제외",
+    "deleteObjectPermanently": "완전히 삭제",
+    "deleteSubtreeTitle": "네트워크에서 제외",
+    "deleteSubtreeMessage": "선택한 노드를 포함해 총 {count}개 노드를 이 네트워크에서 제외합니다. 원본 객체는 삭제되지 않습니다.",
+    "deleteObjectTitle": "객체 완전 삭제",
+    "deleteObjectMessage": "{name} 객체를 프로젝트에서 완전히 삭제합니다. 이 객체가 배치된 모든 네트워크에서도 제거됩니다.",
     "hierarchyLinkChildToParent": "Hierarchy 연결은 child에서 시작한 뒤 parent를 클릭합니다.",
     "hierarchyDropToParent": "강조된 노드 위에 놓으면 그 노드의 child가 됩니다.",
     "hierarchyDropRootChild": "Hierarchy 빈 공간에 놓으면 root child로 붙습니다.",
@@ -180,14 +184,18 @@
       "noFieldsYet": "아직 추가 필드가 없습니다.",
       "activeMeanings": "의미",
       "selectedModels": "모델",
-      "modelPresets": "의미 모델",
-      "meaningsTitle": "의미",
-      "addMeaning": "의미 추가",
-      "requiredRole": "필수",
-      "optionalRole": "선택",
-      "noFieldBound": "연결된 필드 없음",
-      "createField": "필드 만들기",
-      "addField": "필드 추가",
+        "modelPresets": "의미 모델",
+        "noModelsInCategory": "이 카테고리에는 아직 모델이 없습니다.",
+        "meaningsTitle": "의미",
+        "noMeaningsInCategory": "이 카테고리에는 아직 정의된 의미가 없습니다.",
+        "addMeaning": "의미 추가",
+        "deleteMeaning": "의미 삭제",
+          "requiredRole": "필수",
+        "optionalRole": "선택",
+        "noFieldBound": "연결된 필드 없음",
+        "selectField": "필드 선택",
+        "createField": "필드 만들기",
+        "addField": "필드 추가",
       "fromModel": "모델",
       "boundField": "연결된 필드",
       "sourceManual": "직접",
@@ -310,6 +318,18 @@
       "approvable": {
         "label": "승인",
         "description": "승인 상태와 승인 메타데이터를 기록할 수 있게 합니다."
+      },
+      "contains_relation": {
+        "label": "포함",
+        "description": "포함, 구성, 소속처럼 한 노드가 다른 노드를 담는 관계를 표현합니다."
+      },
+      "entry_portal_relation": {
+        "label": "진입점",
+        "description": "포함된 구조에서 처음 열릴 노드를 진입점으로 표시합니다."
+      },
+      "parent_relation": {
+        "label": "부모-자식",
+        "description": "부모와 자식 사이의 계층 관계를 표현합니다."
       }
     },
     "meaning": {
@@ -612,6 +632,14 @@
     "descriptionPlaceholder": "이 모델이 제공하는 의미를 설명하세요...",
     "category": "분류",
     "categoryPlaceholder": "예: 호환성, 신뢰도, 증거성",
+    "newCategory": "새 분류",
+    "addCategory": "분류 추가",
+    "targetKind": {
+      "label": "대상",
+      "object": "객체",
+      "edge": "관계",
+      "both": "객체와 관계"
+    },
     "meanings": "의미",
     "slotCoverage": "슬롯 범위",
     "roles": "의미",
@@ -640,6 +668,7 @@
     "fieldName": "필드 이름",
     "fieldKey": "필드 키",
     "fieldTypes": "허용 타입",
+    "required": "필수",
     "fieldDescriptionPlaceholder": "필드 설명",
     "fieldOptionsPlaceholder": "선택지 또는 옵션",
     "rules": "규칙",
@@ -652,11 +681,27 @@
     "noConsumers": "아직 이 모델을 쓰는 Schema가 없습니다.",
     "consumerSchemaLink": "Schema에서 선택됨",
     "consumerMeaningCount": "의미 {count}개",
-    "consumerFieldCount": "필드 {count}개",
-    "builtIn": "내장",
-    "custom": "사용자 정의",
-    "notFound": "모델을 찾을 수 없습니다"
-  },
+      "consumerFieldCount": "필드 {count}개",
+      "builtIn": "내장",
+      "custom": "사용자 정의",
+      "notFound": "모델을 찾을 수 없습니다",
+      "visualDefaults": "시각적 기본값",
+      "icon": "아이콘",
+      "color": "색상",
+      "nodeShape": "노드 모양",
+      "nodeShapePlaceholder": "노드 모양 선택",
+      "rectangle": "사각형",
+      "rounded": "둥근 사각형",
+      "circle": "원",
+      "diamond": "마름모",
+      "hexagon": "육각형",
+      "parallelogram": "평행사변형",
+      "cylinder": "원통",
+      "stadium": "캡슐",
+      "fileTemplate": "파일 템플릿",
+      "fileTemplatePlaceholder": "이 모델로 파일을 만들 때 사용할 기본 내용을 입력하세요.",
+      "propertyModel": "속성 모델"
+    },
   "typeGroup": {
     "create": "그룹 생성",
     "createSubgroup": "하위 그룹 생성",
@@ -1139,6 +1184,7 @@
     "relation": "관계 선택",
     "file": "파일 선택",
     "schema_ref": "Schema 속성 가져오기",
+    "model_ref": "모델 참조",
     "url": "URL",
     "color": "색상",
     "rating": "평점",
@@ -1394,12 +1440,126 @@
     "title": "Narre",
     "newChat": "새 대화",
     "recentChats": "최근 대화",
+    "sessions": "세션",
+    "homeSubtitle": "대화를 이어가거나, 에이전트 팀으로 작업을 시작하세요.",
+    "agents": "에이전트",
+    "agentList": "에이전트 목록",
+    "agentTeam": "에이전트 팀",
+      "chooseAgent": "대화할 에이전트 선택",
+      "chooseAgentHint": "1:1 대화는 선택한 에이전트의 역할과 런타임 설정을 기준으로 시작합니다.",
+      "noAgents": "사용 가능한 에이전트가 없습니다",
+      "agentScopes": {
+        "system": "시스템",
+        "project": "프로젝트",
+        "global": "글로벌",
+        "systemAgent": "시스템 에이전트",
+        "projectAgent": "프로젝트 에이전트",
+        "globalAgent": "글로벌 에이전트"
+      },
+      "systemAgents": {
+        "network-builder": {
+          "name": "네트워크 빌더",
+          "description": "Netior 개념 네트워크를 만들고 확장합니다."
+        },
+        "network-finder": {
+          "name": "네트워크 파인더",
+          "description": "관련 네트워크, 개념, 경로를 찾아냅니다."
+        },
+        "agent-operator": {
+          "name": "에이전트 오퍼레이터",
+          "description": "에이전트 세션과 오케스트레이션 흐름을 조율합니다."
+        }
+      },
+      "agentTeamUi": {
+      "home": "Narre 홈",
+      "experiment": "실험",
+      "agentList": "에이전트 목록",
+      "agentListHint": "현재 세션의 에이전트, 할당된 task, 상태입니다.",
+      "assignedTask": "할당된 task",
+      "screenNotes": "화면 메모",
+      "hideAgentList": "에이전트 목록 닫기",
+      "showAgentList": "에이전트 목록 열기",
+      "inputPlaceholder": "팀에게 메시지 보내기...",
+      "teamComposerHint": "팀 세션에서 허용된 경우 멘션을 사용할 수 있습니다.",
+      "send": "보내기",
+      "approve": "승인",
+      "reject": "거절",
+      "askToRevise": "수정 요청",
+      "state": {
+        "draft": "초안",
+        "planning": "정리 중",
+        "working": "진행 중",
+        "blocked": "확인 필요",
+        "completed": "완료"
+      },
+      "participantStatus": {
+        "ready": "대기",
+        "working": "작업 중",
+        "blocked": "멈춤",
+        "done": "완료"
+      },
+      "roles": {
+        "coordinate": "팀 진행 조율",
+        "fileEdits": "파일 수정 준비",
+        "verify": "검증 실행",
+        "summarize": "결과 정리",
+        "implementation": "구현",
+        "uxFlow": "화면 흐름 정리",
+        "components": "컴포넌트 수정"
+      },
+      "tasks": {
+        "operator": "팀 대화 흐름을 정리하고 다음에 누가 말하거나 실행할지 결정합니다.",
+        "ux": "단체 채팅 flow를 검토하고 현재 세션 화면에 들어갈 정보를 정리합니다.",
+        "code": "상호작용 모델이 확정되면 컴포넌트 수정 작업을 준비합니다."
+      },
+      "scenarios": {
+        "uxRedesign": {
+          "title": "Narre UX 개선",
+          "subtitle": "task 그래프 없이 operator가 진행 방향을 설명하는 흐름입니다.",
+          "note1": "에이전트 목록은 토글 사이드바에서만 보여줍니다.",
+          "note2": "계획은 표가 아니라 operator 메시지로 표현합니다.",
+          "note3": "raw task, assignment, event는 기본 화면에서 숨깁니다.",
+          "m1": { "speaker": "나", "time": "10:12", "body": "에이전트 팀을 단체 채팅처럼 다시 잡아줘. 기본 화면에는 plan, task board, dependency graph를 보여주지 마." },
+          "m2": { "speaker": "Operator", "time": "10:12", "body": "이해했습니다. 메인 화면은 대화 중심으로 유지하고, 내부 task는 숨긴 뒤 에이전트가 진행 상황을 메시지로 말하게 하겠습니다." },
+          "m3": { "speaker": "UX Planner", "time": "10:13", "body": "첫 문제는 방향성입니다. 사용자는 orchestration dashboard가 아니라 팀 대화를 보고 있다고 느껴야 합니다." },
+          "m4": { "speaker": "System", "time": "10:13", "body": "Code Agent가 UI 방향을 기다리고 있습니다." }
+        },
+        "approval": {
+          "title": "승인 대기",
+          "subtitle": "확인 카드가 대화 안에 나타나고 흐름이 잠시 멈추는 시나리오입니다.",
+          "note1": "승인은 모달 우선이 아니라 채팅 항목입니다.",
+          "note2": "사이드바에서 어떤 에이전트가 멈췄는지 보여줍니다.",
+          "note3": "승인이 처리되기 전에는 다음 에이전트 메시지가 나오지 않습니다.",
+          "m1": { "speaker": "나", "time": "11:04", "body": "여러 UX 시나리오를 볼 수 있게 에이전트 팀 mock 페이지를 임시로 만들어줘." },
+          "m2": { "speaker": "Operator", "time": "11:05", "body": "실제 에이전트 팀 진입은 유지하고, mock 페이지는 별도 실험 경로로 분리하겠습니다." },
+          "m3": { "speaker": "Code Agent", "time": "11:08", "body": "실험 경로에는 Narre 홈으로 돌아가는 navigation과 에이전트 목록 토글 사이드바가 필요합니다." },
+          "m4": { "speaker": "확인 필요", "time": "11:08", "meta": "에이전트 팀", "body": "에이전트 팀 화면에서 바로 확인할까요?" }
+        },
+        "completed": {
+          "title": "완료 요약",
+          "subtitle": "에이전트들이 말한 뒤 operator가 마지막 결과를 정리하는 흐름입니다.",
+          "note1": "완료는 마지막 operator 메시지로 표현합니다.",
+          "note2": "검증 결과는 에이전트 메시지로 표현합니다.",
+          "note3": "디버그 상세는 기본 화면에 넣지 않습니다.",
+          "m1": { "speaker": "나", "time": "14:20", "body": "에이전트 팀 실험 화면을 mock data로 확인할 수 있게 만들어줘." },
+          "m2": { "speaker": "Code Agent", "time": "14:28", "body": "시나리오 전환과 에이전트 목록 토글 사이드바가 있는 단체 채팅 mock 화면을 추가했습니다." },
+          "m3": { "speaker": "Test Agent", "time": "14:31", "body": "수정한 파일들은 정상 파싱됩니다. 전체 typecheck는 현재 작업트리의 별도 syntax error 때문에 막혀 있습니다." },
+          "m4": { "speaker": "Operator", "time": "14:32", "body": "완료했습니다. 기본 화면은 대화 중심이고, 에이전트 목록은 사이드바에 있으며, task graph는 보여주지 않습니다." }
+        }
+      }
+    },
     "noSessions": "아직 대화가 없습니다",
     "startChat": "첫 대화를 시작해보세요",
     "messageCount": "메시지 {count}개",
     "backToList": "목록으로",
     "sendMessage": "메시지 전송",
+    "stopMessage": "응답 중지",
     "inputPlaceholder": "메시지를 입력하세요...",
+    "composer": {
+      "moreOptions": "더 보기",
+      "addContext": "컨텍스트 추가",
+      "mentionAgent": "에이전트 언급"
+    },
     "toolExecution": "도구 실행",
     "toolComplete": "도구 실행 완료",
     "toolFailed": "도구 실행 실패",
@@ -1427,6 +1587,7 @@
     "mentionSchema": "Schema",
     "mentionRelationType": "관계 유형",
     "mentionFile": "파일",
+    "mentionAgent": "에이전트",
     "mentionSearch": "검색...",
     "command": {
       "bootstrap": "프로젝트 부트스트랩",

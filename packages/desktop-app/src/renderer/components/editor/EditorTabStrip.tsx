@@ -22,6 +22,8 @@ import { replaceDraftCache } from '../../hooks/useEditorSession';
 import { setKnownFileTabSignature } from '../../lib/file-tab-stale-registry';
 import { useI18n } from '../../hooks/useI18n';
 import { useConceptStore } from '../../stores/concept-store';
+import { useModelStore } from '../../stores/model-store';
+import { useSchemaStore } from '../../stores/schema-store';
 import { NodeVisual } from '../workspace/node-components/NodeVisual';
 
 interface EditorTabStripProps {
@@ -61,6 +63,16 @@ function TabIcon({ tab }: { tab: EditorTab }): JSX.Element {
       ? s.concepts.find((concept) => concept.id === tab.targetId)?.icon ?? null
       : null
   ));
+  const modelIcon = useModelStore((s) => (
+    tab.type === 'model'
+      ? s.models.find((model) => model.id === tab.targetId)?.icon ?? null
+      : null
+  ));
+  const schemaIcon = useSchemaStore((s) => (
+    tab.type === 'schema'
+      ? s.schemas.find((schema) => schema.id === tab.targetId)?.icon ?? null
+      : null
+  ));
 
   switch (tab.type) {
     case 'file': {
@@ -77,10 +89,10 @@ function TabIcon({ tab }: { tab: EditorTab }): JSX.Element {
       return <Terminal size={ICON_SIZE} style={{ flexShrink: 0 }} />;
     case 'concept':
       return <NodeVisual icon={conceptIcon ?? 'box'} size={ICON_SIZE} imageSize={16} className="shrink-0" />;
-    case 'schema':
-      return <Shapes size={ICON_SIZE} style={{ flexShrink: 0 }} />;
     case 'model':
-      return <Boxes size={ICON_SIZE} style={{ flexShrink: 0 }} />;
+      return <NodeVisual icon={modelIcon ?? 'boxes'} size={ICON_SIZE} imageSize={16} className="shrink-0" />;
+    case 'schema':
+      return <NodeVisual icon={schemaIcon ?? 'diamond'} size={ICON_SIZE} imageSize={16} className="shrink-0" />;
     case 'edge':
       return <Link size={ICON_SIZE} style={{ flexShrink: 0 }} />;
     case 'network':
@@ -342,7 +354,7 @@ export function EditorTabStrip({
     return () => cancelAnimationFrame(frame);
   }, [activeTabId, activeTab?.isDirty]);
 
-  // Wheel → horizontal scroll
+  // Wheel ??horizontal scroll
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
@@ -493,19 +505,21 @@ export function EditorTabStrip({
       onDrop={handleDrop}
       onContextMenu={handleStripContextMenu}
     >
-      <div
-        ref={scrollRef}
-        className={`tab-scroll flex min-w-0 flex-1 items-end pr-2 ${leftSlot ? 'pl-1' : 'pl-6'}`}
-        style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
-      >
-        {leftSlot && (
-          <div
-            className="tab-leading-slot flex h-[30px] shrink-0 items-center pr-2"
-            style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
-          >
+      {leftSlot && (
+        <div
+          className="tab-leading-slot flex h-full shrink-0 items-end pl-1 pr-2"
+          style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+        >
+          <div className="flex h-[30px] items-center">
             {leftSlot}
           </div>
-        )}
+        </div>
+      )}
+      <div
+        ref={scrollRef}
+        className={`tab-scroll flex min-w-0 flex-1 items-end pr-2 ${leftSlot ? 'pl-0' : 'pl-6'}`}
+        style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+      >
         {tabs.map((tab) => (
           <TabItem
             key={tab.id}

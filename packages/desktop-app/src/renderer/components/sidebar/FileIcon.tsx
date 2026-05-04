@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { getIconForFile, getIconForFolder, getIconForOpenFolder } from 'vscode-icons-js';
 
 // Import all SVGs from assets/file-icons using Vite's glob import
@@ -7,7 +7,7 @@ const iconModules = import.meta.glob<{ default: string }>(
   { eager: true, query: '?url', import: 'default' },
 );
 
-// Build a lookup map: icon filename → resolved URL
+// Build a lookup map: icon filename ??resolved URL
 const iconMap: Record<string, string> = {};
 for (const [path, url] of Object.entries(iconModules)) {
   const filename = path.split('/').pop();

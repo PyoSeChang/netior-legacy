@@ -1,4 +1,4 @@
-import type { TranslationKey } from '@netior/shared/i18n';
+﻿import type { TranslationKey } from '@netior/shared/i18n';
 import {
   Activity,
   Bot,

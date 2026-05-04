@@ -249,16 +249,19 @@ function toModel(row: ModelRow): Model {
 
 export function getNetworkFull(networkId: string): NetworkFullData | undefined {
   const db = getDatabase();
-  const network = db.prepare('SELECT * FROM networks WHERE id = ?').get(networkId) as Network | undefined;
-  if (!network) return undefined;
+  const initialNetwork = db.prepare('SELECT * FROM networks WHERE id = ?').get(networkId) as Network | undefined;
+  if (!initialNetwork) return undefined;
+  const network = initialNetwork.kind === 'ontology' && initialNetwork.project_id
+    ? ensureProjectOntologyNetworkForDb(db, initialNetwork.project_id)
+    : initialNetwork;
 
-  const layout = getLayoutByNetwork(networkId);
+  const layout = getLayoutByNetwork(network.id);
 
   const nodes = db.prepare(
     `SELECT nn.*,
             o.id as o_id, o.object_type as o_object_type, o.scope as o_scope,
             o.project_id as o_project_id, o.ref_id as o_ref_id, o.created_at as o_created_at,
-            c.title, c.color, c.icon, c.schema_id, c.project_id as concept_project_id,
+            c.title, c.color, c.icon, c.model_id, c.project_id as concept_project_id,
             c.created_at as concept_created_at, c.updated_at as concept_updated_at,
             f.id as f_id, f.project_id as f_project_id, f.path as f_path, f.type as f_type,
             f.metadata as f_metadata, f.created_at as f_created_at, f.updated_at as f_updated_at
@@ -267,7 +270,7 @@ export function getNetworkFull(networkId: string): NetworkFullData | undefined {
      LEFT JOIN concepts c ON o.object_type = 'concept' AND o.ref_id = c.id
      LEFT JOIN files f ON o.object_type = 'file' AND o.ref_id = f.id
      WHERE nn.network_id = ?`,
-  ).all(networkId) as (Record<string, unknown>)[];
+  ).all(network.id) as (Record<string, unknown>)[];
 
   const parsedNodes = nodes.map((row) => {
     const objectType = row.o_object_type as string;
@@ -295,7 +298,7 @@ export function getNetworkFull(networkId: string): NetworkFullData | undefined {
         concept: {
           id: row.o_ref_id as string,
           project_id: row.concept_project_id as string,
-          schema_id: (row.schema_id as string | null) ?? null,
+          model_id: (row.model_id as string | null) ?? null,
           title: row.title as string,
           color: row.color as string | null,
           icon: row.icon as string | null,
@@ -321,17 +324,19 @@ export function getNetworkFull(networkId: string): NetworkFullData | undefined {
 
   const edgeRows = db.prepare(
     `SELECT e.*,
-            m.id as m_id, m.project_id as m_project_id, m.key as m_key, m.name as m_name,
+            m.id as m_id, m.project_id as m_project_id, m.group_id as m_group_id,
+            m.key as m_key, m.name as m_name,
             m.description as m_description, m.category as m_category, m.target_kind as m_target_kind,
             m.meaning_keys as m_meaning_keys, m.core_slots as m_core_slots,
             m.optional_slots as m_optional_slots, m.recipe_json as m_recipe_json,
-            m.color as m_color, m.icon as m_icon, m.line_style as m_line_style,
+            m.color as m_color, m.icon as m_icon,
+            m.line_style as m_line_style,
             m.directed as m_directed, m.built_in as m_built_in,
             m.created_at as m_created_at, m.updated_at as m_updated_at
      FROM edges e
      LEFT JOIN models m ON e.model_id = m.id
      WHERE e.network_id = ?`,
-  ).all(networkId) as (Record<string, unknown>)[];
+  ).all(network.id) as (Record<string, unknown>)[];
 
   const edges = edgeRows.map((row) => {
     const hasModel = row.m_id != null;
@@ -347,6 +352,7 @@ export function getNetworkFull(networkId: string): NetworkFullData | undefined {
         model: toModel({
           id: row.m_id as string,
           project_id: row.m_project_id as string,
+          group_id: (row.m_group_id as string | null) ?? null,
           key: row.m_key as string,
           name: row.m_name as string,
           description: (row.m_description as string | null) ?? null,

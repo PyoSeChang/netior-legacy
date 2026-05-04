@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import type { LayoutLayerProps } from '../types';
 import { PIXELS_PER_DAY, todayEpochDays } from '../time-axis/scale-utils';
 import { getTimelineAxisY } from './TimelineBackground';

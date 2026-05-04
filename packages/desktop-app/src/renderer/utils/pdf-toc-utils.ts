@@ -1,4 +1,4 @@
-import type { PdfTocEntry } from '@netior/shared/types';
+﻿import type { PdfTocEntry } from '@netior/shared/types';
 
 // ============================================
 // Index workflow

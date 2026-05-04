@@ -1,4 +1,4 @@
-import './pdf-polyfill';
+﻿import './pdf-polyfill';
 
 import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
@@ -53,7 +53,7 @@ export function PdfViewer({ tabId, absolutePath, fileId }: PdfViewerProps): JSX.
   const metaLoadedRef = useRef(false);
   const fileMetaRef = useRef<Record<string, unknown>>({});
 
-  // Sync local state → viewState cache
+  // Sync local state ??viewState cache
   const syncViewState = useCallback((patch: Partial<PdfViewState>) => {
     setViewState((prev) => ({ ...prev, ...patch }));
   }, [setViewState]);
@@ -162,7 +162,7 @@ export function PdfViewer({ tabId, absolutePath, fileId }: PdfViewerProps): JSX.
 
   const onDocumentLoadSuccess = useCallback(({ numPages: total }: { numPages: number }) => {
     setNumPages(total);
-    // Don't reset page — keep from viewState/metadata
+    // Don't reset page ??keep from viewState/metadata
   }, []);
 
   const onDocumentLoadError = useCallback((err: Error) => { setError(err.message); }, []);

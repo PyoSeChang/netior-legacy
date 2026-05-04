@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+﻿import React, { useCallback } from 'react';
 import type { EditorTab } from '@netior/shared/types';
 import { useProjectStore } from '../../stores/project-store';
 import { useEditorStore } from '../../stores/editor-store';

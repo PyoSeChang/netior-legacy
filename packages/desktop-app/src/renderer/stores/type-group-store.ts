@@ -1,4 +1,4 @@
-import { create } from 'zustand';
+﻿import { create } from 'zustand';
 import type {
   TypeGroup,
   TypeGroupCreate,
@@ -23,6 +23,7 @@ interface TypeGroupStore {
 
 const EMPTY_GROUPS: GroupsByKind = {
   schema: [],
+  model: [],
 };
 
 export const useTypeGroupStore = create<TypeGroupStore>((set, get) => ({
@@ -32,10 +33,12 @@ export const useTypeGroupStore = create<TypeGroupStore>((set, get) => ({
   loadByProject: async (projectId) => {
     set({ loading: true });
     try {
+      const modelGroups = await typeGroupService.list(projectId, 'model');
       const schemaGroups = await typeGroupService.list(projectId, 'schema');
       set({
         groupsByKind: {
           schema: schemaGroups,
+          model: modelGroups,
         },
       });
     } finally {
@@ -58,7 +61,7 @@ export const useTypeGroupStore = create<TypeGroupStore>((set, get) => ({
     set((state) => ({
       groupsByKind: {
         ...state.groupsByKind,
-        [group.kind]: [...state.groupsByKind[group.kind], group],
+        [group.kind]: [...(state.groupsByKind[group.kind] ?? []), group],
       },
     }));
     return group;
@@ -72,7 +75,7 @@ export const useTypeGroupStore = create<TypeGroupStore>((set, get) => ({
     set((state) => ({
       groupsByKind: {
         ...state.groupsByKind,
-        [existing.kind]: state.groupsByKind[existing.kind].map((group) => (
+        [existing.kind]: (state.groupsByKind[existing.kind] ?? []).map((group) => (
           group.id === id ? updated : group
         )),
       },
@@ -87,7 +90,7 @@ export const useTypeGroupStore = create<TypeGroupStore>((set, get) => ({
     set((state) => ({
       groupsByKind: {
         ...state.groupsByKind,
-        [existing.kind]: state.groupsByKind[existing.kind].filter((group) => group.id !== id),
+        [existing.kind]: (state.groupsByKind[existing.kind] ?? []).filter((group) => group.id !== id),
       },
     }));
   },

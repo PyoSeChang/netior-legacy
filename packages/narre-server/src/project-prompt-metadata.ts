@@ -1,14 +1,14 @@
-import type { SchemaField, SchemaMeaning, NetworkTreeNode, Model, TypeGroup } from '@netior/shared/types';
+import type { NetworkTreeNode, Model, Schema, SchemaField, SchemaMeaning, TypeGroup } from '@netior/shared/types';
 import type { SystemPromptParams, SystemPromptTypeGroupSummary } from './system-prompt.js';
 import {
   getProjectOntologyNetwork,
   getNetworkTree,
   getProjectById,
   getUniverseNetwork,
+  listModels,
   listSchemaFields,
   listSchemaMeanings,
   listSchemas,
-  listModels,
   listTypeGroups,
 } from './netior-service-client.js';
 
@@ -109,6 +109,25 @@ function mapSchemaMeanings(
   }));
 }
 
+function mapSchemas(
+  schemas: Schema[],
+  schemaFieldsById: Map<string, SchemaField[]>,
+  schemaMeaningsById: Map<string, SchemaMeaning[]>,
+  schemaNameMap: Map<string, string>,
+): SystemPromptParams['schemas'] {
+  return schemas.map((schema) => ({
+    id: schema.id,
+    name: schema.name,
+    description: schema.description,
+    models: schema.models,
+    icon: schema.icon,
+    color: schema.color,
+    node_shape: schema.node_shape,
+    fields: mapSchemaFields(schemaFieldsById.get(schema.id) ?? [], schemaNameMap),
+    meanings: mapSchemaMeanings(schemaMeaningsById.get(schema.id) ?? []),
+  }));
+}
+
 function mapModels(models: Model[]): SystemPromptParams['models'] {
   return models.map((model) => ({
     id: model.id,
@@ -142,15 +161,15 @@ export async function buildProjectPromptMetadata(projectId: string): Promise<Sys
   }
 
   const [
-    schemas,
     models,
+    schemas,
     schemaGroups,
     universeNetwork,
     ontologyNetwork,
     networkTree,
   ] = await Promise.all([
-    listSchemas(projectId),
     listModels(projectId),
+    listSchemas(projectId),
     listTypeGroups(projectId, 'schema'),
     getUniverseNetwork(),
     getProjectOntologyNetwork(projectId),
@@ -174,18 +193,8 @@ export async function buildProjectPromptMetadata(projectId: string): Promise<Sys
     projectId,
     projectName: project.name,
     projectRootDir: project.root_dir,
+    schemas: mapSchemas(schemas, schemaFieldsById, schemaMeaningsById, schemaNameMap),
     models: mapModels(models),
-    schemas: schemas.map((schema) => ({
-      id: schema.id,
-      name: schema.name,
-      icon: schema.icon,
-      color: schema.color,
-      node_shape: schema.node_shape,
-      description: schema.description,
-      models: schema.models,
-      meanings: mapSchemaMeanings(schemaMeaningsById.get(schema.id) ?? []),
-      fields: mapSchemaFields(schemaFieldsById.get(schema.id) ?? [], schemaNameMap),
-    })),
     typeGroups,
     universeNetwork: universeNetwork
       ? { id: universeNetwork.id, name: universeNetwork.name }

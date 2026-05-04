@@ -1,4 +1,4 @@
-import { spawn, type ChildProcess } from 'child_process';
+﻿import { spawn, type ChildProcess } from 'child_process';
 import { existsSync } from 'fs';
 import { createRequire } from 'module';
 import { join } from 'path';

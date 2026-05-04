@@ -7,10 +7,11 @@
 
 ## 현재 활성 시나리오 수
 
-현재 manifest가 있는 활성 시나리오는 총 `4개`다.
+현재 manifest가 있는 활성 시나리오는 총 `5개`다.
 
 - `custom-model-authoring-foreshadowing`
 - `fantasy-world-bootstrap`
+- `orchestration-terminal-control-plane`
 - `research-builtin-model-reuse`
 - `think-data-structure-pdf-index`
 
@@ -22,6 +23,7 @@
 |---|---|---|---|---|
 | `custom-model-authoring-foreshadowing` | `single-turn` | `bootstrap` | built-in으로 충분하지 않은 도메인 의미를 custom model로 만들고 schema에 적용 | product scenario / custom model + meaning binding |
 | `fantasy-world-bootstrap` | `single-turn` | `bootstrap` | 판타지 도메인 브리프만으로 bootstrap skill 평가 | product scenario / bootstrap skill |
+| `orchestration-terminal-control-plane` | `conversation` | 없음 | supervisor run/task/assignment/event, terminal executor command queue, persistence를 deterministic E2E로 검증 | contract scenario / orchestration control plane |
 | `research-builtin-model-reuse` | `single-turn` | `bootstrap` | 연구 도메인에서 built-in model 재사용과 중복 custom model 방지 평가 | product scenario / built-in model reuse |
 | `think-data-structure-pdf-index` | `single-turn` | `index` | PDF 목차를 읽고 file metadata `pdf_toc`에 저장 | product scenario / index skill |
 
@@ -48,7 +50,7 @@
 | F11 | 파일 엔터티 및 PDF 메타데이터 | `think-data-structure-pdf-index` | 강함 | PDF TOC 추출과 file metadata 저장을 직접 검증한다 |
 | F12 | 에디터 워크벤치 | 없음 | 없음 | 탭/split/detached/workbench는 eval 범위 밖 |
 | F13 | 파일 편집기 | 없음 | 없음 | Markdown/PDF/Image editor 시나리오가 없다 |
-| F14 | 터미널 및 에이전트 런타임 | 없음 | 없음 | 터미널/agent runtime 시나리오가 없다 |
+| F14 | 터미널 및 에이전트 런타임 | `orchestration-terminal-control-plane` | 부분 | 실제 PTY 실행 전 단계인 executor registration/command queue/result reporting/persistence를 검증한다 |
 | F15 | 설정 및 단축키 | 없음 | 없음 | 설정/shortcut 시나리오가 없다 |
 | F16 | Narre 기본 채팅 | 모든 시나리오 | 부분 | Narre 응답은 모두 거치지만, 일반 conversational quality를 전용으로 보는 시나리오는 없다 |
 | F17 | Narre `/bootstrap` | `fantasy-world-bootstrap`, `research-builtin-model-reuse`, `custom-model-authoring-foreshadowing` | 강함 | ontology bootstrap, built-in model reuse, custom model authoring을 분리해서 본다 |

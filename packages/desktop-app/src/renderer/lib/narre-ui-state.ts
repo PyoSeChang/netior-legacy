@@ -1,4 +1,4 @@
-export interface NarrePendingIndexSkillState {
+﻿export interface NarrePendingIndexSkillState {
   startPage: number;
   endPage: number;
   overviewPagesText: string;

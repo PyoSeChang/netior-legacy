@@ -1,4 +1,4 @@
-import type { NarreCard } from '@netior/shared/types';
+﻿import type { NarreCard } from '@netior/shared/types';
 import { NarreUiBridge } from './providers/shared/ui-bridge.js';
 import { createClaudeSdkUiServer } from './providers/shared/claude-sdk-ui-server.js';
 

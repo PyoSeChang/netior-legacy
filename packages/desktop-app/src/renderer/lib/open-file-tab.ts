@@ -1,4 +1,4 @@
-import type { EditorTab, EditorTabType, SplitDirection, SplitLeaf, SplitNode } from '@netior/shared/types';
+﻿import type { EditorTab, EditorTabType, SplitDirection, SplitLeaf, SplitNode } from '@netior/shared/types';
 import { useEditorStore, collectLeaves, containsTab, getRememberedActiveTabFromLayout } from '../stores/editor-store';
 
 export type FileOpenPlacement = 'smart' | 'current' | 'right' | 'below' | 'float';

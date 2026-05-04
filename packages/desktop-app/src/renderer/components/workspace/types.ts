@@ -1,4 +1,4 @@
-export type WorkspaceNodeType = 'concept' | 'file' | 'dir' | 'network' | 'object';
+﻿export type WorkspaceNodeType = 'concept' | 'file' | 'dir' | 'network' | 'object';
 export interface PortalChip {
   id: string;
   label: string;

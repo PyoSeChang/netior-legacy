@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+﻿import React, { useState, useCallback } from 'react';
 import type { SplitDirection } from '@netior/shared/types';
 import { isTabDrag, getTabDragDataAsync, flushTabDragData } from '../../hooks/useTabDrag';
 import { getFileOpenDragData, isFileOpenDrag } from '../../hooks/useFileOpenDrag';

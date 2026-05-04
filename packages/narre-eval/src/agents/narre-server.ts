@@ -95,18 +95,34 @@ export class NarreServerAdapter implements EvalAgentAdapter {
   readonly agentId = 'narre-server';
   readonly agentName = 'Narre Server';
   readonly runtimeType: AgentRuntimeType = 'http';
-  readonly capabilities = ['session_resume', 'tool_call_trace', 'card_response'];
+  readonly capabilities = [
+    'session_resume',
+    'tool_call_trace',
+    'card_response',
+    'orchestration_api',
+    'executor_command_queue',
+    'persistence',
+  ];
 
   private process: ChildProcess | null = null;
   private baseUrl = '';
   private pidPath = '';
   private runId = '';
+  private lastContext: EvalRunContext | null = null;
 
   getAgentInfo(): AgentInfo {
     return { id: this.agentId, name: this.agentName, runtime: this.runtimeType };
   }
 
+  getBaseUrl(): string {
+    if (!this.baseUrl) {
+      throw new Error('narre-server adapter is not set up');
+    }
+    return this.baseUrl;
+  }
+
   async setup(ctx: EvalRunContext): Promise<void> {
+    this.lastContext = ctx;
     const provider = ctx.env.NARRE_PROVIDER ?? process.env.NARRE_PROVIDER ?? 'codex';
     const anthropicApiKey = ctx.env.ANTHROPIC_API_KEY ?? process.env.ANTHROPIC_API_KEY;
     const openAiApiKey = ctx.env.OPENAI_API_KEY ?? process.env.OPENAI_API_KEY;
@@ -164,6 +180,15 @@ export class NarreServerAdapter implements EvalAgentAdapter {
     });
 
     await this.waitForHealth(ctx.port);
+  }
+
+  async restart(): Promise<void> {
+    if (!this.lastContext) {
+      throw new Error('narre-server adapter cannot restart before setup');
+    }
+    const ctx = this.lastContext;
+    await this.teardown();
+    await this.setup(ctx);
   }
 
   async sendTurn(input: SendTurnInput): Promise<AdapterTurnResult> {

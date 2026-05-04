@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow, ipcMain, Menu, Notification, nativeImage, screen } from 'electron';
+﻿import { app, shell, BrowserWindow, ipcMain, Menu, Notification, nativeImage, screen } from 'electron';
 import { join } from 'path';
 import { electronApp, optimizer, is } from '@electron-toolkit/utils';
 import { mkdirSync, existsSync } from 'fs';
@@ -490,7 +490,7 @@ app.whenReady().then(async () => {
     if (win) win.close();
   });
 
-  // Editor state sync relay — main process caches state and broadcasts to all other windows
+  // Editor state sync relay ??main process caches state and broadcasts to all other windows
   let cachedEditorState: unknown = null;
   let cachedSettingsState: unknown = null;
 

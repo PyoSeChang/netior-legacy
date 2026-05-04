@@ -1,4 +1,4 @@
-import { create } from 'zustand';
+﻿import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type { Locale, TranslationKey } from '@netior/shared/i18n';
 
@@ -679,34 +679,34 @@ const THEME_FAMILIES: readonly ThemeFamilyDefinition[] = [
 ] as const;
 
 const THEME_COLOR_TOKENS: readonly ThemeColorTokenDefinition[] = [
-  { id: 'surface-chrome', label: 'Chrome', description: '앱 배경과 탭 스트립 바탕', cssVar: '--surface-chrome' },
-  { id: 'surface-rail', label: 'Rail', description: 'Activity bar와 열린 사이드바', cssVar: '--surface-rail' },
-  { id: 'surface-canvas', label: 'Canvas', description: '네트워크 캔버스 배경', cssVar: '--surface-canvas' },
-  { id: 'surface-editor', label: 'Editor', description: '선택 탭과 에디터 pane 배경', cssVar: '--surface-editor' },
-  { id: 'surface-panel', label: 'Panel', description: '목차, 보조 패널, 설정 본문', cssVar: '--surface-panel' },
-  { id: 'surface-card', label: 'Card', description: '카드와 강조된 블록', cssVar: '--surface-card' },
-  { id: 'surface-floating', label: 'Floating', description: '모달, 팝오버, 드롭다운', cssVar: '--surface-floating' },
-  { id: 'surface-input', label: 'Input', description: '입력 필드 배경', cssVar: '--surface-input' },
-  { id: 'surface-node', label: 'Node', description: '캔버스 노드 기본 배경', cssVar: '--surface-node' },
-  { id: 'surface-node-selected', label: 'Selected Node', description: '선택된 캔버스 노드 배경', cssVar: '--surface-node-selected' },
-  { id: 'state-hover-bg', label: 'Hover', description: 'hover 상태 배경', cssVar: '--state-hover-bg' },
-  { id: 'state-selected-bg', label: 'Selected', description: '선택 상태 배경', cssVar: '--state-selected-bg' },
-  { id: 'state-muted-bg', label: 'Muted State', description: '약한 강조 상태 배경', cssVar: '--state-muted-bg' },
-  { id: 'state-drop-bg', label: 'Drop State', description: '드래그/드롭 타깃 배경', cssVar: '--state-drop-bg' },
-  { id: 'accent', label: 'Accent', description: '주요 액션과 active 표시', cssVar: '--accent' },
-  { id: 'accent-hover', label: 'Accent Hover', description: '주요 액션 hover 색상', cssVar: '--accent-hover' },
-  { id: 'accent-muted', label: 'Accent Muted', description: '약한 accent 배경', cssVar: '--accent-muted' },
-  { id: 'border-default', label: 'Border', description: 'pane, sidebar, activity bar 공통 border', cssVar: '--border-default' },
-  { id: 'border-subtle', label: 'Subtle Border', description: '내부 보조 구분선', cssVar: '--border-subtle' },
-  { id: 'border-strong', label: 'Strong Border', description: '강한 구분선과 강조 border', cssVar: '--border-strong' },
-  { id: 'border-accent', label: 'Accent Border', description: 'focus와 accent border', cssVar: '--border-accent' },
+  { id: 'surface-chrome', label: 'Chrome', description: '??諛곌꼍怨????ㅽ듃由?諛뷀깢', cssVar: '--surface-chrome' },
+  { id: 'surface-rail', label: 'Rail', description: 'Activity bar? ?대┛ ?ъ씠?쒕컮', cssVar: '--surface-rail' },
+  { id: 'surface-canvas', label: 'Canvas', description: '?ㅽ듃?뚰겕 罹붾쾭??諛곌꼍', cssVar: '--surface-canvas' },
+  { id: 'surface-editor', label: 'Editor', description: '?좏깮 ??낵 ?먮뵒??pane 諛곌꼍', cssVar: '--surface-editor' },
+  { id: 'surface-panel', label: 'Panel', description: '紐⑹감, 蹂댁“ ?⑤꼸, ?ㅼ젙 蹂몃Ц', cssVar: '--surface-panel' },
+  { id: 'surface-card', label: 'Card', description: '移대뱶? 媛뺤“??釉붾줉', cssVar: '--surface-card' },
+  { id: 'surface-floating', label: 'Floating', description: '紐⑤떖, ?앹삤踰? ?쒕∼?ㅼ슫', cssVar: '--surface-floating' },
+  { id: 'surface-input', label: 'Input', description: '?낅젰 ?꾨뱶 諛곌꼍', cssVar: '--surface-input' },
+  { id: 'surface-node', label: 'Node', description: '罹붾쾭???몃뱶 湲곕낯 諛곌꼍', cssVar: '--surface-node' },
+  { id: 'surface-node-selected', label: 'Selected Node', description: '?좏깮??罹붾쾭???몃뱶 諛곌꼍', cssVar: '--surface-node-selected' },
+  { id: 'state-hover-bg', label: 'Hover', description: 'hover ?곹깭 諛곌꼍', cssVar: '--state-hover-bg' },
+  { id: 'state-selected-bg', label: 'Selected', description: '?좏깮 ?곹깭 諛곌꼍', cssVar: '--state-selected-bg' },
+  { id: 'state-muted-bg', label: 'Muted State', description: '?쏀븳 媛뺤“ ?곹깭 諛곌꼍', cssVar: '--state-muted-bg' },
+  { id: 'state-drop-bg', label: 'Drop State', description: '?쒕옒洹??쒕∼ ?源?諛곌꼍', cssVar: '--state-drop-bg' },
+  { id: 'accent', label: 'Accent', description: '二쇱슂 ?≪뀡怨?active ?쒖떆', cssVar: '--accent' },
+  { id: 'accent-hover', label: 'Accent Hover', description: '二쇱슂 ?≪뀡 hover ?됱긽', cssVar: '--accent-hover' },
+  { id: 'accent-muted', label: 'Accent Muted', description: '?쏀븳 accent 諛곌꼍', cssVar: '--accent-muted' },
+  { id: 'border-default', label: 'Border', description: 'pane, sidebar, activity bar 怨듯넻 border', cssVar: '--border-default' },
+  { id: 'border-subtle', label: 'Subtle Border', description: '?대? 蹂댁“ 援щ텇??', cssVar: '--border-subtle' },
+  { id: 'border-strong', label: 'Strong Border', description: '媛뺥븳 援щ텇?좉낵 媛뺤“ border', cssVar: '--border-strong' },
+  { id: 'border-accent', label: 'Accent Border', description: 'focus? accent border', cssVar: '--border-accent' },
 ] as const;
 
 const THEME_TOKEN_PRESETS: readonly ThemeTokenPresetDefinition[] = [
   {
     id: 'netior',
     label: 'Netior',
-    description: 'Netior 기본 chrome/editor/rail 대비',
+    description: 'Netior 湲곕낯 chrome/editor/rail ?鍮?',
     source: 'Netior default',
     preview: ['#111111', '#1a1a1a', '#568b5f'],
     primaryColor: '#568b5f',
@@ -729,7 +729,7 @@ const THEME_TOKEN_PRESETS: readonly ThemeTokenPresetDefinition[] = [
   {
     id: 'dracula',
     label: 'Dracula',
-    description: '공식 Dracula의 Background / Current Line / Purple 기반',
+    description: '怨듭떇 Dracula??Background / Current Line / Purple 湲곕컲',
     source: 'https://draculatheme.com/spec',
     preview: ['#282a36', '#44475a', '#bd93f9'],
     primaryColor: '#bd93f9',
@@ -749,7 +749,7 @@ const THEME_TOKEN_PRESETS: readonly ThemeTokenPresetDefinition[] = [
   {
     id: 'nord',
     label: 'Nord',
-    description: 'Nord Polar Night와 Frost 계열의 차가운 저채도 팔레트',
+    description: 'Nord Polar Night? Frost 怨꾩뿴??李④????梨꾨룄 ?붾젅??',
     source: 'https://www.nordtheme.com/',
     preview: ['#2e3440', '#3b4252', '#88c0d0'],
     primaryColor: '#88c0d0',
@@ -769,7 +769,7 @@ const THEME_TOKEN_PRESETS: readonly ThemeTokenPresetDefinition[] = [
   {
     id: 'catppuccin-mocha',
     label: 'Catppuccin Mocha',
-    description: 'Catppuccin Mocha의 Base / Mantle / Surface 계열',
+    description: 'Catppuccin Mocha??Base / Mantle / Surface 怨꾩뿴',
     source: 'https://catppuccin.com/palette/',
     preview: ['#1e1e2e', '#313244', '#89b4fa'],
     primaryColor: '#89b4fa',
@@ -789,7 +789,7 @@ const THEME_TOKEN_PRESETS: readonly ThemeTokenPresetDefinition[] = [
   {
     id: 'tokyo-night',
     label: 'Tokyo Night',
-    description: 'Tokyo Night의 Night / Storm 배경과 Blue accent',
+    description: 'Tokyo Night??Night / Storm 諛곌꼍怨?Blue accent',
     source: 'https://github.com/tokyo-night/tokyo-night-vscode-theme',
     preview: ['#1a1b26', '#24283b', '#7aa2f7'],
     primaryColor: '#7aa2f7',
@@ -809,7 +809,7 @@ const THEME_TOKEN_PRESETS: readonly ThemeTokenPresetDefinition[] = [
   {
     id: 'solarized-dark',
     label: 'Solarized Dark',
-    description: 'Solarized Base03 / Base02와 Blue / Cyan 기반',
+    description: 'Solarized Base03 / Base02? Blue / Cyan 湲곕컲',
     source: 'https://buckyogi.neocities.org/solarized/solarized',
     preview: ['#002b36', '#073642', '#268bd2'],
     primaryColor: '#268bd2',

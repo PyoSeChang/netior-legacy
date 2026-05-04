@@ -1,4 +1,4 @@
-import { ipcMain, BrowserWindow } from 'electron';
+﻿import { ipcMain, BrowserWindow } from 'electron';
 import { existsSync, mkdirSync, readFileSync, writeFileSync, unlinkSync } from 'fs';
 import http from 'http';
 import { join } from 'path';
@@ -20,7 +20,7 @@ import type {
 } from '@netior/shared/types';
 import { BUILT_IN_SKILLS, IPC_CHANNELS } from '@netior/shared/constants';
 import {
-  listRemoteSchemas,
+  listRemoteModels,
   listRemoteFilesByProject,
   listRemoteNetworks,
   listRemoteModels,
@@ -194,6 +194,19 @@ function buildSessionDetail(
   };
 }
 
+function getSupervisorAgentKey(agent: AgentDefinition): string {
+  if (agent.kind === 'terminal') return `terminal:${agent.terminalAgentType}:${agent.id}`;
+  if (agent.narreAgentType === 'system') return `narre:system:${agent.systemAgentType}:${agent.id}`;
+  if (agent.userAgentType === 'project') return `narre:user:project:${agent.projectId}:${agent.id}`;
+  return `narre:user:global:${agent.id}`;
+}
+
+function getSupervisorAgentScopeLabel(agent: AgentDefinition): string {
+  if (agent.kind === 'terminal') return agent.terminalAgentType === 'codex-cli' ? 'Codex CLI' : 'Claude Code';
+  if (agent.narreAgentType === 'system') return 'System agent';
+  return agent.userAgentType === 'project' ? 'Project agent' : 'Global agent';
+}
+
 function getNarreServerUrl(path: string): URL {
   const baseUrl = getNarreServerBaseUrl();
   if (!baseUrl) {
@@ -300,10 +313,62 @@ async function listRemoteSupervisorEvents(afterSeq?: number | null): Promise<Sup
   return requestNarreServer<SupervisorEvent[]>(`/supervisor/events${query}`);
 }
 
-async function createRemoteNarreSession(projectId: string): Promise<NarreSession> {
+async function listRemoteSupervisorRuns(projectId?: string | null): Promise<unknown[]> {
+  const query = projectId ? `?projectId=${encodeURIComponent(projectId)}` : '';
+  return requestNarreServer<unknown[]>(`/supervisor/runs${query}`);
+}
+
+async function createRemoteSupervisorRun(input: Record<string, unknown>): Promise<unknown> {
+  return requestNarreServer<unknown>('/supervisor/runs', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+async function getRemoteSupervisorRun(runId: string): Promise<unknown> {
+  return requestNarreServer<unknown>(`/supervisor/runs/${encodeURIComponent(runId)}`);
+}
+
+async function planRemoteSupervisorRun(runId: string): Promise<unknown> {
+  return requestNarreServer<unknown>(`/supervisor/runs/${encodeURIComponent(runId)}/plan`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
+}
+
+async function runRemoteSupervisorRun(runId: string): Promise<unknown> {
+  return requestNarreServer<unknown>(`/supervisor/runs/${encodeURIComponent(runId)}/run`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
+}
+
+async function cancelRemoteSupervisorRun(runId: string): Promise<unknown> {
+  return requestNarreServer<unknown>(`/supervisor/runs/${encodeURIComponent(runId)}/cancel`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
+}
+
+async function listRemoteSupervisorApprovals(runId: string): Promise<unknown[]> {
+  return requestNarreServer<unknown[]>(`/supervisor/runs/${encodeURIComponent(runId)}/approvals`);
+}
+
+async function resolveRemoteSupervisorApproval(input: Record<string, unknown>): Promise<unknown> {
+  const approvalId = typeof input.approvalId === 'string' ? input.approvalId : '';
+  return requestNarreServer<unknown>(`/supervisor/approvals/${encodeURIComponent(approvalId)}/resolve`, {
+    method: 'POST',
+    body: JSON.stringify({
+      status: input.status,
+      response: input.response,
+    }),
+  });
+}
+
+async function createRemoteNarreSession(projectId: string, agentKey?: string | null): Promise<NarreSession> {
   return requestNarreServer<NarreSession>('/sessions', {
     method: 'POST',
-    body: JSON.stringify({ projectId }),
+    body: JSON.stringify({ projectId, agentKey: agentKey ?? null }),
   });
 }
 
@@ -411,10 +476,103 @@ export function registerNarreIpc(): void {
     },
   );
 
-  ipcMain.handle(IPC_CHANNELS.NARRE_CREATE_SESSION, async (_e, projectId: string): Promise<IpcResult<NarreSession>> => {
+  ipcMain.handle(
+    IPC_CHANNELS.NARRE_SUPERVISOR_LIST_RUNS,
+    async (_e, projectId?: string | null): Promise<IpcResult<unknown[]>> => {
+      try {
+        return { success: true, data: await listRemoteSupervisorRuns(projectId) };
+      } catch (err) {
+        return { success: false, error: (err as Error).message };
+      }
+    },
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.NARRE_SUPERVISOR_CREATE_RUN,
+    async (_e, input: Record<string, unknown>): Promise<IpcResult<unknown>> => {
+      try {
+        return { success: true, data: await createRemoteSupervisorRun(input) };
+      } catch (err) {
+        return { success: false, error: (err as Error).message };
+      }
+    },
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.NARRE_SUPERVISOR_GET_RUN,
+    async (_e, runId: string): Promise<IpcResult<unknown>> => {
+      try {
+        return { success: true, data: await getRemoteSupervisorRun(runId) };
+      } catch (err) {
+        return { success: false, error: (err as Error).message };
+      }
+    },
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.NARRE_SUPERVISOR_PLAN_RUN,
+    async (_e, runId: string): Promise<IpcResult<unknown>> => {
+      try {
+        return { success: true, data: await planRemoteSupervisorRun(runId) };
+      } catch (err) {
+        return { success: false, error: (err as Error).message };
+      }
+    },
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.NARRE_SUPERVISOR_RUN_RUN,
+    async (_e, runId: string): Promise<IpcResult<unknown>> => {
+      try {
+        return { success: true, data: await runRemoteSupervisorRun(runId) };
+      } catch (err) {
+        return { success: false, error: (err as Error).message };
+      }
+    },
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.NARRE_SUPERVISOR_CANCEL_RUN,
+    async (_e, runId: string): Promise<IpcResult<unknown>> => {
+      try {
+        return { success: true, data: await cancelRemoteSupervisorRun(runId) };
+      } catch (err) {
+        return { success: false, error: (err as Error).message };
+      }
+    },
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.NARRE_SUPERVISOR_LIST_APPROVALS,
+    async (_e, runId: string): Promise<IpcResult<unknown[]>> => {
+      try {
+        return { success: true, data: await listRemoteSupervisorApprovals(runId) };
+      } catch (err) {
+        return { success: false, error: (err as Error).message };
+      }
+    },
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.NARRE_SUPERVISOR_RESOLVE_APPROVAL,
+    async (_e, input: Record<string, unknown>): Promise<IpcResult<unknown>> => {
+      try {
+        return { success: true, data: await resolveRemoteSupervisorApproval(input) };
+      } catch (err) {
+        return { success: false, error: (err as Error).message };
+      }
+    },
+  );
+
+  ipcMain.handle(IPC_CHANNELS.NARRE_CREATE_SESSION, async (_e, input: string | { projectId?: unknown; agentKey?: unknown }): Promise<IpcResult<NarreSession>> => {
     try {
+      const projectId = typeof input === 'string' ? input : typeof input.projectId === 'string' ? input.projectId : '';
+      const agentKey = typeof input === 'object' && typeof input.agentKey === 'string' ? input.agentKey : null;
+      if (!projectId) {
+        return { success: false, error: 'projectId required' };
+      }
       if (isNarreServerRunning()) {
-        return { success: true, data: await createRemoteNarreSession(projectId) };
+        return { success: true, data: await createRemoteNarreSession(projectId, agentKey) };
       }
 
       const now = new Date().toISOString();
@@ -424,6 +582,7 @@ export function registerNarreIpc(): void {
         created_at: now,
         last_message_at: now,
         message_count: 0,
+        agentKey,
       };
 
       const index = getSessionsIndex(projectId);
@@ -555,39 +714,54 @@ export function registerNarreIpc(): void {
       const maxResults = 30;
       const lowerQuery = query.toLowerCase();
 
-      const schemas = await listRemoteSchemas(projectId);
-      const schemaMap = new Map(schemas.map((a) => [a.id, a]));
+      try {
+        const agents = await listRemoteSupervisorAgents(projectId);
+        for (const agent of agents) {
+          if (results.length >= maxResults) break;
+          const description = agent.description ?? getSupervisorAgentScopeLabel(agent);
+          if (
+            lowerQuery.length === 0
+            || agent.name.toLowerCase().includes(lowerQuery)
+            || description.toLowerCase().includes(lowerQuery)
+          ) {
+            results.push({
+              type: 'agent',
+              id: getSupervisorAgentKey(agent),
+              display: agent.name,
+              icon: 'bot',
+              description,
+              meta: {
+                kind: agent.kind,
+                provider: agent.runtimeProfile?.provider ?? null,
+                model: agent.runtimeProfile?.model ?? null,
+              },
+            });
+          }
+        }
+      } catch {
+        // Agent mentions depend on the supervisor endpoint; keep project context mentions usable if it is unavailable.
+      }
+
+      const models = await listRemoteModels(projectId);
+      const modelMap = new Map(models.map((a) => [a.id, a]));
       const concepts = await searchRemoteConcepts(projectId, query);
 
       for (const c of concepts) {
         if (results.length >= maxResults) break;
-        const arch = c.schema_id ? schemaMap.get(c.schema_id) : null;
+        const arch = c.model_id ? modelMap.get(c.model_id) : null;
         results.push({
           type: 'concept', id: c.id, display: c.title, color: c.color, icon: c.icon,
-          meta: { schema: arch?.name ?? null },
+          meta: { model: arch?.name ?? null },
         });
       }
 
-      // Search schemas
-      for (const a of schemaMap.values()) {
+      // Search models
+      for (const a of modelMap.values()) {
         if (results.length >= maxResults) break;
         if (a.name.toLowerCase().includes(lowerQuery)) {
           results.push({
-            type: 'schema', id: a.id, display: a.name, color: a.color, icon: a.icon,
+            type: 'model', id: a.id, display: a.name, color: a.color, icon: a.icon,
             description: a.description, meta: { nodeShape: a.node_shape },
-          });
-        }
-      }
-
-      // Search models
-      const models = await listRemoteModels(projectId);
-      for (const model of models) {
-        if (results.length >= maxResults) break;
-        if (model.name.toLowerCase().includes(lowerQuery) || model.key.toLowerCase().includes(lowerQuery)) {
-          results.push({
-            type: 'model', id: model.id, display: model.name, color: model.color, icon: model.icon,
-            description: model.description,
-            meta: { key: model.key, targetKind: model.target_kind, directed: model.directed, lineStyle: model.line_style },
           });
         }
       }
@@ -715,7 +889,7 @@ export function registerNarreIpc(): void {
                 );
               }
             }
-            // Don't send a duplicate done event — narre-server already sends one via the stream
+            // Don't send a duplicate done event ??narre-server already sends one via the stream
             console.log(
               `[narre:bridge] trace=${traceId} stage=stream.end events=${eventCount} ` +
               `elapsedMs=${Date.now() - requestStartedAt}`,

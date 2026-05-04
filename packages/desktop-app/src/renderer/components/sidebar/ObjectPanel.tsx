@@ -15,8 +15,6 @@ import {
   GripVertical,
   Layers3,
   Plus,
-  Shapes,
-  Share2,
   Trash2,
   Waypoints,
 } from 'lucide-react';
@@ -25,9 +23,7 @@ import { useAnchoredDropdown } from '../../hooks/useAnchoredDropdown';
 import { useProjectStore } from '../../stores/project-store';
 import { useConceptStore } from '../../stores/concept-store';
 import { useNetworkStore } from '../../stores/network-store';
-import { useSchemaStore } from '../../stores/schema-store';
 import { useModelStore } from '../../stores/model-store';
-import { useRelationTypeStore } from '../../stores/relation-type-store';
 import { useContextStore } from '../../stores/context-store';
 import { useEditorStore } from '../../stores/editor-store';
 import { useNetworkObjectSelectionStore } from '../../stores/network-object-selection-store';
@@ -44,8 +40,8 @@ import {
   getModelDisplayName,
 } from '../../lib/model-i18n';
 
-type PanelObjectType = 'concept' | 'network' | 'schema' | 'model' | 'relation_type' | 'context';
-type GroupablePanelObjectType = Extract<PanelObjectType, 'schema' | 'relation_type'>;
+type PanelObjectType = 'concept' | 'network' | 'model' | 'context';
+type GroupablePanelObjectType = Extract<PanelObjectType, 'model'>;
 
 interface ObjectPanelProps {
   types?: PanelObjectType[];
@@ -115,9 +111,7 @@ type ActiveDragState = {
 const FILTERS: Array<{ key: PanelObjectType; icon: React.ElementType; labelKey: TranslationKey | string }> = [
   { key: 'concept', icon: CircleDot, labelKey: 'objectPanel.concept' },
   { key: 'network', icon: Waypoints, labelKey: 'sidebar.networks' },
-  { key: 'schema', icon: Shapes, labelKey: 'schema.title' },
   { key: 'model', icon: Boxes, labelKey: 'model.title' },
-  { key: 'relation_type', icon: Share2, labelKey: 'relationType.title' },
   { key: 'context', icon: Layers3, labelKey: 'context.title' },
 ];
 
@@ -136,7 +130,7 @@ function getSelectionRange(rows: PanelRow[], anchorKey: string | null, targetKey
 }
 
 function isGroupableType(type: PanelObjectType): type is GroupablePanelObjectType {
-  return type === 'schema' || type === 'relation_type';
+  return type === 'model';
 }
 
 function isDescendantGroup(groupId: string, parentGroupId: string | null, groups: TypeGroup[]): boolean {
@@ -400,30 +394,22 @@ export function ObjectPanel({ types }: ObjectPanelProps = {}): JSX.Element {
   const currentNetwork = useNetworkStore((state) => state.currentNetwork);
   const networks = useNetworkStore((state) => state.networks);
   const concepts = useConceptStore((state) => state.concepts);
-  const schemas = useSchemaStore((state) => state.schemas);
   const models = useModelStore((state) => state.models);
-  const relationTypes = useRelationTypeStore((state) => state.relationTypes);
   const contexts = useContextStore((state) => state.contexts);
   const activeContextId = useContextStore((state) => state.activeContextId);
   const loadContexts = useContextStore((state) => state.loadContexts);
   const createContext = useContextStore((state) => state.createContext);
   const deleteContext = useContextStore((state) => state.deleteContext);
   const setActiveContext = useContextStore((state) => state.setActiveContext);
-  const createSchema = useSchemaStore((state) => state.createSchema);
-  const updateSchema = useSchemaStore((state) => state.updateSchema);
-  const deleteSchema = useSchemaStore((state) => state.deleteSchema);
   const createModel = useModelStore((state) => state.createModel);
+  const updateModel = useModelStore((state) => state.updateModel);
   const deleteModel = useModelStore((state) => state.deleteModel);
-  const createRelationType = useRelationTypeStore((state) => state.createRelationType);
-  const updateRelationType = useRelationTypeStore((state) => state.updateRelationType);
-  const deleteRelationType = useRelationTypeStore((state) => state.deleteRelationType);
   const deleteConcept = useConceptStore((state) => state.deleteConcept);
   const createNetwork = useNetworkStore((state) => state.createNetwork);
   const deleteNetwork = useNetworkStore((state) => state.deleteNetwork);
   const openNetwork = useNetworkStore((state) => state.openNetwork);
   const loadNetworkTree = useNetworkStore((state) => state.loadNetworkTree);
-  const schemaGroups = useTypeGroupStore((state) => state.groupsByKind.schema);
-  const relationGroups = useTypeGroupStore((state) => state.groupsByKind.relation_type);
+  const modelGroups = useTypeGroupStore((state) => state.groupsByKind.model);
   const createGroup = useTypeGroupStore((state) => state.createGroup);
   const updateGroup = useTypeGroupStore((state) => state.updateGroup);
   const deleteGroup = useTypeGroupStore((state) => state.deleteGroup);
@@ -456,10 +442,10 @@ export function ObjectPanel({ types }: ObjectPanelProps = {}): JSX.Element {
   useEffect(() => {
     setExpandedGroups((prev) => {
       const next = new Set(prev);
-      [...schemaGroups, ...relationGroups].forEach((group) => next.add(group.id));
+      modelGroups.forEach((group) => next.add(group.id));
       return next;
     });
-  }, [schemaGroups, relationGroups]);
+  }, [modelGroups]);
 
   useEffect(() => {
     const clearDragState = () => {
@@ -491,14 +477,17 @@ export function ObjectPanel({ types }: ObjectPanelProps = {}): JSX.Element {
         kind: 'object',
         objectType: 'concept',
         title: concept.title,
-        subtitle: concept.schema_id
-          ? (schemas.find((schema) => schema.id === concept.schema_id)?.name ?? 'Concept')
-          : 'Concept',
+        subtitle: concept.model_id
+          ? (() => {
+            const model = models.find((item) => item.id === concept.model_id);
+            return model ? getModelDisplayName(model, t) : t('objectPanel.concept' as TranslationKey);
+          })()
+          : t('objectPanel.concept' as TranslationKey),
         color: concept.color,
         iconName: concept.icon,
       },
     }))
-  ), [concepts, schemas]);
+  ), [concepts, models]);
 
   const networkRows = useMemo<PanelRow[]>(() => (
     [...networks].sort((a, b) => a.name.localeCompare(b.name)).map((network) => ({
@@ -516,50 +505,21 @@ export function ObjectPanel({ types }: ObjectPanelProps = {}): JSX.Element {
     }))
   ), [networks, currentNetwork?.id]);
 
-  const schemaRows = useMemo(() => buildTreeRows(
-    'schema',
-    schemaGroups,
-    schemas,
-    expandedGroups,
-    t('schema.title'),
-    (schema) => ({
-      title: schema.name,
-      subtitle: getGroupName(schemaGroups, schema.group_id) ?? t('schema.title'),
-      color: schema.color,
-      iconName: schema.icon,
-    }),
-  ), [schemaGroups, schemas, expandedGroups, t]);
-
   const modelRows = useMemo<PanelRow[]>(() => (
-    [...models]
-      .sort((a, b) => getModelDisplayName(a, t).localeCompare(getModelDisplayName(b, t)))
-      .map((model) => ({
-        key: `object:model:${model.id}`,
-        depth: 0,
-        item: {
-          id: model.id,
-          kind: 'object',
-          objectType: 'model',
-          title: getModelDisplayName(model, t),
-          subtitle: getModelDisplayDescription(model, t) ?? model.key,
-          color: model.color,
-          iconName: model.icon,
-        },
-      }))
-  ), [models, t]);
-
-  const relationTypeRows = useMemo(() => buildTreeRows(
-    'relation_type',
-    relationGroups,
-    relationTypes,
-    expandedGroups,
-    t('relationType.title'),
-    (relationType) => ({
-      title: relationType.name,
-      subtitle: getGroupName(relationGroups, relationType.group_id) ?? t('relationType.title'),
-      color: relationType.color,
-    }),
-  ), [relationGroups, relationTypes, expandedGroups, t]);
+    buildTreeRows(
+      'model',
+      modelGroups,
+      [...models].sort((a, b) => getModelDisplayName(a, t).localeCompare(getModelDisplayName(b, t))),
+      expandedGroups,
+      t('model.title' as TranslationKey),
+      (model) => ({
+        title: getModelDisplayName(model, t),
+        subtitle: getModelDisplayDescription(model, t) ?? getGroupName(modelGroups, model.group_id) ?? t('model.title' as TranslationKey),
+        color: model.color,
+        iconName: model.icon,
+      }),
+    )
+  ), [expandedGroups, modelGroups, models, t]);
 
   const contextRows = useMemo<PanelRow[]>(() => (
     [...contexts].sort((a, b) => a.name.localeCompare(b.name)).map((context) => ({
@@ -581,9 +541,7 @@ export function ObjectPanel({ types }: ObjectPanelProps = {}): JSX.Element {
     const rowsByType: Record<PanelObjectType, PanelRow[]> = {
       concept: conceptRows,
       network: networkRows,
-      schema: schemaRows,
       model: modelRows,
-      relation_type: relationTypeRows,
       context: contextRows,
     };
 
@@ -597,7 +555,7 @@ export function ObjectPanel({ types }: ObjectPanelProps = {}): JSX.Element {
           || row.item.subtitle.toLowerCase().includes(normalizedSearch);
       }),
     }));
-  }, [activeTypes, search, conceptRows, networkRows, schemaRows, modelRows, relationTypeRows, contextRows]);
+  }, [activeTypes, search, conceptRows, networkRows, modelRows, contextRows]);
 
   const hasSearch = search.trim().length > 0;
   const visibleRows = useMemo(() => sections.flatMap((section) => {
@@ -607,7 +565,7 @@ export function ObjectPanel({ types }: ObjectPanelProps = {}): JSX.Element {
   const rowByKey = useMemo(() => new Map(visibleRows.map((row) => [row.key, row])), [visibleRows]);
   const primaryType = activeTypes.length === 1 ? activeTypes[0] : null;
   const canCreateObject = primaryType !== null && !(primaryType === 'context' && !currentNetwork);
-  const canCreateGroup = primaryType === 'schema' || primaryType === 'relation_type';
+  const canCreateGroup = primaryType === 'model';
   const canCreateObjectType = (objectType: PanelObjectType): boolean => (
     objectType !== 'context' || currentNetwork !== null
   );
@@ -689,14 +647,8 @@ export function ObjectPanel({ types }: ObjectPanelProps = {}): JSX.Element {
         await openNetwork(item.id);
         await openNetworkViewerTab({ networkId: item.id, title: item.title, projectId: currentProject?.id ?? null });
         break;
-      case 'schema':
-        await useEditorStore.getState().openTab({ type: 'schema', targetId: item.id, title: item.title });
-        break;
       case 'model':
         await useEditorStore.getState().openTab({ type: 'model', targetId: item.id, title: item.title, projectId: currentProject?.id });
-        break;
-      case 'relation_type':
-        await useEditorStore.getState().openTab({ type: 'relationType', targetId: item.id, title: item.title });
         break;
       case 'context':
         await useEditorStore.getState().openTab({ type: 'context', targetId: item.id, title: item.title });
@@ -751,19 +703,9 @@ export function ObjectPanel({ types }: ObjectPanelProps = {}): JSX.Element {
         });
         break;
       }
-      case 'schema': {
-        const created = await createSchema({ project_id: currentProject.id, name: tk('schema.newDefault') });
-        await useEditorStore.getState().openTab({ type: 'schema', targetId: created.id, title: created.name, isDirty: true });
-        break;
-      }
       case 'model': {
         const created = await createModel({ project_id: currentProject.id, name: t('model.newDefault' as never) });
         await useEditorStore.getState().openTab({ type: 'model', targetId: created.id, title: created.name, projectId: currentProject.id, isDirty: true });
-        break;
-      }
-      case 'relation_type': {
-        const created = await createRelationType({ project_id: currentProject.id, name: t('relationType.newDefault') });
-        await useEditorStore.getState().openTab({ type: 'relationType', targetId: created.id, title: created.name, isDirty: true });
         break;
       }
       case 'context': {
@@ -787,14 +729,8 @@ export function ObjectPanel({ types }: ObjectPanelProps = {}): JSX.Element {
         await deleteNetwork(item.id);
         if (currentProject) await loadNetworkTree(currentProject.id);
         break;
-      case 'schema':
-        await deleteSchema(item.id);
-        break;
       case 'model':
         await deleteModel(item.id);
-        break;
-      case 'relation_type':
-        await deleteRelationType(item.id);
         break;
       case 'context':
         await deleteContext(item.id);
@@ -809,8 +745,7 @@ export function ObjectPanel({ types }: ObjectPanelProps = {}): JSX.Element {
 
   const submitInlineGroupCreate = async () => {
     if (!currentProject || !inlineGroupCreate || !inlineGroupCreate.value.trim()) return;
-    const groups = inlineGroupCreate.kind === 'schema' ? schemaGroups : relationGroups;
-    const siblingGroups = groups.filter((group) => (group.parent_group_id ?? null) === inlineGroupCreate.parentGroupId);
+    const siblingGroups = modelGroups.filter((group) => (group.parent_group_id ?? null) === inlineGroupCreate.parentGroupId);
     await createGroup({
       project_id: currentProject.id,
       kind: inlineGroupCreate.kind,
@@ -828,8 +763,7 @@ export function ObjectPanel({ types }: ObjectPanelProps = {}): JSX.Element {
     if (!groupDialog) return;
     if (groupDialog.mode === 'create') {
       if (!currentProject) return;
-      const groups = groupDialog.kind === 'schema' ? schemaGroups : relationGroups;
-      const siblingGroups = groups.filter((group) => (group.parent_group_id ?? null) === groupDialog.parentGroupId);
+      const siblingGroups = modelGroups.filter((group) => (group.parent_group_id ?? null) === groupDialog.parentGroupId);
       await createGroup({
         project_id: currentProject.id,
         kind: groupDialog.kind,
@@ -932,25 +866,14 @@ export function ObjectPanel({ types }: ObjectPanelProps = {}): JSX.Element {
   };
 
   const moveRowsToGroup = async (rows: PanelRow[], objectType: GroupablePanelObjectType, targetGroupId: string | null) => {
-    if (objectType === 'schema') {
-      await Promise.all(rows.map(async (row) => {
-        if (row.item.kind === 'object') {
-          await updateSchema(row.item.id, { group_id: targetGroupId });
-          return;
-        }
-        if (row.item.id === targetGroupId) return;
-        if (isDescendantGroup(row.item.id, targetGroupId, schemaGroups)) return;
-        await updateGroup(row.item.id, { parent_group_id: targetGroupId });
-      }));
-      return;
-    }
+    if (objectType !== 'model') return;
     await Promise.all(rows.map(async (row) => {
       if (row.item.kind === 'object') {
-        await updateRelationType(row.item.id, { group_id: targetGroupId });
+        await updateModel(row.item.id, { group_id: targetGroupId });
         return;
       }
       if (row.item.id === targetGroupId) return;
-      if (isDescendantGroup(row.item.id, targetGroupId, relationGroups)) return;
+      if (isDescendantGroup(row.item.id, targetGroupId, modelGroups)) return;
       await updateGroup(row.item.id, { parent_group_id: targetGroupId });
     }));
   };
@@ -1054,7 +977,7 @@ export function ObjectPanel({ types }: ObjectPanelProps = {}): JSX.Element {
         items.push({
           label: tk('typeGroup.create'),
           icon: <FolderPlus size={14} />,
-          onClick: () => handleCreateGroup(primaryType === 'schema' ? 'schema' : 'relation_type'),
+          onClick: () => handleCreateGroup('model'),
         });
       }
       return items;
@@ -1064,17 +987,12 @@ export function ObjectPanel({ types }: ObjectPanelProps = {}): JSX.Element {
       const groupItem = activeRow.item;
       return [
         {
-          label: activeRow.item.objectType === 'schema' ? tk('schema.createInGroup') : tk('relationType.createInGroup'),
+          label: tk('model.createInGroup'),
           icon: <Plus size={14} />,
           onClick: async () => {
             if (!currentProject) return;
-            if (activeRow.item.objectType === 'schema') {
-              const created = await createSchema({ project_id: currentProject.id, group_id: activeRow.item.id, name: tk('schema.newDefault') });
-              await useEditorStore.getState().openTab({ type: 'schema', targetId: created.id, title: created.name, isDirty: true });
-              return;
-            }
-            const created = await createRelationType({ project_id: currentProject.id, group_id: activeRow.item.id, name: t('relationType.newDefault') });
-            await useEditorStore.getState().openTab({ type: 'relationType', targetId: created.id, title: created.name, isDirty: true });
+            const created = await createModel({ project_id: currentProject.id, group_id: activeRow.item.id, name: tk('model.newDefault') });
+            await useEditorStore.getState().openTab({ type: 'model', targetId: created.id, title: created.name, isDirty: true });
           },
         },
         { label: tk('typeGroup.createSubgroup'), icon: <FolderPlus size={14} />, onClick: () => handleCreateGroup(groupItem.objectType, groupItem.id) },
@@ -1082,8 +1000,7 @@ export function ObjectPanel({ types }: ObjectPanelProps = {}): JSX.Element {
           label: tk('typeGroup.rename'),
           icon: <FolderTree size={14} />,
           onClick: () => {
-            const groups = groupItem.objectType === 'schema' ? schemaGroups : relationGroups;
-            const group = groups.find((item) => item.id === groupItem.id);
+            const group = modelGroups.find((item) => item.id === groupItem.id);
             if (group) setGroupDialog({ mode: 'rename', group });
           },
         },
@@ -1127,10 +1044,8 @@ export function ObjectPanel({ types }: ObjectPanelProps = {}): JSX.Element {
     t,
     tk,
     currentProject,
-    createSchema,
-    createRelationType,
-    schemaGroups,
-    relationGroups,
+    createModel,
+    modelGroups,
     setActiveContext,
     deleteRows,
   ]);
@@ -1148,9 +1063,8 @@ export function ObjectPanel({ types }: ObjectPanelProps = {}): JSX.Element {
     if (row.item.objectType === 'concept' && row.item.iconName) {
       return <NodeVisual icon={row.item.iconName} size={14} imageSize={18} className="shrink-0" />;
     }
-    if ((row.item.objectType === 'schema' || row.item.objectType === 'model') && row.item.iconName) {
-      const Icon = getIconComponent(row.item.iconName);
-      if (Icon) return <Icon size={14} className="shrink-0 text-secondary" />;
+    if (row.item.objectType === 'model' && row.item.iconName) {
+      return <NodeVisual icon={row.item.iconName} size={14} imageSize={18} className="shrink-0" />;
     }
     if (row.item.color) {
       return <div className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: row.item.color }} />;
@@ -1163,12 +1077,8 @@ export function ObjectPanel({ types }: ObjectPanelProps = {}): JSX.Element {
           return <Boxes size={14} className="shrink-0 text-secondary" />;
         }
         return <Waypoints size={14} className="shrink-0 text-secondary" />;
-      case 'schema':
-        return <Shapes size={14} className="shrink-0 text-secondary" />;
       case 'model':
         return <Boxes size={14} className="shrink-0 text-secondary" />;
-      case 'relation_type':
-        return <Share2 size={14} className="shrink-0 text-secondary" />;
       case 'context':
         return <Layers3 size={14} className="shrink-0 text-secondary" />;
     }
@@ -1326,7 +1236,7 @@ export function ObjectPanel({ types }: ObjectPanelProps = {}): JSX.Element {
                     <button
                       type="button"
                       className="rounded p-1 text-muted transition-colors hover:bg-state-hover hover:text-default"
-                      onClick={() => handleCreateGroup(section.objectType === 'schema' ? 'schema' : 'relation_type')}
+                      onClick={() => handleCreateGroup('model')}
                       title={tk('typeGroup.create')}
                     >
                       <FolderPlus size={12} />

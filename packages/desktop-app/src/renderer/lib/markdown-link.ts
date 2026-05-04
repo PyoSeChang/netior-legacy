@@ -1,4 +1,4 @@
-import { resolveFileInputPath, resolveFirstExistingFilePath } from './file-open-resolver';
+﻿import { resolveFileInputPath, resolveFirstExistingFilePath } from './file-open-resolver';
 import { openExternal } from './open-external';
 import { openFileTab } from './open-file-tab';
 

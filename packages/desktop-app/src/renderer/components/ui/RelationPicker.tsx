@@ -1,7 +1,8 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+﻿import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Link2, X } from 'lucide-react';
 import { useConceptStore } from '../../stores/concept-store';
+import { NodeVisual } from '../workspace/node-components/NodeVisual';
 
 export interface RelationPickerProps {
   value?: string;
@@ -54,7 +55,11 @@ export const RelationPicker: React.FC<RelationPickerProps> = ({ value, onChange,
         className={`flex items-center gap-2 px-3 py-1.5 bg-surface-input border border-subtle rounded-lg text-sm cursor-pointer hover:border-default transition-all ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
         onClick={handleOpen}
       >
-        <Link2 size={14} className="text-muted" />
+        {selected ? (
+          <NodeVisual icon={selected.icon ?? 'box'} size={14} imageSize={18} className="shrink-0" />
+        ) : (
+          <Link2 size={14} className="shrink-0 text-muted" />
+        )}
         <span className={`flex-1 ${selected ? 'text-default' : 'text-muted'}`}>
           {selected?.title || 'Select concept...'}
         </span>
@@ -106,8 +111,8 @@ export const RelationPicker: React.FC<RelationPickerProps> = ({ value, onChange,
                   setOpen(false);
                 }}
               >
-                {c.color && <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: c.color }} />}
-                {c.title}
+                <NodeVisual icon={c.icon ?? 'box'} size={14} imageSize={18} className="shrink-0" />
+                <span className="min-w-0 flex-1 truncate">{c.title}</span>
               </button>
             ))}
             {filtered.length === 0 && (

@@ -1,4 +1,4 @@
-import { OpenAIFamilyProviderAdapter } from './openai-family/provider.js';
+﻿import { OpenAIFamilyProviderAdapter } from './openai-family/provider.js';
 import { OpenAIDirectTransport, type OpenAIDirectTransportOptions } from './openai-family/openai-transport.js';
 
 export interface OpenAIProviderAdapterOptions extends OpenAIDirectTransportOptions {}

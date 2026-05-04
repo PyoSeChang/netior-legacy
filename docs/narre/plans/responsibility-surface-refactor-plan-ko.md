@@ -36,7 +36,7 @@
 - `NR21~NR22` file entity / PDF metadata
 - `NR24~NR25` staged skill contract
 
-즉 지금 Narre는 “도메인을 workspace로 투영하는 운영자”라기보다 “schema 편집기”에 더 가깝다. 이번 도메인 모델 확장 이후에는 schema만 만드는 것이 아니라 project-level model, model meanings, field meaning bindings, meaning slot binding까지 함께 설계해야 한다.
+즉 지금 Narre는 “도메인을 workspace로 투영하는 운영자”라기보다 “schema 편집기”에 더 가깝다. 이번 도메인 모델 확장 이후에는 schema만 만드는 것이 아니라 project-level model, schema meanings, field meaning bindings, meaning slot binding까지 함께 설계해야 한다.
 
 ### 2. MCP는 graph/schema core는 강하지만 responsibility surface 전체를 못 덮는다
 
@@ -266,7 +266,7 @@ bootstrap은 schema만 만드는 게 아니라 starter concept/node까지 만들
 - node-level metadata/occurrence 편집 surface
 - file node add flow
 
-### B4. Model / meaning / binding surface (`NR18`)
+### B4. Schema / model / meaning / binding surface (`NR18`)
 
 필요한 것:
 

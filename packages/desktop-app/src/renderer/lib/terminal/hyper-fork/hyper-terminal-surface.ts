@@ -1,4 +1,4 @@
-import { createElement, createRef } from 'react';
+﻿import { createElement, createRef } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import type { TerminalLaunchConfig, TerminalSessionInfo } from '@netior/shared/types';
 import { unwrapIpc } from '../../../services/ipc';

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
+﻿import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
 
 interface AnchorPosition {
   top: number;

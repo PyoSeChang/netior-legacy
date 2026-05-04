@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useCallback, useEffect } from 'react';
+﻿import React, { useMemo, useState, useCallback, useEffect } from 'react';
 import { ChevronRight } from 'lucide-react';
 import type { PdfToc } from '@netior/shared/types';
 import { useI18n } from '../../../hooks/useI18n';

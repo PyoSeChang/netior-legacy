@@ -1,4 +1,4 @@
-import http from 'http';
+﻿import http from 'http';
 import { readFileSync, writeFileSync, readdirSync, mkdirSync, watch } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
@@ -29,10 +29,10 @@ interface HookServerListeners {
   onTurnEvent?: (event: AgentTurnEvent) => void;
 }
 
-/** Maps PTY session ID → Claude session file watcher */
+/** Maps PTY session ID ??Claude session file watcher */
 const sessionWatchers = new Map<string, { close(): void }>();
 
-/** Maps PTY session ID → Claude session ID */
+/** Maps PTY session ID ??Claude session ID */
 const ptyToClaudeSession = new Map<string, string>();
 
 class HookServer {
@@ -111,7 +111,7 @@ class HookServer {
     mkdirSync(hooksDir, { recursive: true });
     const portFile = getHookRuntimePortFilePath();
     writeFileSync(portFile, String(this.port), 'utf-8');
-    console.log(`[HookServer] port file written: ${portFile} → ${this.port}`);
+    console.log(`[HookServer] port file written: ${portFile} ??${this.port}`);
   }
 
   stop(): void {

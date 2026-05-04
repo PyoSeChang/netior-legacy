@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import type { RenderEdge, RenderEdgeAnchor, RenderNode, RenderPoint } from './types';
 import { HIERARCHY_PARENT_MODEL_KEY } from '../../lib/edge-models';
 

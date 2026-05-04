@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron';
+﻿import { ipcMain } from 'electron';
 import { IPC_CHANNELS } from '@netior/shared/constants';
 import type {
   DeleteUserAgentInput,

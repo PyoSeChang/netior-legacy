@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+﻿import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Boxes,
   ChevronDown,
@@ -8,8 +8,6 @@ import {
   FolderOpen,
   FolderTree,
   Layers3,
-  Shapes,
-  Share2,
   Waypoints,
 } from 'lucide-react';
 import { Input } from '../ui/Input';
@@ -21,7 +19,6 @@ export type NetworkBrowserObjectType =
   | 'concept'
   | 'schema'
   | 'model'
-  | 'relation_type'
   | 'context'
   | 'file'
   | 'module'
@@ -57,9 +54,8 @@ const ICONS: Record<NetworkBrowserObjectType, React.ElementType> = {
   network: Waypoints,
   project: FolderOpen,
   concept: CircleDot,
-  schema: Shapes,
+  schema: Boxes,
   model: Boxes,
-  relation_type: Share2,
   context: Layers3,
   file: FileText,
   module: FolderTree,

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+﻿import { describe, expect, it } from 'vitest';
 import { toAbsolutePath, toRelativePath } from '../utils/path-utils';
 
 describe('path-utils', () => {

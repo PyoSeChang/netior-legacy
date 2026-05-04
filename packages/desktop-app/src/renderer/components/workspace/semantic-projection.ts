@@ -27,7 +27,7 @@ interface ParsedDateTimeParts {
 
 interface ApplyConceptSemanticProjectionInput {
   metadata: Record<string, unknown>;
-  schemaId?: string;
+  modelId?: string;
   models?: ModelRefKey[];
   fields: SchemaField[];
   propertyValues: Map<string, string | null>;
@@ -214,14 +214,14 @@ function getPrimarySystemMeaning(bindings: readonly FieldMeaningBindingKey[]): F
 
 export function applyConceptSemanticProjection({
   metadata,
-  schemaId,
+  modelId,
   models,
   fields,
   propertyValues,
 }: ApplyConceptSemanticProjectionInput): LayoutSemanticProjection {
   const selectedModels = models ?? [];
   const semantic: LayoutSemanticProjection = {
-    schemaId,
+    modelId,
     models: selectedModels,
     meaningBindings: {},
     meaningFieldIds: {},

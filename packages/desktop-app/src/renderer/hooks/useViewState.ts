@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+﻿import { useState, useCallback, useRef } from 'react';
 
 /**
  * In-memory view state cache per editor tab.

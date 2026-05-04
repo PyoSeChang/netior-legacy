@@ -59,7 +59,7 @@ manifest 기준 활성 시나리오:
 | NR15 | group/hierarchy/containment semantics | 없음 | 없음 | group/hierarchy/contains/hierarchy_parent 전용 검증 없음 |
 | NR16 | schema CRUD | `fantasy-world-bootstrap`, `research-builtin-model-reuse`, `custom-model-authoring-foreshadowing` | 부분 | schema 생성은 보지만 update/delete는 없음 |
 | NR17 | schema field definition CRUD | `fantasy-world-bootstrap`, `research-builtin-model-reuse`, `custom-model-authoring-foreshadowing` | 부분 | field definition 생성과 model-generated field는 보지만 reorder/update/delete는 없음 |
-| NR18 | model / meaning / binding | `research-builtin-model-reuse`, `custom-model-authoring-foreshadowing`, `fantasy-world-bootstrap` | 강함 | built-in model 재사용, custom model CRUD, model recipe, field meaning bindings를 직접 검증한다. schema meaning slot binding은 아직 부분적 |
+| NR18 | schema / model / meaning / binding | `research-builtin-model-reuse`, `custom-model-authoring-foreshadowing`, `fantasy-world-bootstrap` | 강함 | built-in model 재사용, custom model CRUD, model recipe, schema meaning bindings를 직접 검증한다. schema meaning slot binding은 아직 부분적 |
 | NR19 | ORM형 schema 관계와 property 모델링 | `fantasy-world-bootstrap`, `custom-model-authoring-foreshadowing` | 부분 | schema_ref 적용은 보지만 cycle/candidate/field-vs-edge 판단 검증은 약함 |
 | NR20 | relation type CRUD | `fantasy-world-bootstrap` | 부분 | relation type 생성은 보지만 update/delete/visual default는 약함 |
 | NR21 | type group CRUD | `fantasy-world-bootstrap` | 부분 | type group 생성 정도만 걸릴 수 있음. Ontology network 자동 투영 검증은 없음 |

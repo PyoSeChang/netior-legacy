@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+﻿import { useEffect } from 'react';
 import type { RenderNode } from './types';
 import { isEditableTarget, isPrimaryModifier, logShortcut } from '../../shortcuts/shortcut-utils';
 import { useUIStore, type WorkspaceMode } from '../../stores/ui-store';

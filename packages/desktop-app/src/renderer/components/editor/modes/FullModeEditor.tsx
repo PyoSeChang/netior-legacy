@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+﻿import React, { useCallback, useEffect, useState } from 'react';
 import { flushSync } from 'react-dom';
 import type { SplitLeaf, EditorTab } from '@netior/shared/types';
 import { useEditorStore, containsTab } from '../../../stores/editor-store';

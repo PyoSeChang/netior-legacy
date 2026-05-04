@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import type {
-  Schema,
+  Model,
   SchemaField,
   EditorTab,
   FieldType,
@@ -13,19 +13,25 @@ import type {
   ModelRefKey,
   ModelRepresentationKind,
   ModelRuleRecipe,
+  ModelTargetKind,
   MeaningSlotKey,
+  SemanticCategoryKey,
 } from '@netior/shared/types';
 import {
-  getModelDescriptionKey,
-  getModelLabelKey,
+  SEMANTIC_CATEGORY_LABELS,
+  getSemanticCategoryLabelKey,
+  getSemanticMeaningDescriptionKey,
   getSemanticMeaningLabelKey,
+  getMeaningSlotDescriptionKey,
   getMeaningSlotLabelKey,
+  MODEL_DEFINITIONS,
 } from '@netior/shared/constants';
 import { Plus, Trash2 } from 'lucide-react';
 import { useModelStore } from '../../stores/model-store';
 import { useSchemaStore } from '../../stores/schema-store';
 import { useProjectStore } from '../../stores/project-store';
 import { useEditorStore } from '../../stores/editor-store';
+import { useTypeGroupStore } from '../../stores/type-group-store';
 import { useEditorSession } from '../../hooks/useEditorSession';
 import { useI18n } from '../../hooks/useI18n';
 import { Input } from '../ui/Input';
@@ -33,6 +39,8 @@ import { TextArea } from '../ui/TextArea';
 import { Select } from '../ui/Select';
 import { ColorPicker } from '../ui/ColorPicker';
 import { IconSelector } from '../ui/IconSelector';
+import { FilePicker } from '../ui/FilePicker';
+import { RadioGroup } from '../ui/RadioGroup';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import { Toggle } from '../ui/Toggle';
@@ -43,6 +51,12 @@ import {
   NetworkObjectMetadataList,
 } from './NetworkObjectEditorShell';
 import { getFieldMeaningSlot } from '../../lib/field-meaning-bindings';
+import {
+  getModelDisplayDescription,
+  getModelDisplayName,
+} from '../../lib/model-i18n';
+import { isImageSourceValue } from '../workspace/node-components/node-visual-utils';
+import { NodeVisual } from '../workspace/node-components/NodeVisual';
 
 interface ModelEditorProps {
   tab: EditorTab;
@@ -53,6 +67,7 @@ interface ModelEditorState {
   name: string;
   description: string | null;
   category: SemanticCategoryRefKey;
+  target_kind: ModelTargetKind;
   meaning_keys: SemanticMeaningKey[];
   core_slots: MeaningSlotKey[];
   optional_slots: MeaningSlotKey[];
@@ -63,8 +78,8 @@ interface ModelEditorState {
 }
 
 interface ModelConsumer {
-  schema: Schema;
-  linkedToSchema: boolean;
+  model: Model;
+  linkedToModel: boolean;
   meaningKeys: SemanticMeaningKey[];
   fields: SchemaField[];
 }
@@ -74,6 +89,7 @@ const EMPTY_MODEL_STATE: ModelEditorState = {
   name: '',
   description: null,
   category: 'knowledge',
+  target_kind: 'object',
   meaning_keys: [],
   core_slots: [],
   optional_slots: [],
@@ -106,10 +122,22 @@ const FIELD_TYPE_OPTIONS: Array<{ value: FieldType; labelKey: string }> = [
   { value: 'color', labelKey: 'typeSelector.color' },
   { value: 'rating', labelKey: 'typeSelector.rating' },
   { value: 'tags', labelKey: 'typeSelector.tags' },
-  { value: 'schema_ref', labelKey: 'typeSelector.schema_ref' },
+  { value: 'model_ref', labelKey: 'typeSelector.model_ref' },
 ];
 
+const TARGET_KIND_OPTIONS: Array<{ value: ModelTargetKind; labelKey: string }> = [
+  { value: 'object', labelKey: 'model.targetKind.object' },
+  { value: 'edge', labelKey: 'model.targetKind.edge' },
+  { value: 'both', labelKey: 'model.targetKind.both' },
+];
+
+const ADD_CATEGORY_OPTION_VALUE = '__add_model_category__';
 const KEY_PATTERN = /^[a-z][a-z0-9_]*$/;
+const IMAGE_FILE_FILTERS = [
+  { name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp'] },
+] as const;
+
+type VisualMode = 'icon' | 'image';
 
 function createLocalId(prefix: string): string {
   return `${prefix}-${Math.random().toString(36).slice(2, 10)}`;
@@ -257,41 +285,50 @@ export function ModelEditor({ tab }: ModelEditorProps): JSX.Element {
   const loadModels = useModelStore((s) => s.loadByProject);
   const updateModel = useModelStore((s) => s.updateModel);
   const currentProject = useProjectStore((s) => s.currentProject);
-  const schemas = useSchemaStore((s) => s.schemas);
-  const fieldsBySchema = useSchemaStore((s) => s.fields);
-  const meaningsBySchema = useSchemaStore((s) => s.meanings);
-  const loadSchemas = useSchemaStore((s) => s.loadByProject);
-  const loadSchemaFields = useSchemaStore((s) => s.loadFields);
-  const loadSchemaMeanings = useSchemaStore((s) => s.loadMeanings);
+  const modelCategoryGroups = useTypeGroupStore((s) => s.groupsByKind.model);
+  const loadModelCategoryGroups = useTypeGroupStore((s) => s.loadKind);
+  const createModelCategoryGroup = useTypeGroupStore((s) => s.createGroup);
+  const fieldsByModel = useSchemaStore((s) => s.fields);
+  const meaningsByModel = useSchemaStore((s) => s.meanings);
+  const loadModelFields = useSchemaStore((s) => s.loadFields);
+  const loadModelMeanings = useSchemaStore((s) => s.loadMeanings);
   const model = models.find((item) => item.id === modelId);
   const projectId = model?.project_id ?? tab.projectId ?? currentProject?.id ?? null;
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [showCategoryCreator, setShowCategoryCreator] = useState(false);
+  const [visualMode, setVisualMode] = useState<VisualMode>('icon');
 
   useEffect(() => {
     if (projectId) {
       void loadModels(projectId);
-      void loadSchemas(projectId);
     }
-  }, [loadModels, loadSchemas, projectId]);
+  }, [loadModels, projectId]);
 
-  const projectSchemas = useMemo(
-    () => schemas.filter((schema) => !projectId || schema.project_id === projectId),
-    [projectId, schemas],
+  useEffect(() => {
+    if (projectId) {
+      void loadModelCategoryGroups(projectId, 'model');
+    }
+  }, [loadModelCategoryGroups, projectId]);
+
+  const projectModels = useMemo(
+    () => models.filter((model) => !projectId || model.project_id === projectId),
+    [projectId, models],
   );
-  const projectSchemaIdsKey = useMemo(
-    () => projectSchemas.map((schema) => schema.id).sort().join('|'),
-    [projectSchemas],
+  const projectModelIdsKey = useMemo(
+    () => projectModels.map((model) => model.id).sort().join('|'),
+    [projectModels],
   );
 
   useEffect(() => {
-    if (!projectSchemaIdsKey) return;
+    if (!projectModelIdsKey) return;
 
     let cancelled = false;
     void (async () => {
-      for (const schema of projectSchemas) {
+      for (const model of projectModels) {
         if (cancelled) return;
         await Promise.all([
-          loadSchemaFields(schema.id),
-          loadSchemaMeanings(schema.id),
+          loadModelFields(model.id),
+          loadModelMeanings(model.id),
         ]);
       }
     })();
@@ -299,7 +336,7 @@ export function ModelEditor({ tab }: ModelEditorProps): JSX.Element {
     return () => {
       cancelled = true;
     };
-  }, [loadSchemaFields, loadSchemaMeanings, projectSchemaIdsKey, projectSchemas]);
+  }, [loadModelFields, loadModelMeanings, projectModelIdsKey, projectModels]);
 
   const session = useEditorSession<ModelEditorState>({
     tabId: tab.id,
@@ -311,6 +348,7 @@ export function ModelEditor({ tab }: ModelEditorProps): JSX.Element {
         name: current.name,
         description: current.description,
         category: current.category,
+        target_kind: current.target_kind,
         meaning_keys: current.meaning_keys,
         core_slots: current.core_slots,
         optional_slots: current.optional_slots,
@@ -332,6 +370,7 @@ export function ModelEditor({ tab }: ModelEditorProps): JSX.Element {
         name: state.name,
         description: state.description,
         category: normalizeKey(String(state.category), 'general') as SemanticCategoryRefKey,
+        target_kind: state.target_kind,
         meaning_keys: state.meaning_keys,
         core_slots: state.core_slots,
         optional_slots: state.optional_slots,
@@ -340,10 +379,27 @@ export function ModelEditor({ tab }: ModelEditorProps): JSX.Element {
         icon: state.icon,
         built_in: state.built_in,
       });
-      useEditorStore.getState().updateTitle(tab.id, state.name || t('model.title' as never));
+      const nextDisplayModel = {
+        ...model,
+        key: modelKey as ModelKey,
+        name: state.name,
+        description: state.description,
+        target_kind: state.target_kind,
+        built_in: state.built_in,
+      };
+      useEditorStore.getState().updateTitle(tab.id, getModelDisplayName(nextDisplayModel, t) || t('model.title' as never));
     },
     deps: [modelId],
   });
+  const currentEditorState = session.state ?? EMPTY_MODEL_STATE;
+
+  useEffect(() => {
+    if (isImageSourceValue(currentEditorState.icon)) {
+      setVisualMode('image');
+    } else if (currentEditorState.icon) {
+      setVisualMode('icon');
+    }
+  }, [currentEditorState.icon]);
 
   const modelConsumers = useMemo<ModelConsumer[]>(() => {
     if (!model) return [];
@@ -354,14 +410,14 @@ export function ModelEditor({ tab }: ModelEditorProps): JSX.Element {
       ...model.optional_slots,
     ]);
 
-    return projectSchemas.flatMap((schema) => {
-      const schemaModelRefs = [
-        ...normalizeModelRefs(schema.models),
+    return projectModels.flatMap((model) => {
+      const modelModelRefs = [
+        ...normalizeModelRefs(model.models),
       ];
-      const linkedToSchema = schemaModelRefs.includes(modelKey);
-      const schemaMeanings = meaningsBySchema[schema.id] ?? [];
-      const modelMeanings = schemaMeanings.filter((meaning) => (
-        meaning.source_model === modelKey || meaning.source_model === modelKey
+      const linkedToModel = modelModelRefs.includes(modelKey);
+      const sourceMeanings = meaningsByModel[model.id] ?? [];
+      const modelMeanings = sourceMeanings.filter((meaning) => (
+        meaning.source_model === modelKey
       ));
       const meaningKeys = [...new Set(modelMeanings.map((meaning) => meaning.meaning_key))];
       const boundFieldIds = new Set(
@@ -369,32 +425,64 @@ export function ModelEditor({ tab }: ModelEditorProps): JSX.Element {
           meaning.slots.map((slot) => slot.field_id).filter((fieldId): fieldId is string => Boolean(fieldId))
         )),
       );
-      const schemaFields = fieldsBySchema[schema.id] ?? [];
-      const fieldById = new Map(schemaFields.map((field) => [field.id, field]));
+      const modelFields = fieldsByModel[model.id] ?? [];
+      const fieldById = new Map(modelFields.map((field) => [field.id, field]));
       const fields = [
         ...[...boundFieldIds].map((fieldId) => fieldById.get(fieldId)).filter((field): field is SchemaField => Boolean(field)),
-        ...schemaFields.filter((field) => (
-          linkedToSchema
+        ...modelFields.filter((field) => (
+          linkedToModel
           && Boolean(getFieldMeaningSlot(field) && modelSlotKeys.has(getFieldMeaningSlot(field)!))
           && !boundFieldIds.has(field.id)
         )),
       ].sort((a, b) => a.sort_order - b.sort_order);
 
-      if (!linkedToSchema && meaningKeys.length === 0 && fields.length === 0) return [];
+      if (!linkedToModel && meaningKeys.length === 0 && fields.length === 0) return [];
 
       return [{
-        schema,
-        linkedToSchema,
+        model,
+        linkedToModel,
         meaningKeys,
         fields,
       }];
     });
-  }, [fieldsBySchema, meaningsBySchema, model, projectSchemas]);
+  }, [fieldsByModel, meaningsByModel, model, projectModels]);
 
   const fieldTypeLabelByValue = useMemo(
     () => new Map(FIELD_TYPE_OPTIONS.map((option) => [option.value, t(option.labelKey as never)])),
     [t],
   );
+  const modelCategoryOptions = useMemo(() => {
+    const builtInOptions = Object.keys(SEMANTIC_CATEGORY_LABELS).map((category) => {
+      const key = getSemanticCategoryLabelKey(category as SemanticCategoryKey);
+      const label = t(key as never);
+      return {
+        value: category,
+        label: label === key ? SEMANTIC_CATEGORY_LABELS[category as SemanticCategoryKey] : label,
+      };
+    });
+    const customOptions = modelCategoryGroups.map((group) => ({
+      value: normalizeKey(group.name, 'general'),
+      label: group.name,
+    }));
+    const optionByValue = new Map([...builtInOptions, ...customOptions].map((option) => [option.value, option]));
+    if (currentEditorState.category && !optionByValue.has(currentEditorState.category)) {
+      optionByValue.set(currentEditorState.category, {
+        value: currentEditorState.category,
+        label: currentEditorState.category,
+      });
+    }
+    return [
+      ...optionByValue.values(),
+      {
+        value: ADD_CATEGORY_OPTION_VALUE,
+        label: t('model.addCategory' as never),
+      },
+    ];
+  }, [currentEditorState.category, modelCategoryGroups, t]);
+  const visualModeOptions = useMemo(() => [
+    { value: 'icon', label: t('concept.visualModeOptions.icon' as never) },
+    { value: 'image', label: t('concept.visualModeOptions.image' as never) },
+  ], [t]);
 
   if (!model) {
     return (
@@ -407,12 +495,15 @@ export function ModelEditor({ tab }: ModelEditorProps): JSX.Element {
   if (session.isLoading) return <></>;
 
   const isBuiltInModel = session.state.built_in;
-  const displayName = isBuiltInModel
-    ? t(getModelLabelKey(session.state.key as ModelKey) as never)
-    : session.state.name;
-  const displayDescription = isBuiltInModel
-    ? t(getModelDescriptionKey(session.state.key as ModelKey) as never)
-    : session.state.description ?? '';
+  const displayModel = {
+    ...model,
+    key: session.state.key as ModelKey,
+    name: session.state.name,
+    description: session.state.description,
+    built_in: session.state.built_in,
+  };
+  const displayName = getModelDisplayName(displayModel, t);
+  const displayDescription = getModelDisplayDescription(displayModel, t) ?? '';
   const duplicateModelKey = models.some((item) => item.id !== modelId && item.key === session.state.key);
   const getKeyError = (key: string, duplicate: boolean): string | null => {
     if (!isValidQueryKey(key)) return t('model.keyInvalid' as never);
@@ -443,6 +534,18 @@ export function ModelEditor({ tab }: ModelEditorProps): JSX.Element {
 
   const update = (patch: Partial<ModelEditorState>) => {
     session.setState((prev) => ({ ...prev, ...patch }));
+  };
+
+  const builtInDefinitionIcon = session.state.built_in
+    ? (MODEL_DEFINITIONS.find((definition) => definition.key === session.state.key) as { icon?: string } | undefined)?.icon ?? null
+    : null;
+  const displayIcon = session.state.icon ?? builtInDefinitionIcon ?? 'boxes';
+
+  const handleVisualModeChange = (mode: VisualMode) => {
+    setVisualMode(mode);
+    if ((isImageSourceValue(session.state.icon) ? 'image' : 'icon') !== mode) {
+      update({ icon: null });
+    }
   };
 
   const updateRecipe = (recipe: ModelRecipe) => {
@@ -499,6 +602,43 @@ export function ModelEditor({ tab }: ModelEditorProps): JSX.Element {
       .map((fieldType) => fieldTypeLabelByValue.get(fieldType) ?? fieldType)
       .join(', ');
   };
+  const getMeaningDisplayName = (meaning: ModelMeaningRecipe): string => {
+    if (!isBuiltInModel) return meaning.name;
+    const key = getSemanticMeaningLabelKey(meaning.key as SemanticMeaningKey);
+    const label = t(key as never);
+    return label === key ? meaning.name : label;
+  };
+  const getMeaningDisplayDescription = (meaning: ModelMeaningRecipe): string => {
+    if (!isBuiltInModel) return meaning.description ?? '';
+    const key = getSemanticMeaningDescriptionKey(meaning.key as SemanticMeaningKey);
+    const description = t(key as never);
+    return description === key ? meaning.description ?? '' : description;
+  };
+  const getFieldDisplayName = (field: ModelFieldRecipe): string => {
+    if (!isBuiltInModel) return field.name;
+    const key = getMeaningSlotLabelKey(field.key as MeaningSlotKey);
+    const label = t(key as never);
+    return label === key ? field.name : label;
+  };
+  const getFieldDisplayDescription = (field: ModelFieldRecipe): string => {
+    if (!isBuiltInModel) return field.description ?? '';
+    const key = getMeaningSlotDescriptionKey(field.key as MeaningSlotKey);
+    const description = t(key as never);
+    return description === key ? field.description ?? '' : description;
+  };
+  const handleCreateCategory = async () => {
+    if (!projectId || !newCategoryName.trim()) return;
+    const name = newCategoryName.trim();
+    await createModelCategoryGroup({
+      project_id: projectId,
+      kind: 'model',
+      name,
+      sort_order: modelCategoryGroups.length,
+    });
+    update({ category: normalizeKey(name, 'general') as SemanticCategoryRefKey });
+    setNewCategoryName('');
+    setShowCategoryCreator(false);
+  };
 
   return (
     <ScrollArea className="h-full min-h-0">
@@ -507,6 +647,7 @@ export function ModelEditor({ tab }: ModelEditorProps): JSX.Element {
         title={displayName || model.name}
         subtitle={t('editorShell.networkObject' as never)}
         description={displayDescription || t('model.descriptionPlaceholder' as never)}
+        leadingVisual={<NodeVisual icon={displayIcon} size={24} imageSize={56} className="shrink-0" />}
       >
         <NetworkObjectEditorSection title={t('editorShell.overview' as never)}>
           <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_170px]">
@@ -518,19 +659,20 @@ export function ModelEditor({ tab }: ModelEditorProps): JSX.Element {
                 disabled={isBuiltInModel}
               />
             </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-medium text-secondary">{t('model.key' as never)}</label>
-              <Input
-                value={session.state.key}
-                onChange={(event) => update({ key: formatKeyInput(event.target.value) as ModelRefKey })}
-                inputSize="sm"
-                disabled={isBuiltInModel}
-                error={Boolean(modelKeyError)}
-              />
-              <div className={`text-[11px] ${modelKeyError ? 'text-status-error' : 'text-muted'}`}>
-                {modelKeyError ?? t('model.keyHint' as never)}
+            {!isBuiltInModel && (
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-medium text-secondary">{t('model.key' as never)}</label>
+                <Input
+                  value={session.state.key}
+                  onChange={(event) => update({ key: formatKeyInput(event.target.value) as ModelRefKey })}
+                  inputSize="sm"
+                  error={Boolean(modelKeyError)}
+                />
+                <div className={`text-[11px] ${modelKeyError ? 'text-status-error' : 'text-muted'}`}>
+                  {modelKeyError ?? t('model.keyHint' as never)}
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
           <div className="flex flex-col gap-1">
@@ -547,17 +689,54 @@ export function ModelEditor({ tab }: ModelEditorProps): JSX.Element {
           <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_220px]">
             <div className="flex flex-col gap-1">
               <label className="text-xs font-medium text-secondary">{t('model.category' as never)}</label>
-              <Input
+              <Select
                 value={session.state.category}
-                onChange={(event) => update({ category: normalizeKey(event.target.value, 'general') as SemanticCategoryRefKey })}
-                placeholder={t('model.categoryPlaceholder' as never)}
+                options={modelCategoryOptions}
+                onChange={(event) => {
+                  if (event.target.value === ADD_CATEGORY_OPTION_VALUE) {
+                    setShowCategoryCreator(true);
+                    return;
+                  }
+                  setShowCategoryCreator(false);
+                  update({ category: event.target.value as SemanticCategoryRefKey });
+                }}
               />
             </div>
-            <div className="flex items-center gap-2 pt-5">
-              <Badge variant={session.state.built_in ? 'accent' : 'default'}>
-                {session.state.built_in ? t('model.builtIn' as never) : t('model.custom' as never)}
-              </Badge>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-medium text-secondary">{t('model.targetKind.label' as never)}</label>
+              <div className="flex min-h-[38px] items-center rounded-lg border border-input bg-surface-input px-3 text-sm text-secondary">
+                {t((TARGET_KIND_OPTIONS.find((option) => option.value === session.state.target_kind)?.labelKey ?? 'model.targetKind.object') as never)}
+              </div>
             </div>
+          </div>
+
+          {showCategoryCreator && (
+            <div className="grid gap-2 rounded-lg border border-subtle bg-surface-card p-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-medium text-secondary">{t('model.newCategory' as never)}</label>
+                <Input
+                  value={newCategoryName}
+                  onChange={(event) => setNewCategoryName(event.target.value)}
+                  placeholder={t('model.categoryPlaceholder' as never)}
+                  autoFocus
+                />
+              </div>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={handleCreateCategory}
+                disabled={!newCategoryName.trim()}
+              >
+                <Plus size={14} />
+                {t('model.addCategory' as never)}
+              </Button>
+            </div>
+          )}
+
+          <div className="flex items-center gap-2">
+            <Badge variant={session.state.built_in ? 'accent' : 'default'}>
+              {session.state.built_in ? t('model.builtIn' as never) : t('model.custom' as never)}
+            </Badge>
           </div>
 
           {hasKeyValidationError && (
@@ -602,7 +781,7 @@ export function ModelEditor({ tab }: ModelEditorProps): JSX.Element {
                     <label className="text-xs font-medium text-secondary">{t('model.meaningName' as never)}</label>
                     <Input
                       inputSize="sm"
-                      value={meaning.name}
+                      value={getMeaningDisplayName(meaning)}
                       onChange={(event) => {
                         const nextName = event.target.value;
                         const fallbackKey = `meaning_${meaningIndex + 1}`;
@@ -614,6 +793,7 @@ export function ModelEditor({ tab }: ModelEditorProps): JSX.Element {
                         });
                       }}
                       placeholder={t('model.meaningNamePlaceholder' as never)}
+                      disabled={isBuiltInModel}
                     />
                   </div>
                   <div className="flex flex-col gap-1">
@@ -623,6 +803,7 @@ export function ModelEditor({ tab }: ModelEditorProps): JSX.Element {
                       value={meaning.key}
                       onChange={(event) => updateMeaning(meaning.id, { key: formatKeyInput(event.target.value) })}
                       error={Boolean(meaningKeyError)}
+                      disabled={isBuiltInModel}
                     />
                     <div className={`text-[11px] ${meaningKeyError ? 'text-status-error' : 'text-muted'}`}>
                       {meaningKeyError ?? t('model.keyHintShort' as never)}
@@ -640,6 +821,7 @@ export function ModelEditor({ tab }: ModelEditorProps): JSX.Element {
                       onChange={(event) => updateMeaning(meaning.id, {
                         representation: event.target.value as ModelRepresentationKind,
                       })}
+                      disabled={isBuiltInModel}
                     />
                   </div>
                   <Button
@@ -647,6 +829,7 @@ export function ModelEditor({ tab }: ModelEditorProps): JSX.Element {
                     variant="ghost"
                     size="sm"
                     className="mt-5"
+                    disabled={isBuiltInModel}
                     onClick={() => updateRecipe({
                       ...session.state.recipe,
                       meanings: session.state.recipe.meanings.filter((item) => item.id !== meaning.id),
@@ -658,10 +841,11 @@ export function ModelEditor({ tab }: ModelEditorProps): JSX.Element {
 
                 <div className="mt-2">
                   <TextArea
-                    value={meaning.description ?? ''}
+                    value={getMeaningDisplayDescription(meaning)}
                     onChange={(event) => updateMeaning(meaning.id, { description: event.target.value || null })}
                     rows={2}
                     placeholder={t('model.meaningDescriptionPlaceholder' as never)}
+                    disabled={isBuiltInModel}
                   />
                 </div>
 
@@ -672,6 +856,7 @@ export function ModelEditor({ tab }: ModelEditorProps): JSX.Element {
                       type="button"
                       variant="ghost"
                       size="sm"
+                      disabled={isBuiltInModel}
                       onClick={() => updateMeaning(meaning.id, {
                         fields: [
                           ...meaning.fields,
@@ -699,7 +884,7 @@ export function ModelEditor({ tab }: ModelEditorProps): JSX.Element {
                           <label className="text-[11px] font-medium text-secondary">{t('model.fieldName' as never)}</label>
                           <Input
                             inputSize="sm"
-                            value={field.name}
+                            value={getFieldDisplayName(field)}
                             onChange={(event) => {
                               const nextName = event.target.value;
                               const fallbackKey = `field_${fieldIndex + 1}`;
@@ -711,6 +896,7 @@ export function ModelEditor({ tab }: ModelEditorProps): JSX.Element {
                               });
                             }}
                             placeholder={t('model.fieldName' as never)}
+                            disabled={isBuiltInModel}
                           />
                         </div>
                         <div className="flex flex-col gap-1">
@@ -720,6 +906,7 @@ export function ModelEditor({ tab }: ModelEditorProps): JSX.Element {
                             value={field.key}
                             onChange={(event) => updateField(meaning.id, field.id, { key: formatKeyInput(event.target.value) })}
                             error={Boolean(fieldKeyError)}
+                            disabled={isBuiltInModel}
                           />
                           <div className={`text-[11px] ${fieldKeyError ? 'text-status-error' : 'text-muted'}`}>
                             {fieldKeyError ?? t('model.keyHintShort' as never)}
@@ -729,7 +916,8 @@ export function ModelEditor({ tab }: ModelEditorProps): JSX.Element {
                           <Toggle
                             checked={field.required}
                             onChange={(checked) => updateField(meaning.id, field.id, { required: checked })}
-                            label={t('schema.required')}
+                            label={t('model.required' as never)}
+                            disabled={isBuiltInModel}
                           />
                         </div>
                         <Button
@@ -737,6 +925,7 @@ export function ModelEditor({ tab }: ModelEditorProps): JSX.Element {
                           variant="ghost"
                           size="sm"
                           className="mt-5"
+                          disabled={isBuiltInModel}
                           onClick={() => updateMeaning(meaning.id, {
                             fields: meaning.fields.filter((item) => item.id !== field.id),
                           })}
@@ -760,6 +949,7 @@ export function ModelEditor({ tab }: ModelEditorProps): JSX.Element {
                                     ? 'border-accent bg-accent-muted text-accent'
                                     : 'border-subtle bg-surface-editor text-secondary hover:border-default hover:text-default'
                                 }`}
+                                disabled={isBuiltInModel}
                                 onClick={() => toggleFieldType(meaning.id, field, typeOption.value)}
                               >
                                 {t(typeOption.labelKey as never)}
@@ -771,15 +961,17 @@ export function ModelEditor({ tab }: ModelEditorProps): JSX.Element {
                       <div className="mt-2 grid gap-2 md:grid-cols-2">
                         <Input
                           inputSize="sm"
-                          value={field.description ?? ''}
+                          value={getFieldDisplayDescription(field)}
                           onChange={(event) => updateField(meaning.id, field.id, { description: event.target.value || null })}
                           placeholder={t('model.fieldDescriptionPlaceholder' as never)}
+                          disabled={isBuiltInModel}
                         />
                         <Input
                           inputSize="sm"
                           value={field.options ?? ''}
                           onChange={(event) => updateField(meaning.id, field.id, { options: event.target.value || null })}
                           placeholder={t('model.fieldOptionsPlaceholder' as never)}
+                          disabled={isBuiltInModel}
                         />
                       </div>
                     </div>
@@ -852,12 +1044,12 @@ export function ModelEditor({ tab }: ModelEditorProps): JSX.Element {
             {previewFields.map(({ meaning, field }) => (
               <div key={`${meaning.id}:${field.id}`} className="flex min-w-0 items-center justify-between gap-3 rounded-lg border border-subtle bg-surface-editor px-3 py-2">
                 <div className="min-w-0">
-                  <div className="truncate text-xs font-medium text-default">{field.name || t('model.fieldName' as never)}</div>
-                  <div className="truncate text-[11px] text-secondary">{meaning.name || t('model.meaningName' as never)}</div>
+                  <div className="truncate text-xs font-medium text-default">{getFieldDisplayName(field) || t('model.fieldName' as never)}</div>
+                  <div className="truncate text-[11px] text-secondary">{getMeaningDisplayName(meaning) || t('model.meaningName' as never)}</div>
                 </div>
                 <div className="flex shrink-0 items-center gap-1.5 text-[11px] text-secondary">
                   <span className="rounded bg-state-hover px-2 py-0.5">{formatFieldTypes(field.field_types)}</span>
-                  {field.required && <span className="rounded bg-accent-muted px-2 py-0.5 text-accent">{t('schema.required')}</span>}
+                  {field.required && <span className="rounded bg-accent-muted px-2 py-0.5 text-accent">{t('model.required')}</span>}
                 </div>
               </div>
             ))}
@@ -872,16 +1064,16 @@ export function ModelEditor({ tab }: ModelEditorProps): JSX.Element {
               </div>
             )}
             {modelConsumers.map((consumer) => (
-              <div key={consumer.schema.id} className="rounded-lg border border-subtle bg-surface-editor px-3 py-3">
+              <div key={consumer.model.id} className="rounded-lg border border-subtle bg-surface-editor px-3 py-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="min-w-0">
-                    <div className="truncate text-sm font-medium text-default">{consumer.schema.name}</div>
-                    <div className="mt-0.5 text-[11px] text-secondary">{t('schema.title')}</div>
+                    <div className="truncate text-sm font-medium text-default">{getModelDisplayName(consumer.model, t)}</div>
+                    <div className="mt-0.5 text-[11px] text-secondary">{t('model.title')}</div>
                   </div>
                   <div className="flex flex-wrap gap-1">
-                    {consumer.linkedToSchema && (
+                    {consumer.linkedToModel && (
                       <span className="rounded bg-accent-muted px-2 py-0.5 text-[11px] text-accent">
-                        {t('model.consumerSchemaLink' as never)}
+                        {t('model.consumerModelLink' as never)}
                       </span>
                     )}
                     <span className="rounded bg-state-hover px-2 py-0.5 text-[11px] text-secondary">
@@ -920,17 +1112,32 @@ export function ModelEditor({ tab }: ModelEditorProps): JSX.Element {
           </div>
         </NetworkObjectEditorSection>
 
-        <NetworkObjectEditorSection title={t('schema.visualDefaults')} defaultOpen={false}>
+        <NetworkObjectEditorSection title={t('model.visualDefaults')} defaultOpen={false}>
           <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
             <div className="flex flex-col gap-2">
-              <span className="text-xs text-secondary">{t('schema.icon')}</span>
-              <IconSelector
-                value={session.state.icon ?? undefined}
-                onChange={(icon) => update({ icon })}
+              <span className="text-xs text-secondary">{t('concept.visual' as never)}</span>
+              <RadioGroup
+                options={visualModeOptions}
+                value={visualMode}
+                onChange={(value) => handleVisualModeChange(value as VisualMode)}
+                orientation="horizontal"
               />
+              {visualMode === 'image' ? (
+                <FilePicker
+                  value={isImageSourceValue(session.state.icon) ? session.state.icon ?? '' : ''}
+                  onChange={(path) => update({ icon: path || null })}
+                  placeholder={t('concept.selectProfileImage' as never)}
+                  filters={[...IMAGE_FILE_FILTERS]}
+                />
+              ) : (
+                <IconSelector
+                  value={session.state.icon ?? builtInDefinitionIcon ?? undefined}
+                  onChange={(icon) => update({ icon })}
+                />
+              )}
             </div>
             <div className="flex flex-col gap-2">
-              <span className="text-xs text-secondary">{t('schema.color')}</span>
+              <span className="text-xs text-secondary">{t('model.color')}</span>
               <ColorPicker
                 value={session.state.color ?? undefined}
                 onChange={(color) => update({ color })}

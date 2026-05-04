@@ -1,4 +1,4 @@
-import type { AgentRuntimeAdapter, AgentRuntimeSink } from '../agent-runtime-manager';
+﻿import type { AgentRuntimeAdapter, AgentRuntimeSink } from '../agent-runtime-manager';
 import { setupClaudeSettings, setupHookScript } from '../../hook-server/hook-setup';
 import { hookServer } from '../../hook-server/hook-server';
 

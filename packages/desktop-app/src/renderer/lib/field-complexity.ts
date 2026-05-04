@@ -1,4 +1,4 @@
-import type { FieldType } from '@netior/shared/types';
+﻿import type { FieldType } from '@netior/shared/types';
 import type { FieldComplexityLevel } from '../stores/settings-store';
 
 const LEVEL_RANK: Record<FieldComplexityLevel, number> = {
@@ -22,7 +22,7 @@ export const FIELD_TYPE_MIN_LEVEL: Record<FieldType, FieldComplexityLevel> = {
   color: 'standard',
   rating: 'standard',
   tags: 'standard',
-  schema_ref: 'standard',
+  model_ref: 'standard',
   relation: 'advanced',
 };
 

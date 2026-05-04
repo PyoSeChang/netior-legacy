@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { MessageSquare, Plus, Sparkles } from 'lucide-react';
 import type { NarreSession } from '@netior/shared/types';
 import { narreService } from '../../../services/narre-service';
@@ -108,7 +108,7 @@ export function NarreSessionList({
                   </p>
                   <p className="mt-0.5 text-xs text-muted">
                     {formatRelativeTime(session.last_message_at)}
-                    {' · '}
+                    {' 쨌 '}
                     {t('narre.messageCount', { count: session.message_count })}
                   </p>
                 </div>

@@ -10,7 +10,42 @@ Netior의 agent 시스템을 하나의 control plane 아래에 둔다.
 2. 기존 command 개념을 skill로 완전히 대체한다.
 3. Narre, Codex CLI, Claude Code 세션을 supervisor가 관측하고 이후 조정할 수 있게 한다.
 
-초기 구현은 orchestration 완성이 아니라 기반 구조 확립이다.
+초기 구현은 최종 UX 완성이 아니라 orchestration domain과 control-plane 기반 구조 확립이다.
+
+## 0.1 2026-04-30 구현 기준 업데이트
+
+현재 구현 기준에서 agent system의 목표는 단순한 세션 관측이 아니라 진짜 multi-agent orchestration을 수용하는 control plane이다.
+
+따라서 `AgentDefinition`은 skill 목록뿐 아니라 agent별 실행 설정도 가져야 한다.
+
+- provider
+- model
+- reasoning effort
+- tool profile
+- approval policy
+- context scope
+
+이 설정은 모두 같은 가변성이 아니다. provider, tool profile, permission boundary, approval policy, core instruction은 agent definition의 고정 계약이다. session/task override는 model, reasoning effort, temperature, context budget, extra instruction 같은 실행 강도 조정에 한정한다.
+
+또한 `SupervisorSession`만으로 orchestration을 표현하지 않는다. Session은 실행 인스턴스이고, orchestration의 원본 모델은 다음 도메인으로 분리한다.
+
+- `Conversation`: 사용자가 보는 대화/작업 공간
+- `OrchestrationRun`: 하나의 사용자 목표
+- `OrchestrationTask`: Run을 분해한 작업
+- `AgentAssignment`: Task를 agent/session에 배정한 기록
+- `AgentEvent`: message, handoff, tool, approval, result, error의 원본 event log
+
+1:1 채팅, 단체 채팅방, 작업 보드 같은 UI는 이 event log를 렌더링하는 별도 UX sprint에서 다룬다. 이번 sprint의 범위는 domain contract, supervisor registry/API, runtime dispatch 기반이다.
+
+2026-04-30 코드 기준으로 다음 backend 기반이 구현되어 있다.
+
+- AgentDefinition에 agent별 runtime profile이 연결된다.
+- Conversation, OrchestrationRun, OrchestrationTask, AgentAssignment, AgentEvent가 shared type과 narre-server registry/API로 분리되어 있다.
+- AgentOperator가 LLM으로 task plan JSON을 생성하고, 실패 시 fallback plan을 만든다.
+- scheduler는 dependency가 없는 assignment를 병렬 실행하고, dependency가 있는 task는 upstream result를 받아 실행한다.
+- Narre assignment는 agent identity/system prompt/tool profile/provider profile을 적용한 별도 NarreRuntime session으로 실행된다.
+- Terminal assignment는 supervisor executor command queue에 명령으로 쌓인다.
+- Approval request/resolve API와 JSON persistence가 추가되어 UI가 run/task/event/approval/executor 상태를 조회할 수 있다.
 
 ## 1. Agent Taxonomy
 
@@ -423,13 +458,101 @@ claude -> TerminalAgent/ClaudeCode
 - agent kind 표시
 - 제어 버튼 없음
 
+### Slice 9. Orchestration Domain Contract
+
+목표:
+
+- 진짜 multi-agent orchestration을 표현할 수 있는 Run/Task/Assignment/Event 모델을 추가한다.
+- Session은 실행 인스턴스로 유지하고, orchestration 상태는 Run/Task/Event가 원본이 되게 한다.
+
+작업:
+
+- `Conversation`
+- `OrchestrationRun`
+- `OrchestrationTask`
+- `AgentAssignment`
+- `AgentEvent`
+- `AgentRuntimeProfile`
+- `SupervisorSession.currentRunId/currentTaskId`
+
+초기 API:
+
+```text
+GET  /supervisor/conversations
+POST /supervisor/conversations
+GET  /supervisor/runs
+POST /supervisor/runs
+GET  /supervisor/runs/:id
+GET  /supervisor/runs/:id/events
+POST /supervisor/tasks
+POST /supervisor/tasks/:id/status
+POST /supervisor/assignments
+POST /supervisor/runs/:id/events
+POST /supervisor/runs/:id/status
+```
+
+### Slice 10. Agent Runtime Profile
+
+목표:
+
+- system/user/terminal agent가 agent별 provider, model, tool profile, approval policy를 가질 수 있게 한다.
+
+작업:
+
+- system agent 기본 runtime profile 부여
+- user agent 저장 모델에 runtime profile 반영
+- task 실행 시 agent runtime profile resolve
+- session/event에 실제 사용된 runtime snapshot 기록
+
+### Slice 11. AgentOperator 기반 실행
+
+목표:
+
+- AgentOperator가 사용자 요청을 task로 분해하고, system/user/terminal agent에 배정할 수 있게 한다.
+
+작업:
+
+- task dependency graph
+- handoff payload
+- shared context
+- fan-out / fan-in
+- blocked/error/approval propagation
+
+현재 구현된 첫 실행 slice:
+
+- `POST /supervisor/assignments/:id/run`이 추가되었다.
+- 이 경로는 assignment를 조회하고, 연결된 task/run/agent definition을 resolve한다.
+- Narre 계열 agent assignment는 `NarreRuntime`을 active agent identity로 실행한다.
+- assignment 실행마다 resolved runtime profile 기준으로 별도 `NarreRuntime` instance와 provider adapter를 생성한다.
+- task/session override는 model, reasoning effort, temperature, context budget, extra instruction만 허용한다.
+- 실행 중 `task_started`, `tool_call`, `approval_requested`, `agent_message`, `error` event를 orchestration event log에 기록한다.
+- 실행 결과는 assignment/task result와 supervisor session에 연결된다.
+
+아직 남은 범위:
+
+- AgentOperator가 사용자 요청을 자동으로 task graph로 분해하지는 않는다.
+- 여러 assignment를 병렬로 scheduling하지는 않는다.
+- terminal agent는 아직 실행 dispatch 대상이 아니다.
+- provider adapter는 assignment별로 생성되지만, provider별 adapter cache/lifecycle 최적화는 아직 없다.
+
+### Slice 12. UX Projection
+
+목표:
+
+- 1:1 채팅, 단체 채팅방, 작업 보드, 타임라인을 `AgentEvent` 기반으로 렌더링한다.
+
+방침:
+
+- UI는 별도 sprint에서 진행한다.
+- UI가 orchestration 상태의 원본이 되면 안 된다.
+- 채팅방은 Conversation/Event projection이며, Run/Task/Assignment가 실행 모델의 원본이다.
+
 ## 11. 비목표
 
-초기 개발에서 하지 않는다.
+이번 domain/control-plane sprint에서 하지 않는다.
 
-- multi-agent orchestration 완성
-- AgentOperator가 자동으로 다른 agent 실행
-- terminal agent launch/control
+- UI projection sprint
+- terminal agent launch/control 완성
 - user skill script 실행
 - references/assets indexing
 - user agent definition DB persistence

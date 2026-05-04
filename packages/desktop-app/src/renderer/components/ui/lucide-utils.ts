@@ -1,4 +1,4 @@
-import { icons } from 'lucide-react';
+﻿import { icons } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 const nameCache: string[] = Object.keys(icons).sort();

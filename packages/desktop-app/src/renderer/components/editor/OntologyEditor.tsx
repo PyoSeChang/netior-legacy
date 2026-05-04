@@ -1,13 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import type { EditorTab } from '@netior/shared/types';
-import { Boxes, CircleDot, Layers3, Plus, Shapes, Share2, Waypoints } from 'lucide-react';
+import { Boxes, CircleDot, Layers3, Plus, Waypoints } from 'lucide-react';
 import { useConceptStore } from '../../stores/concept-store';
 import { useContextStore } from '../../stores/context-store';
 import { useEditorStore } from '../../stores/editor-store';
-import { useModelStore } from '../../stores/model-store';
 import { useNetworkStore } from '../../stores/network-store';
 import { useProjectStore } from '../../stores/project-store';
-import { useRelationTypeStore } from '../../stores/relation-type-store';
+import { useModelStore } from '../../stores/model-store';
 import { useSchemaStore } from '../../stores/schema-store';
 import { useI18n } from '../../hooks/useI18n';
 import {
@@ -31,7 +30,9 @@ function getNetworkKindLabel(kind: string): string {
   return 'Network';
 }
 
-type CreatableOntologyType = 'network' | 'concept' | 'schema' | 'model' | 'relation_type' | 'context';
+type CreatableOntologyType = 'network' | 'concept' | 'schema' | 'model' | 'context';
+
+const EMPTY_LIST: never[] = [];
 
 export function OntologyEditor({ tab }: OntologyEditorProps): JSX.Element {
   const { t } = useI18n();
@@ -41,28 +42,28 @@ export function OntologyEditor({ tab }: OntologyEditorProps): JSX.Element {
   const currentProject = useProjectStore((s) => s.currentProject);
   const projects = useProjectStore((s) => s.projects);
   const loadProjects = useProjectStore((s) => s.loadProjects);
-  const networks = useNetworkStore((s) => s.networks);
+  const rawNetworks = useNetworkStore((s) => s.networks);
   const currentNetwork = useNetworkStore((s) => s.currentNetwork);
   const loadNetworks = useNetworkStore((s) => s.loadNetworks);
   const loadNetworkTree = useNetworkStore((s) => s.loadNetworkTree);
   const createNetwork = useNetworkStore((s) => s.createNetwork);
   const openNetwork = useNetworkStore((s) => s.openNetwork);
-  const concepts = useConceptStore((s) => s.concepts);
+  const rawConcepts = useConceptStore((s) => s.concepts);
   const loadConcepts = useConceptStore((s) => s.loadByProject);
-  const schemas = useSchemaStore((s) => s.schemas);
-  const fields = useSchemaStore((s) => s.fields);
+  const rawSchemas = useSchemaStore((s) => s.schemas);
   const loadSchemas = useSchemaStore((s) => s.loadByProject);
-  const loadFields = useSchemaStore((s) => s.loadFields);
   const createSchema = useSchemaStore((s) => s.createSchema);
-  const models = useModelStore((s) => s.models);
+  const rawModels = useModelStore((s) => s.models);
   const loadModels = useModelStore((s) => s.loadByProject);
   const createModel = useModelStore((s) => s.createModel);
-  const relationTypes = useRelationTypeStore((s) => s.relationTypes);
-  const loadRelationTypes = useRelationTypeStore((s) => s.loadByProject);
-  const createRelationType = useRelationTypeStore((s) => s.createRelationType);
-  const contexts = useContextStore((s) => s.contexts);
+  const rawContexts = useContextStore((s) => s.contexts);
   const loadContexts = useContextStore((s) => s.loadContexts);
   const createContext = useContextStore((s) => s.createContext);
+  const networks = Array.isArray(rawNetworks) ? rawNetworks : EMPTY_LIST;
+  const concepts = Array.isArray(rawConcepts) ? rawConcepts : EMPTY_LIST;
+  const schemas = Array.isArray(rawSchemas) ? rawSchemas : EMPTY_LIST;
+  const models = Array.isArray(rawModels) ? rawModels : EMPTY_LIST;
+  const contexts = Array.isArray(rawContexts) ? rawContexts : EMPTY_LIST;
 
   const projectId = tab.projectId
     ?? (tab.targetId === 'global' ? currentProject?.id : tab.targetId)
@@ -86,24 +87,14 @@ export function OntologyEditor({ tab }: OntologyEditorProps): JSX.Element {
     void loadConcepts(projectId);
     void loadSchemas(projectId);
     void loadModels(projectId);
-    void loadRelationTypes(projectId);
   }, [
     loadConcepts,
     loadModels,
     loadNetworks,
     loadNetworkTree,
-    loadRelationTypes,
     loadSchemas,
     projectId,
   ]);
-
-  useEffect(() => {
-    for (const schema of schemas) {
-      if (!fields[schema.id]) {
-        void loadFields(schema.id);
-      }
-    }
-  }, [fields, loadFields, schemas]);
 
   const contextNetworkId = useMemo(() => {
     if (currentNetwork?.project_id === projectId) return currentNetwork.id;
@@ -202,20 +193,6 @@ export function OntologyEditor({ tab }: OntologyEditorProps): JSX.Element {
         });
         break;
       }
-      case 'relation_type': {
-        const created = await createRelationType({
-          project_id: projectId,
-          name: tr('relationType.newDefault', 'New Relation Type'),
-        });
-        await openEditorTab({
-          type: 'relationType',
-          targetId: created.id,
-          title: created.name,
-          projectId,
-          isDirty: true,
-        });
-        break;
-      }
       case 'context': {
         const networkId = await ensureContextNetworkId();
         if (!networkId) return;
@@ -240,9 +217,8 @@ export function OntologyEditor({ tab }: OntologyEditorProps): JSX.Element {
   }, [
     createContext,
     createModel,
-    createNetwork,
-    createRelationType,
     createSchema,
+    createNetwork,
     currentNetwork?.id,
     currentNetwork?.project_id,
     ensureContextNetworkId,
@@ -263,9 +239,8 @@ export function OntologyEditor({ tab }: OntologyEditorProps): JSX.Element {
   }>>(() => [
     { key: 'network', label: t('sidebar.networks'), icon: Waypoints },
     { key: 'concept', label: t('objectPanel.concept' as never), icon: CircleDot },
-    { key: 'schema', label: t('schema.title'), icon: Shapes },
+    { key: 'schema', label: t('schema.title'), icon: Boxes },
     { key: 'model', label: t('model.title' as never), icon: Boxes },
-    { key: 'relation_type', label: t('relationType.title'), icon: Share2 },
     { key: 'context', label: t('context.title'), icon: Layers3 },
   ], [t]);
 
@@ -300,8 +275,11 @@ export function OntologyEditor({ tab }: OntologyEditorProps): JSX.Element {
             objectType: 'concept' as const,
             title: item.title,
             subtitle: item.schema_id
-              ? (schemas.find((schema) => schema.id === item.schema_id)?.name ?? 'Concept')
-              : 'Concept',
+              ? (() => {
+                const schema = schemas.find((candidate) => candidate.id === item.schema_id);
+                return schema ? schema.name : t('objectPanel.concept' as never);
+              })()
+              : t('objectPanel.concept' as never),
           })),
       },
       {
@@ -325,19 +303,7 @@ export function OntologyEditor({ tab }: OntologyEditorProps): JSX.Element {
             id: item.id,
             objectType: 'model' as const,
             title: getModelDisplayName(item, t),
-            subtitle: getModelDisplayDescription(item, t) ?? item.key,
-          })),
-      },
-      {
-        key: 'relation_type' as const,
-        label: t('relationType.title'),
-        items: [...relationTypes]
-          .sort((a, b) => a.name.localeCompare(b.name))
-          .map((item) => ({
-            id: item.id,
-            objectType: 'relation_type' as const,
-            title: item.name,
-            subtitle: item.description ?? t('relationType.title'),
+            subtitle: getModelDisplayDescription(item, t) ?? t('model.title' as never),
           })),
       },
       {
@@ -364,7 +330,6 @@ export function OntologyEditor({ tab }: OntologyEditorProps): JSX.Element {
     networks,
     projectId,
     projects,
-    relationTypes,
     schemas,
     t,
   ]);
@@ -389,13 +354,10 @@ export function OntologyEditor({ tab }: OntologyEditorProps): JSX.Element {
         await openEditorTab({ type: 'concept', targetId: item.id, title: item.title });
         break;
       case 'schema':
-        await openEditorTab({ type: 'schema', targetId: item.id, title: item.title });
+        await openEditorTab({ type: 'schema', targetId: item.id, title: item.title, projectId: projectId ?? undefined });
         break;
       case 'model':
         await openEditorTab({ type: 'model', targetId: item.id, title: item.title, projectId: projectId ?? undefined });
-        break;
-      case 'relation_type':
-        await openEditorTab({ type: 'relationType', targetId: item.id, title: item.title });
         break;
       case 'context':
         await openEditorTab({ type: 'context', targetId: item.id, title: item.title });

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { EditorContent } from './EditorContent';
 import { EditorTabStrip } from './EditorTabStrip';
 import { CloseConfirmDialog } from './CloseConfirmDialog';
@@ -73,7 +73,7 @@ export function DetachedEditorShell({ hostId }: DetachedEditorShellProps): JSX.E
   }, [hostId]);
 
   // If host is removed (all tabs closed via sync), close the window.
-  // Delay briefly to let state sync settle — avoids premature close during hydration.
+  // Delay briefly to let state sync settle ??avoids premature close during hydration.
   useEffect(() => {
     if (!ready || host || tabs.length > 0) return;
     const timer = setTimeout(() => {

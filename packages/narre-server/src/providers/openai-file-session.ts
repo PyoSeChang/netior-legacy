@@ -1,4 +1,4 @@
-import type { AgentInputItem, Session } from '@openai/agents';
+﻿import type { AgentInputItem, Session } from '@openai/agents';
 import { OpenAIFamilyProviderStateFile } from './openai-family/provider-state-file.js';
 
 interface OpenAIFileSessionData {

@@ -1,4 +1,4 @@
-import { create } from 'zustand';
+﻿import { create } from 'zustand';
 import type { Module, ModuleCreate, ModuleUpdate, ModuleDirectory, ModuleDirectoryCreate } from '@netior/shared/types';
 import { moduleService } from '../services';
 import { useFileStore } from './file-store';

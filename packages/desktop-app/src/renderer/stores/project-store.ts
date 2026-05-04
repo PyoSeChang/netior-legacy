@@ -1,4 +1,4 @@
-import { create } from 'zustand';
+﻿import { create } from 'zustand';
 import type { Project, FileEntity } from '@netior/shared/types';
 import { projectService, moduleService, fileService } from '../services';
 import { unwrapIpc } from '../services/ipc';
@@ -83,7 +83,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
         await openProject(project);
       }
     } catch {
-      // ignore — config may not exist yet
+      // ignore ??config may not exist yet
     }
   },
 
@@ -159,7 +159,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       await fileService.delete(fileId);
     } else if (action === 'reconnect' && newPath) {
       // Update the file entity path (need to figure out relative path)
-      // For now just update metadata — actual path update would need a new API
+      // For now just update metadata ??actual path update would need a new API
       // TODO: implement path update in FileRepository
     }
     // Remove from missing list

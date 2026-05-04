@@ -1,4 +1,4 @@
-import type {
+﻿import type {
   AgentDefinition,
   NarreMention,
   NarreSession,
@@ -7,8 +7,22 @@ import type {
   SkillDefinition,
   SupervisorAgentSessionSnapshot,
   SupervisorEvent,
+  OrchestrationRun,
+  OrchestrationTask,
+  AgentAssignment,
+  AgentEvent,
+  AgentApprovalRequest,
 } from '@netior/shared/types';
 import { unwrapIpc } from './ipc';
+
+export interface OrchestrationSnapshot {
+  run: OrchestrationRun;
+  conversation: unknown | null;
+  tasks: OrchestrationTask[];
+  assignments: AgentAssignment[];
+  approvals: AgentApprovalRequest[];
+  events: AgentEvent[];
+}
 
 export async function listSessions(projectId: string): Promise<NarreSession[]> {
   return unwrapIpc(await window.electron.narre.listSessions(projectId));
@@ -34,8 +48,51 @@ export async function listSupervisorEvents(afterSeq?: number | null): Promise<Su
   return unwrapIpc(await window.electron.narre.listSupervisorEvents(afterSeq));
 }
 
-export async function createSession(projectId: string): Promise<NarreSession> {
-  return unwrapIpc(await window.electron.narre.createSession(projectId));
+export async function listSupervisorRuns(projectId?: string | null): Promise<OrchestrationRun[]> {
+  return unwrapIpc(await window.electron.narre.listSupervisorRuns(projectId));
+}
+
+export async function createSupervisorRun(data: {
+  projectId: string;
+  userRequest: string;
+  mode?: string;
+}): Promise<OrchestrationSnapshot> {
+  return unwrapIpc(await window.electron.narre.createSupervisorRun(data));
+}
+
+export async function getSupervisorRun(runId: string): Promise<OrchestrationSnapshot> {
+  return unwrapIpc(await window.electron.narre.getSupervisorRun(runId));
+}
+
+export async function planSupervisorRun(runId: string): Promise<OrchestrationSnapshot> {
+  return unwrapIpc(await window.electron.narre.planSupervisorRun(runId));
+}
+
+export async function runSupervisorRun(runId: string): Promise<OrchestrationSnapshot> {
+  return unwrapIpc(await window.electron.narre.runSupervisorRun(runId));
+}
+
+export async function cancelSupervisorRun(runId: string): Promise<OrchestrationSnapshot> {
+  return unwrapIpc(await window.electron.narre.cancelSupervisorRun(runId));
+}
+
+export async function listSupervisorApprovals(runId: string): Promise<AgentApprovalRequest[]> {
+  return unwrapIpc(await window.electron.narre.listSupervisorApprovals(runId));
+}
+
+export async function resolveSupervisorApproval(data: {
+  approvalId: string;
+  status: 'approved' | 'rejected' | 'cancelled';
+  response?: string | null;
+}): Promise<AgentApprovalRequest> {
+  return unwrapIpc(await window.electron.narre.resolveSupervisorApproval(data));
+}
+
+export async function createSession(projectId: string, options?: { agentKey?: string | null }): Promise<NarreSession> {
+  return unwrapIpc(await window.electron.narre.createSession({
+    projectId,
+    agentKey: options?.agentKey ?? null,
+  }));
 }
 
 export async function getSession(sessionId: string): Promise<NarreSessionDetail> {
@@ -101,6 +158,14 @@ export const narreService = {
   listSupervisorSkills,
   listSupervisorSessions,
   listSupervisorEvents,
+  listSupervisorRuns,
+  createSupervisorRun,
+  getSupervisorRun,
+  planSupervisorRun,
+  runSupervisorRun,
+  cancelSupervisorRun,
+  listSupervisorApprovals,
+  resolveSupervisorApproval,
   createSession,
   getSession,
   deleteSession,

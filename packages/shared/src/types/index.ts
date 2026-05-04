@@ -492,6 +492,7 @@ export interface ModelRecipe {
 export interface Model {
   id: string;
   project_id: string;
+  group_id: string | null;
   key: ModelRefKey;
   name: string;
   description: string | null;
@@ -512,6 +513,7 @@ export interface Model {
 
 export interface ModelCreate {
   project_id: string;
+  group_id?: string | null;
   key?: ModelRefKey;
   name: string;
   description?: string | null;
@@ -529,6 +531,7 @@ export interface ModelCreate {
 }
 
 export interface ModelUpdate {
+  group_id?: string | null;
   key?: ModelRefKey;
   name?: string;
   description?: string | null;
@@ -739,7 +742,8 @@ export type FieldType =
   | 'color'
   | 'rating'
   | 'tags'
-  | 'schema_ref';
+  | 'schema_ref'
+  | 'model_ref';
 
 export interface SchemaField {
   id: string;
@@ -766,6 +770,8 @@ export interface SchemaFieldCreate {
   required?: boolean;
   default_value?: string;
   ref_schema_id?: string;
+  meaning_slot?: MeaningSlotKey | null;
+  meaning_key?: FieldMeaningKey | null;
   meaning_bindings?: FieldMeaningBindingKey[];
   slot_binding_locked?: boolean;
   generated_by_model?: boolean;
@@ -779,6 +785,8 @@ export interface SchemaFieldUpdate {
   required?: boolean;
   default_value?: string | null;
   ref_schema_id?: string | null;
+  meaning_slot?: MeaningSlotKey | null;
+  meaning_key?: FieldMeaningKey | null;
   meaning_bindings?: FieldMeaningBindingKey[];
   slot_binding_locked?: boolean;
   generated_by_model?: boolean;
@@ -835,7 +843,7 @@ export type SchemaSlotUpdate = SchemaFieldUpdate;
 // Type Group
 // ============================================
 
-export type TypeGroupKind = 'schema';
+export type TypeGroupKind = 'schema' | 'model';
 
 export interface TypeGroup {
   id: string;
@@ -1523,6 +1531,217 @@ export interface SupervisorSessionReport {
 export type TerminalSessionState = 'created' | 'starting' | 'running' | 'exited';
 
 export type AgentProvider = 'claude' | 'codex' | 'narre';
+export type AgentRuntimeProvider = 'terminal' | 'claude' | 'codex' | 'openai' | 'narre';
+export type AgentReasoningEffort = 'low' | 'medium' | 'high' | 'xhigh';
+
+export interface AgentRuntimeProfile {
+  provider: AgentRuntimeProvider;
+  model?: string;
+  reasoningEffort?: AgentReasoningEffort;
+  temperature?: number;
+  contextBudget?: number;
+  extraInstruction?: string;
+  toolProfileIds?: string[];
+  metadata?: Record<string, string>;
+}
+
+export interface AgentRuntimeOverride {
+  model?: string;
+  reasoningEffort?: AgentReasoningEffort;
+  temperature?: number;
+  contextBudget?: number;
+  extraInstruction?: string;
+  metadata?: Record<string, string>;
+}
+
+export type ConversationMode = 'direct' | 'orchestration';
+
+export interface Conversation {
+  id: string;
+  projectId: string;
+  mode: ConversationMode;
+  title: string;
+  participantAgentKeys: string[];
+  activeRunId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  metadata?: Record<string, string>;
+}
+
+export type OrchestrationRunStatus = 'planning' | 'running' | 'blocked' | 'completed' | 'failed' | 'cancelled';
+export type OrchestrationTaskStatus = 'pending' | 'assigned' | 'running' | 'blocked' | 'completed' | 'failed' | 'cancelled';
+export type AgentAssignmentStatus = 'pending' | 'running' | 'blocked' | 'completed' | 'failed' | 'cancelled';
+export type AgentApprovalStatus = 'pending' | 'approved' | 'rejected' | 'cancelled';
+export type AgentEventType =
+  | 'user_message'
+  | 'task_created'
+  | 'task_assigned'
+  | 'approval_requested'
+  | 'approval_resolved'
+  | 'run_completed'
+  | 'task_completed'
+  | 'executor_registered'
+  | 'terminal_command'
+  | 'agent_message'
+  | 'error';
+
+export interface OrchestrationRun {
+  id: string;
+  conversationId: string | null;
+  projectId: string;
+  mode: ConversationMode;
+  userRequest: string;
+  status: OrchestrationRunStatus;
+  rootTaskId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  completedAt: string | null;
+  result: string | null;
+  metadata?: Record<string, string>;
+}
+
+export interface OrchestrationTask {
+  id: string;
+  runId: string;
+  parentTaskId: string | null;
+  dependsOnTaskIds: string[];
+  title: string;
+  input: string;
+  status: OrchestrationTaskStatus;
+  assignedAgentKey: string | null;
+  assignedSessionId: string | null;
+  runtimeOverride?: AgentRuntimeOverride;
+  result: string | null;
+  createdAt: string;
+  updatedAt: string;
+  completedAt: string | null;
+  metadata?: Record<string, string>;
+}
+
+export interface AgentAssignment {
+  id: string;
+  runId: string;
+  taskId: string;
+  agentKey: string;
+  sessionId: string | null;
+  status: AgentAssignmentStatus;
+  runtimeSnapshot: AgentRuntimeProfile | null;
+  createdAt: string;
+  updatedAt: string;
+  completedAt: string | null;
+  result: string | null;
+  metadata?: Record<string, string>;
+}
+
+export interface AgentApprovalRequest {
+  id: string;
+  runId: string;
+  taskId: string | null;
+  assignmentId: string | null;
+  agentKey: string | null;
+  sessionId: string | null;
+  status: AgentApprovalStatus;
+  card?: NarreCard;
+  prompt: string | null;
+  response: string | null;
+  createdAt: string;
+  updatedAt: string;
+  completedAt: string | null;
+  metadata?: Record<string, string>;
+}
+
+export interface AgentEvent {
+  seq: number;
+  id: string;
+  runId: string;
+  conversationId: string | null;
+  taskId: string | null;
+  assignmentId: string | null;
+  sessionId: string | null;
+  agentKey: string | null;
+  type: AgentEventType;
+  message: string | null;
+  payload?: Record<string, unknown>;
+  createdAt: string;
+}
+
+export interface CreateConversationInput {
+  projectId: string;
+  mode?: ConversationMode;
+  title?: string;
+  participantAgentKeys?: string[];
+  metadata?: Record<string, string>;
+}
+
+export interface CreateOrchestrationRunInput {
+  projectId: string;
+  conversationId?: string | null;
+  mode?: ConversationMode;
+  userRequest: string;
+  participantAgentKeys?: string[];
+  metadata?: Record<string, string>;
+}
+
+export interface CreateOrchestrationTaskInput {
+  runId: string;
+  parentTaskId?: string | null;
+  dependsOnTaskIds?: string[];
+  title: string;
+  input: string;
+  assignedAgentKey?: string | null;
+  runtimeOverride?: AgentRuntimeOverride;
+  metadata?: Record<string, string>;
+}
+
+export interface CreateAgentAssignmentInput {
+  runId: string;
+  taskId: string;
+  agentKey: string;
+  sessionId?: string | null;
+  runtimeSnapshot?: AgentRuntimeProfile | null;
+  metadata?: Record<string, string>;
+}
+
+export type AgentExecutorStatus = 'online' | 'busy' | 'offline';
+export type AgentExecutorCommandType =
+  | 'start_assignment'
+  | 'cancel_assignment'
+  | 'request_status'
+  | 'launch_agent'
+  | 'send_input'
+  | 'interrupt'
+  | 'attach_session';
+export type AgentExecutorCommandStatus = 'queued' | 'running' | 'completed' | 'failed' | 'cancelled';
+
+export interface AgentExecutorRegistration {
+  id: string;
+  projectId: string | null;
+  provider: AgentProvider | AgentRuntimeProvider;
+  surface: AgentSurfaceRef;
+  status: AgentExecutorStatus;
+  capabilities: string[];
+  currentAssignmentId: string | null;
+  registeredAt: string;
+  lastHeartbeatAt: string;
+  metadata?: Record<string, string>;
+}
+
+export interface AgentExecutorCommand {
+  id: string;
+  executorId: string;
+  runId: string | null;
+  taskId: string | null;
+  assignmentId: string | null;
+  agentKey: string | null;
+  type: AgentExecutorCommandType;
+  status: AgentExecutorCommandStatus;
+  payload: Record<string, unknown>;
+  result: Record<string, unknown> | null;
+  error: string | null;
+  createdAt: string;
+  updatedAt: string;
+  completedAt: string | null;
+}
 
 export interface TerminalAgentLaunchConfig {
   provider: Exclude<AgentProvider, 'narre'>;

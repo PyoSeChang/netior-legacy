@@ -1,0 +1,3 @@
+turns:
+  - role: user
+    content: "Run a deterministic orchestration control-plane contract: create a supervisor run, assign Codex CLI as a terminal agent, queue a launch command through a desktop executor, complete it, and verify that run/task/assignment/event state survives a narre-server restart."

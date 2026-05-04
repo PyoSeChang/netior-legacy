@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { Tooltip } from './Tooltip';
 
 export interface IconButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {

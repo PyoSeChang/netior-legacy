@@ -1,4 +1,4 @@
-import React, { useCallback, useRef } from 'react';
+﻿import React, { useCallback, useRef } from 'react';
 import type { SplitNode, SplitLeaf } from '@netior/shared/types';
 import { ResizeHandle } from '../ui/ResizeHandle';
 

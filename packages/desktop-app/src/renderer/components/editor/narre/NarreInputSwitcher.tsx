@@ -23,6 +23,8 @@ interface NarreInputSwitcherProps {
   projectId: string;
   disabled?: boolean;
   sendDisabled?: boolean;
+  isStreaming?: boolean;
+  stopDisabled?: boolean;
   placeholder?: string;
   draftHtml?: string;
   availableSkills?: readonly SkillDefinition[];
@@ -30,6 +32,7 @@ interface NarreInputSwitcherProps {
   onDraftChange?: (draftHtml: string) => void;
   onPendingSkillInvocationChange?: (pendingSkillInvocation: NarrePendingSkillInvocationState | null) => void;
   onSend: (payload: NarreComposerSubmit) => Promise<boolean | void> | boolean | void;
+  onStop?: () => Promise<void> | void;
   activePrompt: NarreInteractivePrompt | null;
   onPromptRespond: (toolCallId: string, response: unknown) => Promise<void> | void;
 }
@@ -58,6 +61,8 @@ export function NarreInputSwitcher({
   projectId,
   disabled = false,
   sendDisabled = false,
+  isStreaming = false,
+  stopDisabled = false,
   placeholder,
   draftHtml = '',
   availableSkills,
@@ -65,6 +70,7 @@ export function NarreInputSwitcher({
   onDraftChange,
   onPendingSkillInvocationChange,
   onSend,
+  onStop,
   activePrompt,
   onPromptRespond,
 }: NarreInputSwitcherProps): JSX.Element {
@@ -118,12 +124,15 @@ export function NarreInputSwitcher({
         onSend={onSend}
         disabled={disabled}
         sendDisabled={sendDisabled}
+        isStreaming={isStreaming}
+        stopDisabled={stopDisabled}
         placeholder={placeholder}
         draftHtml={draftHtml}
         availableSkills={availableSkills}
         pendingSkillInvocation={pendingSkillInvocation}
         onDraftChange={onDraftChange}
         onPendingSkillInvocationChange={onPendingSkillInvocationChange}
+        onStop={onStop}
       />
     </div>
   );

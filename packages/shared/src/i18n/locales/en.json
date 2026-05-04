@@ -87,8 +87,12 @@
     "scales": "Scales",
     "scaleFactor": "Factor",
     "scaleSubdivisions": "Sub",
-    "deleteSubtreeTitle": "Delete Node",
-    "deleteSubtreeMessage": "Delete {count} nodes including the selected subtree.",
+    "excludeFromNetwork": "Exclude from Network",
+    "deleteObjectPermanently": "Delete Permanently",
+    "deleteSubtreeTitle": "Exclude from Network",
+    "deleteSubtreeMessage": "Exclude {count} nodes including the selected subtree from this network. The source object is not deleted.",
+    "deleteObjectTitle": "Delete Object Permanently",
+    "deleteObjectMessage": "Delete {name} from the project permanently. It will also disappear from every network where it is placed.",
     "hierarchyLinkChildToParent": "Hierarchy link: start from the child, then click the parent.",
     "hierarchyDropToParent": "Drop on the highlighted node to make it the parent.",
     "hierarchyDropRootChild": "Drop on empty hierarchy space to attach as a root child.",
@@ -180,14 +184,18 @@
       "noFieldsYet": "No additional fields yet.",
       "activeMeanings": "meanings",
       "selectedModels": "models",
-      "modelPresets": "Models",
-      "meaningsTitle": "Meanings",
-      "addMeaning": "Add Meaning",
-      "requiredRole": "Required",
-      "optionalRole": "Optional",
-      "noFieldBound": "No field bound",
-      "createField": "Create Field",
-      "addField": "Add Field",
+        "modelPresets": "Models",
+        "noModelsInCategory": "This category does not have any models yet.",
+        "meaningsTitle": "Meanings",
+        "noMeaningsInCategory": "This category does not have any meanings yet.",
+        "addMeaning": "Add Meaning",
+        "deleteMeaning": "Delete Meaning",
+          "requiredRole": "Required",
+        "optionalRole": "Optional",
+        "noFieldBound": "No field bound",
+        "selectField": "Select field",
+        "createField": "Create Field",
+        "addField": "Add Field",
       "fromModel": "Model",
       "boundField": "Bound Field",
       "sourceManual": "Manual",
@@ -310,6 +318,18 @@
       "approvable": {
         "label": "Approvable",
         "description": "Adds approval state and approval metadata."
+      },
+      "contains_relation": {
+        "label": "Contains",
+        "description": "Represents containment, composition, or membership between two nodes."
+      },
+      "entry_portal_relation": {
+        "label": "Entry Portal",
+        "description": "Marks the node that should open as the entry point for a contained structure."
+      },
+      "parent_relation": {
+        "label": "Parent Relation",
+        "description": "Represents a hierarchy parent-child relation between nodes."
       }
     },
     "meaning": {
@@ -612,6 +632,14 @@
     "descriptionPlaceholder": "Describe what meanings this model provides...",
     "category": "Category",
     "categoryPlaceholder": "e.g. compatibility, trust, evidence",
+    "newCategory": "New Category",
+    "addCategory": "Add Category",
+    "targetKind": {
+      "label": "Target",
+      "object": "Object",
+      "edge": "Relation",
+      "both": "Object and Relation"
+    },
     "meanings": "Meanings",
     "slotCoverage": "Slot Coverage",
     "roles": "Meanings",
@@ -640,6 +668,7 @@
     "fieldName": "Field Name",
     "fieldKey": "Field Key",
     "fieldTypes": "Allowed Types",
+    "required": "Required",
     "fieldDescriptionPlaceholder": "Field description",
     "fieldOptionsPlaceholder": "Choices or options",
     "rules": "Rules",
@@ -652,11 +681,27 @@
     "noConsumers": "No schema uses this model yet.",
     "consumerSchemaLink": "Selected by schema",
     "consumerMeaningCount": "{count} meanings",
-    "consumerFieldCount": "{count} fields",
-    "builtIn": "Built-in",
-    "custom": "Custom",
-    "notFound": "Model not found"
-  },
+      "consumerFieldCount": "{count} fields",
+      "builtIn": "Built-in",
+      "custom": "Custom",
+      "notFound": "Model not found",
+      "visualDefaults": "Visual Defaults",
+      "icon": "Icon",
+      "color": "Color",
+      "nodeShape": "Node Shape",
+      "nodeShapePlaceholder": "Select node shape",
+      "rectangle": "Rectangle",
+      "rounded": "Rounded Rectangle",
+      "circle": "Circle",
+      "diamond": "Diamond",
+      "hexagon": "Hexagon",
+      "parallelogram": "Parallelogram",
+      "cylinder": "Cylinder",
+      "stadium": "Stadium",
+      "fileTemplate": "File Template",
+      "fileTemplatePlaceholder": "Default content to use when creating a file from this model.",
+      "propertyModel": "Property Model"
+    },
   "typeGroup": {
     "create": "Create Group",
     "createSubgroup": "Create Subgroup",
@@ -1139,6 +1184,7 @@
     "relation": "Pick relation",
     "file": "Pick file",
     "schema_ref": "Import schema properties",
+    "model_ref": "Model reference",
     "url": "URL",
     "color": "Color",
     "rating": "Rating",
@@ -1394,12 +1440,126 @@
     "title": "Narre",
     "newChat": "New Chat",
     "recentChats": "Recent Chats",
+    "sessions": "Sessions",
+    "homeSubtitle": "Continue a conversation or start work with an agent team.",
+    "agents": "Agents",
+    "agentList": "Agent List",
+    "agentTeam": "Agent Team",
+      "chooseAgent": "Choose an agent",
+      "chooseAgentHint": "A 1:1 conversation starts from the selected agent's role and runtime settings.",
+      "noAgents": "No agents are available",
+      "agentScopes": {
+        "system": "System",
+        "project": "Project",
+        "global": "Global",
+        "systemAgent": "System agent",
+        "projectAgent": "Project agent",
+        "globalAgent": "Global agent"
+      },
+      "systemAgents": {
+        "network-builder": {
+          "name": "Network Builder",
+          "description": "Builds and expands Netior concept networks."
+        },
+        "network-finder": {
+          "name": "Network Finder",
+          "description": "Finds relevant networks, concepts, and paths."
+        },
+        "agent-operator": {
+          "name": "Agent Operator",
+          "description": "Coordinates agent sessions and orchestration flow."
+        }
+      },
+      "agentTeamUi": {
+      "home": "Narre Home",
+      "experiment": "Experiment",
+      "agentList": "Agent list",
+      "agentListHint": "Current session agents, assigned tasks, and status.",
+      "assignedTask": "Assigned task",
+      "screenNotes": "Screen notes",
+      "hideAgentList": "Hide agent list",
+      "showAgentList": "Show agent list",
+      "inputPlaceholder": "Message the team...",
+      "teamComposerHint": "Mentions are available when the team session allows them.",
+      "send": "Send",
+      "approve": "Approve",
+      "reject": "Reject",
+      "askToRevise": "Ask to revise",
+      "state": {
+        "draft": "Draft",
+        "planning": "Planning",
+        "working": "Working",
+        "blocked": "Needs approval",
+        "completed": "Done"
+      },
+      "participantStatus": {
+        "ready": "Ready",
+        "working": "Working",
+        "blocked": "Blocked",
+        "done": "Done"
+      },
+      "roles": {
+        "coordinate": "Coordinates the team",
+        "fileEdits": "Prepares file edits",
+        "verify": "Runs checks",
+        "summarize": "Summarizes the result",
+        "implementation": "Implementation",
+        "uxFlow": "Shapes the screen flow",
+        "components": "Edits components"
+      },
+      "tasks": {
+        "operator": "Keep the team conversation coherent and decide who should speak or act next.",
+        "ux": "Review the group-chat flow and clarify what belongs in the session view.",
+        "code": "Prepare the component changes after the interaction model is confirmed."
+      },
+      "scenarios": {
+        "uxRedesign": {
+          "title": "Narre UX redesign",
+          "subtitle": "The operator explains the direction without showing a task graph.",
+          "note1": "The agent list lives only in the toggle sidebar.",
+          "note2": "Plans are written as operator messages.",
+          "note3": "Raw tasks, assignments, and events are hidden by default.",
+          "m1": { "speaker": "You", "time": "10:12", "body": "Rework Agent Team as a group chat. Do not show plans, task boards, or dependency graphs in the default view." },
+          "m2": { "speaker": "Operator", "time": "10:12", "body": "Understood. I will keep the main surface conversational. Internal tasks stay hidden, and agents will report progress as messages." },
+          "m3": { "speaker": "UX Planner", "time": "10:13", "body": "The first problem is orientation. A user should see a team conversation, not an orchestration dashboard." },
+          "m4": { "speaker": "System", "time": "10:13", "body": "Code Agent is waiting for the UI direction." }
+        },
+        "approval": {
+          "title": "Approval needed",
+          "subtitle": "A confirmation card appears inline and pauses the conversation.",
+          "note1": "Approval is a chat item, not a modal-first flow.",
+          "note2": "The sidebar shows which agent is blocked.",
+          "note3": "The next agent message waits until the approval is resolved.",
+          "m1": { "speaker": "You", "time": "11:04", "body": "Create a temporary Agent Team mock page so I can review several UX scenarios." },
+          "m2": { "speaker": "Operator", "time": "11:05", "body": "I will keep the real Agent Team entry intact and put the mock page behind a separate lab path." },
+          "m3": { "speaker": "Code Agent", "time": "11:08", "body": "The lab path needs its own navigation back to Narre Home and a toggle sidebar for the agent list." },
+          "m4": { "speaker": "Approval", "time": "11:08", "meta": "Agent Team", "body": "Review this directly in the Agent Team screen?" }
+        },
+        "completed": {
+          "title": "Completed work",
+          "subtitle": "Agents speak normally, then the operator posts a final summary.",
+          "note1": "Completion is a final operator message.",
+          "note2": "Verification is an agent message.",
+          "note3": "Debug details are not part of the default view.",
+          "m1": { "speaker": "You", "time": "14:20", "body": "Make the Agent Team experiment reviewable with mock data." },
+          "m2": { "speaker": "Code Agent", "time": "14:28", "body": "I added a group-chat mock surface with scenario switching and a toggle sidebar for the agent list." },
+          "m3": { "speaker": "Test Agent", "time": "14:31", "body": "The modified files parse correctly. Full typecheck is blocked by unrelated syntax errors in the current working tree." },
+          "m4": { "speaker": "Operator", "time": "14:32", "body": "Done. The default view stays conversational, agent list details live in the sidebar, and no task graph is shown." }
+        }
+      }
+    },
     "noSessions": "No conversations yet",
     "startChat": "Start your first conversation",
     "messageCount": "{count} messages",
     "backToList": "Back to List",
     "sendMessage": "Send Message",
+    "stopMessage": "Stop response",
     "inputPlaceholder": "Type a message...",
+    "composer": {
+      "moreOptions": "More options",
+      "addContext": "Add context",
+      "mentionAgent": "Mention agent"
+    },
     "toolExecution": "Tool Execution",
     "toolComplete": "Tool execution complete",
     "toolFailed": "Tool execution failed",
@@ -1427,6 +1587,7 @@
     "mentionSchema": "Schema",
     "mentionRelationType": "Relation Type",
     "mentionFile": "File",
+    "mentionAgent": "Agent",
     "mentionSearch": "Search...",
     "command": {
       "bootstrap": "Bootstrap project workspace",

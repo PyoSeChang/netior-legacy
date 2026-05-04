@@ -1,4 +1,4 @@
-const reloadRegistry = new Map<string, () => void>();
+﻿const reloadRegistry = new Map<string, () => void>();
 
 export function registerFileEditorReloadHandler(tabId: string, handler: () => void): void {
   reloadRegistry.set(tabId, handler);

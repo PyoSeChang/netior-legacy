@@ -341,10 +341,10 @@ export function NarreMessageBubble({
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
       <div
         className={[
-          'max-w-[85%] rounded-xl px-3 py-2 text-sm',
+          'max-w-[85%] rounded-lg border px-3 py-2 text-sm shadow-sm',
           isUser
-            ? 'bg-[var(--accent)]/10 text-default'
-            : 'bg-surface-card text-default',
+            ? 'border-accent bg-accent-muted text-default'
+            : 'border-default bg-surface-panel text-default',
         ].join(' ')}
       >
         {blocks.length === 0 && isStreaming && (

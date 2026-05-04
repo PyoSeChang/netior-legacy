@@ -14,14 +14,12 @@ export function useNetiorSync(projectId: string | null): void {
     const cleanup = window.electron.mocSync?.onChangeEvent((event: unknown) => {
       const change = event as NetiorChangeEvent;
       switch (change.type) {
-        case 'schemas':
+        case 'models':
           useSchemaStore.getState().loadByProject(projectId);
+          useModelStore.getState().loadByProject(projectId);
           break;
         case 'concepts':
           useConceptStore.getState().loadByProject(projectId);
-          break;
-        case 'models':
-          useModelStore.getState().loadByProject(projectId);
           break;
         case 'typeGroups':
           useTypeGroupStore.getState().loadByProject(projectId);

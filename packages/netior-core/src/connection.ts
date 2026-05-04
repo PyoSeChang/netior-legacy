@@ -37,6 +37,9 @@ import { migrate033 } from './migrations/033-ontology-network-name-cleanup';
 import { migrate034 } from './migrations/034-model-storage-canonicalization';
 import { migrate035 } from './migrations/035-node-config-meaning-binding-canonicalization';
 import { migrate036 } from './migrations/036-edge-models-and-relation-type-retirement';
+import { migrate038 } from './migrations/038-schema-model-resplit';
+import { migrate039 } from './migrations/039-field-meaning-bindings-schema-fk';
+import { migrate040 } from './migrations/040-model-type-groups';
 import {
   ensureProjectNodeInUniverseForDb,
   ensureProjectOntologyNetworkForDb,
@@ -87,6 +90,9 @@ const migrations: Migration[] = [
   { version: 34, migrate: migrate034 },
   { version: 35, migrate: migrate035 },
   { version: 36, migrate: migrate036 },
+  { version: 38, migrate: migrate038 },
+  { version: 39, migrate: migrate039 },
+  { version: 40, migrate: migrate040 },
 ];
 
 export function hasColumn(db: Database.Database, table: string, column: string): boolean {

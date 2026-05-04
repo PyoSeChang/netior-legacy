@@ -1,4 +1,4 @@
-import express from 'express';
+﻿import express from 'express';
 import cors from 'cors';
 import { fileURLToPath } from 'url';
 import { basename, dirname, join } from 'path';
@@ -6,6 +6,16 @@ import { existsSync } from 'fs';
 import { createRequire } from 'module';
 import { randomUUID } from 'crypto';
 import type {
+  AgentRuntimeProfile,
+  AgentExecutorCommandStatus,
+  AgentExecutorStatus,
+  CreateAgentAssignmentInput,
+  CreateConversationInput,
+  CreateOrchestrationRunInput,
+  CreateOrchestrationTaskInput,
+  AgentEventType,
+  OrchestrationRunStatus,
+  OrchestrationTaskStatus,
   NarreBehaviorSettings,
   NarreCodexSettings,
   NarreMention,
@@ -22,6 +32,10 @@ import { initNarreLogging } from './logging.js';
 import { buildProjectPromptMetadata } from './project-prompt-metadata.js';
 import { getProjectById } from './netior-service-client.js';
 import { SupervisorRegistry } from './supervisor/supervisor-registry.js';
+import { OrchestrationRegistry } from './supervisor/orchestration-registry.js';
+import { AgentRuntimeDispatcher } from './supervisor/agent-runtime-dispatcher.js';
+import { AgentOperator } from './supervisor/agent-operator.js';
+import { ExecutorRegistry } from './supervisor/executor-registry.js';
 
 const currentFilePath = typeof __filename === 'string'
   ? __filename
@@ -75,10 +89,19 @@ const supervisor = new SupervisorRegistry({
   globalUserAgentId: NARRE_GLOBAL_USER_AGENT_ID,
   projectUserAgentId: NARRE_PROJECT_USER_AGENT_ID,
 });
+const orchestration = new OrchestrationRegistry({
+  storagePath: join(MOC_DATA_DIR, 'narre', 'supervisor', 'orchestration.json'),
+});
+const executors = new ExecutorRegistry({
+  storagePath: join(MOC_DATA_DIR, 'narre', 'supervisor', 'executors.json'),
+});
 const behaviorSettings = parseBehaviorSettings();
 const codexSettings = parseCodexSettings();
+const providerAdapterCache = new Map<string, Promise<NarreProviderAdapter>>();
 let provider!: NarreProviderAdapter;
 let runtime!: NarreRuntime;
+let dispatcher!: AgentRuntimeDispatcher;
+let agentOperator!: AgentOperator;
 const app = express();
 
 app.use(cors());
@@ -153,14 +176,370 @@ app.post('/supervisor/sessions/report', (req, res) => {
   res.json(supervisor.reportSession(report));
 });
 
+app.get('/supervisor/conversations', (req, res) => {
+  const projectId = typeof req.query.projectId === 'string' ? req.query.projectId : null;
+  res.json(orchestration.listConversations(projectId));
+});
+
+app.post('/supervisor/conversations', (req, res) => {
+  const input = req.body as Partial<CreateConversationInput>;
+  if (!isCreateConversationInput(input)) {
+    res.status(400).json({ error: 'invalid conversation input' });
+    return;
+  }
+
+  try {
+    res.json(orchestration.createConversation(input));
+  } catch (error) {
+    res.status(400).json({ error: (error as Error).message });
+  }
+});
+
+app.get('/supervisor/runs', (req, res) => {
+  const projectId = typeof req.query.projectId === 'string' ? req.query.projectId : null;
+  res.json(orchestration.listRuns(projectId));
+});
+
+app.post('/supervisor/runs', (req, res) => {
+  const input = req.body as Partial<CreateOrchestrationRunInput>;
+  if (!isCreateRunInput(input)) {
+    res.status(400).json({ error: 'invalid orchestration run input' });
+    return;
+  }
+
+  try {
+    res.json(orchestration.createRun(input));
+  } catch (error) {
+    res.status(400).json({ error: (error as Error).message });
+  }
+});
+
+app.post('/supervisor/runs/:id/plan', async (req, res) => {
+  try {
+    res.json(await agentOperator.planRun(req.params.id));
+  } catch (error) {
+    res.status(400).json({ error: (error as Error).message });
+  }
+});
+
+app.post('/supervisor/runs/:id/run', async (req, res) => {
+  try {
+    res.json(await agentOperator.runPlannedRun(req.params.id));
+  } catch (error) {
+    res.status(400).json({ error: (error as Error).message });
+  }
+});
+
+app.post('/supervisor/runs/:id/cancel', (req, res) => {
+  try {
+    res.json(orchestration.cancelRun(req.params.id, 'Run cancelled by user'));
+  } catch (error) {
+    res.status(400).json({ error: (error as Error).message });
+  }
+});
+
+app.get('/supervisor/runs/:id', (req, res) => {
+  const snapshot = orchestration.getRunSnapshot(req.params.id);
+  if (!snapshot) {
+    res.status(404).json({ error: 'Run not found' });
+    return;
+  }
+  res.json(snapshot);
+});
+
+app.get('/supervisor/runs/:id/events', (req, res) => {
+  const afterSeq = typeof req.query.afterSeq === 'string'
+    ? Number.parseInt(req.query.afterSeq, 10)
+    : null;
+  res.json(orchestration.listEvents(req.params.id, Number.isFinite(afterSeq) ? afterSeq : null));
+});
+
+app.post('/supervisor/tasks', (req, res) => {
+  const input = req.body as Partial<CreateOrchestrationTaskInput>;
+  if (!isCreateTaskInput(input)) {
+    res.status(400).json({ error: 'invalid orchestration task input' });
+    return;
+  }
+
+  try {
+    res.json(orchestration.createTask(input));
+  } catch (error) {
+    res.status(400).json({ error: (error as Error).message });
+  }
+});
+
+app.post('/supervisor/tasks/:id/status', (req, res) => {
+  const { status, result } = req.body as { status?: unknown; result?: unknown };
+  if (!isTaskStatus(status)) {
+    res.status(400).json({ error: 'invalid task status' });
+    return;
+  }
+
+  try {
+    res.json(orchestration.updateTaskStatus(
+      req.params.id,
+      status,
+      typeof result === 'string' ? result : null,
+    ));
+  } catch (error) {
+    res.status(400).json({ error: (error as Error).message });
+  }
+});
+
+app.post('/supervisor/assignments', (req, res) => {
+  const input = req.body as Partial<CreateAgentAssignmentInput>;
+  if (!isCreateAssignmentInput(input)) {
+    res.status(400).json({ error: 'invalid agent assignment input' });
+    return;
+  }
+
+  try {
+    res.json(orchestration.assignTask(input));
+  } catch (error) {
+    res.status(400).json({ error: (error as Error).message });
+  }
+});
+
+app.post('/supervisor/assignments/:id/run', async (req, res) => {
+  try {
+    res.json(await dispatcher.runAssignment(req.params.id));
+  } catch (error) {
+    res.status(400).json({ error: (error as Error).message });
+  }
+});
+
+app.get('/supervisor/runs/:id/approvals', (req, res) => {
+  res.json(orchestration.listApprovals(req.params.id));
+});
+
+app.post('/supervisor/approvals/:id/resolve', (req, res) => {
+  const { status, response } = req.body as { status?: unknown; response?: unknown };
+  if (status !== 'approved' && status !== 'rejected' && status !== 'cancelled') {
+    res.status(400).json({ error: 'invalid approval status' });
+    return;
+  }
+
+  try {
+    res.json(orchestration.resolveApproval({
+      approvalId: req.params.id,
+      status,
+      response: typeof response === 'string' ? response : null,
+    }));
+  } catch (error) {
+    res.status(400).json({ error: (error as Error).message });
+  }
+});
+
+app.get('/supervisor/executors', (req, res) => {
+  const projectId = typeof req.query.projectId === 'string' ? req.query.projectId : null;
+  res.json(executors.list(projectId));
+});
+
+app.post('/supervisor/executors/register', (req, res) => {
+  const body = req.body as {
+    id?: unknown;
+    projectId?: unknown;
+    provider?: unknown;
+    surface?: unknown;
+    capabilities?: unknown;
+    metadata?: unknown;
+  };
+  if (
+    typeof body.provider !== 'string'
+    || !isAgentSurfaceRef(body.surface)
+  ) {
+    res.status(400).json({ error: 'invalid executor registration input' });
+    return;
+  }
+
+  const executor = executors.register({
+    id: typeof body.id === 'string' ? body.id : undefined,
+    projectId: typeof body.projectId === 'string' ? body.projectId : null,
+    provider: body.provider as never,
+    surface: body.surface,
+    capabilities: Array.isArray(body.capabilities)
+      ? body.capabilities.filter((value): value is string => typeof value === 'string')
+      : [],
+    metadata: isStringRecord(body.metadata) ? body.metadata : undefined,
+  });
+  if (typeof req.query.runId === 'string') {
+    orchestration.recordEvent({
+      runId: req.query.runId,
+      type: 'executor_registered',
+      message: `Executor ${executor.id} registered`,
+      payload: { executor },
+    });
+  }
+  res.json(executor);
+});
+
+app.post('/supervisor/executors/:id/heartbeat', (req, res) => {
+  const body = req.body as {
+    status?: unknown;
+    currentAssignmentId?: unknown;
+    metadata?: unknown;
+  };
+  if (body.status !== undefined && !isExecutorStatus(body.status)) {
+    res.status(400).json({ error: 'invalid executor status' });
+    return;
+  }
+
+  try {
+    res.json(executors.heartbeat(req.params.id, {
+      status: body.status,
+      currentAssignmentId: typeof body.currentAssignmentId === 'string' ? body.currentAssignmentId : null,
+      metadata: isStringRecord(body.metadata) ? body.metadata : undefined,
+    }));
+  } catch (error) {
+    res.status(400).json({ error: (error as Error).message });
+  }
+});
+
+app.post('/supervisor/executors/:id/commands', (req, res) => {
+  const body = req.body as {
+    type?: unknown;
+    payload?: unknown;
+    runId?: unknown;
+    taskId?: unknown;
+    assignmentId?: unknown;
+    agentKey?: unknown;
+  };
+  if (!isExecutorCommandType(body.type)) {
+    res.status(400).json({ error: 'invalid executor command type' });
+    return;
+  }
+
+  try {
+    const command = executors.queueCommand({
+      executorId: req.params.id,
+      type: body.type,
+      payload: isPlainObject(body.payload) ? body.payload : {},
+      runId: typeof body.runId === 'string' ? body.runId : null,
+      taskId: typeof body.taskId === 'string' ? body.taskId : null,
+      assignmentId: typeof body.assignmentId === 'string' ? body.assignmentId : null,
+      agentKey: typeof body.agentKey === 'string' ? body.agentKey : null,
+    });
+    if (command.runId) {
+      orchestration.recordEvent({
+        runId: command.runId,
+        taskId: command.taskId ?? null,
+        assignmentId: command.assignmentId ?? null,
+        agentKey: command.agentKey ?? null,
+        sessionId: `executor:${req.params.id}`,
+        type: 'terminal_command',
+        message: `Queued ${command.type} on ${req.params.id}`,
+        payload: { command },
+      });
+    }
+    res.json(command);
+  } catch (error) {
+    res.status(400).json({ error: (error as Error).message });
+  }
+});
+
+app.get('/supervisor/executors/:id/commands', (req, res) => {
+  try {
+    res.json(executors.claimCommands(req.params.id));
+  } catch (error) {
+    res.status(400).json({ error: (error as Error).message });
+  }
+});
+
+app.post('/supervisor/executors/:executorId/commands/:commandId/result', (req, res) => {
+  const body = req.body as { status?: unknown; result?: unknown; error?: unknown };
+  if (!isTerminalCommandResultStatus(body.status)) {
+    res.status(400).json({ error: 'invalid command status' });
+    return;
+  }
+
+  try {
+    const command = executors.completeCommand(req.params.commandId, {
+      status: body.status,
+      result: isPlainObject(body.result) ? body.result : null,
+      error: typeof body.error === 'string' ? body.error : null,
+    });
+    if (command.assignmentId) {
+      orchestration.updateAssignment({
+        assignmentId: command.assignmentId,
+        status: command.status === 'completed' ? 'completed' : command.status === 'cancelled' ? 'cancelled' : 'failed',
+        result: typeof body.error === 'string' ? body.error : JSON.stringify(command.result ?? {}),
+      });
+    }
+    if (command.runId) {
+      orchestration.recordEvent({
+        runId: command.runId,
+        taskId: command.taskId ?? null,
+        assignmentId: command.assignmentId,
+        agentKey: command.agentKey ?? null,
+        sessionId: `executor:${req.params.executorId}`,
+        type: command.status === 'completed' ? 'agent_message' : 'error',
+        message: command.status === 'completed' ? 'Terminal command completed' : command.error,
+        payload: { command },
+      });
+    }
+    res.json(command);
+  } catch (error) {
+    res.status(400).json({ error: (error as Error).message });
+  }
+});
+
+app.post('/supervisor/runs/:id/events', (req, res) => {
+  const body = req.body as {
+    type?: unknown;
+    message?: unknown;
+    taskId?: unknown;
+    assignmentId?: unknown;
+    sessionId?: unknown;
+    agentKey?: unknown;
+    payload?: unknown;
+  };
+  if (!isAgentEventType(body.type)) {
+    res.status(400).json({ error: 'invalid agent event type' });
+    return;
+  }
+
+  try {
+    res.json(orchestration.recordEvent({
+      runId: req.params.id,
+      type: body.type,
+      message: typeof body.message === 'string' ? body.message : null,
+      taskId: typeof body.taskId === 'string' ? body.taskId : null,
+      assignmentId: typeof body.assignmentId === 'string' ? body.assignmentId : null,
+      sessionId: typeof body.sessionId === 'string' ? body.sessionId : null,
+      agentKey: typeof body.agentKey === 'string' ? body.agentKey : null,
+      payload: isPlainObject(body.payload) ? body.payload as Record<string, unknown> : undefined,
+    }));
+  } catch (error) {
+    res.status(400).json({ error: (error as Error).message });
+  }
+});
+
+app.post('/supervisor/runs/:id/status', (req, res) => {
+  const { status, result } = req.body as { status?: unknown; result?: unknown };
+  if (!isRunStatus(status)) {
+    res.status(400).json({ error: 'invalid run status' });
+    return;
+  }
+
+  try {
+    res.json(orchestration.updateRunStatus(
+      req.params.id,
+      status,
+      typeof result === 'string' ? result : null,
+    ));
+  } catch (error) {
+    res.status(400).json({ error: (error as Error).message });
+  }
+});
+
 app.post('/sessions', async (req, res) => {
-  const { projectId } = req.body as { projectId?: string };
+  const { projectId, agentKey } = req.body as { projectId?: string; agentKey?: unknown };
   if (!projectId) {
     res.status(400).json({ error: 'projectId required' });
     return;
   }
   try {
-    res.json(await sessionStore.createSession(projectId));
+    res.json(await sessionStore.createSession(projectId, undefined, typeof agentKey === 'string' ? agentKey : null));
   } catch (error) {
     res.status(500).json({ error: (error as Error).message });
   }
@@ -334,6 +713,13 @@ app.post('/chat', async (req, res) => {
 async function initializeRuntime(): Promise<{ provider: NarreProviderAdapter; runtime: NarreRuntime }> {
   const provider = await createProviderAdapter(process.env.NARRE_PROVIDER ?? 'claude');
   const runtime = new NarreRuntime({
+    ...createRuntimeConfig(provider),
+  });
+  return { provider, runtime };
+}
+
+function createRuntimeConfig(provider: NarreProviderAdapter): ConstructorParameters<typeof NarreRuntime>[0] {
+  return {
     behaviorSettings,
     provider,
     resolveMcpServerPath,
@@ -344,8 +730,26 @@ async function initializeRuntime(): Promise<{ provider: NarreProviderAdapter; ru
     projectUserAgentId: NARRE_PROJECT_USER_AGENT_ID,
     supervisor,
     sessionStore,
-  });
-  return { provider, runtime };
+  };
+}
+
+async function createRuntimeForProfile(runtimeProfile: AgentRuntimeProfile): Promise<NarreRuntime> {
+  const provider = await getCachedProviderAdapter(runtimeProfile.provider, runtimeProfile.model);
+  return new NarreRuntime(createRuntimeConfig(provider));
+}
+
+function getProviderCacheKey(providerName: string, modelOverride?: string): string {
+  return `${providerName}:${modelOverride ?? ''}`;
+}
+
+async function getCachedProviderAdapter(providerName: string, modelOverride?: string): Promise<NarreProviderAdapter> {
+  const cacheKey = getProviderCacheKey(providerName, modelOverride);
+  let cached = providerAdapterCache.get(cacheKey);
+  if (!cached) {
+    cached = createProviderAdapter(providerName, modelOverride);
+    providerAdapterCache.set(cacheKey, cached);
+  }
+  return cached;
 }
 
 function inferSharedUserDataRoot(dataDir: string): string {
@@ -384,6 +788,122 @@ function isSupervisorSessionReport(value: unknown): value is SupervisorSessionRe
   }
 
   return true;
+}
+
+function isCreateConversationInput(value: unknown): value is CreateConversationInput {
+  if (!isPlainObject(value)) {
+    return false;
+  }
+  return typeof value.projectId === 'string' && value.projectId.length > 0;
+}
+
+function isCreateRunInput(value: unknown): value is CreateOrchestrationRunInput {
+  if (!isPlainObject(value)) {
+    return false;
+  }
+  return (
+    typeof value.projectId === 'string'
+    && value.projectId.length > 0
+    && typeof value.userRequest === 'string'
+    && value.userRequest.trim().length > 0
+  );
+}
+
+function isCreateTaskInput(value: unknown): value is CreateOrchestrationTaskInput {
+  if (!isPlainObject(value)) {
+    return false;
+  }
+  return (
+    typeof value.runId === 'string'
+    && value.runId.length > 0
+    && typeof value.title === 'string'
+    && value.title.trim().length > 0
+    && typeof value.input === 'string'
+  );
+}
+
+function isCreateAssignmentInput(value: unknown): value is CreateAgentAssignmentInput {
+  if (!isPlainObject(value)) {
+    return false;
+  }
+  return (
+    typeof value.runId === 'string'
+    && value.runId.length > 0
+    && typeof value.taskId === 'string'
+    && value.taskId.length > 0
+    && typeof value.agentKey === 'string'
+    && value.agentKey.length > 0
+  );
+}
+
+function isRunStatus(value: unknown): value is OrchestrationRunStatus {
+  return value === 'planning'
+    || value === 'running'
+    || value === 'blocked'
+    || value === 'completed'
+    || value === 'failed'
+    || value === 'cancelled';
+}
+
+function isTaskStatus(value: unknown): value is OrchestrationTaskStatus {
+  return value === 'pending'
+    || value === 'assigned'
+    || value === 'running'
+    || value === 'blocked'
+    || value === 'completed'
+    || value === 'failed'
+    || value === 'cancelled';
+}
+
+function isAgentEventType(value: unknown): value is AgentEventType {
+  return value === 'user_message'
+    || value === 'agent_message'
+    || value === 'task_created'
+    || value === 'task_assigned'
+    || value === 'task_started'
+    || value === 'task_completed'
+    || value === 'handoff'
+    || value === 'tool_call'
+    || value === 'executor_registered'
+    || value === 'executor_heartbeat'
+    || value === 'terminal_command'
+    || value === 'approval_requested'
+    || value === 'approval_resolved'
+    || value === 'error'
+    || value === 'run_completed';
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isStringRecord(value: unknown): value is Record<string, string> {
+  return isPlainObject(value)
+    && Object.values(value).every((entry) => typeof entry === 'string');
+}
+
+function isAgentSurfaceRef(value: unknown): value is { kind: 'terminal' | 'editor'; id: string } {
+  return isPlainObject(value)
+    && (value.kind === 'terminal' || value.kind === 'editor')
+    && typeof value.id === 'string'
+    && value.id.length > 0;
+}
+
+function isExecutorStatus(value: unknown): value is AgentExecutorStatus {
+  return value === 'online' || value === 'offline' || value === 'busy';
+}
+
+function isExecutorCommandType(value: unknown): value is 'launch_agent' | 'send_input' | 'interrupt' | 'attach_session' {
+  return value === 'launch_agent'
+    || value === 'send_input'
+    || value === 'interrupt'
+    || value === 'attach_session';
+}
+
+function isTerminalCommandResultStatus(
+  value: unknown,
+): value is Extract<AgentExecutorCommandStatus, 'completed' | 'failed' | 'cancelled'> {
+  return value === 'completed' || value === 'failed' || value === 'cancelled';
 }
 
 function resolveMcpServerPath(): string | null {
@@ -434,7 +954,7 @@ function toUnpackedAsarPath(resolvedPath: string): string | null {
   return resolvedPath.replace(marker, marker.replace('app.asar', 'app.asar.unpacked'));
 }
 
-async function createProviderAdapter(providerName: string): Promise<NarreProviderAdapter> {
+async function createProviderAdapter(providerName: string, modelOverride?: string): Promise<NarreProviderAdapter> {
   switch (providerName) {
     case 'claude':
       return new ClaudeProviderAdapter();
@@ -442,14 +962,14 @@ async function createProviderAdapter(providerName: string): Promise<NarreProvide
       const { OpenAIProviderAdapter } = await import('./providers/openai.js');
       return new OpenAIProviderAdapter({
         dataDir: MOC_DATA_DIR!,
-        model: process.env.NARRE_OPENAI_MODEL,
+        model: modelOverride ?? process.env.NARRE_OPENAI_MODEL,
       });
     }
     case 'codex': {
       const { CodexProviderAdapter } = await import('./providers/codex.js');
       return new CodexProviderAdapter({
         dataDir: MOC_DATA_DIR!,
-        model: process.env.NARRE_CODEX_MODEL,
+        model: modelOverride ?? process.env.NARRE_CODEX_MODEL,
         runtimeSettings: codexSettings,
       });
     }
@@ -525,6 +1045,18 @@ function getDefaultCodexSettings(): NarreCodexSettings {
 
 async function main(): Promise<void> {
   ({ provider, runtime } = await initializeRuntime());
+  dispatcher = new AgentRuntimeDispatcher({
+    supervisor,
+    orchestration,
+    executors,
+    createRuntime: createRuntimeForProfile,
+  });
+  agentOperator = new AgentOperator({
+    supervisor,
+    orchestration,
+    dispatcher,
+    createRuntime: createRuntimeForProfile,
+  });
 
   app.listen(PORT, () => {
     console.log(`Narre server listening on port ${PORT}`);

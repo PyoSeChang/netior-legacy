@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import type { EditorTab } from '@netior/shared/types';
 import { useEditorStore } from '../../stores/editor-store';
 import { useNetworkStore } from '../../stores/network-store';

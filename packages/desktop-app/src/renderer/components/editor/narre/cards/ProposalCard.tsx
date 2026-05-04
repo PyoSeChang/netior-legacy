@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+﻿import React, { useState, useCallback } from 'react';
 import { Plus, X } from 'lucide-react';
 import type { NarreProposalCard, ProposalRow, ProposalColumn } from '@netior/shared/types';
 import { useI18n } from '../../../../hooks/useI18n';

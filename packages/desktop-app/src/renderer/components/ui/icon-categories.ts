@@ -1,4 +1,4 @@
-// Auto-generated from lucide-icons/lucide categories.json
+﻿// Auto-generated from lucide-icons/lucide categories.json
 // Maps category names to PascalCase icon names matching lucide-react's icons object
 
 export const ICON_CATEGORIES: Record<string, string[]> = {

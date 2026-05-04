@@ -1,11 +1,11 @@
-import { spawn, type ChildProcess } from 'child_process';
+﻿import { spawn, type ChildProcess } from 'child_process';
 import { createServer } from 'net';
 import { getNarreToolMetadata } from '@netior/shared/constants';
 import type { NarreCodexSettings, NarreToolCall } from '@netior/shared/types';
 import { ApprovalStore } from '../../approval-store.js';
 import type { NarreMcpServerConfig } from '../../runtime/provider-adapter.js';
 import { CodexThreadStore } from '../codex-thread-store.js';
-import { askToolSchema, confirmToolSchema, draftToolSchema } from '../shared/ui-schemas.js';
+import { askToolModel, confirmToolModel, draftToolModel } from '../shared/ui-schemas.js';
 import type { OpenAIFamilyTransport, OpenAIFamilyTransportRunContext } from './transport.js';
 
 interface JsonRpcResponse {
@@ -41,7 +41,7 @@ interface McpElicitationRequest {
   serverName?: unknown;
   mode?: unknown;
   message?: unknown;
-  requestedSchema?: unknown;
+  requestedModel?: unknown;
   url?: unknown;
 }
 
@@ -641,7 +641,7 @@ class CodexAppServerClient {
     const serverName = typeof payload.serverName === 'string' ? payload.serverName : 'unknown';
     const mode = payload.mode === 'url' ? 'url' : 'form';
     const message = typeof payload.message === 'string' ? payload.message : 'MCP server requires user input.';
-    const requestedSchema = payload.requestedSchema;
+    const requestedModel = payload.requestedModel;
     const toolCallId = `mcp-elicitation:${request.id}`;
     const requestedToolName = extractRequestedMcpToolName(message);
 
@@ -686,7 +686,7 @@ class CodexAppServerClient {
           id: request.id,
           result: {
             action: 'accept',
-            content: buildDefaultElicitationContent(requestedSchema),
+            content: buildDefaultElicitationContent(requestedModel),
             _meta: null,
           },
         });
@@ -721,7 +721,7 @@ class CodexAppServerClient {
       id: request.id,
       result: {
         action: approved ? 'accept' : 'decline',
-        content: approved ? buildDefaultElicitationContent(requestedSchema) : null,
+        content: approved ? buildDefaultElicitationContent(requestedModel) : null,
         _meta: null,
       },
     });
@@ -730,15 +730,15 @@ class CodexAppServerClient {
   private async runDynamicTool(tool: string, rawArguments: unknown, toolCallId?: string): Promise<string> {
     switch (tool) {
       case 'propose': {
-        const parsed = draftToolSchema.parse(rawArguments);
+        const parsed = draftToolModel.parse(rawArguments);
         return this.context.uiBridge.requestDraft(this.context.onCard, parsed, toolCallId);
       }
       case 'ask': {
-        const parsed = askToolSchema.parse(rawArguments);
+        const parsed = askToolModel.parse(rawArguments);
         return this.context.uiBridge.requestInterview(this.context.onCard, parsed, toolCallId);
       }
       case 'confirm': {
-        const parsed = confirmToolSchema.parse(rawArguments);
+        const parsed = confirmToolModel.parse(rawArguments);
         return this.context.uiBridge.requestPermission(this.context.onCard, parsed, toolCallId);
       }
       default:
@@ -886,12 +886,12 @@ function extractRequestedMcpToolName(message: string): string | null {
   return match?.[1]?.trim() || null;
 }
 
-function buildDefaultElicitationContent(schema: unknown): unknown {
-  if (!schema || typeof schema !== 'object' || Array.isArray(schema)) {
+function buildDefaultElicitationContent(model: unknown): unknown {
+  if (!model || typeof model !== 'object' || Array.isArray(model)) {
     return {};
   }
 
-  const source = schema as Record<string, unknown>;
+  const source = model as Record<string, unknown>;
 
   if ('default' in source) {
     return source.default;
@@ -909,8 +909,8 @@ function buildDefaultElicitationContent(schema: unknown): unknown {
     return buildDefaultElicitationContent(source.anyOf[0]);
   }
 
-  const schemaType = source.type;
-  if (schemaType === 'object' || (!schemaType && source.properties && typeof source.properties === 'object')) {
+  const modelType = source.type;
+  if (modelType === 'object' || (!modelType && source.properties && typeof source.properties === 'object')) {
     const properties = source.properties && typeof source.properties === 'object'
       ? source.properties as Record<string, unknown>
       : {};
@@ -924,15 +924,15 @@ function buildDefaultElicitationContent(schema: unknown): unknown {
     return content;
   }
 
-  if (schemaType === 'array') {
+  if (modelType === 'array') {
     return [];
   }
 
-  if (schemaType === 'boolean') {
+  if (modelType === 'boolean') {
     return true;
   }
 
-  if (schemaType === 'integer' || schemaType === 'number') {
+  if (modelType === 'integer' || modelType === 'number') {
     return typeof source.minimum === 'number' ? source.minimum : 0;
   }
 
@@ -947,7 +947,7 @@ function buildDynamicToolSpecs(): Array<Record<string, unknown>> {
   return [
     {
       name: 'propose',
-      description: 'Present an editable draft block to the user. Use this when suggesting schemas, models, concepts, or any structured plan that benefits from inline revision.',
+      description: 'Present an editable draft block to the user. Use this when suggesting models, models, concepts, or any structured plan that benefits from inline revision.',
       inputSchema: {
         type: 'object',
         additionalProperties: false,

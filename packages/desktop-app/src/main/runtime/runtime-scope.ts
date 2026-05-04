@@ -1,4 +1,4 @@
-import { createHash } from 'crypto';
+﻿import { createHash } from 'crypto';
 
 const WORKTREE_MARKER = '/.claude/worktrees/';
 const PACKAGED_SCOPE = 'packaged';

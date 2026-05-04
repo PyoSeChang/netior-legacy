@@ -1,4 +1,4 @@
-export type ActivityBarTopItemKey =
+﻿export type ActivityBarTopItemKey =
   | 'projects'
   | 'networks'
   | 'files'

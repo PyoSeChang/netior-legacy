@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+﻿import { describe, expect, it } from 'vitest';
 import { extractFileLinks } from '../lib/terminal/terminal-link-parser';
 
 describe('terminal-link-parser', () => {

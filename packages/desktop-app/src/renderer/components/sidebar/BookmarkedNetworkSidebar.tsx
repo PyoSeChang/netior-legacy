@@ -2,13 +2,11 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Context, NetworkObjectType } from '@netior/shared/types';
 import { contextService, networkService } from '../../services';
 import type { NetworkFullData } from '../../services/network-service';
-import { useSchemaStore } from '../../stores/schema-store';
+import { useSchemaStore as useModelStore } from '../../stores/schema-store';
 import { useContextStore } from '../../stores/context-store';
 import { useEditorStore } from '../../stores/editor-store';
-import { useModelStore } from '../../stores/model-store';
 import { useNetworkStore } from '../../stores/network-store';
 import { useProjectStore } from '../../stores/project-store';
-import { useRelationTypeStore } from '../../stores/relation-type-store';
 import { useI18n } from '../../hooks/useI18n';
 import { openFileTab } from '../../lib/open-file-tab';
 import {
@@ -28,7 +26,7 @@ interface BookmarkedNetworkSidebarProps {
 
 type SupportedSidebarObjectType = Extract<
   NetworkObjectType,
-  'project' | 'network' | 'concept' | 'schema' | 'model' | 'relation_type' | 'context' | 'file'
+  'project' | 'network' | 'concept' | 'model' | 'context' | 'file'
 >;
 
 interface BookmarkedSidebarItem extends NetworkBrowserItem {
@@ -41,9 +39,7 @@ const SECTION_ORDER: SupportedSidebarObjectType[] = [
   'network',
   'concept',
   'file',
-  'schema',
   'model',
-  'relation_type',
   'context',
 ];
 
@@ -52,9 +48,7 @@ function isSupportedSidebarObjectType(type: NetworkObjectType): type is Supporte
     type === 'project'
     || type === 'network'
     || type === 'concept'
-    || type === 'schema'
     || type === 'model'
-    || type === 'relation_type'
     || type === 'context'
     || type === 'file'
   );
@@ -79,9 +73,7 @@ export function BookmarkedNetworkSidebar({ networkId }: BookmarkedNetworkSidebar
   const openNetwork = useNetworkStore((state) => state.openNetwork);
   const networks = useNetworkStore((state) => state.networks);
   const projects = useProjectStore((state) => state.projects);
-  const schemas = useSchemaStore((state) => state.schemas);
   const models = useModelStore((state) => state.models);
-  const relationTypes = useRelationTypeStore((state) => state.relationTypes);
 
   useEffect(() => {
     let cancelled = false;
@@ -126,17 +118,9 @@ export function BookmarkedNetworkSidebar({ networkId }: BookmarkedNetworkSidebar
     () => new Map(projects.map((project) => [project.id, project])),
     [projects],
   );
-  const schemasById = useMemo(
-    () => new Map(schemas.map((schema) => [schema.id, schema])),
-    [schemas],
-  );
   const modelsById = useMemo(
     () => new Map(models.map((model) => [model.id, model])),
     [models],
-  );
-  const relationTypesById = useMemo(
-    () => new Map(relationTypes.map((relationType) => [relationType.id, relationType])),
-    [relationTypes],
   );
   const contextsById = useMemo(
     () => new Map(contexts.map((context) => [context.id, context])),
@@ -149,9 +133,7 @@ export function BookmarkedNetworkSidebar({ networkId }: BookmarkedNetworkSidebar
       network: t('sidebar.networks'),
       concept: t('objectPanel.concept' as never),
       file: t('sidebar.files'),
-      schema: t('schema.title'),
       model: t('model.title' as never),
-      relation_type: t('relationType.title'),
       context: t('context.title'),
     }),
     [t],
@@ -201,14 +183,17 @@ export function BookmarkedNetworkSidebar({ networkId }: BookmarkedNetworkSidebar
         }
         case 'concept': {
           const concept = node.concept;
-          const schemaName = concept?.schema_id
-            ? schemasById.get(concept.schema_id)?.name
+          const modelName = concept?.model_id
+            ? (() => {
+              const model = modelsById.get(concept.model_id);
+              return model ? getModelDisplayName(model, t) : null;
+            })()
             : null;
           nextItems.push({
             id: object.ref_id,
             objectType: 'concept',
             title: concept?.title ?? object.ref_id,
-            subtitle: schemaName ?? t('objectPanel.concept' as never),
+            subtitle: modelName ?? t('objectPanel.concept' as never),
           });
           break;
         }
@@ -223,16 +208,6 @@ export function BookmarkedNetworkSidebar({ networkId }: BookmarkedNetworkSidebar
           });
           break;
         }
-        case 'schema': {
-          const schema = schemasById.get(object.ref_id);
-          nextItems.push({
-            id: object.ref_id,
-            objectType: 'schema',
-            title: schema?.name ?? object.ref_id,
-            subtitle: schema?.description ?? t('schema.title'),
-          });
-          break;
-        }
         case 'model': {
           const model = modelsById.get(object.ref_id);
           nextItems.push({
@@ -240,16 +215,6 @@ export function BookmarkedNetworkSidebar({ networkId }: BookmarkedNetworkSidebar
             objectType: 'model',
             title: model ? getModelDisplayName(model, t) : object.ref_id,
             subtitle: model ? getModelDisplayDescription(model, t) ?? t('model.title' as never) : t('model.title' as never),
-          });
-          break;
-        }
-        case 'relation_type': {
-          const relationType = relationTypesById.get(object.ref_id);
-          nextItems.push({
-            id: object.ref_id,
-            objectType: 'relation_type',
-            title: relationType?.name ?? object.ref_id,
-            subtitle: relationType?.description ?? t('relationType.title'),
           });
           break;
         }
@@ -268,13 +233,11 @@ export function BookmarkedNetworkSidebar({ networkId }: BookmarkedNetworkSidebar
 
     return nextItems;
   }, [
-    schemasById,
+    modelsById,
     contextsById,
     fullData,
-    modelsById,
     networksById,
     projectsById,
-    relationTypesById,
     t,
   ]);
 
@@ -323,14 +286,8 @@ export function BookmarkedNetworkSidebar({ networkId }: BookmarkedNetworkSidebar
           await openFileTab({ filePath: item.filePath });
         }
         return;
-      case 'schema':
-        await useEditorStore.getState().openTab({ type: 'schema', targetId: item.id, title: item.title });
-        return;
       case 'model':
         await useEditorStore.getState().openTab({ type: 'model', targetId: item.id, title: item.title });
-        return;
-      case 'relation_type':
-        await useEditorStore.getState().openTab({ type: 'relationType', targetId: item.id, title: item.title });
         return;
       case 'context':
         await openNetwork(networkId);

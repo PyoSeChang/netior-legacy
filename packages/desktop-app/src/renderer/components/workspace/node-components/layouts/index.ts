@@ -1,4 +1,4 @@
-import type { NodeShape } from '../types';
+﻿import type { NodeShape } from '../types';
 import type { ShapeLayout } from '../types';
 import { IconOnlyLayout } from './IconOnlyLayout';
 import { StadiumLayout } from './StadiumLayout';

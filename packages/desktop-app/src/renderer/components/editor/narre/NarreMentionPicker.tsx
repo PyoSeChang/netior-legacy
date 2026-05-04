@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
+﻿import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { Search, ArrowRight, Minus } from 'lucide-react';
 import { narreService, type MentionResult } from '../../../services/narre-service';
@@ -11,6 +11,7 @@ interface NarreMentionPickerProps {
   query: string;
   projectId: string;
   position: { bottom: number; left: number };
+  initialCategory?: string;
   onSelect: (mention: MentionResult) => void;
   onClose: () => void;
 }
@@ -19,15 +20,15 @@ const MENTION_CATEGORIES = [
   { key: 'all', i18nKey: 'narre.mentionAll' },
   { key: 'concept', i18nKey: 'narre.mentionConcept' },
   { key: 'network', i18nKey: 'narre.mentionNetwork' },
-  { key: 'schema', i18nKey: 'narre.mentionSchema' },
   { key: 'model', i18nKey: 'narre.mentionModel' },
   { key: 'file', i18nKey: 'narre.mentionFile' },
+  { key: 'agent', i18nKey: 'narre.mentionAgent' },
 ] as const;
 
 function PreviewPanel({ item, t }: { item: MentionResult; t: (key: TranslationKey) => string }): JSX.Element {
   const catLabel = MENTION_CATEGORIES.find((c) => c.key === item.type)?.i18nKey;
-  const conceptSchema = item.type === 'concept' && typeof item.meta?.schema === 'string' ? item.meta.schema : null;
-  const schemaNodeShape = item.type === 'schema' && typeof item.meta?.nodeShape === 'string' ? item.meta.nodeShape : null;
+  const conceptModel = item.type === 'concept' && typeof item.meta?.model === 'string' ? item.meta.model : null;
+  const modelNodeShape = item.type === 'model' && typeof item.meta?.nodeShape === 'string' ? item.meta.nodeShape : null;
   const modelDirected = item.type === 'model' && typeof item.meta?.directed === 'boolean' ? item.meta.directed : null;
   const modelLineStyle = item.type === 'model' && typeof item.meta?.lineStyle === 'string' ? item.meta.lineStyle : null;
   const filePath = item.type === 'file' && typeof item.meta?.path === 'string' ? item.meta.path : null;
@@ -56,16 +57,16 @@ function PreviewPanel({ item, t }: { item: MentionResult; t: (key: TranslationKe
       {/* Type-specific meta */}
       {item.meta && (
         <div className="flex flex-col gap-1 text-[10px] text-muted">
-          {conceptSchema && (
+          {conceptModel && (
             <div className="flex items-center gap-1">
-              <span className="text-secondary">Schema:</span>
-              <span className="text-default">{conceptSchema}</span>
+              <span className="text-secondary">Model:</span>
+              <span className="text-default">{conceptModel}</span>
             </div>
           )}
-          {schemaNodeShape && (
+          {modelNodeShape && (
             <div className="flex items-center gap-1">
               <span className="text-secondary">Shape:</span>
-              <span className="text-default">{schemaNodeShape}</span>
+              <span className="text-default">{modelNodeShape}</span>
             </div>
           )}
           {item.type === 'model' && (
@@ -100,6 +101,7 @@ export function NarreMentionPicker({
   query,
   projectId,
   position,
+  initialCategory = 'all',
   onSelect,
   onClose,
 }: NarreMentionPickerProps): JSX.Element {
@@ -107,7 +109,7 @@ export function NarreMentionPicker({
   const [results, setResults] = useState<MentionResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const [activeCategory, setActiveCategory] = useState<string>('all');
+  const [activeCategory, setActiveCategory] = useState<string>(initialCategory);
   const [search, setSearch] = useState(query);
   const containerRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
@@ -117,6 +119,7 @@ export function NarreMentionPicker({
 
   // Sync external query to internal search
   useEffect(() => { setSearch(query); }, [query]);
+  useEffect(() => { setActiveCategory(initialCategory); }, [initialCategory]);
 
   // Search with debounce
   useEffect(() => {
@@ -206,7 +209,7 @@ export function NarreMentionPicker({
     return () => document.removeEventListener('mousedown', handleClick);
   }, [onClose]);
 
-  // Don't auto-focus search — contentEditable must keep focus for chip insertion.
+  // Don't auto-focus search ??contentEditable must keep focus for chip insertion.
   // Search syncs from the external query (text after @).
 
   const showPreview = previewItem && (previewItem.description || previewItem.meta);
@@ -241,7 +244,7 @@ export function NarreMentionPicker({
         ))}
         {/* Tab hint */}
         <div className="mt-auto px-2 py-1.5 text-[9px] text-muted">
-          Tab ↹
+          Tab ??
         </div>
       </div>
 

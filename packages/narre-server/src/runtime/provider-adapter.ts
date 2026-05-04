@@ -1,4 +1,4 @@
-import type { NarreCard, NarreToolCall, NarreToolMetadata } from '@netior/shared/types';
+﻿import type { NarreCard, NarreToolCall, NarreToolMetadata } from '@netior/shared/types';
 
 type MaybePromise = void | Promise<void>;
 

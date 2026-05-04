@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from 'react';
+﻿import React, { useEffect, useMemo } from 'react';
 import { Waypoints } from 'lucide-react';
 import { useUIStore, type SidebarView } from '../../stores/ui-store';
 import { useEditorStore } from '../../stores/editor-store';

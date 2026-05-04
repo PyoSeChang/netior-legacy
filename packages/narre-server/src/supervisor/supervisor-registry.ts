@@ -1,4 +1,4 @@
-import type {
+﻿import type {
   AgentAttentionReason,
   AgentDefinition,
   AgentStatus,
@@ -25,10 +25,14 @@ export interface SupervisorRegistryOptions {
 export interface RegisterNarreSessionOptions {
   narreSessionId: string;
   projectId: string;
+  agent?: AgentDefinition;
+  surfaceId?: string;
   title?: string | null;
   status?: AgentStatus;
   reason?: AgentAttentionReason | null;
   skillId?: string | null;
+  currentRunId?: string | null;
+  currentTaskId?: string | null;
   metadata?: Record<string, string>;
 }
 
@@ -65,7 +69,7 @@ export class SupervisorRegistry {
 
   registerNarreSession(options: RegisterNarreSessionOptions): SupervisorAgentSessionSnapshot {
     const agentId = this.options.projectUserAgentId?.trim() || DEFAULT_USER_AGENT_ID;
-    const agent = createProjectUserAgentDefinition(agentId, options.projectId);
+    const agent = options.agent ?? createProjectUserAgentDefinition(agentId, options.projectId);
     const sessionId = buildNarreSupervisorSessionId(options.narreSessionId);
     const eventType = this.sessions.has(sessionId) ? 'session_updated' : 'session_started';
     return this.upsertSession({
@@ -73,10 +77,12 @@ export class SupervisorRegistry {
       agent,
       surface: {
         kind: 'editor',
-        id: `narre:${options.projectId}`,
+        id: options.surfaceId ?? `narre:${options.projectId}`,
       },
       externalSessionId: options.narreSessionId,
       projectId: options.projectId,
+      currentRunId: options.currentRunId ?? null,
+      currentTaskId: options.currentTaskId ?? null,
       title: options.title ?? null,
       status: options.status ?? 'working',
       reason: options.reason ?? null,
@@ -129,6 +135,8 @@ export class SupervisorRegistry {
       surface: report.surface,
       externalSessionId: report.externalSessionId ?? null,
       projectId: report.projectId,
+      currentRunId: report.currentRunId ?? null,
+      currentTaskId: report.currentTaskId ?? null,
       title: report.title ?? null,
       status: report.status ?? 'idle',
       reason: report.reason ?? null,
@@ -144,6 +152,8 @@ export class SupervisorRegistry {
       surface: SupervisorAgentSessionSnapshot['surface'];
       externalSessionId: string | null;
       projectId?: string;
+      currentRunId?: string | null;
+      currentTaskId?: string | null;
       title?: string | null;
       status: AgentStatus;
       reason: AgentAttentionReason | null;
@@ -165,6 +175,8 @@ export class SupervisorRegistry {
       surface: input.surface,
       externalSessionId: input.externalSessionId,
       ...(input.projectId ? { projectId: input.projectId } : {}),
+      currentRunId: input.currentRunId ?? current?.currentRunId ?? null,
+      currentTaskId: input.currentTaskId ?? current?.currentTaskId ?? null,
       title: input.title ?? current?.title ?? null,
       skillId: input.skillId ?? current?.skillId ?? null,
       createdAt: current?.createdAt ?? now,

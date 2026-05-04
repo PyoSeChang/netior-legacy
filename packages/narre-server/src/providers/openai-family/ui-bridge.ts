@@ -1,1 +1,1 @@
-export { NarreUiBridge as OpenAIFamilyUiBridge } from '../shared/ui-bridge.js';
+﻿export { NarreUiBridge as OpenAIFamilyUiBridge } from '../shared/ui-bridge.js';

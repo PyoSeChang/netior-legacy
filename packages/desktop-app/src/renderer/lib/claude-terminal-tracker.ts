@@ -1,4 +1,4 @@
-import type { ClaudeCodeStatus } from '@netior/shared/types';
+﻿import type { ClaudeCodeStatus } from '@netior/shared/types';
 
 export interface ClaudeTerminalState {
   ptySessionId: string;

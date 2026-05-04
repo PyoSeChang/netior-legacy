@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+﻿import React, { useCallback, useEffect, useRef, useState } from 'react';
 import type { NarreDraftCard, NarreDraftResponse } from '@netior/shared/types';
 import { useI18n } from '../../../../hooks/useI18n';
 import { Badge } from '../../../ui/Badge';

@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron';
+﻿import { ipcMain } from 'electron';
 import { IPC_CHANNELS } from '@netior/shared/constants';
 import type { TerminalLaunchConfig } from '@netior/shared/types';
 import { terminalBackendService } from '../pty/pty-manager';

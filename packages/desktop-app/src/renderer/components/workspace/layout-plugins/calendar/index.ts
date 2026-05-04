@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { LayoutRenderNode, NodeDropContext, NodeDropResult, WorkspaceLayoutPlugin } from '../types';
 import { CalendarBackground } from './CalendarBackground';
@@ -120,7 +120,7 @@ export const calendarPlugin: WorkspaceLayoutPlugin = {
   key: 'calendar',
   displayName: 'Calendar',
 
-  configSchema: [
+  configModel: [
     {
       key: 'view',
       type: 'enum',

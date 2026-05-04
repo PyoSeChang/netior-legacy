@@ -1,4 +1,4 @@
-if (typeof URL.parse !== 'function') {
+﻿if (typeof URL.parse !== 'function') {
   (URL as unknown as Record<string, unknown>).parse = function (url: string, base?: string) {
     try {
       return new URL(url, base);

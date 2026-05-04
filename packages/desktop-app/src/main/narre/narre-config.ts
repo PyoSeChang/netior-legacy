@@ -1,4 +1,4 @@
-import type { NarreBehaviorSettings, NarreCodexSettings } from '@netior/shared/types';
+﻿import type { NarreBehaviorSettings, NarreCodexSettings } from '@netior/shared/types';
 import { getRemoteConfig, setRemoteConfig } from '../netior-service/netior-service-client';
 import { startNarreServer, stopNarreServer, type NarreProviderName } from '../process/narre-server-manager';
 import { getRuntimeDataDir } from '../runtime/runtime-paths';

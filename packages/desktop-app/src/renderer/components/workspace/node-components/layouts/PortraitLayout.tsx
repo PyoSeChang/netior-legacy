@@ -1,8 +1,8 @@
-import React from 'react';
+﻿import React from 'react';
 import { NodeVisual } from '../NodeVisual';
 import type { ShapeLayoutProps } from '../types';
 
-/** Content nodes — vertical: icon + label + semanticTypeLabel + updatedAt */
+/** Content nodes ??vertical: icon + label + semanticTypeLabel + updatedAt */
 export const PortraitLayout: React.FC<ShapeLayoutProps> = ({
   icon,
   label,
@@ -18,7 +18,7 @@ export const PortraitLayout: React.FC<ShapeLayoutProps> = ({
       </span>
       <span className="text-xs text-secondary whitespace-nowrap overflow-hidden text-ellipsis text-center">
         {semanticTypeLabel}
-        {updatedAt && <span className="opacity-60"> · {updatedAt}</span>}
+        {updatedAt && <span className="opacity-60"> 쨌 {updatedAt}</span>}
       </span>
     </div>
   </div>

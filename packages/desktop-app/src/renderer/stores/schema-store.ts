@@ -7,6 +7,18 @@ import type {
 } from '@netior/shared/types';
 import { schemaService } from '../services';
 
+function normalizeSchemas(value: unknown): Schema[] {
+  return Array.isArray(value) ? value.filter((item): item is Schema => !!item && typeof item === 'object') : [];
+}
+
+function normalizeFields(value: unknown): SchemaField[] {
+  return Array.isArray(value) ? value.filter((item): item is SchemaField => !!item && typeof item === 'object') : [];
+}
+
+function normalizeMeanings(value: unknown): SchemaMeaning[] {
+  return Array.isArray(value) ? value.filter((item): item is SchemaMeaning => !!item && typeof item === 'object') : [];
+}
+
 interface SchemaStore {
   schemas: Schema[];
   fields: Record<string, SchemaField[]>;
@@ -46,7 +58,7 @@ export const useSchemaStore = create<SchemaStore>((set, get) => ({
   loadByProject: async (projectId) => {
     set({ loading: true });
     try {
-      const schemas = await schemaService.list(projectId);
+      const schemas = normalizeSchemas(await schemaService.list(projectId));
       set({ schemas });
     } finally {
       set({ loading: false });
@@ -55,38 +67,38 @@ export const useSchemaStore = create<SchemaStore>((set, get) => ({
 
   createSchema: async (data) => {
     const schema = await schemaService.create(data);
-    set((s) => ({ schemas: [...s.schemas, schema] }));
+    set((s) => ({ schemas: [...normalizeSchemas(s.schemas), schema] }));
     return schema;
   },
 
   updateSchema: async (id, data) => {
     const updated = await schemaService.update(id, data);
     set((s) => ({
-      schemas: s.schemas.map((a) => (a.id === id ? updated : a)),
+      schemas: normalizeSchemas(s.schemas).map((a) => (a.id === id ? updated : a)),
     }));
   },
 
   deleteSchema: async (id) => {
     await schemaService.delete(id);
     set((s) => ({
-      schemas: s.schemas.filter((a) => a.id !== id),
+      schemas: normalizeSchemas(s.schemas).filter((a) => a.id !== id),
       fields: Object.fromEntries(Object.entries(s.fields).filter(([k]) => k !== id)),
       meanings: Object.fromEntries(Object.entries(s.meanings).filter(([k]) => k !== id)),
     }));
   },
 
   loadFields: async (schemaId) => {
-    const fields = await schemaService.field.list(schemaId);
+    const fields = normalizeFields(await schemaService.field.list(schemaId));
     set((s) => ({ fields: { ...s.fields, [schemaId]: fields } }));
   },
 
   createField: async (data) => {
     const field = await schemaService.field.create(data);
-    const meanings = await schemaService.meaning.list(data.schema_id);
+    const meanings = normalizeMeanings(await schemaService.meaning.list(data.schema_id));
     set((s) => ({
       fields: {
         ...s.fields,
-        [data.schema_id]: [...(s.fields[data.schema_id] ?? []), field],
+        [data.schema_id]: [...normalizeFields(s.fields[data.schema_id]), field],
       },
       meanings: { ...s.meanings, [data.schema_id]: meanings },
     }));
@@ -95,11 +107,11 @@ export const useSchemaStore = create<SchemaStore>((set, get) => ({
 
   updateField: async (id, schemaId, data) => {
     const updated = await schemaService.field.update(id, data);
-    const meanings = await schemaService.meaning.list(schemaId);
+    const meanings = normalizeMeanings(await schemaService.meaning.list(schemaId));
     set((s) => ({
       fields: {
         ...s.fields,
-        [schemaId]: (s.fields[schemaId] ?? []).map((f) => (f.id === id ? updated : f)),
+        [schemaId]: normalizeFields(s.fields[schemaId]).map((f) => (f.id === id ? updated : f)),
       },
       meanings: { ...s.meanings, [schemaId]: meanings },
     }));
@@ -107,11 +119,11 @@ export const useSchemaStore = create<SchemaStore>((set, get) => ({
 
   deleteField: async (id, schemaId) => {
     await schemaService.field.delete(id);
-    const meanings = await schemaService.meaning.list(schemaId);
+    const meanings = normalizeMeanings(await schemaService.meaning.list(schemaId));
     set((s) => ({
       fields: {
         ...s.fields,
-        [schemaId]: (s.fields[schemaId] ?? []).filter((f) => f.id !== id),
+        [schemaId]: normalizeFields(s.fields[schemaId]).filter((f) => f.id !== id),
       },
       meanings: { ...s.meanings, [schemaId]: meanings },
     }));
@@ -120,7 +132,7 @@ export const useSchemaStore = create<SchemaStore>((set, get) => ({
   reorderFields: async (schemaId, orderedIds) => {
     await schemaService.field.reorder(schemaId, orderedIds);
     set((s) => {
-      const current = s.fields[schemaId] ?? [];
+      const current = normalizeFields(s.fields[schemaId]);
       const reordered = orderedIds
         .map((id, i) => {
           const field = current.find((f) => f.id === id);
@@ -132,13 +144,13 @@ export const useSchemaStore = create<SchemaStore>((set, get) => ({
   },
 
   loadMeanings: async (schemaId) => {
-    const meanings = await schemaService.meaning.list(schemaId);
+    const meanings = normalizeMeanings(await schemaService.meaning.list(schemaId));
     set((s) => ({ meanings: { ...s.meanings, [schemaId]: meanings } }));
   },
 
   ensureMeaning: async (data) => {
     const meaning = await schemaService.meaning.ensure(data);
-    const meanings = await schemaService.meaning.list(data.schema_id);
+    const meanings = normalizeMeanings(await schemaService.meaning.list(data.schema_id));
     set((s) => ({ meanings: { ...s.meanings, [data.schema_id]: meanings } }));
     return meaning;
   },
@@ -148,7 +160,7 @@ export const useSchemaStore = create<SchemaStore>((set, get) => ({
     set((s) => ({
       meanings: {
         ...s.meanings,
-        [schemaId]: (s.meanings[schemaId] ?? []).map((meaning) => (
+        [schemaId]: normalizeMeanings(s.meanings[schemaId]).map((meaning) => (
           meaning.id === id ? updated : meaning
         )),
       },
@@ -160,7 +172,7 @@ export const useSchemaStore = create<SchemaStore>((set, get) => ({
     set((s) => ({
       meanings: {
         ...s.meanings,
-        [schemaId]: (s.meanings[schemaId] ?? []).filter((meaning) => meaning.id !== id),
+        [schemaId]: normalizeMeanings(s.meanings[schemaId]).filter((meaning) => meaning.id !== id),
       },
     }));
   },

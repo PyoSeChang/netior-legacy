@@ -1,4 +1,4 @@
-import { useSettingsStore } from '../../../stores/settings-store';
+﻿import { useSettingsStore } from '../../../stores/settings-store';
 
 interface TerminalColorPalette {
   background: string;

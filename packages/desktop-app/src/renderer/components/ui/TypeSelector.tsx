@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+﻿import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Boxes,
@@ -78,7 +78,7 @@ const CATEGORIES: TypeCategory[] = [
     types: [
       { value: 'relation', i18nKey: 'relation', icon: Link2 },
       { value: 'file', i18nKey: 'file', icon: FileText },
-      { value: 'schema_ref', i18nKey: 'schema_ref', icon: Boxes },
+      { value: 'model_ref', i18nKey: 'model_ref', icon: Boxes },
     ],
   },
   {
@@ -335,7 +335,7 @@ export const TypeSelector: React.FC<TypeSelectorProps> = ({
               <div className="border-t border-subtle px-3 py-2">
                 <div className="mb-2 text-[11px] text-muted">
                   {t(`typeSelector.level.${fieldComplexityLevel}` as TranslationKey)}
-                  {' · '}
+                  {' 쨌 '}
                   {t('typeSelector.hiddenCount' as TranslationKey).replace('{count}', String(hiddenTypeCount))}
                 </div>
                 <div className="flex gap-2">

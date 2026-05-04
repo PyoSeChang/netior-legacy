@@ -1,4 +1,4 @@
-import React, { useRef, useCallback, useEffect } from 'react';
+﻿import React, { useRef, useCallback, useEffect } from 'react';
 
 interface ContentEditableEditorProps {
   value: string;
@@ -37,7 +37,7 @@ export function ContentEditableEditor({
     }
   }, [onChange, singleLine]);
 
-  // Sync external value → DOM (only when value differs from what we last emitted)
+  // Sync external value ??DOM (only when value differs from what we last emitted)
   useEffect(() => {
     if (!divRef.current) return;
     if (value !== lastEmittedRef.current) {

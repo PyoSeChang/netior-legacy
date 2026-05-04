@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Renderer-side path utilities.
  * Since Node's `path` module is not available in the renderer,
  * these operate on normalized forward-slash paths.

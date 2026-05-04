@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+﻿import { describe, expect, it, vi } from 'vitest';
 import { consumeShortcutEvent } from '../shortcuts/shortcut-utils';
 
 describe('consumeShortcutEvent', () => {

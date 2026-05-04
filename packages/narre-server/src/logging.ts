@@ -1,4 +1,4 @@
-import { appendFileSync, mkdirSync } from 'fs';
+﻿import { appendFileSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import { inspect } from 'util';
 

@@ -1,4 +1,4 @@
-import type { LayoutRenderNode } from './types';
+﻿import type { LayoutRenderNode } from './types';
 import { getSemanticBoolean, getSemanticNumber, getSemanticSlotValue } from './semantic';
 
 interface RecurrenceDefinition {
@@ -47,38 +47,24 @@ function parseByDayToken(token: string): number | null {
     case 'SU': return 0;
     case 'SUN': return 0;
     case 'SUNDAY': return 0;
-    case '일': return 0;
-    case '일요일': return 0;
     case 'MO': return 1;
     case 'MON': return 1;
     case 'MONDAY': return 1;
-    case '월': return 1;
-    case '월요일': return 1;
     case 'TU': return 2;
     case 'TUE': return 2;
     case 'TUESDAY': return 2;
-    case '화': return 2;
-    case '화요일': return 2;
     case 'WE': return 3;
     case 'WED': return 3;
     case 'WEDNESDAY': return 3;
-    case '수': return 3;
-    case '수요일': return 3;
     case 'TH': return 4;
     case 'THU': return 4;
     case 'THURSDAY': return 4;
-    case '목': return 4;
-    case '목요일': return 4;
     case 'FR': return 5;
     case 'FRI': return 5;
     case 'FRIDAY': return 5;
-    case '금': return 5;
-    case '금요일': return 5;
     case 'SA': return 6;
     case 'SAT': return 6;
     case 'SATURDAY': return 6;
-    case '토': return 6;
-    case '토요일': return 6;
     default: return null;
   }
 }
@@ -90,22 +76,22 @@ function parseRecurrenceFrequency(rawValue: unknown): RecurrenceDefinition['freq
     case 'DAY':
     case 'DAYS':
     case 'EVERY DAY':
-    case '매일':
-    case '일간':
+    case '留ㅼ씪':
+    case '?쇨컙':
       return 'DAILY';
     case 'WEEKLY':
     case 'WEEK':
     case 'WEEKS':
     case 'EVERY WEEK':
-    case '매주':
-    case '주간':
+    case '留ㅼ＜':
+    case '二쇨컙':
       return 'WEEKLY';
     case 'MONTHLY':
     case 'MONTH':
     case 'MONTHS':
     case 'EVERY MONTH':
-    case '매월':
-    case '월간':
+    case '留ㅼ썡':
+    case '?붽컙':
       return 'MONTHLY';
     default:
       return null;

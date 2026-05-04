@@ -1,4 +1,4 @@
-import type {
+﻿import type {
   Network, NetworkCreate, NetworkUpdate,
   NetworkNode, NetworkNodeCreate, NetworkNodeUpdate,
   Edge, EdgeCreate, EdgeUpdate,

@@ -1,4 +1,4 @@
-import { useEditorStore, MAIN_HOST_ID } from '../../stores/editor-store';
+﻿import { useEditorStore, MAIN_HOST_ID } from '../../stores/editor-store';
 import { useProjectStore } from '../../stores/project-store';
 import type { TerminalLaunchConfig } from '@netior/shared/types';
 

@@ -1,0 +1,35 @@
+id: orchestration-terminal-control-plane
+title: "Orchestration Terminal Control Plane"
+description: "Verifies the supervisor orchestration backend can create a run, assign a terminal agent, queue executor commands, accept command results, record events, and restore persisted state."
+scenario_version: "1.0.0"
+schema_version: 1
+type: conversation
+lifecycle: active
+labels: [contract, orchestration, supervisor, executor, terminal, persistence, multi-agent]
+responsibility_surfaces: [NR21, NR22, NR23, NR24, NR25]
+
+execution:
+  supported_agents: [narre-server]
+  required_capabilities: [orchestration_api, executor_command_queue, persistence]
+  scenario_kind: fixed
+  agent_id: narre-supervisor
+  provider: codex
+  tester: basic-turn-runner
+  execution_mode: multi_agent
+  analysis_targets: [orchestration, executor, persistence]
+
+turn_plan:
+  file: turns.yaml
+
+entrypoints:
+  seed: seed.ts
+
+assets:
+  verify:
+    - verify/checks.yaml
+
+provenance:
+  created_by:
+    id: netior-team
+    name: Netior Team
+    source: repo-scenario

@@ -1,4 +1,4 @@
-import type { Context, ContextCreate, ContextUpdate, ContextMember } from '@netior/shared/types';
+﻿import type { Context, ContextCreate, ContextUpdate, ContextMember } from '@netior/shared/types';
 import { unwrapIpc } from './ipc';
 
 export async function createContext(data: ContextCreate): Promise<Context> {

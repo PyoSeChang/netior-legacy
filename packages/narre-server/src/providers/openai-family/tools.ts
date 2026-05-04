@@ -1,7 +1,7 @@
-import { tool } from '@openai/agents';
+﻿import { tool } from '@openai/agents';
 import type { NarreProviderRunContext } from '../../runtime/provider-adapter.js';
 import type { NarreUiBridge } from '../shared/ui-bridge.js';
-import { askToolSchema, confirmToolSchema, draftToolSchema } from '../shared/ui-schemas.js';
+import { askToolModel, confirmToolModel, draftToolModel } from '../shared/ui-schemas.js';
 
 export function createOpenAIFamilyConversationTools(
   context: NarreProviderRunContext,
@@ -10,8 +10,8 @@ export function createOpenAIFamilyConversationTools(
   return [
     tool({
       name: 'propose',
-      description: 'Present an editable draft block to the user. Use this when suggesting schemas, models, concepts, or any plan that benefits from inline revision.',
-      parameters: draftToolSchema,
+      description: 'Present an editable draft block to the user. Use this when suggesting models, models, concepts, or any plan that benefits from inline revision.',
+      parameters: draftToolModel,
       strict: true,
       execute: async (args, _runContext, details) => uiBridge.requestDraft(
         context.onCard,
@@ -22,7 +22,7 @@ export function createOpenAIFamilyConversationTools(
     tool({
       name: 'ask',
       description: 'Ask the user a structured question with selectable options. Use for gathering preferences or domain information.',
-      parameters: askToolSchema,
+      parameters: askToolModel,
       strict: true,
       execute: async (args, _runContext, details) => uiBridge.requestInterview(
         context.onCard,
@@ -37,7 +37,7 @@ export function createOpenAIFamilyConversationTools(
     tool({
       name: 'confirm',
       description: 'Request user confirmation before a destructive or significant action.',
-      parameters: confirmToolSchema,
+      parameters: confirmToolModel,
       strict: true,
       execute: async (args, _runContext, details) => uiBridge.requestPermission(
         context.onCard,

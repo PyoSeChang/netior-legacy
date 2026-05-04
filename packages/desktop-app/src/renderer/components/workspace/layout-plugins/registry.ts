@@ -1,4 +1,4 @@
-import type { WorkspaceLayoutPlugin } from './types';
+﻿import type { WorkspaceLayoutPlugin } from './types';
 import { calendarPlugin } from './calendar';
 import { freeformPlugin } from './freeform';
 import { ganttPlugin } from './gantt';

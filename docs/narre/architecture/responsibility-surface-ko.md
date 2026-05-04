@@ -117,7 +117,7 @@
 | NR15 | group/hierarchy/containment semantics | `structure.contains`, `structure.parent`, group/list/grid/hierarchy 구조를 다루는가 |
 | NR16 | schema CRUD | 도메인 class를 만들고 수정하고 삭제하는가 |
 | NR17 | schema field definition CRUD | field type, required, default, option, order, ref schema, meaning bindings를 다루는가 |
-| NR18 | model / meaning / binding | model CRUD, model meanings, field recipes, schema meaning, field meaning bindings, meaning slot binding을 다루는가 |
+| NR18 | schema / model / meaning / binding | model CRUD, model recipes, schema meaning, field meaning bindings, meaning slot binding을 다루는가 |
 | NR19 | ORM형 schema 관계와 property 모델링 | schema 간 참조, relation field, choice source, cycle 위험을 설계하는가 |
 | NR20 | relation type CRUD | edge class를 만들고 수정하고 삭제하는가 |
 | NR21 | type group CRUD | schema/relation type 그룹을 만들고 정리하는가 |
@@ -392,7 +392,7 @@ Narre 책임:
 - `field_type`, `allowed_types`, `required`, `default_value`, `options`, `ref_schema_id`, `meaning_bindings`, `generated_by_model`를 구분한다.
 - field가 concept property 입력과 어떻게 연결되는지 이해한다.
 
-### NR18. model / meaning / binding
+### NR18. schema / model / meaning / binding
 
 관련 구현:
 

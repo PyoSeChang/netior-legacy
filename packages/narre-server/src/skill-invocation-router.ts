@@ -1,4 +1,4 @@
-import { SLASH_TRIGGER_SKILLS } from '@netior/shared/constants';
+﻿import { SLASH_TRIGGER_SKILLS } from '@netior/shared/constants';
 import type { SkillDefinition, SkillInvocation } from '@netior/shared/types';
 
 export interface ParsedSkillInvocation {

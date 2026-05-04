@@ -1,4 +1,4 @@
-import type {
+﻿import type {
   Model,
   ModelCreate,
   ModelUpdate,
@@ -29,7 +29,10 @@ export async function updateModel(id: string, data: ModelUpdate): Promise<Model>
 }
 
 export async function deleteModel(id: string): Promise<boolean> {
-  return unwrapIpc(await getModelApi().delete(id));
+  console.info('[ModelDelete][renderer-service] invoke', { id });
+  const result = unwrapIpc(await getModelApi().delete(id));
+  console.info('[ModelDelete][renderer-service] result', { id, result });
+  return result;
 }
 
 export const modelService = {

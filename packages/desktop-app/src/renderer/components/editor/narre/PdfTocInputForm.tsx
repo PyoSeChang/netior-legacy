@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { FileText } from 'lucide-react';
 import { useI18n } from '../../../hooks/useI18n';
 import { NumberInput } from '../../ui/NumberInput';

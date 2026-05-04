@@ -524,7 +524,10 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
     }
 
     if (method === 'DELETE') {
-      sendJson(res, 200, { ok: true, data: deleteModel(id) });
+      console.info('[ModelDelete][service-route] start', { id });
+      const deleted = deleteModel(id);
+      console.info('[ModelDelete][service-route] result', { id, deleted });
+      sendJson(res, 200, { ok: true, data: deleted });
       return;
     }
 

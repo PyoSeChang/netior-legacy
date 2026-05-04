@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { NodeVisual } from '../NodeVisual';
 import type { ShapeLayoutProps } from '../types';
 

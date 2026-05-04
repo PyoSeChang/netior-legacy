@@ -1,4 +1,4 @@
-import { ipcMain, type IpcMainInvokeEvent } from 'electron';
+﻿import { ipcMain, type IpcMainInvokeEvent } from 'electron';
 import type { IpcResult } from '@netior/shared/types';
 import {
   addRemoteNetworkNode,

@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import ReactDOM, { type Root as ReactRoot } from 'react-dom/client';
 import App from './App';
 import { DetachedEditorShell } from './components/editor/DetachedEditorShell';

@@ -1,4 +1,4 @@
-import { randomUUID } from 'crypto';
+﻿import { randomUUID } from 'crypto';
 import type { NarreCard } from '@netior/shared/types';
 import { PendingUiResponses } from '../../tools/pending-ui-responses.js';
 

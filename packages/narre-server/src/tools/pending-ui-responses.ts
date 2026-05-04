@@ -1,4 +1,4 @@
-export class PendingUiResponses {
+﻿export class PendingUiResponses {
   private readonly pending = new Map<string, {
     resolve: (result: string) => void;
   }>();

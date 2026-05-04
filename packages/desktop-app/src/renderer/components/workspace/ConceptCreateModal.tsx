@@ -7,8 +7,9 @@ import { RadioGroup } from '../ui/RadioGroup';
 import { FilePicker } from '../ui/FilePicker';
 import { IconSelector } from '../ui/IconSelector';
 import { useI18n } from '../../hooks/useI18n';
-import { useSchemaStore } from '../../stores/schema-store';
+import { useSchemaStore as useModelStore } from '../../stores/schema-store';
 import { isImageSourceValue } from './node-components/node-visual-utils';
+import { getModelDisplayName } from '../../lib/model-i18n';
 
 const CONCEPT_COLORS = [
   '#ef4444', '#f97316', '#eab308', '#22c55e', '#06b6d4',
@@ -24,7 +25,7 @@ type VisualMode = 'icon' | 'image';
 interface ConceptCreateModalProps {
   open: boolean;
   onClose: () => void;
-  onCreate: (data: { title: string; color?: string; icon?: string; schema_id?: string }) => void;
+  onCreate: (data: { title: string; color?: string; icon?: string; model_id?: string }) => void;
 }
 
 export function ConceptCreateModal({ open, onClose, onCreate }: ConceptCreateModalProps): JSX.Element {
@@ -33,13 +34,13 @@ export function ConceptCreateModal({ open, onClose, onCreate }: ConceptCreateMod
   const [color, setColor] = useState<string | undefined>(undefined);
   const [icon, setIcon] = useState('');
   const [visualMode, setVisualMode] = useState<VisualMode>('icon');
-  const [schemaId, setSchemaId] = useState<string | undefined>(undefined);
-  const schemas = useSchemaStore((s) => s.schemas);
+  const [modelId, setModelId] = useState<string | undefined>(undefined);
+  const models = useModelStore((s) => s.models);
 
-  // Apply schema defaults when selected
+  // Apply model defaults when selected
   useEffect(() => {
-    if (schemaId) {
-      const arch = schemas.find((a) => a.id === schemaId);
+    if (modelId) {
+      const arch = models.find((a) => a.id === modelId);
       if (arch) {
         if (arch.color && !color) setColor(arch.color);
         if (arch.icon && !icon) {
@@ -48,7 +49,7 @@ export function ConceptCreateModal({ open, onClose, onCreate }: ConceptCreateMod
         }
       }
     }
-  }, [schemaId]);
+  }, [modelId]);
 
   const handleSubmit = () => {
     if (!title.trim()) return;
@@ -56,13 +57,13 @@ export function ConceptCreateModal({ open, onClose, onCreate }: ConceptCreateMod
       title: title.trim(),
       color: color || undefined,
       icon: icon.trim() || undefined,
-      schema_id: schemaId || undefined,
+      model_id: modelId || undefined,
     });
     setTitle('');
     setColor(undefined);
     setIcon('');
     setVisualMode('icon');
-    setSchemaId(undefined);
+    setModelId(undefined);
     onClose();
   };
 
@@ -71,7 +72,7 @@ export function ConceptCreateModal({ open, onClose, onCreate }: ConceptCreateMod
     setColor(undefined);
     setIcon('');
     setVisualMode('icon');
-    setSchemaId(undefined);
+    setModelId(undefined);
     onClose();
   };
 
@@ -93,16 +94,16 @@ export function ConceptCreateModal({ open, onClose, onCreate }: ConceptCreateMod
       }
     >
       <div className="flex flex-col gap-4">
-        {schemas.length > 0 && (
+        {models.length > 0 && (
           <div>
-            <label className="mb-1 block text-xs font-medium text-secondary">{t('concept.schema')}</label>
+            <label className="mb-1 block text-xs font-medium text-secondary">{t('concept.model')}</label>
             <Select
               options={[
                 { value: '', label: t('common.none') },
-                ...schemas.map((a) => ({ value: a.id, label: a.name })),
+                ...models.map((a) => ({ value: a.id, label: getModelDisplayName(a, t) })),
               ]}
-              value={schemaId ?? ''}
-              onChange={(e) => setSchemaId(e.target.value || undefined)}
+              value={modelId ?? ''}
+              onChange={(e) => setModelId(e.target.value || undefined)}
               selectSize="sm"
             />
           </div>

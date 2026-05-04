@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { EdgeRouteLine } from './EdgeRouteLine';
 import type { RenderNode, RenderEdge, RenderEdgeAnchor, RenderPoint } from './types';
 import type { LayoutViewportMode } from './layout-plugins/types';

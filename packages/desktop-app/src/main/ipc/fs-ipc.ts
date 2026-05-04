@@ -1,4 +1,4 @@
-import { ipcMain, dialog, shell, clipboard, BrowserWindow } from 'electron';
+﻿import { ipcMain, dialog, shell, clipboard, BrowserWindow } from 'electron';
 import { execFile } from 'child_process';
 import { readdir, readFile, writeFile, stat, rename, rm, mkdir, copyFile, cp } from 'fs/promises';
 import { join, resolve, extname, basename, dirname } from 'path';
@@ -136,7 +136,7 @@ async function buildShallowTree(dirPath: string, maxDepth: number, currentDepth 
   });
 }
 
-// ─── Directory Watcher ────────────────────────────────────────────
+// ??? Directory Watcher ????????????????????????????????????????????
 
 const activeWatchers: FSWatcher[] = [];
 let debounceTimer: ReturnType<typeof setTimeout> | null = null;
@@ -167,7 +167,7 @@ function watchDirs(dirs: string[]): void {
       const watcher = watch(dir, { recursive: true }, () => notifyRenderers());
       activeWatchers.push(watcher);
     } catch {
-      // Directory may not exist or be inaccessible — skip silently
+      // Directory may not exist or be inaccessible ??skip silently
     }
   }
 }

@@ -12,9 +12,7 @@ import { ModuleSelector } from './ModuleSelector';
 import { ObjectPanel } from './ObjectPanel';
 import { BookmarkedNetworkSidebar } from './BookmarkedNetworkSidebar';
 import { useConceptStore } from '../../stores/concept-store';
-import { useSchemaStore } from '../../stores/schema-store';
 import { useModelStore } from '../../stores/model-store';
-import { useRelationTypeStore } from '../../stores/relation-type-store';
 import { useTypeGroupStore } from '../../stores/type-group-store';
 import { ScrollArea } from '../ui/ScrollArea';
 import { Spinner } from '../ui/Spinner';
@@ -33,16 +31,19 @@ interface SidebarProps {
 
 const OBJECT_PANEL_TYPES = {
   concepts: ['concept'],
-  schemas: ['schema'],
   models: ['model'],
-  relationTypes: ['relation_type'],
   contexts: ['context'],
 } as const;
+
+function normalizeRootDir(rootDir: string): string {
+  return rootDir.replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase();
+}
 
 function AppWorkspaceSidebar(): JSX.Element {
   const { t } = useI18n();
   const currentNetwork = useNetworkStore((s) => s.currentNetwork);
   const projects = useProjectStore((s) => s.projects);
+  const loadProjects = useProjectStore((s) => s.loadProjects);
   const createProject = useProjectStore((s) => s.createProject);
   const openProject = useProjectStore((s) => s.openProject);
   const currentProject = useProjectStore((s) => s.currentProject);
@@ -56,9 +57,28 @@ function AppWorkspaceSidebar(): JSX.Element {
   const universeIsActive = currentNetwork?.kind === 'universe';
 
   const handleCreateProject = async (name: string, rootDir: string) => {
-    const project = await createProject(name, rootDir);
-    await createModule({ project_id: project.id, name, path: rootDir });
-    await openProject(project);
+    const existingProject = projects.find((project) => normalizeRootDir(project.root_dir) === normalizeRootDir(rootDir));
+    if (existingProject) {
+      await openProject(existingProject);
+      setShowCreateProject(false);
+      return;
+    }
+
+    try {
+      const project = await createProject(name, rootDir);
+      await createModule({ project_id: project.id, name, path: rootDir });
+      await openProject(project);
+    } catch (error) {
+      if (!(error instanceof Error) || !error.message.includes('UNIQUE constraint failed: projects.root_dir')) {
+        throw error;
+      }
+      await loadProjects();
+      const project = useProjectStore.getState().projects.find((item) => (
+        normalizeRootDir(item.root_dir) === normalizeRootDir(rootDir)
+      ));
+      if (!project) throw error;
+      await openProject(project);
+    }
   };
 
   const handleOpenProject = async (project: Project) => {
@@ -170,9 +190,7 @@ export function Sidebar({ project }: SidebarProps): JSX.Element {
   const { loadNetworks, loadNetworkTree } = useNetworkStore();
   const { loadModules, directories } = useModuleStore();
   const { loadByProject: loadConcepts } = useConceptStore();
-  const { loadByProject: loadSchemas } = useSchemaStore();
   const { loadByProject: loadModels } = useModelStore();
-  const { loadByProject: loadRelationTypes } = useRelationTypeStore();
   const { loadByProject: loadTypeGroups } = useTypeGroupStore();
 
   useEffect(() => {
@@ -181,11 +199,9 @@ export function Sidebar({ project }: SidebarProps): JSX.Element {
     loadNetworkTree(project.id);
     loadModules(project.id);
     loadConcepts(project.id);
-    loadSchemas(project.id);
     loadModels(project.id);
-    loadRelationTypes(project.id);
     loadTypeGroups(project.id);
-  }, [project?.id, loadNetworks, loadNetworkTree, loadModules, loadConcepts, loadSchemas, loadModels, loadRelationTypes, loadTypeGroups]);
+  }, [project?.id, loadNetworks, loadNetworkTree, loadModules, loadConcepts, loadModels, loadTypeGroups]);
 
   useEffect(() => {
     if (!project) return undefined;
@@ -262,9 +278,7 @@ export function Sidebar({ project }: SidebarProps): JSX.Element {
               </>
             )}
             {sidebarView === 'concepts' && <ObjectPanel types={[...OBJECT_PANEL_TYPES.concepts]} />}
-            {sidebarView === 'schemas' && <ObjectPanel types={[...OBJECT_PANEL_TYPES.schemas]} />}
             {sidebarView === 'models' && <ObjectPanel types={[...OBJECT_PANEL_TYPES.models]} />}
-            {sidebarView === 'relationTypes' && <ObjectPanel types={[...OBJECT_PANEL_TYPES.relationTypes]} />}
             {sidebarView === 'contexts' && <ObjectPanel types={[...OBJECT_PANEL_TYPES.contexts]} />}
             {sidebarView === 'objects' && <ObjectPanel />}
             {sidebarView === 'sessions' && <AgentSessionPanel projectId={project.id} />}

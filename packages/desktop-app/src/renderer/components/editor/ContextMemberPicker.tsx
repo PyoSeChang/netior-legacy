@@ -1,10 +1,11 @@
 import React, { useMemo, useState } from 'react';
 import type { ContextMember } from '@netior/shared/types';
 import { X } from 'lucide-react';
-import { useNetworkStore, type NetworkNodeWithObject, type EdgeWithRelationType } from '../../stores/network-store';
+import { useNetworkStore, type NetworkNodeWithObject, type NetworkEdgeWithModel } from '../../stores/network-store';
 import { Input } from '../ui/Input';
 import { Badge } from '../ui/Badge';
 import { useI18n } from '../../hooks/useI18n';
+import { getModelDisplayName } from '../../lib/model-i18n';
 
 interface ContextMemberPickerProps {
   existingMembers: ContextMember[];
@@ -18,13 +19,17 @@ function getNodeLabel(node: NetworkNodeWithObject): string {
   return node.object?.object_type ?? 'Object';
 }
 
-function getEdgeLabel(edge: EdgeWithRelationType, nodes: NetworkNodeWithObject[]): string {
+function getEdgeLabel(
+  edge: NetworkEdgeWithModel,
+  nodes: NetworkNodeWithObject[],
+  t: ReturnType<typeof useI18n>['t'],
+): string {
   const sourceNode = nodes.find((node) => node.id === edge.source_node_id);
   const targetNode = nodes.find((node) => node.id === edge.target_node_id);
   const sourceLabel = sourceNode ? getNodeLabel(sourceNode) : '?';
   const targetLabel = targetNode ? getNodeLabel(targetNode) : '?';
-  return edge.model?.name
-    ? `${sourceLabel} -[${edge.model.name}]-> ${targetLabel}`
+  return edge.model
+    ? `${sourceLabel} -[${getModelDisplayName(edge.model, t)}]-> ${targetLabel}`
     : `${sourceLabel} -> ${targetLabel}`;
 }
 
@@ -62,9 +67,9 @@ export function ContextMemberPicker({
     () =>
       edges.filter((edge) => !existingEdgeIds.has(edge.id)).filter((edge) => {
         if (!query) return true;
-        return getEdgeLabel(edge, nodes).toLowerCase().includes(query);
+        return getEdgeLabel(edge, nodes, t).toLowerCase().includes(query);
       }),
-    [edges, existingEdgeIds, nodes, query],
+    [edges, existingEdgeIds, nodes, query, t],
   );
 
   return (
@@ -133,7 +138,7 @@ export function ContextMemberPicker({
                       onClick={() => onSelect('edge', edge.id)}
                     >
                       <Badge>edge</Badge>
-                      <span className="truncate text-sm text-default">{getEdgeLabel(edge, nodes)}</span>
+                      <span className="truncate text-sm text-default">{getEdgeLabel(edge, nodes, t)}</span>
                     </button>
                   ))
                 ) : (

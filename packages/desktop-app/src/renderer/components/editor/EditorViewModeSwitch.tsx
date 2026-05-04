@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { Check, ExternalLink, Maximize2, Maximize, Minus, MoreVertical, PanelRight } from 'lucide-react';
 import type { EditorViewMode } from '@netior/shared/types';
 import type { TranslationKey } from '@netior/shared/i18n';
@@ -116,7 +116,7 @@ export function EditorViewModeMenu({
   const menuLabelKey = 'editor.windowOptions' as TranslationKey;
   const translatedMenuLabel = t(menuLabelKey);
   const menuLabel = translatedMenuLabel === menuLabelKey
-    ? (locale === 'ko' ? '창 옵션' : 'Window Options')
+    ? (locale === 'ko' ? '李??듭뀡' : 'Window Options')
     : translatedMenuLabel;
 
   const menuItems: ContextMenuEntry[] = availableModes.map((mode) => {

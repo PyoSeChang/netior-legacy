@@ -1,4 +1,4 @@
-import { BrowserWindow } from 'electron';
+﻿import { BrowserWindow } from 'electron';
 import type { NetiorChangeEvent } from '@netior/shared/types';
 
 /** Broadcast a workspace data change event to all renderer windows. */

@@ -1,4 +1,4 @@
-import type { Layout, LayoutUpdate } from '@netior/shared/types';
+﻿import type { Layout, LayoutUpdate } from '@netior/shared/types';
 import type { NodePosition, EdgeVisual } from './network-service';
 import { unwrapIpc } from './ipc';
 

@@ -1,4 +1,4 @@
-export interface TerminalEngineLaunchConfig {
+﻿export interface TerminalEngineLaunchConfig {
   shell?: string;
   args?: string[];
   agent?: {

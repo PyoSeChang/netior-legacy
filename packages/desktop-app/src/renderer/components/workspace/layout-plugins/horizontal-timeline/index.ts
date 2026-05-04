@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { CalendarDays } from 'lucide-react';
 import type {
   WorkspaceLayoutPlugin,
@@ -26,7 +26,7 @@ export const horizontalTimelinePlugin: WorkspaceLayoutPlugin = {
   key: 'horizontal-timeline',
   displayName: 'Gantt Chart',
 
-  configSchema: [],
+  configModel: [],
 
   getDefaultConfig() {
     return {
@@ -90,7 +90,7 @@ export const horizontalTimelinePlugin: WorkspaceLayoutPlugin = {
     {
       key: 'go-to-today',
       icon: React.createElement(CalendarDays, { size: 14 }),
-      label: '오늘로 이동',
+      label: '?ㅻ뒛濡??대룞',
       onClick: ({ setZoom, setPanX, setPanY }) => {
         setZoom(1);
         setPanX(window.innerWidth / 2);

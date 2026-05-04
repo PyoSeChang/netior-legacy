@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
+﻿import React, { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
 import type { EditorTab } from '@netior/shared/types';
 import type { TranslationKey } from '@netior/shared/i18n';
 import { useEditorStore, MAIN_HOST_ID } from '../../stores/editor-store';

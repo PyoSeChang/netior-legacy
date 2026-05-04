@@ -1,11 +1,13 @@
-import React, { useState, useRef, useEffect } from 'react';
+﻿import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronDown, Search } from 'lucide-react';
 import { useAnchoredDropdown } from '../../hooks/useAnchoredDropdown';
+import { NodeVisual } from '../workspace/node-components/NodeVisual';
 
 export interface SelectOption {
   value: string;
   label: string;
+  icon?: string | null;
 }
 
 export interface SelectProps {
@@ -123,6 +125,9 @@ export const Select: React.FC<SelectProps> = ({
         aria-expanded={open}
         aria-disabled={disabled}
       >
+        {selectedOption?.icon && (
+          <NodeVisual icon={selectedOption.icon} size={14} imageSize={18} className="mr-2 shrink-0" />
+        )}
         <span className={`block overflow-hidden text-ellipsis whitespace-nowrap flex-1 ${selectedOption ? '' : 'text-muted'}`}>
           {selectedOption?.label || placeholder || ''}
         </span>
@@ -177,11 +182,12 @@ export const Select: React.FC<SelectProps> = ({
                   type="button"
                   role="option"
                   aria-selected={opt.value === value}
-                  className={`block w-full ${itemSizeStyle} text-left cursor-pointer transition-colors duration-fast hover:bg-state-hover ${opt.value === value ? 'text-accent bg-accent-muted' : 'text-default'
+                  className={`flex w-full items-center gap-2 ${itemSizeStyle} text-left cursor-pointer transition-colors duration-fast hover:bg-state-hover ${opt.value === value ? 'text-accent bg-accent-muted' : 'text-default'
                     }`}
                   onClick={() => handleSelect(opt.value)}
                 >
-                  {opt.label}
+                  {opt.icon && <NodeVisual icon={opt.icon} size={14} imageSize={18} className="shrink-0" />}
+                  <span className="min-w-0 flex-1 truncate">{opt.label}</span>
                 </button>
               )) : (
                 <div className={`px-3 py-2 text-sm text-muted ${itemSizeStyle}`}>

@@ -1,8 +1,8 @@
-import React from 'react';
+﻿import React from 'react';
 import { icons, type LucideIcon } from 'lucide-react';
 import { FileIcon } from '../components/sidebar/FileIcon';
 
-/** kebab-case → PascalCase: "book-open" → "BookOpen", "settings" → "Settings" */
+/** kebab-case ??PascalCase: "book-open" ??"BookOpen", "settings" ??"Settings" */
 function toPascalCase(kebab: string): string {
   return kebab
     .split('-')
@@ -13,6 +13,10 @@ function toPascalCase(kebab: string): string {
 /** Backwards-compat aliases for icon names that don't match lucide's kebab convention */
 const ALIASES: Record<string, string> = {
   wand: 'Wand2',
+  'arrow-down-az': 'ArrowDownAZ',
+  'arrow-down-za': 'ArrowDownZA',
+  'arrow-up-az': 'ArrowUpAZ',
+  'arrow-up-za': 'ArrowUpZA',
 };
 
 /** Resolve a kebab-case icon name to a LucideIcon component */

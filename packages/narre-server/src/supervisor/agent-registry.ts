@@ -1,4 +1,4 @@
-import type {
+﻿import type {
   AgentDefinition,
   NarreGlobalUserAgentDefinition,
   NarreProjectUserAgentDefinition,
@@ -23,6 +23,13 @@ const SYSTEM_AGENTS: readonly NarreSystemAgentDefinition[] = [
     narreAgentType: 'system',
     systemAgentType: 'network-builder',
     skills: [],
+    runtimeProfile: {
+      provider: 'openai',
+      reasoningEffort: 'high',
+      toolProfileIds: ['core', 'bootstrap-execution'],
+      approvalPolicy: 'strict',
+      contextScope: 'run',
+    },
   },
   {
     id: 'network-finder',
@@ -32,6 +39,13 @@ const SYSTEM_AGENTS: readonly NarreSystemAgentDefinition[] = [
     narreAgentType: 'system',
     systemAgentType: 'network-finder',
     skills: [],
+    runtimeProfile: {
+      provider: 'openai',
+      reasoningEffort: 'medium',
+      toolProfileIds: ['core', 'discovery'],
+      approvalPolicy: 'default',
+      contextScope: 'run',
+    },
   },
   {
     id: 'agent-operator',
@@ -41,6 +55,13 @@ const SYSTEM_AGENTS: readonly NarreSystemAgentDefinition[] = [
     narreAgentType: 'system',
     systemAgentType: 'agent-operator',
     skills: [],
+    runtimeProfile: {
+      provider: 'openai',
+      reasoningEffort: 'high',
+      toolProfileIds: ['core'],
+      approvalPolicy: 'strict',
+      contextScope: 'run',
+    },
   },
 ];
 
@@ -51,6 +72,12 @@ const TERMINAL_AGENTS: readonly TerminalAgentDefinition[] = [
     description: 'Terminal runtime session for Codex CLI.',
     kind: 'terminal',
     terminalAgentType: 'codex-cli',
+    runtimeProfile: {
+      provider: 'terminal',
+      toolProfileIds: ['code-write'],
+      approvalPolicy: 'strict',
+      contextScope: 'task',
+    },
   },
   {
     id: 'claude-code',
@@ -58,6 +85,12 @@ const TERMINAL_AGENTS: readonly TerminalAgentDefinition[] = [
     description: 'Terminal runtime session for Claude Code.',
     kind: 'terminal',
     terminalAgentType: 'claude-code',
+    runtimeProfile: {
+      provider: 'terminal',
+      toolProfileIds: ['code-review'],
+      approvalPolicy: 'strict',
+      contextScope: 'task',
+    },
   },
 ];
 
@@ -88,6 +121,13 @@ export function createGlobalUserAgentDefinition(agentId: string): NarreGlobalUse
     narreAgentType: 'user',
     userAgentType: 'global',
     skills: [],
+    runtimeProfile: {
+      provider: 'openai',
+      reasoningEffort: 'medium',
+      toolProfileIds: ['core'],
+      approvalPolicy: 'default',
+      contextScope: 'run',
+    },
   };
 }
 
@@ -104,6 +144,13 @@ export function createProjectUserAgentDefinition(
     userAgentType: 'project',
     projectId,
     skills: [],
+    runtimeProfile: {
+      provider: 'openai',
+      reasoningEffort: 'medium',
+      toolProfileIds: ['core'],
+      approvalPolicy: 'default',
+      contextScope: 'run',
+    },
   };
 }
 

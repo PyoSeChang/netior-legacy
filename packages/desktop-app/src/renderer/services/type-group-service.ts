@@ -1,4 +1,4 @@
-import type { TypeGroup, TypeGroupCreate, TypeGroupUpdate, TypeGroupKind } from '@netior/shared/types';
+﻿import type { TypeGroup, TypeGroupCreate, TypeGroupUpdate, TypeGroupKind } from '@netior/shared/types';
 import { unwrapIpc } from './ipc';
 
 export async function createTypeGroup(data: TypeGroupCreate): Promise<TypeGroup> {

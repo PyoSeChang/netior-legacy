@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron';
+﻿import { ipcMain } from 'electron';
 import type { IpcResult } from '@netior/shared/types';
 import { getRemoteConfig, setRemoteConfig } from '../netior-service/netior-service-client';
 import { isNarreManagedSettingKey, syncNarreServerWithSettings, writeNarreSetting } from '../narre/narre-config';

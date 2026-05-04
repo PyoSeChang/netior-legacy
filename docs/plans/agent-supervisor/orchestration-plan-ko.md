@@ -12,6 +12,52 @@
 
 이 문서는 코드 레벨 구현 상세보다 아키텍처 전환의 방향, 책임 분리, 단계별 작업과 의존성에 집중한다.
 
+## 1.1 2026-04-30 구현 기준 업데이트
+
+현재 구현 방향은 "관측 가능한 supervisor"에서 멈추지 않고, 진짜 multi-agent orchestration을 수용하는 control plane으로 확장하는 것이다.
+
+이 문서에서 말하는 multi-agent는 한 Narre runtime이 여러 agent 역할을 흉내 내는 것이 아니다. 다음 조건을 만족해야 한다.
+
+- 여러 agent가 독립된 definition, runtime profile, session, 상태를 가진다.
+- AgentOperator가 사용자 요청을 task로 분해하고 적절한 agent에 배정한다.
+- agent 간 handoff와 shared context 전달이 event log로 남는다.
+- 병렬 fan-out / fan-in, 실패, blocked, approval 상태를 Run/Task 단위로 추적한다.
+- agent별 provider, model, tool profile, approval policy가 실제 실행 설정으로 사용될 수 있어야 한다.
+
+이를 위해 `Session`만 확장하지 않고, `Conversation`, `OrchestrationRun`, `OrchestrationTask`, `AgentAssignment`, `AgentEvent`를 별도 도메인으로 둔다. 단, 이 모델들은 서로 분리된 세계가 아니라 다음 관계로 연결된다.
+
+```text
+Conversation
+  └─ OrchestrationRun
+       ├─ OrchestrationTask
+       │   └─ AgentAssignment
+       │       └─ SupervisorSession
+       └─ AgentEvent
+```
+
+`Session`은 "누가 실행 중인가"를 나타내고, `Run`은 "무슨 일을 완수하려는가"를 나타낸다. 따라서 orchestration의 원본은 Run/Task/Event이며, Session은 실행 리소스로 연결된다.
+
+UI는 이번 control-plane sprint의 범위가 아니다. 1:1 채팅, 단체 채팅방, 작업 보드, 타임라인은 모두 나중에 `AgentEvent`를 렌더링하는 별도 UX sprint에서 다룬다. 채팅 UI가 orchestration을 흉내 내면 안 되고, orchestration event가 원본이어야 한다.
+
+2026-04-30 현재 코드에는 UI가 붙을 수 있는 backend control-plane 기반이 추가되어 있다.
+
+- `POST /supervisor/runs`로 Conversation/Run을 만들고, `POST /supervisor/runs/:id/plan`에서 AgentOperator가 LLM 기반 JSON plan을 생성한다. LLM plan이 실패하면 규칙 기반 fallback을 사용한다.
+- AgentOperator는 Task를 만들고 AgentAssignment를 배정하며, `POST /supervisor/runs/:id/run`에서 dependency가 없는 assignment들을 병렬 fan-out으로 실행하고 upstream 결과가 필요한 task는 fan-in 후 실행한다.
+- `POST /supervisor/assignments/:id/run`은 assignment를 실제 Narre system/user agent identity, runtime profile, session context로 실행하고 결과를 task/assignment/event에 기록한다.
+- Narre system agent의 provider/model/tool profile/approval policy는 AgentDefinition의 runtime profile에서 출발하며, task/session override는 model, reasoning effort, temperature, context budget, extra instruction 범위로 제한된다.
+- terminal agent는 직접 PTY를 소유하지 않고 executor command queue로 `launch_agent`, `send_input`, `interrupt`, `attach_session` 명령을 전달한다. 실제 PTY 실행은 desktop executor가 후속으로 명령을 poll/수행/보고한다.
+- approval 요청은 `AgentApprovalRequest`로 저장되고 `POST /supervisor/approvals/:id/resolve`로 승인/거절/취소를 기록한다.
+- Orchestration state와 executor state는 `%APPDATA%/netior/data/narre/supervisor/` 아래 JSON 파일로 영속화된다.
+
+남은 큰 축은 backend domain이 아니라 desktop executor가 실제 terminal PTY 명령을 수행하는 연결부와, 이 event log를 채팅방/작업 보드/타임라인으로 보여주는 UI sprint다.
+
+agent runtime 설정은 두 층으로 나눈다.
+
+- AgentDefinition 고정 계약: provider, tool profile, permission boundary, approval policy, core instruction
+- Session/Task override 허용 영역: model, reasoning effort, temperature, context budget, extra instruction
+
+Operator는 어떤 agent에게 맡길지와 실행 강도를 조정할 수 있지만, agent의 provider/tool/permission 경계를 임의로 바꾸면 안 된다. assignment 실행 시 dispatcher는 resolved runtime profile로 별도 `NarreRuntime` instance를 만들고, 해당 provider adapter를 사용한다. 즉 같은 Narre 엔진 코드를 재사용하더라도 실행 instance/session/provider는 assignment별로 분리된다.
+
 ## 2. 현재 구조의 한계
 
 현재 구조는 크게 두 갈래로 나뉘어 있다.
@@ -324,21 +370,27 @@ Multi-agent orchestration의 핵심 문제는 "누가 무엇을 맡아야 하는
 
 - Narre와 terminal agent가 동일한 원격/오케스트레이션 흐름에 들어와야 한다.
 
-### 단계 E. UI 전환
+### 단계 E. UX projection 전환
 
 목표:
 
 - desktop renderer와 mobile이 supervisor의 동일한 상태를 보게 한다.
+- 1:1 채팅, 단체 채팅방, 작업 보드, 타임라인을 Run/Task/Event의 projection으로 제공한다.
 
 산출:
 
 - unified session list
 - unified session detail
 - unified event stream
+- direct/group/orchestration conversation projection
+- task board / timeline projection
 
 이 단계가 필요한 이유:
 
 - 두 클라이언트가 같은 세션을 서로 다른 방식으로 해석하면 원격 이어받기가 깨진다.
+- UI가 원본 상태를 만들면 multi-agent runtime과 어긋난다. UI는 event log를 렌더링해야 한다.
+
+이번 control-plane sprint에서는 이 단계를 구현하지 않는다. UI는 orchestration domain과 runtime dispatch가 코드로 자리 잡은 뒤 별도 sprint로 진행한다.
 
 ### 단계 F. Remote control 경로 정식화
 
@@ -391,15 +443,15 @@ Multi-agent orchestration의 핵심 문제는 "누가 무엇을 맡아야 하는
 
 ## 13. 우선순위
 
-가장 먼저 해야 할 것은 multi-agent 기능 구현이 아니다.
+가장 먼저 해야 할 것은 채팅방 UI 구현이 아니다.
 
 가장 먼저 해야 할 것은 다음 세 가지다.
 
-- supervisor가 될 수 있는 세션 구조 만들기
-- desktop executor bridge 만들기
-- Narre를 first-class agent로 격상하기
+- Run/Task/Assignment/Event 중심의 orchestration domain 만들기
+- supervisor가 orchestration authority가 될 수 있는 registry/API 만들기
+- agent별 runtime profile과 session 연결 구조 만들기
 
-이 세 가지가 정리되면 mobile 원격도 시작할 수 있고, 이후 orchestration도 무리 없이 올라간다.
+이 세 가지가 정리되면 system agent 실행, terminal executor 연결, mobile 원격, 채팅방 UX가 같은 event model 위에 올라갈 수 있다.
 
 ## 14. 결론
 

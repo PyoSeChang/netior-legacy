@@ -1,4 +1,4 @@
-import { create } from 'zustand';
+﻿import { create } from 'zustand';
 
 export type WorkspaceMode = 'browse' | 'edit';
 export type SidebarView =
@@ -6,9 +6,7 @@ export type SidebarView =
   | 'ontology'
   | 'networks'
   | 'concepts'
-  | 'schemas'
   | 'models'
-  | 'relationTypes'
   | 'contexts'
   | 'objects'
   | 'files'

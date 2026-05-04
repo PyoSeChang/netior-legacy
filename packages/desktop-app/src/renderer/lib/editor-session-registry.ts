@@ -1,4 +1,4 @@
-export interface EditorSessionHandle {
+﻿export interface EditorSessionHandle {
   save: () => Promise<void>;
   isDirty: () => boolean;
   revert: () => void;

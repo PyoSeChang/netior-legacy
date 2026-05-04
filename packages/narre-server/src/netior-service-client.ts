@@ -1,12 +1,12 @@
-import type {
-  Schema,
-  SchemaField,
-  SchemaMeaning,
+﻿import type {
   NetiorServiceResponse,
   Network,
   NetworkTreeNode,
   Project,
   Model,
+  Schema,
+  SchemaField,
+  SchemaMeaning,
   TypeGroup,
   TypeGroupKind,
 } from '@netior/shared/types';

@@ -1,4 +1,4 @@
-import type {
+﻿import type {
   NarreBehaviorSettings,
   NarreTranscriptTurn,
   NetiorMcpToolProfile,
@@ -13,17 +13,17 @@ export function buildBootstrapPrompt(
   behavior: NarreBehaviorSettings = DEFAULT_NARRE_BEHAVIOR_SETTINGS,
   historyTurns: NarreTranscriptTurn[] = [],
 ): string {
-  const { projectName, models, schemas } = params;
+  const { projectName, schemas, models } = params;
   const networkTree = params.networkTree ?? [];
   const edgeModels = models.filter((model) => model.target_kind === 'edge' || model.target_kind === 'both');
   const bootstrapHistory = summarizeBootstrapHistory(historyTurns);
 
-  const hasExistingStructure = schemas.length > 0 || edgeModels.length > 0 || networkTree.length > 1;
+  const hasExistingStructure = schemas.length > 0 || models.length > 0 || edgeModels.length > 0 || networkTree.length > 1;
 
   const existingState = hasExistingStructure
     ? `## Existing Project State
-Models (${models.length}): ${models.map((model) => model.name).join(', ') || 'none'}
-Schemas (${schemas.length}): ${schemas.map((a) => a.name).join(', ') || 'none'}
+Schemas (${schemas.length}): ${schemas.map((schema) => schema.name).join(', ') || 'none'}
+Semantic Models (${models.length}): ${models.map((model) => model.name).join(', ') || 'none'}
 Edge Models (${edgeModels.length}): ${edgeModels.map((model) => model.name).join(', ') || 'none'}
 Networks (${networkTree.length} top-level entries in digest): ${networkTree.map((n) => n.name).join(', ') || 'none'}
 
@@ -43,7 +43,7 @@ Infer the domain ontology before deciding workspace structure.
 
 Assume the user understands their domain, but does not understand Netior's internal modeling concepts such as:
 - how to split networks
-- which models or meanings should exist
+- which schemas, models, or meanings should exist
 - when to use typed schema references
 - how nodes should be placed
 
@@ -93,7 +93,7 @@ Follow this order unless the user explicitly narrows the task:
 
 ### Stage 4: Schema and Model Projection
 - Infer core schemas from the ontology, not from Netior jargon.
-- Apply models and meanings when they materially improve structure, navigation, or workflow.
+- Attach semantic models and meanings to schemas when they materially improve structure, navigation, or workflow.
 - Add typed cross-schema reference fields where the user will need durable navigation between entity types.
 - Add edge-target models when graph edges carry independent meaning beyond typed fields.
 
@@ -106,7 +106,7 @@ Follow this order unless the user explicitly narrows the task:
 - Present a concise bootstrap proposal before making high-impact changes.
 - After confirmation, create the workspace in this order:
   1. networks
-  2. schemas and models, including edge-target models
+  2. schemas and semantic models, including edge-target models
   3. fields and meaning bindings
   4. starter concepts and starter nodes
 - After execution, summarize what was created and why.
@@ -116,7 +116,7 @@ Follow this order unless the user explicitly narrows the task:
 - Before Stage 1 is complete, do not mutate project structure.
 - During a fresh bootstrap, \`confirm\` is not a substitute for \`ask\`. Do not use \`confirm\` to skip the two-round ontology interview.
 - Before presenting a bootstrap proposal, do not jump directly into large-scale creation.
-- Before network and schema approval, do not bulk-create starter concepts or starter nodes.
+- Before network and model approval, do not bulk-create starter concepts or starter nodes.
 - Use questions for ontology discovery first, then use proposal/confirmation before high-impact creation.
 
 ## Interview Rules
@@ -125,7 +125,7 @@ Do not ask the user to choose Netior-internal structures directly.
 
 Bad questions:
 - which networks do you want?
-- which models should I use?
+- which schemas or models should I use?
 - should I use a typed schema reference here?
 - how should I place the nodes?
 
@@ -143,8 +143,8 @@ When presenting a bootstrap plan, prefer these sections:
 - interview findings
 - inferred ontology
 - projected network structure
-- projected models and meanings
-- projected schemas
+- projected schemas and meanings
+- projected semantic models
 - projected typed reference fields
 - projected edge models
 - projected starter concepts and starter nodes
@@ -166,7 +166,7 @@ When presenting a bootstrap plan, prefer these sections:
 - Respond in the same language the user uses.
 - Be concise and structural.
 - Do not force the user to become a Netior modeler.
-- Do not stop at schema lists if the user clearly needs network structure and starter graph support.
+- Do not stop at schema/model lists if the user clearly needs network structure and starter graph support.
 - Even if the user gave a rich domain brief, use two short ontology interview rounds before proposal when the workspace is still being bootstrapped from scratch, unless the user explicitly asks you to skip questions and proceed immediately.
 - If the user is vague, interview first and design second.
 - In bootstrap mode, reason in this order: domain -> ontology -> workspace projection -> schema/model projection -> starter graph.`;
@@ -282,5 +282,5 @@ function buildRecoveryCheckpoint(summary: BootstrapHistorySummary): string {
 
   return `## Bootstrap Recovery Checkpoint
 - Bootstrap has already entered execution.
-- Continue to keep ontology, network projection, schema/model projection, and starter graph aligned with the accepted plan.`;
+- Continue to keep ontology, network projection, model/model projection, and starter graph aligned with the accepted plan.`;
 }

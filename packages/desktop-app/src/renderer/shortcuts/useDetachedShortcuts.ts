@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+﻿import { useEffect } from 'react';
 import { useEditorStore, MAIN_HOST_ID } from '../stores/editor-store';
 import { getSession } from '../lib/editor-session-registry';
 import { jumpToNextUnacknowledgedAgent } from '../lib/terminal-agent-notifier';

@@ -1,4 +1,4 @@
-const exitedSessions = new Set<string>();
+﻿const exitedSessions = new Set<string>();
 let initialized = false;
 
 export function initTerminalTracker(): void {

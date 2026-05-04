@@ -1,4 +1,4 @@
-import fs from 'fs/promises';
+﻿import fs from 'fs/promises';
 import path from 'path';
 import { randomUUID } from 'crypto';
 import type {
@@ -191,7 +191,7 @@ export class SessionStore {
     );
   }
 
-  async createSession(projectId: string, title?: string): Promise<NarreSession> {
+  async createSession(projectId: string, title?: string, agentKey?: string | null): Promise<NarreSession> {
     const now = new Date().toISOString();
     const session: NarreSession = {
       id: randomUUID(),
@@ -199,6 +199,7 @@ export class SessionStore {
       created_at: now,
       last_message_at: now,
       message_count: 0,
+      agentKey: agentKey ?? null,
     };
 
     const index = await this.readIndex(projectId);

@@ -13,6 +13,7 @@ import { Toggle } from '../ui/Toggle';
 import { Button } from '../ui/Button';
 import { ScrollArea } from '../ui/ScrollArea';
 import { isHierarchyParentEdge } from '../../lib/edge-models';
+import { getModelDisplayName } from '../../lib/model-i18n';
 
 interface EdgeEditorProps {
   tab: EditorTab;
@@ -76,17 +77,17 @@ export function EdgeEditor({ tab }: EdgeEditorProps): JSX.Element {
   const isHierarchyMeaning = edge ? isHierarchyParentEdge(edge) : false;
 
   const modelOptions = useMemo(() => [
-    { value: '', label: t('edge.noRelationType') },
+    { value: '', label: t('edge.noModel' as never) ?? 'No model' },
     ...models
       .filter((model) => model.target_kind === 'edge' || model.target_kind === 'both')
-      .map((model) => ({ value: model.id, label: model.name })),
+      .map((model) => ({ value: model.id, label: getModelDisplayName(model, t) })),
   ], [models, t]);
 
   const lineStyleOptions = [
     { value: '', label: t('edge.inheritFromType') ?? 'Inherit' },
-    { value: 'solid', label: t('relationType.solid') },
-    { value: 'dashed', label: t('relationType.dashed') },
-    { value: 'dotted', label: t('relationType.dotted') },
+    { value: 'solid', label: t('edge.solid' as never) ?? 'Solid' },
+    { value: 'dashed', label: t('edge.dashed' as never) ?? 'Dashed' },
+    { value: 'dotted', label: t('edge.dotted' as never) ?? 'Dotted' },
   ];
 
   const handleDelete = useCallback(async () => {
@@ -157,7 +158,7 @@ export function EdgeEditor({ tab }: EdgeEditorProps): JSX.Element {
 
           {/* Description */}
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-secondary">{t('relationType.description')}</label>
+            <label className="text-xs font-medium text-secondary">{t('edge.description')}</label>
             <TextArea
               value={session.state.description ?? ''}
               onChange={(e) => update({ description: e.target.value || null })}
@@ -171,7 +172,7 @@ export function EdgeEditor({ tab }: EdgeEditorProps): JSX.Element {
             <label className="text-xs font-medium text-secondary">{t('edge.visualOverride') ?? 'Visual Override'}</label>
 
             <div className="flex flex-col gap-2">
-              <span className="text-xs text-secondary">{t('relationType.color')}</span>
+              <span className="text-xs text-secondary">{t('edge.color' as never) ?? 'Color'}</span>
               <ColorPicker
                 value={session.state.visual.color ?? undefined}
                 onChange={(color) => updateVisual({ color })}
@@ -187,7 +188,7 @@ export function EdgeEditor({ tab }: EdgeEditorProps): JSX.Element {
             </div>
 
             <div className="flex flex-col gap-2">
-              <span className="text-xs text-secondary">{t('relationType.lineStyle')}</span>
+              <span className="text-xs text-secondary">{t('edge.lineStyle' as never) ?? 'Line style'}</span>
               <Select
                 options={lineStyleOptions}
                 value={session.state.visual.line_style ?? ''}
@@ -201,7 +202,7 @@ export function EdgeEditor({ tab }: EdgeEditorProps): JSX.Element {
                 checked={effectiveDirected}
                 onChange={(checked) => updateVisual({ directed: checked })}
               />
-              <span className="text-xs text-secondary">{t('relationType.directed')}</span>
+              <span className="text-xs text-secondary">{t('edge.directed' as never) ?? 'Directed'}</span>
               {session.state.visual.directed != null && (
                 <button
                   className="text-[10px] text-muted hover:text-default"

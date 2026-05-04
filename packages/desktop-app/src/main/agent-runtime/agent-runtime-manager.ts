@@ -1,4 +1,4 @@
-import { BrowserWindow } from 'electron';
+﻿import { BrowserWindow } from 'electron';
 import { IPC_CHANNELS } from '@netior/shared/constants';
 import type {
   AgentNameEvent,

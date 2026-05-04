@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+﻿import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, FileText, Plus, RefreshCw, Save, Trash2 } from 'lucide-react';
 import type { EditorTab, NarreUserAgentType, UserAgentRecord, UserAgentSkillSummary } from '@netior/shared/types';
 import { agentService } from '../../services/agent-service';

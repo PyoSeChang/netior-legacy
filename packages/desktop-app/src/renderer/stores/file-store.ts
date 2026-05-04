@@ -1,4 +1,4 @@
-import { create } from 'zustand';
+﻿import { create } from 'zustand';
 import type { FileTreeNode } from '@netior/shared/types';
 import { fsService } from '../services';
 import { getEditorType, type EditorType } from '../components/editor/editor-utils';
@@ -169,7 +169,7 @@ export const useFileStore = create<FileStore>((set, get) => ({
     const { rootDirs } = get();
     if (rootDirs.length === 0) return;
 
-    // Silent refresh — no loading flag so FileTree stays mounted
+    // Silent refresh ??no loading flag so FileTree stays mounted
     const dirs = rootDirs;
     const trees = await Promise.all(dirs.map((d) => fsService.readDirShallow(d, 2)));
     const nextTree = buildRootFileTree(dirs, trees);

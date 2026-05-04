@@ -1,0 +1,7 @@
+verify:
+  - name: "scenario is executed by deterministic e2e harness"
+    response:
+      contains_any:
+        - "orchestration control-plane contract"
+        - "deterministic"
+      no_error: true

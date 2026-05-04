@@ -1,8 +1,8 @@
-import { z } from 'zod';
+﻿import { z } from 'zod';
 
-export const proposalCellTypeSchema = z.enum(['text', 'icon', 'color', 'enum', 'boolean', 'readonly']);
+export const proposalCellTypeModel = z.enum(['text', 'icon', 'color', 'enum', 'boolean', 'readonly']);
 
-export const draftToolSchema = z.object({
+export const draftToolModel = z.object({
   title: z.string().optional().describe('Optional title for the draft block'),
   content: z.string().describe('Editable markdown or plain-text draft shown to the user'),
   format: z.enum(['markdown']).optional().describe('Draft format. Defaults to markdown'),
@@ -12,7 +12,7 @@ export const draftToolSchema = z.object({
   feedbackPlaceholder: z.string().optional().describe('Optional placeholder for the feedback field'),
 });
 
-export const askToolSchema = z.object({
+export const askToolModel = z.object({
   question: z.string().describe('The question to ask'),
   options: z.array(z.object({
     label: z.string(),
@@ -24,7 +24,7 @@ export const askToolSchema = z.object({
   submitLabel: z.string().optional().describe('Optional submit button label'),
 });
 
-export const confirmToolSchema = z.object({
+export const confirmToolModel = z.object({
   message: z.string().describe('Description of the action requiring confirmation'),
   actions: z.array(z.object({
     key: z.string(),
@@ -33,6 +33,6 @@ export const confirmToolSchema = z.object({
   })),
 });
 
-export type DraftToolArgs = z.infer<typeof draftToolSchema>;
-export type AskToolArgs = z.infer<typeof askToolSchema>;
-export type ConfirmToolArgs = z.infer<typeof confirmToolSchema>;
+export type DraftToolArgs = z.infer<typeof draftToolModel>;
+export type AskToolArgs = z.infer<typeof askToolModel>;
+export type ConfirmToolArgs = z.infer<typeof confirmToolModel>;

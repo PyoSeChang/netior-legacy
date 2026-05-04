@@ -1,4 +1,4 @@
-import type { LayoutComputeResult, LayoutRenderNode } from '../types';
+﻿import type { LayoutComputeResult, LayoutRenderNode } from '../types';
 import { getSemanticBoolean, getSemanticNumber } from '../semantic';
 
 export type CalendarView = 'day' | 'week' | 'month';

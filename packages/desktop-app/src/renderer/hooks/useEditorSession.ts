@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+﻿import { useState, useRef, useCallback, useEffect } from 'react';
 import { useEditorStore } from '../stores/editor-store';
 import { registerSession, unregisterSession } from '../lib/editor-session-registry';
 

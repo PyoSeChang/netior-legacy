@@ -1,4 +1,4 @@
-import type { EditorTab } from '@netior/shared/types';
+﻿import type { EditorTab } from '@netior/shared/types';
 import type { ContextMenuEntry } from '../ui/ContextMenu';
 import { useEditorStore, MAIN_HOST_ID } from '../../stores/editor-store';
 import { getEditorType, getAvailableEditors, EDITOR_LABELS, type EditorType } from './editor-utils';
@@ -8,7 +8,7 @@ import { isTodoEnabled, toggleTodoEnabled } from '../../lib/terminal-todo-store'
 import { openTerminalTab } from '../../lib/terminal/open-terminal-tab';
 import { getAllowedViewModes } from '../../lib/editor-view-mode-rules';
 
-// ── Common items (all tab types) ──
+// Common items (all tab types)
 
 function buildCommonItems(tab: EditorTab, tabs: EditorTab[]): ContextMenuEntry[] {
   const store = useEditorStore.getState();
@@ -20,10 +20,10 @@ function buildCommonItems(tab: EditorTab, tabs: EditorTab[]): ContextMenuEntry[]
   const t = (key: TranslationKey) => translate(locale, key);
 
   const items: ContextMenuEntry[] = [
-    { label: '탭 닫기', shortcut: 'Ctrl+W', onClick: () => store.requestCloseTab(tab.id) },
-    { label: '다른 탭 모두 닫기', disabled: !hasOthers, onClick: () => store.closeOtherTabs(tab.id) },
-    { label: '오른쪽 탭 모두 닫기', disabled: !hasRight, onClick: () => store.closeTabsToRight(tab.id) },
-    { label: '모든 탭 닫기', onClick: () => store.closeAllTabs() },
+    { label: 'Close', shortcut: 'Ctrl+W', onClick: () => store.requestCloseTab(tab.id) },
+    { label: 'Close Others', disabled: !hasOthers, onClick: () => store.closeOtherTabs(tab.id) },
+    { label: 'Close to Right', disabled: !hasRight, onClick: () => store.closeTabsToRight(tab.id) },
+    { label: 'Close All', onClick: () => store.closeAllTabs() },
   ];
 
   // Minimize only available in main host
@@ -38,7 +38,7 @@ function buildCommonItems(tab: EditorTab, tabs: EditorTab[]): ContextMenuEntry[]
   return items;
 }
 
-// ── View mode items (main host only) ──
+// View mode items (main host only)
 
 function buildViewModeItems(tab: EditorTab): ContextMenuEntry[] {
   const store = useEditorStore.getState();
@@ -46,37 +46,37 @@ function buildViewModeItems(tab: EditorTab): ContextMenuEntry[] {
   const allowedModes = new Set(getAllowedViewModes(tab));
 
   const modes = [
-    { label: 'Side 모드', mode: 'side' as const },
-    { label: 'Full 모드', mode: 'full' as const },
-    { label: 'Float 모드', mode: 'float' as const },
+    { label: 'Side Mode', mode: 'side' as const },
+    { label: 'Full Mode', mode: 'full' as const },
+    { label: 'Float Mode', mode: 'float' as const },
   ];
 
   return modes.filter((m) => allowedModes.has(m.mode)).map((m) => ({
-    label: m.mode === current ? `${m.label} ✓` : m.label,
+    label: m.mode === current ? `${m.label} (current)` : m.label,
     disabled: m.mode === current,
     onClick: () => store.setViewMode(tab.id, m.mode),
   }));
 }
 
-// ── Host move items ──
+// Host move items
 
 function buildHostMoveItems(tab: EditorTab): ContextMenuEntry[] {
   const store = useEditorStore.getState();
   const items: ContextMenuEntry[] = [];
 
   if (tab.hostId === MAIN_HOST_ID) {
-    // Tab is in main → offer "Move to New Window"
+    // Tab is in main host: offer "Move to New Window".
     items.push({
-      label: '새 창으로 이동',
+      label: 'Move to New Window',
       onClick: () => {
         console.log(`[TabContextMenu] detach tabId=${tab.id} from host=${tab.hostId}`);
         store.detachTab(tab.id);
       },
     });
   } else {
-    // Tab is in detached → offer "Move to Main Window"
+    // Tab is in detached host: offer "Move to Main Window".
     items.push({
-      label: '메인 창으로 이동',
+      label: 'Move to Main Window',
       shortcut: 'Ctrl+Shift+M',
       onClick: () => {
         console.log(`[TabContextMenu] moveToMain tabId=${tab.id} from host=${tab.hostId}`);
@@ -91,7 +91,7 @@ function buildHostMoveItems(tab: EditorTab): ContextMenuEntry[] {
     items.push({ type: 'divider' });
     for (const host of otherHosts) {
       items.push({
-        label: `${host.label} 창으로 이동`,
+        label: `Move to ${host.label}`,
         onClick: () => {
           console.log(`[TabContextMenu] moveToHost tabId=${tab.id} from host=${tab.hostId} to host=${host.id}`);
           store.moveTabToHost(tab.id, host.id);
@@ -103,14 +103,14 @@ function buildHostMoveItems(tab: EditorTab): ContextMenuEntry[] {
   return items;
 }
 
-// ── Concept-specific items ──
+// Concept-specific items
 
 function buildConceptItems(tab: EditorTab): ContextMenuEntry[] {
   const items: ContextMenuEntry[] = [];
 
   if (tab.activeFilePath) {
     items.push({
-      label: '파일 경로 복사',
+      label: 'Copy File Path',
       onClick: () => navigator.clipboard.writeText(tab.activeFilePath!),
     });
   }
@@ -118,7 +118,7 @@ function buildConceptItems(tab: EditorTab): ContextMenuEntry[] {
   return items;
 }
 
-// ── File-specific items ──
+// File-specific items
 
 function buildFileItems(tab: EditorTab): ContextMenuEntry[] {
   const store = useEditorStore.getState();
@@ -127,7 +127,7 @@ function buildFileItems(tab: EditorTab): ContextMenuEntry[] {
 
   const items: ContextMenuEntry[] = [
     {
-      label: '파일 경로 복사',
+      label: 'Copy File Path',
       onClick: () => navigator.clipboard.writeText(tab.targetId),
     },
   ];
@@ -136,7 +136,7 @@ function buildFileItems(tab: EditorTab): ContextMenuEntry[] {
     items.push({ type: 'divider' });
     for (const editor of available) {
       items.push({
-        label: `${EDITOR_LABELS[editor]}${editor === current ? ' ✓' : ''}`,
+        label: `${EDITOR_LABELS[editor]}${editor === current ? ' (current)' : ''}`,
         disabled: editor === current,
         onClick: () => store.setEditorType(tab.id, editor),
       });
@@ -146,20 +146,20 @@ function buildFileItems(tab: EditorTab): ContextMenuEntry[] {
   return items;
 }
 
-// ── Terminal-specific items ──
+// Terminal-specific items
 
 function buildTerminalItems(tab: EditorTab, callbacks?: TabContextMenuCallbacks): ContextMenuEntry[] {
   return [
     {
-      label: '터미널 이름 변경',
+      label: 'Rename Terminal',
       onClick: () => callbacks?.onRequestRename?.(tab.id),
     },
     {
-      label: isTodoEnabled(tab.targetId) ? 'Todo 숨기기' : 'Todo 표시',
+      label: isTodoEnabled(tab.targetId) ? 'Hide Todo' : 'Show Todo',
       onClick: () => toggleTodoEnabled(tab.targetId),
     },
     {
-      label: '터미널 Kill',
+      label: 'Kill Terminal',
       danger: true,
       onClick: () => {
         window.electron.terminal.shutdown(tab.targetId).catch(() => {});
@@ -169,7 +169,7 @@ function buildTerminalItems(tab: EditorTab, callbacks?: TabContextMenuCallbacks)
   ];
 }
 
-// ── Builders ──
+// Builders
 
 export interface TabContextMenuCallbacks {
   onRequestRename?: (tabId: string) => void;
@@ -220,10 +220,10 @@ export function buildStripContextMenu(tabs: EditorTab[], hostId?: string): Conte
   const resolvedHostId = hostId ?? MAIN_HOST_ID;
 
   const items: ContextMenuEntry[] = [
-    { label: '모든 탭 닫기', disabled: tabs.length === 0, onClick: () => store.closeAllTabs() },
+    { label: 'Close All', disabled: tabs.length === 0, onClick: () => store.closeAllTabs() },
     { type: 'divider' },
     {
-      label: '새 터미널',
+      label: 'New Terminal',
       onClick: () => {
         openTerminalTab(resolvedHostId);
       },
@@ -234,7 +234,7 @@ export function buildStripContextMenu(tabs: EditorTab[], hostId?: string): Conte
   if (resolvedHostId !== MAIN_HOST_ID && tabs.length > 0) {
     items.push({ type: 'divider' });
     items.push({
-      label: '모든 탭을 메인 창으로 이동',
+      label: 'Move All to Main Window',
       onClick: () => {
         for (const tab of [...tabs]) {
           store.moveTabToHost(tab.id, MAIN_HOST_ID);

@@ -1,4 +1,4 @@
-export interface TodoItem {
+﻿export interface TodoItem {
   id: string;
   text: string;
   checked: boolean;

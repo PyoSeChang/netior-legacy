@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+﻿import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { ChevronRight, ChevronDown, Loader2 } from 'lucide-react';
 import type { FileTreeNode } from '@netior/shared/types';
 import type { TranslationKey } from '@netior/shared/i18n';
@@ -219,7 +219,7 @@ async function getNextAvailablePath(targetPath: string): Promise<string> {
   return candidatePath;
 }
 
-// ─── Inline Input Components ───────────────────────────────────────
+// ??? Inline Input Components ???????????????????????????????????????
 
 function InlineRenameInput({
   initialValue,
@@ -324,7 +324,7 @@ function InlineNewInput({
   );
 }
 
-// ─── Tree Item ─────────────────────────────────────────────────────
+// ??? Tree Item ?????????????????????????????????????????????????????
 
 function FileTreeItem({
   node,
@@ -537,7 +537,7 @@ function FileTreeItem({
   );
 }
 
-// ─── FileTree Root ─────────────────────────────────────────────────
+// ??? FileTree Root ?????????????????????????????????????????????????
 
 export function FileTree({ nodes, onFileClick }: FileTreeProps): JSX.Element {
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
@@ -1133,7 +1133,7 @@ export function FileTree({ nodes, onFileClick }: FileTreeProps): JSX.Element {
       items.push({ type: 'divider' });
     }
 
-    // New File / New Folder — for directories use self, for files use parent
+    // New File / New Folder ??for directories use self, for files use parent
     const parentDir = getParentDir(node);
     items.push({
       label: t('fileTree.newFile' as TranslationKey),

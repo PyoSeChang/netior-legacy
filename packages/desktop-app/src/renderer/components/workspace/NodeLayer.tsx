@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+﻿import React, { useMemo } from 'react';
 import type { RenderNode } from './types';
 import type { WorkspaceMode } from '../../stores/ui-store';
 import { NodeCardDefault } from './node-components/NodeCardDefault';

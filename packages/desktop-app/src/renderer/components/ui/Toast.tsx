@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+﻿import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { X, CheckCircle, AlertTriangle, AlertCircle, Info } from 'lucide-react';
 
@@ -30,7 +30,7 @@ const COLOR_MAP: Record<ToastType, string> = {
   info: 'text-status-info',
 };
 
-// ─── Single Toast Entry ───────────────────────────────────────────
+// ??? Single Toast Entry ???????????????????????????????????????????
 
 function ToastEntry({
   toast,
@@ -98,7 +98,7 @@ function ToastEntry({
   );
 }
 
-// ─── Global imperative API ────────────────────────────────────────
+// ??? Global imperative API ????????????????????????????????????????
 
 let addToastFn: ((toast: Omit<ToastItem, 'id'>) => void) | null = null;
 let dismissToastByKeyFn: ((toastKey: string) => void) | null = null;
@@ -123,7 +123,7 @@ export function dismissToastByKey(toastKey: string) {
   dismissToastByKeyFn?.(toastKey);
 }
 
-// ─── Container (mount once in App) ────────────────────────────────
+// ??? Container (mount once in App) ????????????????????????????????
 
 export const ToastContainer: React.FC = () => {
   const [toasts, setToasts] = useState<ToastItem[]>([]);

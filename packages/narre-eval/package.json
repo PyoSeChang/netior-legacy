@@ -8,6 +8,7 @@
     "build": "tsup",
     "eval": "node dist/cli.js",
     "eval:dev": "tsx src/cli.ts",
+    "e2e:orchestration": "tsx src/orchestration-control-plane-e2e.ts",
     "tui": "node dist/tui.js",
     "tui:dev": "tsx src/tui.ts",
     "clean": "rimraf dist",

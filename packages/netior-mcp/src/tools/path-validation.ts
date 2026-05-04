@@ -1,4 +1,4 @@
-import { getProjectById, listModules } from '../netior-service-client.js';
+﻿import { getProjectById, listModules } from '../netior-service-client.js';
 import { resolve } from 'path';
 
 export async function getAllowedPaths(projectId: string): Promise<string[]> {

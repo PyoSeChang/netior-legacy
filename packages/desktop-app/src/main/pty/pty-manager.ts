@@ -1,4 +1,4 @@
-import type { IPty } from 'node-pty';
+﻿import type { IPty } from 'node-pty';
 import { BrowserWindow, app, type WebContents } from 'electron';
 import { basename } from 'path';
 import { existsSync } from 'fs';

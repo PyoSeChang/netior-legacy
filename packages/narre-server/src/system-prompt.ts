@@ -1,4 +1,4 @@
-import type { NarreBehaviorSettings } from '@netior/shared/types';
+﻿import type { NarreBehaviorSettings } from '@netior/shared/types';
 
 export interface SystemPromptSchemaFieldSummary {
   name: string;
@@ -7,7 +7,7 @@ export interface SystemPromptSchemaFieldSummary {
   meaning_bindings?: string[];
   generated_by_model?: boolean;
   ref_schema_name?: string | null;
-  option_source_schema_name?: string | null;
+  option_source_model_name?: string | null;
   options_preview?: string[] | null;
 }
 
@@ -37,8 +37,10 @@ export interface SystemPromptSchemaSummary {
 
 export interface SystemPromptModelSummary {
   id: string;
-  key: string;
+  key?: string;
   name: string;
+  icon?: string | null;
+  color?: string | null;
   description?: string | null;
   category?: string | null;
   target_kind?: 'object' | 'edge' | 'both' | string;
@@ -81,8 +83,8 @@ export interface SystemPromptParams {
   projectId: string;
   projectName: string;
   projectRootDir?: string | null;
-  models: SystemPromptModelSummary[];
   schemas: SystemPromptSchemaSummary[];
+  models: SystemPromptModelSummary[];
   typeGroups?: SystemPromptTypeGroupSummary[];
   universeNetwork?: SystemPromptNetworkSummary | null;
   ontologyNetwork?: SystemPromptNetworkSummary | null;
@@ -116,7 +118,7 @@ export function normalizeNarreBehaviorSettings(value: unknown): NarreBehaviorSet
 
 export function buildBehaviorGuidanceSection(behavior: NarreBehaviorSettings): string {
   return [
-    '- Your primary job is to manage Netior modeling state: schemas, models, meanings, fields, concepts, networks, edges, files, and related instance metadata.',
+    '- Your primary job is to manage Netior modeling state: schemas, semantic models, meanings, fields, concepts, networks, edges, files, and related instance metadata.',
     '- Treat requests as Netior modeling work by default, not as general software engineering or local coding work.',
     '- Prefer Netior/MCP tools and graph-object operations over browsing arbitrary local workspace files.',
     '- Interpret the user intent before naming implementation details. Start from the user\'s expected outcome, not from internal field or route names.',
@@ -179,8 +181,8 @@ function formatFieldSummary(field: SystemPromptSchemaFieldSummary): string {
     models.push(`target=${field.ref_schema_name}`);
   }
 
-  if (field.option_source_schema_name) {
-    models.push(`options-from=${field.option_source_schema_name}`);
+  if (field.option_source_model_name) {
+    models.push(`options-from=${field.option_source_model_name}`);
   } else if (field.options_preview && field.options_preview.length > 0) {
     models.push(`options=${field.options_preview.join('|')}`);
   }
@@ -188,7 +190,7 @@ function formatFieldSummary(field: SystemPromptSchemaFieldSummary): string {
   return `${field.name} (${models.join(', ')})`;
 }
 
-function buildSchemaList(schemas: SystemPromptSchemaSummary[]): string {
+function buildSchemaSurfaceList(schemas: SystemPromptSchemaSummary[]): string {
   if (schemas.length === 0) {
     return '- (none defined yet)';
   }
@@ -208,6 +210,7 @@ function buildSchemaList(schemas: SystemPromptSchemaSummary[]): string {
       `icon=${schema.icon ?? 'none'}`,
       `color=${schema.color ?? 'none'}`,
       `shape=${schema.node_shape ?? 'default'}`,
+      ...(schema.models && schema.models.length > 0 ? [`models=${schema.models.join('|')}`] : []),
       ...(schema.description ? [`description=${schema.description}`] : []),
     ].join(', ');
     const overflow = fields.length > 10 ? `\n- more_fields=+${fields.length - 10}` : '';
@@ -215,7 +218,6 @@ function buildSchemaList(schemas: SystemPromptSchemaSummary[]): string {
     return [
       `### ${schema.name} [id=${schema.id}]`,
       `- profile=${profile}`,
-      `- models=${schema.models && schema.models.length > 0 ? schema.models.join('|') : '(none)'}`,
       `- meanings=${schema.meanings && schema.meanings.length > 0 ? schema.meanings.map((meaning) => meaning.label ?? meaning.key).join('|') : '(none)'}`,
       `- properties=${propertyFields.length > 0 ? propertyFields.slice(0, 6).map(formatFieldSummary).join('; ') : '(none yet)'}`,
       `- field_relations=${relationalFields.length > 0 ? relationalFields.slice(0, 6).map(formatFieldSummary).join('; ') : '(none yet)'}`,
@@ -303,7 +305,7 @@ function buildTypeGroupSection(typeGroups: SystemPromptTypeGroupSummary[] | unde
   }
 
   return typeGroups
-    .map((group) => `- ${group.kind === 'schema' ? 'schema' : group.kind} [id=${group.id}]: ${group.path}`)
+    .map((group) => `- ${group.kind} [id=${group.id}]: ${group.path}`)
     .join('\n');
 }
 
@@ -336,7 +338,7 @@ function buildNetworkContextSection(
     `- universe=${universeNetwork ? `${universeNetwork.name} [id=${universeNetwork.id}]` : 'none'}`,
     `- ontology=${ontologyNetwork ? `${ontologyNetwork.name} [id=${ontologyNetwork.id}]` : 'none'}`,
     '- universe_role=app-wide project portal network; do not edit it like a normal network',
-    '- ontology_role=project model network for schemas, models, type groups, and their relations',
+    '- ontology_role=project ontology network for schemas, semantic models, type groups, and their relations',
   ];
 
   const treeLines: string[] = [];
@@ -361,8 +363,8 @@ export function buildSystemPrompt(
     projectId,
     projectName,
     projectRootDir,
-    models,
     schemas,
+    models,
     typeGroups,
     networkTree,
   } = params;
@@ -370,7 +372,7 @@ export function buildSystemPrompt(
   const ontologyNetwork = params.ontologyNetwork;
 
   const modelList = buildModelList(models);
-  const schemaList = buildSchemaList(schemas);
+  const schemaSurfaceList = buildSchemaSurfaceList(schemas);
   const relationalSchema = buildRelationalSchemaSection(schemas);
   const edgeModelList = buildEdgeModelList(models);
   const typeGroupList = buildTypeGroupSection(typeGroups);
@@ -389,13 +391,13 @@ The active project is already fixed for this run. Do not search for which projec
 ## Project Modeling Digest
 Use this digest as the primary search surface before calling tools.
 
-## Models (${models.length})
+## Semantic Models (${models.length})
 ${modelList}
 
 ## Schema Search Surfaces (${schemas.length})
-${schemaList}
+${schemaSurfaceList}
 
-## Field Relation Map
+## Schema Field Relation Map
 ${relationalSchema}
 
 ## Edge Models (${models.filter((model) => model.target_kind === 'edge' || model.target_kind === 'both').length})
@@ -408,7 +410,7 @@ ${typeGroupList}
 ${networkContext}
 
 ## Search Strategy
-- Start from the modeling digest in this prompt: models, meanings, fields, meaning bindings, field relations, edge models, and network hierarchy.
+- Start from the modeling digest in this prompt: schemas, semantic models, meanings, fields, meaning bindings, field relations, edge models, and network hierarchy.
 - For bootstrap or early-structure work, reason ontology-first: infer entity kinds, relation kinds, artifact kinds, and workflow structure before deciding network splits or schemas.
 - Treat networks as a workspace projection of inferred ontology, not as the first thing the user must specify.
 - Before searching concepts, infer these three things first:
@@ -434,20 +436,20 @@ ${networkContext}
   - merge/split/refactor/migration that may change existing data
 
 ## Tool Policy
-- Stable project schemas, models, field search surfaces, and network hierarchy index are already in this prompt. Do not broad-search for them again unless the live state may have diverged.
+- Stable project schemas, semantic models, field search surfaces, and network hierarchy index are already in this prompt. Do not broad-search for them again unless the live state may have diverged.
 - Prefer this decision order:
   1. mentioned object
   2. prompt digest
   3. targeted lookup
   4. broad discovery
 - Use tools for live state, IDs that are still missing, membership, current values, ambiguity resolution, candidate sets, and destructive-change verification.
-- Do not re-fetch schema lists, model lists, type groups, or network hierarchy just because those tools exist.
+- Do not re-fetch model lists, model lists, type groups, or network hierarchy just because those tools exist.
 - The active project is already bound for this run. Do not search for project identity or pass raw 'project_id' values unless the user explicitly asks for cross-project work.
 - When a tool supports default project binding, omit 'project_id' and use the current project by default.
 - Prefer one precise inspection over multiple exploratory searches.
 
 ## Guidelines
-- When the project has little or no structure, proactively suggest a bootstrap based on the project topic. Start from the domain, infer ontology first, then project it into likely networks, schemas, models, meanings, and fields. Avoid making the user choose Netior-internal structures prematurely.
+- When the project has little or no structure, proactively suggest a bootstrap based on the project topic. Start from the domain, infer ontology first, then project it into likely networks, schemas, semantic models, meanings, and fields. Avoid making the user choose Netior-internal structures prematurely.
 - Always confirm before destructive operations (delete, bulk modify).
 - When deleting an entity with dependent data, warn about cascading effects.
 - Respond in the same language the user uses.
@@ -456,7 +458,7 @@ ${networkContext}
 - For field-level schema work, inspect fields, meanings, and concept properties before changing relationship structure.
 - Before assigning reference or choice values, inspect the candidate set instead of guessing from memory.
 - Use graph primitives when the user is talking about network structure, navigation hierarchy, node placement, or independent object-to-object relations in the graph.
-- Do not replace a true graph relation with a field just because a field tool exists, and do not replace a schema field with an edge just because a graph tool exists.
+- Do not replace a true graph relation with a field just because a field tool exists, and do not replace a model field with an edge just because a graph tool exists.
 - When creating multiple entities, execute tool calls sequentially and report progress.
 ${buildBehaviorGuidanceSection(behavior)}`;
 }

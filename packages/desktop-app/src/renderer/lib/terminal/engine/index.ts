@@ -1,4 +1,4 @@
-import type { TerminalEngine } from './terminal-engine';
+﻿import type { TerminalEngine } from './terminal-engine';
 import { getHyperTerminalEngine } from './hyper-terminal-engine';
 
 let activeEngine: TerminalEngine | null = null;

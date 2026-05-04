@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+﻿import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_ACTIVITY_BAR_LAYOUT_CONFIG,
   getProjectNetworkBookmarkIds,

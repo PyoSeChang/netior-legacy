@@ -1,4 +1,4 @@
-import type {
+﻿import type {
   Module, ModuleCreate, ModuleUpdate,
   ModuleDirectory, ModuleDirectoryCreate,
 } from '@netior/shared/types';

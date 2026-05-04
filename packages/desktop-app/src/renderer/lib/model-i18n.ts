@@ -10,7 +10,9 @@ type ModelDisplaySource = Pick<Model, 'key' | 'name' | 'description' | 'built_in
 
 export function getModelDisplayName(model: ModelDisplaySource, t: Translate): string {
   if (!model.built_in) return model.name;
-  return t(getModelLabelKey(model.key as ModelKey) as TranslationKey);
+  const labelKey = getModelLabelKey(model.key as ModelKey);
+  const label = t(labelKey as TranslationKey);
+  return label === labelKey ? model.name : label;
 }
 
 export function getModelDisplayDescription(
@@ -18,5 +20,7 @@ export function getModelDisplayDescription(
   t: Translate,
 ): string | null {
   if (!model.built_in) return model.description;
-  return t(getModelDescriptionKey(model.key as ModelKey) as TranslationKey);
+  const descriptionKey = getModelDescriptionKey(model.key as ModelKey);
+  const description = t(descriptionKey as TranslationKey);
+  return description === descriptionKey ? model.description : description;
 }

@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState, useEffect } from 'react';
+﻿import React, { useCallback, useMemo, useState, useEffect } from 'react';
 import { ChevronRight } from 'lucide-react';
 import { EdgePanel } from '../../ui/EdgePanel';
 import { useI18n } from '../../../hooks/useI18n';
@@ -131,11 +131,11 @@ export function MarkdownToc({ headings, currentLine, onNavigate, pinned: pinnedP
     setManualExpanded((prev) => {
       const next = new Set(prev);
       if (manualCollapsed.has(key)) {
-        // Currently collapsed → expand
+        // Currently collapsed ??expand
         setManualCollapsed((s) => { const n = new Set(s); n.delete(key); return n; });
         next.add(key);
       } else {
-        // Currently expanded → collapse
+        // Currently expanded ??collapse
         setManualCollapsed((s) => { const n = new Set(s); n.add(key); return n; });
         next.delete(key);
       }

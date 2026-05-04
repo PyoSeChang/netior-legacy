@@ -1,4 +1,4 @@
-import type React from 'react';
+﻿import type React from 'react';
 import type { RenderNode, RenderEdge } from '../types';
 import type {
   FieldMeaningBindingKey,
@@ -16,7 +16,7 @@ export interface ConfigField {
   optionLabelKeyPrefix?: string;
 }
 
-// ── Interaction ──
+// ?? Interaction ??
 
 export interface InteractionConstraints {
   /** Lock pan to a single axis? null = free pan */
@@ -27,7 +27,7 @@ export interface InteractionConstraints {
   enableSpanResize: boolean;
 }
 
-// ── Layout Computation ──
+// ?? Layout Computation ??
 
 export interface LayoutSemanticSlotValue {
   meaning: FieldMeaningBindingKey | null;
@@ -40,7 +40,7 @@ export interface LayoutSemanticSlotValue {
 }
 
 export interface LayoutSemanticProjection {
-  schemaId?: string;
+  modelId?: string;
   models: ModelRefKey[];
   meaningBindings: Partial<Record<FieldMeaningBindingKey, LayoutSemanticSlotValue[]>>;
   meaningFieldIds: Partial<Record<FieldMeaningBindingKey, string[]>>;
@@ -51,7 +51,7 @@ export interface LayoutSemanticProjection {
 /** RenderNode extended with plugin metadata */
 export interface LayoutRenderNode extends RenderNode {
   metadata: Record<string, unknown>;
-  schemaId?: string;
+  modelId?: string;
   semantic?: LayoutSemanticProjection;
 }
 
@@ -67,7 +67,7 @@ export interface LayoutComputeResult {
   [nodeId: string]: { x: number; y: number; width?: number; height?: number };
 }
 
-// ── Node Drop ──
+// ?? Node Drop ??
 
 export interface NodeDropContext {
   nodeId: string;
@@ -99,7 +99,7 @@ export interface SpanResizeResult {
   propertyUpdates?: Array<{ conceptId: string; fieldId: string; value: string }>;
 }
 
-// ── Rendering ──
+// ?? Rendering ??
 
 export interface LayoutLayerProps {
   width: number;
@@ -196,14 +196,14 @@ export interface LayoutControlsRendererProps {
   onNavigateForward: () => void;
 }
 
-// ── Plugin Interface ──
+// ?? Plugin Interface ??
 
 export interface WorkspaceLayoutPlugin {
   key: string;
   displayName: string;
 
   /** User-configurable options (unit, tick_interval, etc.) */
-  configSchema: ConfigField[];
+  configModel: ConfigField[];
   /** Default layout_config values */
   getDefaultConfig(): Record<string, unknown>;
 
@@ -237,7 +237,7 @@ export interface WorkspaceLayoutPlugin {
   /** Overlay layer between edges and nodes (optional) */
   OverlayComponent?: React.ComponentType<LayoutLayerProps>;
 
-  /** Handle node drop — return position + optional property updates */
+  /** Handle node drop ??return position + optional property updates */
   onNodeDrop?: (context: NodeDropContext) => NodeDropResult;
   onSpanResize?: (context: SpanResizeContext) => SpanResizeResult;
 

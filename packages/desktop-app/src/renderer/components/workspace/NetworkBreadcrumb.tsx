@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { ChevronRight, ArrowLeft } from 'lucide-react';
 import { useNetworkStore } from '../../stores/network-store';
 import { useI18n } from '../../hooks/useI18n';

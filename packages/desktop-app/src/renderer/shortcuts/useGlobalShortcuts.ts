@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+﻿import { useEffect } from 'react';
 import { useEditorStore, getActiveLeaf, collectLeaves, MAIN_HOST_ID } from '../stores/editor-store';
 import { getSession } from '../lib/editor-session-registry';
 import { useProjectStore } from '../stores/project-store';
@@ -9,7 +9,7 @@ import { consumeShortcutEvent, isEditableTarget, isPrimaryModifier, logShortcut 
 
 export function cycleTab(direction: 1 | -1): void {
   const result = getActiveLeaf();
-  if (!result) return; // float/detached → no-op
+  if (!result) return; // float/detached ??no-op
 
   const { leaf } = result;
   const { activeTabId, setActiveTab } = useEditorStore.getState();
@@ -23,7 +23,7 @@ export function cycleTab(direction: 1 | -1): void {
 
 export function activateTabByNumber(indexKey: string): void {
   const result = getActiveLeaf();
-  if (!result) return; // float/detached → no-op
+  if (!result) return; // float/detached ??no-op
 
   const index = Number(indexKey);
   if (Number.isNaN(index) || index < 1 || index > 9) return;

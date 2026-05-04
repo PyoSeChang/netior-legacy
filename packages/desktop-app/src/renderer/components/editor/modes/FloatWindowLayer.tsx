@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { useEditorStore } from '../../../stores/editor-store';
 import { FloatWindow } from './FloatWindow';
 

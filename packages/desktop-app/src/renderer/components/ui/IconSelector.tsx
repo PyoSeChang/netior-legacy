@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+﻿import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { Search, X } from 'lucide-react';
 import { iconNames, getIconComponent } from './lucide-utils';

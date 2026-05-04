@@ -1,4 +1,4 @@
-import type { ObjectRecord, NetworkObjectType } from '@netior/shared/types';
+﻿import type { ObjectRecord, NetworkObjectType } from '@netior/shared/types';
 import { unwrapIpc } from './ipc';
 
 export async function getObject(id: string): Promise<ObjectRecord | undefined> {

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * NodeCardDefault
  *
  * Default node rendering component with shape-based layout.
@@ -19,7 +19,7 @@ const GEAR_CLIP_PATH =
   'polygon(50% 0%, 61% 4%, 65% 0%, 75% 10%, 82% 7%, 85% 19%, 93% 21%, 90% 33%, 97% 40%, 90% 50%, 97% 60%, 90% 67%, 93% 79%, 85% 81%, 82% 93%, 75% 90%, 65% 100%, 61% 96%, 50% 100%, 39% 96%, 35% 100%, 25% 90%, 18% 93%, 15% 81%, 7% 79%, 10% 67%, 3% 60%, 10% 50%, 3% 40%, 10% 33%, 7% 21%, 15% 19%, 18% 7%, 25% 10%, 35% 0%, 39% 4%)';
 
 /**
- * shape → outline CSS class
+ * shape ??outline CSS class
  */
 function getShapeOutline(shape: NodeShape): string {
   switch (shape) {

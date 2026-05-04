@@ -56,7 +56,7 @@ interface ConceptEditorProps {
 
 interface ConceptEditorState {
   title: string;
-  schemaId: string | null;
+  modelId: string | null;
   icon: string | null;
   color: string | null;
   content: string | null;
@@ -233,12 +233,13 @@ export function ConceptEditor({ tab }: ConceptEditorProps): JSX.Element {
   const {
     createConcept,
     updateConcept,
-    loadByProject,
+    loadByProject: loadConceptsByProject,
     upsertProperty,
     deleteProperty: deleteConceptProperty,
   } = useConceptStore();
-  const schemas = useSchemaStore((s) => s.schemas);
+  const models = useSchemaStore((s) => Array.isArray(s.schemas) ? s.schemas : []);
   const fields = useSchemaStore((s) => s.fields);
+  const loadSchemasByProject = useSchemaStore((s) => s.loadByProject);
   const loadFields = useSchemaStore((s) => s.loadFields);
   const createField = useSchemaStore((s) => s.createField);
   const currentNetwork = useNetworkStore((s) => s.currentNetwork);
@@ -286,9 +287,9 @@ export function ConceptEditor({ tab }: ConceptEditorProps): JSX.Element {
     state: ConceptEditorState,
   ) => {
     const liveConcept = useConceptStore.getState().concepts.find((item) => item.id === conceptId);
-    if (!liveConcept?.recurrence_source_concept_id || !state.schemaId) return;
+    if (!liveConcept?.recurrence_source_concept_id || !state.modelId) return;
 
-    const activeFields = useSchemaStore.getState().fields[state.schemaId] ?? [];
+    const activeFields = useSchemaStore.getState().fields[state.modelId] ?? [];
     const recurrenceFrequencyField = activeFields.find((field) => getFieldMeaningSlot(field) === 'recurrence_frequency');
     const fallbackRecurrenceRuleField = activeFields.find((field) => getFieldMeaningSlot(field) === 'recurrence_rule');
     const startAtField = activeFields.find((field) => getFieldMeaningSlot(field) === 'start_at');
@@ -304,11 +305,13 @@ export function ConceptEditor({ tab }: ConceptEditorProps): JSX.Element {
     let recurrenceUntilField = activeFields.find((field) => getFieldMeaningSlot(field) === 'recurrence_until');
     if (!recurrenceUntilField) {
       recurrenceUntilField = await createField({
-        schema_id: state.schemaId,
+        schema_id: state.modelId,
         name: t(getMeaningSlotLabelKey('recurrence_until') as never),
         field_type: startAtField?.field_type === 'datetime' && !isAllDay ? 'datetime' : 'date',
         sort_order: activeFields.length,
         required: false,
+        meaning_slot: 'recurrence_until',
+        meaning_key: 'time.recurrence_until',
         meaning_bindings: fieldMeaningToMeaningBindings('time.recurrence_until'),
         slot_binding_locked: true,
         generated_by_model: true,
@@ -332,16 +335,22 @@ export function ConceptEditor({ tab }: ConceptEditorProps): JSX.Element {
 
   useEffect(() => {
     if (!isDraft && !concept && currentProject) {
-      loadByProject(currentProject.id);
+      loadConceptsByProject(currentProject.id);
     }
-  }, [isDraft, concept, currentProject, loadByProject]);
+  }, [isDraft, concept, currentProject, loadConceptsByProject]);
+
+  useEffect(() => {
+    if (currentProject) {
+      void loadSchemasByProject(currentProject.id);
+    }
+  }, [currentProject, loadSchemasByProject]);
 
   const session = useEditorSession<ConceptEditorState>({
     tabId: tab.id,
     load: isDraft
       ? () => ({
           title: tab.title,
-          schemaId: null,
+          modelId: null,
           icon: null,
           color: null,
           content: null,
@@ -360,7 +369,7 @@ export function ConceptEditor({ tab }: ConceptEditorProps): JSX.Element {
             : { nodeOccurrences: [] };
           return {
             title: c?.title ?? '',
-            schemaId: c?.schema_id ?? null,
+            modelId: c?.model_id ?? null,
             icon: c?.icon ?? null,
             color: c?.color ?? null,
             content: c?.content ?? null,
@@ -375,7 +384,7 @@ export function ConceptEditor({ tab }: ConceptEditorProps): JSX.Element {
           const newConcept = await createConcept({
             project_id: currentProject.id,
             title: state.title.trim(),
-            schema_id: state.schemaId || undefined,
+            model_id: state.modelId || undefined,
             icon: state.icon || undefined,
             color: state.color || undefined,
             content: state.content || undefined,
@@ -433,7 +442,7 @@ export function ConceptEditor({ tab }: ConceptEditorProps): JSX.Element {
           const conceptId = tab.targetId;
           await updateConcept(conceptId, {
             title: state.title,
-            schema_id: state.schemaId,
+            model_id: state.modelId,
             icon: state.icon,
             color: state.color,
             content: state.content,
@@ -457,7 +466,7 @@ export function ConceptEditor({ tab }: ConceptEditorProps): JSX.Element {
           }));
           useEditorStore.getState().updateTitle(tab.id, state.title);
         },
-    deps: isDraft ? [] : [tab.targetId, concept?.schema_id, currentProject?.id],
+    deps: isDraft ? [] : [tab.targetId, concept?.model_id, currentProject?.id],
   });
 
   useEffect(() => {
@@ -465,16 +474,16 @@ export function ConceptEditor({ tab }: ConceptEditorProps): JSX.Element {
     setConceptVisualMode(resolveVisualMode(session.state?.icon));
   }, [session.isLoading, session.state?.icon]);
 
-  const currentSchemaId = session.state?.schemaId;
+  const currentModelId = session.state?.modelId;
   useEffect(() => {
-    if (currentSchemaId && !fields[currentSchemaId]) {
-      loadFields(currentSchemaId);
+    if (currentModelId && !fields[currentModelId]) {
+      loadFields(currentModelId);
     }
-  }, [currentSchemaId, fields, loadFields]);
+  }, [currentModelId, fields, loadFields]);
 
   useEffect(() => {
-    if (!isDraft || !currentSchemaId) return;
-    const arch = schemas.find((a) => a.id === currentSchemaId);
+    if (!isDraft || !currentModelId) return;
+    const arch = models.find((a) => a.id === currentModelId);
     if (arch) {
       session.setState((prev) => ({
         ...prev,
@@ -482,26 +491,26 @@ export function ConceptEditor({ tab }: ConceptEditorProps): JSX.Element {
         color: prev.color || arch.color || null,
       }));
     }
-  }, [isDraft, currentSchemaId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isDraft, currentModelId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const allowedIds = tab.draftData?.allowedSchemaIds;
-  const filteredSchemas = allowedIds
-    ? schemas.filter((a) => allowedIds.includes(a.id))
-    : schemas;
+  const allowedIds = tab.draftData?.allowedModelIds;
+  const filteredModels = allowedIds
+    ? models.filter((a) => allowedIds.includes(a.id))
+    : models;
 
   useEffect(() => {
-    if (isDraft && allowedIds && !currentSchemaId && filteredSchemas.length > 0) {
-      session.setState((prev) => ({ ...prev, schemaId: filteredSchemas[0].id }));
+    if (isDraft && allowedIds && !currentModelId && filteredModels.length > 0) {
+      session.setState((prev) => ({ ...prev, modelId: filteredModels[0].id }));
     }
-  }, [isDraft, allowedIds, currentSchemaId, filteredSchemas]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isDraft, allowedIds, currentModelId, filteredModels]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const schemaOptions = useMemo(() => [
+  const modelOptions = useMemo(() => [
     ...(allowedIds ? [] : [{ value: '', label: t('common.none') ?? 'None' }]),
-    ...filteredSchemas.map((a) => ({ value: a.id, label: a.name })),
-  ], [filteredSchemas, allowedIds, t]);
+    ...filteredModels.map((a) => ({ value: a.id, label: a.name })),
+  ], [filteredModels, allowedIds, t]);
 
-  const schemaFields = currentSchemaId
-      ? (fields[currentSchemaId] ?? []).filter((field) => getFieldMeaningSlot(field) !== 'recurrence_rule')
+  const modelFields = currentModelId
+      ? (fields[currentModelId] ?? []).filter((field) => getFieldMeaningSlot(field) !== 'recurrence_rule')
     : [];
 
   const nodeOccurrences = session.state?.nodeOccurrences ?? [];
@@ -567,7 +576,7 @@ export function ConceptEditor({ tab }: ConceptEditorProps): JSX.Element {
     const directConceptNodes = selectedOccurrenceNetworkData.nodes.filter((node) => (
       directChildIds.has(node.id)
       && node.object?.object_type === 'concept'
-      && !!node.concept?.schema_id
+      && !!node.concept?.model_id
     ));
 
     if (directConceptNodes.length > 0) {
@@ -576,25 +585,25 @@ export function ConceptEditor({ tab }: ConceptEditorProps): JSX.Element {
 
     return selectedOccurrenceNetworkData.nodes.filter((node) => (
       node.object?.object_type === 'concept'
-      && !!node.concept?.schema_id
+      && !!node.concept?.model_id
     ));
   }, [directChildIds, selectedOccurrenceNetworkData]);
 
-  const sortableSchemaIds = useMemo(() => (
+  const sortableModelIds = useMemo(() => (
     Array.from(new Set(
       sortableConceptNodes
-        .map((node) => node.concept?.schema_id)
+        .map((node) => node.concept?.model_id)
         .filter((value): value is string => !!value),
     ))
   ), [sortableConceptNodes]);
 
   useEffect(() => {
-    for (const schemaId of sortableSchemaIds) {
-      if (!fields[schemaId]) {
-        void loadFields(schemaId);
+    for (const modelId of sortableModelIds) {
+      if (!fields[modelId]) {
+        void loadFields(modelId);
       }
     }
-  }, [fields, loadFields, sortableSchemaIds]);
+  }, [fields, loadFields, sortableModelIds]);
 
   const meaningSortOptions = useMemo(() => (
     MEANING_SLOT_DEFINITIONS.map((definition) => ({
@@ -606,18 +615,18 @@ export function ConceptEditor({ tab }: ConceptEditorProps): JSX.Element {
   const propertySortOptions = useMemo(() => {
     const deduped = new Map<string, { value: string; label: string }>();
 
-    for (const schemaId of sortableSchemaIds) {
-      const schema = schemas.find((item) => item.id === schemaId);
-      for (const field of fields[schemaId] ?? []) {
+    for (const modelId of sortableModelIds) {
+      const model = models.find((item) => item.id === modelId);
+      for (const field of fields[modelId] ?? []) {
         deduped.set(field.id, {
           value: field.id,
-          label: schema ? `${field.name} - ${schema.name}` : field.name,
+          label: model ? `${field.name} - ${model.name}` : field.name,
         });
       }
     }
 
     return Array.from(deduped.values()).sort((left, right) => left.label.localeCompare(right.label));
-  }, [schemas, fields, sortableSchemaIds]);
+  }, [models, fields, sortableModelIds, t]);
 
   const canEditNodeConfig = !!selectedNodeOccurrence && parsedNodeMetadataDraft !== null;
 
@@ -716,7 +725,10 @@ export function ConceptEditor({ tab }: ConceptEditorProps): JSX.Element {
           badge={t('objectPanel.concept' as never)}
           title={session.state.title || tab.title || t('concept.defaultTitle')}
           subtitle={isDraft ? t('concept.create') : t('editorShell.networkObject' as never)}
-          description={session.state.schemaId ? schemas.find((a) => a.id === session.state.schemaId)?.name ?? null : null}
+          description={session.state.modelId ? (() => {
+            const model = models.find((a) => a.id === session.state.modelId);
+            return model ? model.name : null;
+          })() : null}
           leadingVisual={<NodeVisual icon={session.state.icon ?? 'box'} size={24} imageSize={56} className="shrink-0" />}
         >
           <NetworkObjectEditorSection title={t('editorShell.overview' as never)}>
@@ -758,14 +770,14 @@ export function ConceptEditor({ tab }: ConceptEditorProps): JSX.Element {
                 <div className="mt-1 text-[11px] text-muted">{t('concept.visualHint' as never)}</div>
               </div>
 
-              {schemas.length > 0 && (
+              {models.length > 0 && (
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-secondary">{t('concept.schema') ?? 'Schema'}</label>
+                  <label className="mb-1 block text-xs font-medium text-secondary">{t('concept.model') ?? 'Model'}</label>
                   <Select
-                    options={schemaOptions}
-                    value={session.state.schemaId ?? ''}
+                    options={modelOptions}
+                    value={session.state.modelId ?? ''}
                     onChange={(e) => {
-                      update({ schemaId: e.target.value || null, properties: {} });
+                      update({ modelId: e.target.value || null, properties: {} });
                     }}
                     selectSize="sm"
                   />
@@ -773,12 +785,12 @@ export function ConceptEditor({ tab }: ConceptEditorProps): JSX.Element {
               )}
             </NetworkObjectEditorSection>
 
-            {session.state.schemaId && (
+            {session.state.modelId && (
               <NetworkObjectEditorSection title={t('concept.properties')}>
                 {isDraft ? (
-                  schemaFields.length > 0 ? (
+                  modelFields.length > 0 ? (
                     <ConceptPropertyInputs
-                      fields={schemaFields}
+                      fields={modelFields}
                       properties={session.state.properties}
                       onChange={(fieldId, value) => update({
                         properties: { ...session.state.properties, [fieldId]: value },
@@ -787,7 +799,7 @@ export function ConceptEditor({ tab }: ConceptEditorProps): JSX.Element {
                   ) : null
                 ) : (
                   <ConceptPropertiesPanel
-                    schemaId={session.state.schemaId}
+                    modelId={session.state.modelId}
                     properties={session.state.properties}
                     onChange={(fieldId, value) => update({
                       properties: { ...session.state.properties, [fieldId]: value },
@@ -1167,7 +1179,10 @@ export function ConceptEditor({ tab }: ConceptEditorProps): JSX.Element {
                 <NetworkObjectMetadataList
                   items={[
                     { label: t('editorShell.objectId' as never), value: <code className="font-mono text-xs">{concept.id}</code> },
-                    { label: t('concept.schema'), value: session.state.schemaId ? (schemas.find((a) => a.id === session.state.schemaId)?.name ?? t('common.none')) : t('common.none') },
+                    { label: t('concept.model'), value: session.state.modelId ? (() => {
+                      const model = models.find((a) => a.id === session.state.modelId);
+                      return model ? model.name : t('common.none');
+                    })() : t('common.none') },
                   ]}
                 />
               </NetworkObjectEditorSection>

@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { Folder, Trash2 } from 'lucide-react';
 import type { Project } from '@netior/shared/types';
 

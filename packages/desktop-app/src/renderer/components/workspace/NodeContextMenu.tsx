@@ -1,5 +1,5 @@
-import React, { useCallback } from 'react';
-import { ExternalLink, FileText, Link, Plus, Trash2 } from 'lucide-react';
+﻿import React, { useCallback } from 'react';
+import { ExternalLink, FileText, Link, Plus, Trash2, Unlink2 } from 'lucide-react';
 import { useNetworkStore } from '../../stores/network-store';
 import { useEditorStore } from '../../stores/editor-store';
 import { useProjectStore } from '../../stores/project-store';
@@ -24,7 +24,8 @@ interface NodeContextMenuProps {
   onOpenNetwork?: (networkId: string) => void;
   onCreateNetwork?: (conceptId: string) => void;
   onAttachNetwork?: (nodeId: string) => void;
-  onDeleteNode?: (nodeId: string) => void;
+  onExcludeNode?: (nodeId: string) => void;
+  onDeleteObject?: (nodeId: string, objectType: NetworkObjectType, objectTargetId: string, objectTitle?: string) => void;
   onClose: () => void;
 }
 
@@ -44,7 +45,8 @@ export function NodeContextMenu({
   onOpenNetwork,
   onCreateNetwork,
   onAttachNetwork,
-  onDeleteNode,
+  onExcludeNode,
+  onDeleteObject,
   onClose,
 }: NodeContextMenuProps): JSX.Element {
   const { t } = useI18n();
@@ -76,17 +78,17 @@ export function NodeContextMenu({
         networkId: currentNetwork?.id,
         nodeId,
       });
+    } else if (objectType === 'model') {
+      useEditorStore.getState().openTab({
+        type: 'model',
+        targetId: objectTargetId,
+        title: objectTitle ?? t('model.title'),
+      });
     } else if (objectType === 'schema') {
       useEditorStore.getState().openTab({
         type: 'schema',
         targetId: objectTargetId,
         title: objectTitle ?? t('schema.title'),
-      });
-    } else if (objectType === 'model') {
-      useEditorStore.getState().openTab({
-        type: 'model',
-        targetId: objectTargetId,
-        title: objectTitle ?? t('model.title' as never),
         projectId: currentNetwork?.project_id ?? undefined,
       });
     } else if (objectType === 'context') {
@@ -109,6 +111,10 @@ export function NodeContextMenu({
     !!objectType &&
     !!objectTargetId &&
     ['network', 'project', 'concept', 'schema', 'model', 'context', 'file'].includes(objectType);
+  const canDeleteObject =
+    !!objectType &&
+    !!objectTargetId &&
+    ['concept', 'schema', 'model'].includes(objectType);
 
   const handleOpenNetwork = useCallback(() => {
     if (networkId) onOpenNetwork?.(networkId);
@@ -139,7 +145,7 @@ export function NodeContextMenu({
     onClose();
   }, [onAddConnection, nodeId, onClose]);
 
-  const handleDelete = useCallback(async () => {
+  const handleExclude = useCallback(async () => {
     const isUniverseProjectNode =
       objectType === 'project'
       && !!objectTargetId
@@ -155,9 +161,15 @@ export function NodeContextMenu({
       return;
     }
 
-    onDeleteNode?.(nodeId);
+    onExcludeNode?.(nodeId);
     onClose();
-  }, [currentNetwork?.kind, currentNetwork?.parent_network_id, deleteProject, nodeId, objectTargetId, objectType, onClose, onDeleteNode]);
+  }, [currentNetwork?.kind, currentNetwork?.parent_network_id, deleteProject, nodeId, objectTargetId, objectType, onClose, onExcludeNode]);
+
+  const handleDeleteObject = useCallback(() => {
+    if (!canDeleteObject || !objectType || !objectTargetId) return;
+    onDeleteObject?.(nodeId, objectType, objectTargetId, objectTitle);
+    onClose();
+  }, [canDeleteObject, nodeId, objectTargetId, objectTitle, objectType, onClose, onDeleteObject]);
 
   return (
     <WorkspaceContextMenuSurface x={x} y={y} onClose={onClose}>
@@ -243,14 +255,24 @@ export function NodeContextMenu({
         </button>
       )}
 
-      {/* Delete */}
+      {/* Exclude from this network */}
       <button
         className="flex w-full items-center gap-2 px-3 py-1 text-xs text-default hover:bg-state-hover cursor-pointer"
-        onClick={handleDelete}
+        onClick={handleExclude}
       >
-        <Trash2 size={14} />
-        {t('common.delete')}
+        <Unlink2 size={14} />
+        {t('network.excludeFromNetwork')}
       </button>
+
+      {canDeleteObject && (
+        <button
+          className="flex w-full items-center gap-2 px-3 py-1 text-xs text-default hover:bg-state-hover cursor-pointer"
+          onClick={handleDeleteObject}
+        >
+          <Trash2 size={14} />
+          {t('network.deleteObjectPermanently')}
+        </button>
+      )}
     </WorkspaceContextMenuSurface>
   );
 }

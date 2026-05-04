@@ -1,4 +1,4 @@
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+﻿import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import {
   createNetworkNode,
@@ -9,27 +9,27 @@ import {
 import { emitChange } from '../events.js';
 import { registerNetiorTool } from './shared-tool-registry.js';
 
-const nodeTypeSchema = z.enum(['basic', 'portal', 'group', 'hierarchy']);
-const nodeSortDirectionSchema = z.enum(['asc', 'desc']);
-const nodeSortEmptyPlacementSchema = z.enum(['first', 'last']);
+const nodeTypeModel = z.enum(['basic', 'portal', 'group', 'hierarchy']);
+const nodeSortDirectionModel = z.enum(['asc', 'desc']);
+const nodeSortEmptyPlacementModel = z.enum(['first', 'last']);
 const NODE_CONFIG_METADATA_KEY = 'nodeConfig';
 
-const nodeSortConfigSchema = z.discriminatedUnion('kind', [
+const nodeSortConfigModel = z.discriminatedUnion('kind', [
   z.object({
     kind: z.literal('meaning_binding'),
     meaning: z.string().describe('Meaning binding key to sort by, such as time.due or temporal.deadline'),
-    direction: nodeSortDirectionSchema.optional().describe('Sort direction'),
-    emptyPlacement: nodeSortEmptyPlacementSchema.optional().describe('Where empty values should be placed'),
+    direction: nodeSortDirectionModel.optional().describe('Sort direction'),
+    emptyPlacement: nodeSortEmptyPlacementModel.optional().describe('Where empty values should be placed'),
   }),
   z.object({
     kind: z.literal('property'),
-    fieldId: z.string().describe('Schema field ID to sort by'),
-    direction: nodeSortDirectionSchema.optional().describe('Sort direction'),
-    emptyPlacement: nodeSortEmptyPlacementSchema.optional().describe('Where empty values should be placed'),
+    fieldId: z.string().describe('Model field ID to sort by'),
+    direction: nodeSortDirectionModel.optional().describe('Sort direction'),
+    emptyPlacement: nodeSortEmptyPlacementModel.optional().describe('Where empty values should be placed'),
   }),
 ]);
 
-const nodeConfigSchema = z.discriminatedUnion('kind', [
+const nodeConfigModel = z.discriminatedUnion('kind', [
   z.object({
     kind: z.literal('freeform'),
   }),
@@ -41,14 +41,14 @@ const nodeConfigSchema = z.discriminatedUnion('kind', [
     padding: z.number().min(0).optional().describe('Inner padding'),
     itemWidth: z.number().min(1).optional().describe('Preferred child item width'),
     itemHeight: z.number().min(1).optional().describe('Preferred child item height'),
-    sort: nodeSortConfigSchema.nullable().optional().describe('Optional child sort configuration'),
+    sort: nodeSortConfigModel.nullable().optional().describe('Optional child sort configuration'),
   }),
   z.object({
     kind: z.literal('list'),
     gap: z.number().min(0).optional().describe('Vertical gap between items'),
     padding: z.number().min(0).optional().describe('Inner padding'),
     itemHeight: z.number().min(1).optional().describe('Preferred child item height'),
-    sort: nodeSortConfigSchema.nullable().optional().describe('Optional child sort configuration'),
+    sort: nodeSortConfigModel.nullable().optional().describe('Optional child sort configuration'),
   }),
 ]);
 
@@ -82,7 +82,7 @@ function stringifyMetadataObject(metadata: Record<string, unknown>): string | nu
 function buildNodeMetadata(params: {
   existingMetadata?: string | null;
   metadata?: string | null;
-  node_config?: z.infer<typeof nodeConfigSchema> | null;
+  node_config?: z.infer<typeof nodeConfigModel> | null;
 }): string | null | undefined {
   const hasMetadata = params.metadata !== undefined;
   const hasNodeConfig = params.node_config !== undefined;
@@ -113,10 +113,10 @@ export function registerNetworkNodeTools(server: McpServer): void {
     {
       network_id: z.string().describe('The network ID'),
       object_id: z.string().describe('The object record ID'),
-      node_type: nodeTypeSchema.optional().describe('The node type'),
+      node_type: nodeTypeModel.optional().describe('The node type'),
       parent_node_id: z.string().optional().describe('Optional parent node ID'),
       metadata: z.string().nullable().optional().describe('Raw node metadata JSON string. Prefer node_config for layout/sort changes.'),
-      node_config: nodeConfigSchema.optional().describe('Structured node config stored at metadata.nodeConfig. Use this for group node layout and sort settings.'),
+      node_config: nodeConfigModel.optional().describe('Structured node config stored at metadata.nodeConfig. Use this for group node layout and sort settings.'),
     },
     async ({ network_id, object_id, node_type, parent_node_id, metadata, node_config }) => {
       try {
@@ -146,10 +146,10 @@ export function registerNetworkNodeTools(server: McpServer): void {
     'update_network_node',
     {
       node_id: z.string().describe('The network node ID'),
-      node_type: nodeTypeSchema.optional().describe('New node type'),
+      node_type: nodeTypeModel.optional().describe('New node type'),
       parent_node_id: z.string().nullable().optional().describe('Parent node ID or null'),
       metadata: z.string().nullable().optional().describe('Raw node metadata JSON string or null. Prefer node_config for layout/sort changes.'),
-      node_config: nodeConfigSchema.nullable().optional().describe('Structured node config stored at metadata.nodeConfig. Pass null to remove existing nodeConfig.'),
+      node_config: nodeConfigModel.nullable().optional().describe('Structured node config stored at metadata.nodeConfig. Pass null to remove existing nodeConfig.'),
     },
     async ({ node_id, node_type, parent_node_id, metadata, node_config }) => {
       try {

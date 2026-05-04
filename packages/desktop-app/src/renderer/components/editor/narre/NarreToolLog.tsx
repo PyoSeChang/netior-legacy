@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { ChevronDown, ChevronRight, Check, X, Circle } from 'lucide-react';
 import { getNarreToolMetadata } from '@netior/shared/constants';
 import type { NarrePermissionCard, NarreToolCall } from '@netior/shared/types';

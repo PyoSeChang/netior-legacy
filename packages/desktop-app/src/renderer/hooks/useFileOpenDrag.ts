@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 
 export const FILE_OPEN_DRAG_TYPE = 'application/x-netior-file-open';
 

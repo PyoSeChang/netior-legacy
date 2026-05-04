@@ -1,6 +1,8 @@
-import { randomUUID } from 'crypto';
+﻿import { randomUUID } from 'crypto';
 import { getNarreToolMetadata } from '@netior/shared/constants';
 import type {
+  AgentDefinition,
+  AgentRuntimeProfile,
   NarreActorProvider,
   NarreBehaviorSettings,
   NarreCard,
@@ -40,6 +42,11 @@ export interface NarreRuntimeChatRequest {
   projectId: string;
   message: string;
   mentions?: NarreMention[];
+  activeAgent?: AgentDefinition;
+  runtimeProfile?: AgentRuntimeProfile;
+  currentRunId?: string | null;
+  currentTaskId?: string | null;
+  assignmentId?: string | null;
 }
 
 export interface NarreRuntimeEvents {
@@ -88,7 +95,7 @@ export class NarreRuntime {
     request: NarreRuntimeChatRequest,
     events: NarreRuntimeEvents,
     signal?: AbortSignal,
-  ): Promise<{ sessionId: string }> {
+  ): Promise<{ sessionId: string; assistantText: string }> {
     const traceId = request.traceId ?? 'no-trace';
     const runStartedAt = Date.now();
     const isAborted = (): boolean => signal?.aborted === true;
@@ -133,8 +140,10 @@ export class NarreRuntime {
     const skillPrompt = activeSkill
       ? activeSkill.buildPrompt(skillContext)
       : '';
+    const runtimeProfile = request.runtimeProfile ?? request.activeAgent?.runtimeProfile;
     const systemPrompt = [
       buildSystemPrompt(metadata, behaviorSettings),
+      buildActiveAgentSystemPrompt(request.activeAgent, runtimeProfile),
       userAgentSystemPrompt,
       skillPrompt,
     ]
@@ -147,12 +156,19 @@ export class NarreRuntime {
     this.config.supervisor?.registerNarreSession({
       narreSessionId: resolvedSessionId,
       projectId: request.projectId,
+      agent: request.activeAgent,
+      surfaceId: request.activeAgent ? `narre-agent:${request.activeAgent.id}` : undefined,
       title: sessionData?.title ?? request.message.slice(0, 60),
       status: 'working',
       skillId: activeSkill?.id ?? null,
+      currentRunId: request.currentRunId ?? null,
+      currentTaskId: request.currentTaskId ?? null,
       metadata: {
         provider: this.config.provider.name,
         traceId,
+        ...(request.assignmentId ? { assignmentId: request.assignmentId } : {}),
+        ...(runtimeProfile?.model ? { model: runtimeProfile.model } : {}),
+        ...(runtimeProfile?.reasoningEffort ? { reasoningEffort: runtimeProfile.reasoningEffort } : {}),
       },
     });
 
@@ -169,7 +185,7 @@ export class NarreRuntime {
         metadata: { error: 'missing_mcp_server' },
       });
       events.onError('Could not find netior-mcp server. Run: pnpm --filter @netior/mcp build');
-      return { sessionId: resolvedSessionId };
+      return { sessionId: resolvedSessionId, assistantText: '' };
     }
 
     const isResume = historyTurns.length > 1;
@@ -178,6 +194,7 @@ export class NarreRuntime {
       request.projectId,
       activeSkill,
       skillContext,
+      runtimeProfile,
     );
     console.log(
       `[narre:runtime] trace=${traceId} stage=run.start session=${resolvedSessionId} ` +
@@ -201,7 +218,8 @@ export class NarreRuntime {
       createdAt: assistantTurnCreatedAt,
       actor: {
         provider: resolveActorProvider(this.config.provider.name),
-        label: this.config.provider.name,
+        ...(request.activeAgent ? { id: request.activeAgent.id } : {}),
+        label: request.activeAgent?.name ?? this.config.provider.name,
       },
       blocks: structuredClone(assistantBlocks),
     });
@@ -369,7 +387,7 @@ export class NarreRuntime {
           eventType: 'session_completed',
           metadata: { aborted: 'true' },
         });
-        return { sessionId: resolvedSessionId };
+        return { sessionId: resolvedSessionId, assistantText: '' };
       }
 
       await this.config.sessionStore.upsertTurn(resolvedSessionId, request.projectId, buildAssistantTurn());
@@ -377,7 +395,7 @@ export class NarreRuntime {
         eventType: 'session_completed',
         metadata: { aborted: 'true' },
       });
-      return { sessionId: resolvedSessionId };
+      return { sessionId: resolvedSessionId, assistantText: assistantBlocksToText(assistantBlocks) };
     }
 
     if (isAborted()) {
@@ -387,7 +405,7 @@ export class NarreRuntime {
           eventType: 'session_completed',
           metadata: { aborted: 'true' },
         });
-        return { sessionId: resolvedSessionId };
+        return { sessionId: resolvedSessionId, assistantText: '' };
       }
     } else if (assistantBlocks.length === 0) {
       if (result.assistantText) {
@@ -419,7 +437,7 @@ export class NarreRuntime {
       },
     });
 
-    return { sessionId: resolvedSessionId };
+    return { sessionId: resolvedSessionId, assistantText: assistantBlocksToText(assistantBlocks) };
   }
 
   private buildMcpServerConfigs(
@@ -427,6 +445,7 @@ export class NarreRuntime {
     projectId: string,
     activeSkill: NarreSkillDefinition | null,
     skillContext: NarreSkillContext,
+    runtimeProfile?: AgentRuntimeProfile,
   ): NarreMcpServerConfig[] {
     const runningInsideElectronNode = Boolean(process.versions.electron) || process.env.ELECTRON_RUN_AS_NODE === '1';
     const mcpCommand = process.execPath;
@@ -446,8 +465,11 @@ export class NarreRuntime {
         ...(activeSkill?.additionalToolProfiles ?? []),
       ],
     ));
+    for (const profile of runtimeProfile?.toolProfileIds ?? []) {
+      profiles.push(profile);
+    }
 
-    return profiles.map((profile) => ({
+    return Array.from(new Set(profiles)).map((profile) => ({
       name: profile === 'core' ? 'netior-core' : `netior-${profile}`,
       command: mcpCommand,
       args: [mcpServerPath],
@@ -510,6 +532,118 @@ function resolveActorProvider(name: string): NarreActorProvider {
     default:
       return 'custom';
   }
+}
+
+function buildActiveAgentSystemPrompt(
+  agent: AgentDefinition | undefined,
+  runtimeProfile: AgentRuntimeProfile | undefined,
+): string {
+  if (!agent) {
+    return '';
+  }
+
+  const lines = [
+    '## Active Agent Identity',
+    '',
+    `agent_id=${agent.id}`,
+    `agent_name=${agent.name}`,
+    `agent_kind=${agent.kind}`,
+  ];
+
+  if (agent.description) {
+    lines.push(`description=${agent.description}`);
+  }
+
+  if (agent.kind === 'narre') {
+    lines.push(`narre_agent_type=${agent.narreAgentType}`);
+    if (agent.narreAgentType === 'system') {
+      lines.push(`system_agent_type=${agent.systemAgentType}`);
+      lines.push(...getSystemAgentInstructionLines(agent.systemAgentType));
+    } else {
+      lines.push(`user_agent_type=${agent.userAgentType}`);
+      if (agent.userAgentType === 'project') {
+        lines.push(`agent_project_id=${agent.projectId}`);
+      }
+    }
+  } else {
+    lines.push(`terminal_agent_type=${agent.terminalAgentType}`);
+  }
+
+    if (runtimeProfile) {
+      lines.push(
+        '',
+        '### Runtime Profile',
+        `provider=${runtimeProfile.provider}`,
+    );
+    if (runtimeProfile.model) {
+      lines.push(`model=${runtimeProfile.model}`);
+    }
+    if (runtimeProfile.reasoningEffort) {
+      lines.push(`reasoning_effort=${runtimeProfile.reasoningEffort}`);
+    }
+    if (runtimeProfile.toolProfileIds?.length) {
+      lines.push(`tool_profiles=${runtimeProfile.toolProfileIds.join(',')}`);
+    }
+    if (runtimeProfile.approvalPolicy) {
+      lines.push(`approval_policy=${runtimeProfile.approvalPolicy}`);
+    }
+    if (runtimeProfile.contextScope) {
+      lines.push(`context_scope=${runtimeProfile.contextScope}`);
+    }
+    if (typeof runtimeProfile.temperature === 'number') {
+      lines.push(`temperature=${runtimeProfile.temperature}`);
+    }
+    if (typeof runtimeProfile.contextBudget === 'number') {
+      lines.push(`context_budget=${runtimeProfile.contextBudget}`);
+    }
+    if (runtimeProfile.extraInstruction?.trim()) {
+      lines.push('', '### Runtime Session Instructions', runtimeProfile.extraInstruction.trim());
+    }
+  }
+
+  if (agent.systemPrompt?.trim()) {
+    lines.push('', '### Agent Instructions', agent.systemPrompt.trim());
+  }
+
+  return lines.join('\n').trim();
+}
+
+function getSystemAgentInstructionLines(systemAgentType: string): string[] {
+  switch (systemAgentType) {
+    case 'network-finder':
+      return [
+        '',
+        '### System Agent Responsibility',
+        'You are Network Finder. Your primary job is discovery, lookup, comparison, and context gathering inside the current Netior project.',
+        'Prefer read-only inspection. Do not create or mutate concepts, models, relation types, edges, files, or layouts unless a later assignment explicitly grants that responsibility.',
+        'Return concise findings and handoff-ready references for the next agent.',
+      ];
+    case 'network-builder':
+      return [
+        '',
+        '### System Agent Responsibility',
+        'You are Network Builder. Your primary job is turning accepted findings and user intent into concrete Netior network structure.',
+        'You may propose or perform structure-changing work when the available tool profile and approval policy allow it.',
+        'Keep outputs handoff-ready: describe created or proposed concepts, models, relation types, and unresolved questions.',
+      ];
+    case 'agent-operator':
+      return [
+        '',
+        '### System Agent Responsibility',
+        'You are Agent Operator. Your primary job is planning, routing, handoff, status synthesis, and final aggregation across agents.',
+        'Do not pretend to be another agent. Assign work, summarize results, surface blockers, and request approval when needed.',
+      ];
+    default:
+      return [];
+  }
+}
+
+function assistantBlocksToText(blocks: readonly NarreTranscriptBlock[]): string {
+  return blocks
+    .filter((block): block is Extract<NarreTranscriptBlock, { type: 'rich_text' }> => block.type === 'rich_text')
+    .map((block) => block.text)
+    .join('\n\n')
+    .trim();
 }
 
 function buildUserTurn(
@@ -576,8 +710,8 @@ function buildMentionTag(mention: NarreMention): string {
   if (mentionType === 'edge') {
     return `[edge:id=${mention.id}]`;
   }
-  if (mentionType === 'schema') {
-    return `[schema:id=${mention.id}, name="${mention.display}"]`;
+  if (mentionType === 'model') {
+    return `[model:id=${mention.id}, name="${mention.display}"]`;
   }
   if (mentionType === 'relationType' || mentionType === 'canvasType') {
     return `[${mentionType}:id=${mention.id}, name="${mention.display}"]`;
@@ -587,6 +721,9 @@ function buildMentionTag(mention: NarreMention): string {
   }
   if (mentionType === 'file') {
     return `[file:path="${mention.path}"]`;
+  }
+  if (mentionType === 'agent') {
+    return `[agent:key=${mention.id}, name="${mention.display}"]`;
   }
 
   return mention.display;

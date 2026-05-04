@@ -1,4 +1,4 @@
-import { spawn, type ChildProcess } from 'child_process';
+﻿import { spawn, type ChildProcess } from 'child_process';
 import { createHash, randomBytes } from 'crypto';
 import { app } from 'electron';
 import { appendFileSync, chmodSync, existsSync, mkdirSync, watch, writeFileSync, type FSWatcher } from 'fs';
@@ -860,9 +860,9 @@ const INLINE_SPINNER_PATTERN = /[\u2800-\u28FF\u2580-\u259F\u25A0-\u25FF\u2500-\
 const LEADING_DECORATION_PATTERN = /^[^\p{L}\p{N}]+/u;
 const TRANSIENT_THREAD_NAME_TOKEN = '(?:working|loading|thinking|running|responding|starting|initializing)';
 const TRANSIENT_THREAD_NAME_PATTERN = new RegExp(`^${TRANSIENT_THREAD_NAME_TOKEN}(?:\\b|[\\s.:()0-9-].*)$`, 'i');
-const TRANSIENT_THREAD_PREFIX_PATTERN = new RegExp(`^${TRANSIENT_THREAD_NAME_TOKEN}[\\s.:()\\-–—|/\\\\]+`, 'i');
-const TRANSIENT_THREAD_SUFFIX_PATTERN = new RegExp(`[\\s.:()\\-–—|/\\\\]+${TRANSIENT_THREAD_NAME_TOKEN}$`, 'i');
-const EDGE_SEPARATOR_PATTERN = /^[\s.:()\-–—|/\\]+|[\s.:()\-–—|/\\]+$/g;
+const TRANSIENT_THREAD_PREFIX_PATTERN = new RegExp(`^${TRANSIENT_THREAD_NAME_TOKEN}[\\s.:()\\-?볛?/\\\\]+`, 'i');
+const TRANSIENT_THREAD_SUFFIX_PATTERN = new RegExp(`[\\s.:()\\-?볛?/\\\\]+${TRANSIENT_THREAD_NAME_TOKEN}$`, 'i');
+const EDGE_SEPARATOR_PATTERN = /^[\s.:()\-?볛?/\\]+|[\s.:()\-?볛?/\\]+$/g;
 
 const DEFAULT_CODEX_SESSION_NAME = 'codex';
 const CODEX_DEBUG_RING_LIMIT = 200;

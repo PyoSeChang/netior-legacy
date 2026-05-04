@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Shared utilities for continuous time-axis layouts.
  *
  * Values are expressed in epoch days (days since 1970-01-01), with optional

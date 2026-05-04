@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+﻿import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useI18n } from '../../hooks/useI18n';
 import { IconButton } from '../ui/IconButton';
 import { ChevronUp, ChevronDown, X } from 'lucide-react';

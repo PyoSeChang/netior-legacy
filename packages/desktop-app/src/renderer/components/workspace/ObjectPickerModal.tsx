@@ -5,8 +5,8 @@ import { Input } from '../ui/Input';
 import { Button } from '../ui/Button';
 import { useConceptStore } from '../../stores/concept-store';
 import { useNetworkStore } from '../../stores/network-store';
-import { useSchemaStore } from '../../stores/schema-store';
 import { useModelStore } from '../../stores/model-store';
+import { useSchemaStore } from '../../stores/schema-store';
 import { useContextStore } from '../../stores/context-store';
 import { useProjectStore } from '../../stores/project-store';
 import { useI18n } from '../../hooks/useI18n';
@@ -14,6 +14,7 @@ import {
   getModelDisplayDescription,
   getModelDisplayName,
 } from '../../lib/model-i18n';
+import { NodeVisual } from './node-components/NodeVisual';
 
 interface ObjectPickerModalProps {
   open: boolean;
@@ -55,7 +56,7 @@ export function ObjectPickerModal({
     concept: t('concept.title'),
     network: t('sidebar.networks' as never),
     project: t('project.title' as never) ?? 'Projects',
-    schema: t('schema.title'),
+    schema: t('schema.title' as never),
     model: t('model.title' as never),
     context: t('context.title'),
   };
@@ -74,20 +75,25 @@ export function ObjectPickerModal({
       case 'concept':
         return concepts
           .filter((concept) => !query || matches(concept.title))
-          .map((concept) => ({ id: concept.id, title: concept.title, subtitle: t('concept.schema') }));
+          .map((concept) => ({ id: concept.id, title: concept.title, subtitle: t('concept.model'), icon: concept.icon }));
       case 'network':
         return networks
           .filter((network) => network.id !== currentNetwork?.id)
           .filter((network) => !query || matches(network.name))
-          .map((network) => ({ id: network.id, title: network.name, subtitle: t('sidebar.networks' as never) }));
+          .map((network) => ({ id: network.id, title: network.name, subtitle: t('sidebar.networks' as never), icon: null }));
       case 'project':
         return projects
           .filter((project) => !query || matches(project.name))
-          .map((project) => ({ id: project.id, title: project.name, subtitle: t('project.title' as never) ?? 'Project' }));
+          .map((project) => ({ id: project.id, title: project.name, subtitle: t('project.title' as never) ?? 'Project', icon: null }));
       case 'schema':
         return schemas
-          .filter((schema) => !query || matches(schema.name))
-          .map((schema) => ({ id: schema.id, title: schema.name, subtitle: t('schema.title') }));
+          .filter((schema) => !query || matches(schema.name) || (schema.description ? matches(schema.description) : false))
+          .map((schema) => ({
+            id: schema.id,
+            title: schema.name,
+            subtitle: schema.description ?? t('schema.title' as never),
+            icon: schema.icon,
+          }));
       case 'model':
         return models
           .filter((model) => {
@@ -99,15 +105,16 @@ export function ObjectPickerModal({
             id: model.id,
             title: getModelDisplayName(model, t),
             subtitle: getModelDisplayDescription(model, t) ?? t('model.title' as never),
+            icon: model.icon,
           }));
       case 'context':
         return contexts
           .filter((context) => !query || matches(context.name))
-          .map((context) => ({ id: context.id, title: context.name, subtitle: t('context.title') }));
+          .map((context) => ({ id: context.id, title: context.name, subtitle: t('context.title'), icon: null }));
       default:
         return [];
     }
-  }, [activeTab, schemas, concepts, contexts, currentNetwork?.id, models, networks, projects, search, t]);
+  }, [activeTab, concepts, contexts, currentNetwork?.id, models, networks, projects, schemas, search, t]);
 
   const handleSelect = (refId: string) => {
     onSelect(activeTab, refId);
@@ -149,11 +156,14 @@ export function ObjectPickerModal({
                 <button
                   key={item.id}
                   type="button"
-                  className="flex w-full flex-col items-start gap-0.5 px-3 py-2 text-left transition-colors hover:bg-state-hover"
+                  className="flex w-full items-start gap-2 px-3 py-2 text-left transition-colors hover:bg-state-hover"
                   onClick={() => handleSelect(item.id)}
                 >
-                  <span className="text-sm text-default">{item.title}</span>
-                  <span className="text-[11px] text-muted">{item.subtitle}</span>
+                  {item.icon && <NodeVisual icon={item.icon} size={14} imageSize={20} className="mt-0.5 shrink-0" />}
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm text-default">{item.title}</span>
+                    <span className="block truncate text-[11px] text-muted">{item.subtitle}</span>
+                  </span>
                 </button>
               ))}
             </div>

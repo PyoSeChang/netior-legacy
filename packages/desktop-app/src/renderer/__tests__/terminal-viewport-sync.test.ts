@@ -40,7 +40,7 @@ describe('terminal viewport sync', () => {
     })).toBe(19);
   });
 
-  it('realigns the viewport scrollbar to the active buffer line', () => {
+  it('realigns through xterm without mutating the viewport scrollTop directly', () => {
     const root = document.createElement('div');
     const viewport = document.createElement('div');
     viewport.className = 'xterm-viewport';
@@ -68,6 +68,6 @@ describe('terminal viewport sync', () => {
     syncViewportScrollPosition(term);
 
     expect(term.scrollToLine).toHaveBeenCalledWith(7);
-    expect(viewport.scrollTop).toBe(126);
+    expect(viewport.scrollTop).toBe(0);
   });
 });

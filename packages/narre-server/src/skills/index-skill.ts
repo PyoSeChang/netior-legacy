@@ -1,4 +1,4 @@
-import { buildIndexTocPrompt } from '../prompts/index-toc.js';
+﻿import { buildIndexTocPrompt } from '../prompts/index-toc.js';
 import type { SkillInvocation } from '@netior/shared/types';
 import type { NarreSkillDefinition } from './types.js';
 

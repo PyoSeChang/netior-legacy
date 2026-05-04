@@ -1,8 +1,8 @@
-import React from 'react';
+﻿import React from 'react';
 import { NodeVisual } from '../NodeVisual';
 import type { ShapeLayoutProps } from '../types';
 
-/** Template nodes — icon + label + field count */
+/** Template nodes ??icon + label + field count */
 export const DashedLayout: React.FC<ShapeLayoutProps> = ({
   icon,
   label,
@@ -21,7 +21,7 @@ export const DashedLayout: React.FC<ShapeLayoutProps> = ({
         </span>
         <span className="text-xs text-secondary whitespace-nowrap overflow-hidden text-ellipsis">
           {semanticTypeLabel}
-          {fieldCount > 0 && <span className="opacity-60"> · {fieldCount}</span>}
+          {fieldCount > 0 && <span className="opacity-60"> 쨌 {fieldCount}</span>}
         </span>
       </div>
     </div>

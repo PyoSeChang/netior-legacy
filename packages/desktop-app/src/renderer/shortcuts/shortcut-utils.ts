@@ -1,4 +1,4 @@
-function isEditableElement(element: HTMLElement): boolean {
+﻿function isEditableElement(element: HTMLElement): boolean {
   if (element.isContentEditable) return true;
   if (element instanceof HTMLTextAreaElement) return true;
   if (element instanceof HTMLInputElement) {

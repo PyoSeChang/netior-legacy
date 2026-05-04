@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { Eye, Pencil, ZoomIn, ZoomOut, Maximize, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Tooltip } from '../ui/Tooltip';
 import { useI18n } from '../../hooks/useI18n';

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+﻿import { describe, expect, it } from 'vitest';
 import { getMarkdownLinkBaseDir, parseMarkdownLinkTarget } from '../lib/markdown-link';
 
 describe('markdown-link', () => {

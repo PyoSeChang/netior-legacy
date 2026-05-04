@@ -17,9 +17,9 @@ import {
 } from '../netior-service-client.js';
 import { emitChange } from '../events.js';
 import { projectIdSchema, registerNetiorTool, resolveProjectId } from './shared-tool-registry.js';
-import { fromAgentFieldType, toAgentModel, type AgentFieldType } from './schema-surface.js';
+import { fromAgentFieldType, toAgentModel, type AgentFieldType } from './model-surface.js';
 
-const fieldTypeSchema = z.enum([
+const fieldTypeModel = z.enum([
   'text',
   'textarea',
   'number',
@@ -35,56 +35,56 @@ const fieldTypeSchema = z.enum([
   'color',
   'rating',
   'tags',
-  'schema_ref',
+  'model_ref',
 ]);
 
-const modelKeySchema = z.string().regex(
+const modelKeyModel = z.string().regex(
   /^[a-z][a-z0-9_]*$/,
   'Model keys must be lowercase snake_case, such as task_flow',
 );
-const categorySchema = z.string().regex(
+const categoryModel = z.string().regex(
   /^[a-z][a-z0-9_]*$/,
   'Model categories must be lowercase snake_case',
 );
 const meaningKeySet = new Set(SEMANTIC_MEANING_DEFINITIONS.map((definition) => definition.key));
-const builtInMeaningKeySchema = z.string().refine(
+const builtInMeaningKeyModel = z.string().refine(
   (value) => meaningKeySet.has(value as never),
   'Unknown built-in meaning key',
 );
-const representationSchema = z.enum(['single_field', 'field_group', 'relation', 'computed']);
-const targetKindSchema = z.enum(['object', 'edge', 'both']);
-const lineStyleSchema = z.enum(['solid', 'dashed', 'dotted']);
+const representationModel = z.enum(['single_field', 'field_group', 'relation', 'computed']);
+const targetKindModel = z.enum(['object', 'edge', 'both']);
+const lineStyleModel = z.enum(['solid', 'dashed', 'dotted']);
 
-const modelFieldRecipeSchema = z.object({
+const modelFieldRecipeModel = z.object({
   id: z.string().optional().describe('Stable field recipe ID. Omit to derive from key.'),
   key: z.string().regex(/^[a-z][a-z0-9_]*$/).describe('Lowercase field recipe key'),
   name: z.string().describe('Human-readable field name'),
-  field_types: z.array(fieldTypeSchema).min(1).optional().describe('Allowed field value types'),
+  field_types: z.array(fieldTypeModel).min(1).optional().describe('Allowed field value types'),
   required: z.boolean().optional().describe('Whether this field is required for the meaning'),
   description: z.string().nullable().optional().describe('Optional field description'),
   options: z.string().nullable().optional().describe('Optional comma-separated options for choice-like fields'),
 });
 
-const modelMeaningRecipeSchema = z.object({
+const modelMeaningRecipeModel = z.object({
   id: z.string().optional().describe('Stable meaning recipe ID. Omit to derive from key.'),
   key: z.string().regex(/^[a-z][a-z0-9_]*$/).describe('Lowercase meaning recipe key'),
   name: z.string().describe('Human-readable meaning name'),
   description: z.string().nullable().optional().describe('Optional meaning description'),
-  representation: representationSchema.optional().describe('How the meaning is represented'),
-  fields: z.array(modelFieldRecipeSchema).optional().describe('One or more field recipes that express this meaning'),
+  representation: representationModel.optional().describe('How the meaning is represented'),
+  fields: z.array(modelFieldRecipeModel).optional().describe('One or more field recipes that express this meaning'),
 });
 
-const modelRecipeSchema = z.object({
-  meanings: z.array(modelMeaningRecipeSchema).optional().describe('Meanings this model contributes'),
+const modelRecipeModel = z.object({
+  meanings: z.array(modelMeaningRecipeModel).optional().describe('Meanings this model contributes'),
   rules: z.array(z.object({
     id: z.string().optional().describe('Stable rule ID. Omit to derive from index.'),
     description: z.string().describe('Natural-language modeling rule'),
   })).optional().describe('Modeling rules or constraints'),
 });
 
-type ModelRecipeInput = z.infer<typeof modelRecipeSchema>;
-type ModelMeaningRecipeInput = z.infer<typeof modelMeaningRecipeSchema>;
-type ModelFieldRecipeInput = z.infer<typeof modelFieldRecipeSchema>;
+type ModelRecipeInput = z.infer<typeof modelRecipeModel>;
+type ModelMeaningRecipeInput = z.infer<typeof modelMeaningRecipeModel>;
+type ModelFieldRecipeInput = z.infer<typeof modelFieldRecipeModel>;
 
 function normalizeRecipeKey(value: string): string {
   return value
@@ -179,16 +179,16 @@ export function registerModelTools(server: McpServer): void {
     'create_model',
     {
       project_id: projectIdSchema(),
-      key: modelKeySchema.optional().describe('Optional stable model key. Omit to derive from name.'),
+      key: modelKeyModel.optional().describe('Optional stable model key. Omit to derive from name.'),
       name: z.string().describe('Model name'),
       description: z.string().nullable().optional().describe('What this model means and when to use it'),
-      category: categorySchema.optional().describe('Model category'),
-      target_kind: targetKindSchema.optional().describe('Whether this model describes objects, edges, or both'),
-      meaning_keys: z.array(builtInMeaningKeySchema).optional().describe('Built-in meanings this model includes'),
-      recipe: modelRecipeSchema.optional().describe('Custom meaning and field recipe for this model'),
+      category: categoryModel.optional().describe('Model category'),
+      target_kind: targetKindModel.optional().describe('Whether this model describes objects, edges, or both'),
+      meaning_keys: z.array(builtInMeaningKeyModel).optional().describe('Built-in meanings this model includes'),
+      recipe: modelRecipeModel.optional().describe('Custom meaning and field recipe for this model'),
       color: z.string().nullable().optional().describe('Optional color value'),
       icon: z.string().nullable().optional().describe('Optional icon identifier'),
-      line_style: lineStyleSchema.nullable().optional().describe('Default edge line style when target_kind includes edge'),
+      line_style: lineStyleModel.nullable().optional().describe('Default edge line style when target_kind includes edge'),
       directed: z.boolean().nullable().optional().describe('Default edge direction when target_kind includes edge'),
     },
     async ({ project_id, key, name, description, category, target_kind, meaning_keys, recipe, color, icon, line_style, directed }) => {
@@ -223,16 +223,16 @@ export function registerModelTools(server: McpServer): void {
     'update_model',
     {
       model_id: z.string().describe('The model ID to update'),
-      key: modelKeySchema.optional().describe('New stable model key'),
+      key: modelKeyModel.optional().describe('New stable model key'),
       name: z.string().optional().describe('New model name'),
       description: z.string().nullable().optional().describe('New model description'),
-      category: categorySchema.optional().describe('New model category'),
-      target_kind: targetKindSchema.optional().describe('Whether this model describes objects, edges, or both'),
-      meaning_keys: z.array(builtInMeaningKeySchema).optional().describe('Built-in meanings this model includes'),
-      recipe: modelRecipeSchema.optional().describe('Custom meaning and field recipe for this model'),
+      category: categoryModel.optional().describe('New model category'),
+      target_kind: targetKindModel.optional().describe('Whether this model describes objects, edges, or both'),
+      meaning_keys: z.array(builtInMeaningKeyModel).optional().describe('Built-in meanings this model includes'),
+      recipe: modelRecipeModel.optional().describe('Custom meaning and field recipe for this model'),
       color: z.string().nullable().optional().describe('New color value'),
       icon: z.string().nullable().optional().describe('New icon identifier'),
-      line_style: lineStyleSchema.nullable().optional().describe('Default edge line style when target_kind includes edge'),
+      line_style: lineStyleModel.nullable().optional().describe('Default edge line style when target_kind includes edge'),
       directed: z.boolean().nullable().optional().describe('Default edge direction when target_kind includes edge'),
     },
     async ({ model_id, key, name, description, category, target_kind, meaning_keys, recipe, color, icon, line_style, directed }) => {

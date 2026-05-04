@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+﻿import React, { useEffect } from 'react';
 import { useProjectStore } from './stores/project-store';
 import { useUIStore } from './stores/ui-store';
 import { useI18n } from './hooks/useI18n';

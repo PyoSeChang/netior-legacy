@@ -1,1 +1,1 @@
-export { MinimizedEditorTabs as EditorDockBar } from './MinimizedEditorTabs';
+﻿export { MinimizedEditorTabs as EditorDockBar } from './MinimizedEditorTabs';

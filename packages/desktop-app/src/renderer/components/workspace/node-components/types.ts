@@ -1,4 +1,4 @@
-import type { WorkspaceMode } from '../../../stores/ui-store';
+﻿import type { WorkspaceMode } from '../../../stores/ui-store';
 
 /** Shared types for workspace node card rendering. */
 export type NodeShape = 'circle' | 'gear' | 'stadium' | 'portrait' | 'dashed' | 'wide' | 'rectangle' | 'square' | 'group' | 'hierarchy';

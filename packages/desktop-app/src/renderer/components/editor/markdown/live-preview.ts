@@ -1,11 +1,11 @@
-/**
+﻿/**
  * Obsidian-style live preview for CodeMirror 6.
  *
- * markPlugin:     Decoration.mark/line — styling (always)
- * replacePlugin:  Decoration.replace — conceal syntax (non-cursor lines, single-line only)
- * tableField:     StateField — table block replace (multi-line, requires StateField)
- * checkboxPlugin: capture-phase mousedown — toggles checkboxes before CM6 steals focus
- * linkHandler:    click handler — opens links
+ * markPlugin:     Decoration.mark/line ??styling (always)
+ * replacePlugin:  Decoration.replace ??conceal syntax (non-cursor lines, single-line only)
+ * tableField:     StateField ??table block replace (multi-line, requires StateField)
+ * checkboxPlugin: capture-phase mousedown ??toggles checkboxes before CM6 steals focus
+ * linkHandler:    click handler ??opens links
  */
 
 import {
@@ -19,15 +19,15 @@ import {
 import { type EditorState, type Extension, type Range, StateField } from '@codemirror/state';
 import { syntaxTree } from '@codemirror/language';
 
-// ══════════════════════════════════════
+// ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧
 //  WIDGETS
-// ══════════════════════════════════════
+// ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧
 
 class BulletWidget extends WidgetType {
   toDOM() {
     const s = document.createElement('span');
     s.className = 'md-bullet';
-    s.textContent = '•';
+    s.textContent = '*';
     return s;
   }
 }
@@ -85,7 +85,7 @@ class FrontmatterWidget extends WidgetType {
 
     const header = document.createElement('div');
     header.className = 'md-frontmatter-header';
-    header.textContent = '속성';
+    header.textContent = '?띿꽦';
     wrap.appendChild(header);
 
     const table = document.createElement('table');
@@ -99,7 +99,7 @@ class FrontmatterWidget extends WidgetType {
       tdKey.className = 'md-frontmatter-key';
       const icon = document.createElement('span');
       icon.className = 'md-frontmatter-icon';
-      icon.textContent = '\u2261'; // ≡
+      icon.textContent = '\u2261'; // ??
       tdKey.appendChild(icon);
       const keyText = document.createElement('span');
       keyText.textContent = key;
@@ -164,9 +164,9 @@ class TableWidget extends WidgetType {
   ignoreEvent() { return false; }
 }
 
-// ══════════════════════════════════════
+// ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧
 //  REUSABLE DECORATIONS
-// ══════════════════════════════════════
+// ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧
 
 const hMark: Record<number, Decoration> = {
   1: Decoration.mark({ class: 'md-h1' }), 2: Decoration.mark({ class: 'md-h2' }),
@@ -182,9 +182,9 @@ const bqLineD = Decoration.line({ class: 'md-blockquote-line' });
 const codeLineD = Decoration.line({ class: 'md-code-line' });
 const hide = Decoration.replace({});
 
-// ══════════════════════════════════════
+// ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧
 //  HELPERS
-// ══════════════════════════════════════
+// ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧
 
 function focusedLines(state: EditorState): Set<number> {
   const s = new Set<number>();
@@ -233,10 +233,10 @@ function parseFrontmatterEntries(text: string): [string, string][] {
   return entries;
 }
 
-// ══════════════════════════════════════
+// ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧
 //  BUILD MARK + INLINE REPLACE DECOS
-//  (single-line replaces only — safe for ViewPlugin)
-// ══════════════════════════════════════
+//  (single-line replaces only ??safe for ViewPlugin)
+// ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧
 
 interface MR { marks: DecorationSet; reps: DecorationSet }
 export type MarkdownLinkHandler = (href: string, event: MouseEvent) => void;
@@ -253,10 +253,10 @@ function buildMR(view: EditorView): MR {
     enter(nd) {
       const n = nd.name;
 
-      // ── Skip frontmatter region ──
+      // ?? Skip frontmatter region ??
       if (fmRange && nd.from >= fmRange.from && nd.to <= fmRange.to) return;
 
-      // ── Fenced code ──
+      // ?? Fenced code ??
       if (n === 'FencedCode') { inCode = true; addLineDecos(state, nd.from, nd.to, codeLineD, m); return; }
       if (n === 'CodeMark' && inCode) {
         const ln = state.doc.lineAt(nd.from).number;
@@ -265,13 +265,13 @@ function buildMR(view: EditorView): MR {
       }
       if (n === 'CodeInfo' || inCode) return;
 
-      // ── Table — skip here, handled by StateField ──
+      // ?? Table ??skip here, handled by StateField ??
       if (n === 'Table') return false;
 
       const ln = state.doc.lineAt(nd.from).number;
       const f = fl.has(ln);
 
-      // ── Heading ──
+      // ?? Heading ??
       if (/^ATXHeading\d$/.test(n)) {
         const lv = parseInt(n.charAt(n.length - 1), 10);
         if (hMark[lv]) { const line = state.doc.lineAt(nd.from); m.push(hMark[lv].range(line.from, line.to)); }
@@ -281,7 +281,7 @@ function buildMR(view: EditorView): MR {
         r.push(hide.range(nd.from, end));
       }
 
-      // ── Bold ──
+      // ?? Bold ??
       if (n === 'StrongEmphasis') {
         m.push(boldD.range(nd.from, nd.to));
         if (!f) {
@@ -291,25 +291,25 @@ function buildMR(view: EditorView): MR {
         }
       }
 
-      // ── Italic ──
+      // ?? Italic ??
       if (n === 'Emphasis') {
         m.push(italicD.range(nd.from, nd.to));
         if (!f) { r.push(hide.range(nd.from, nd.from + 1)); r.push(hide.range(nd.to - 1, nd.to)); }
       }
 
-      // ── Strikethrough ──
+      // ?? Strikethrough ??
       if (n === 'Strikethrough') {
         m.push(strikeD.range(nd.from, nd.to));
         if (!f) { r.push(hide.range(nd.from, nd.from + 2)); r.push(hide.range(nd.to - 2, nd.to)); }
       }
 
-      // ── Inline code ──
+      // ?? Inline code ??
       if (n === 'InlineCode') {
         m.push(icodeD.range(nd.from, nd.to));
         if (!f) { r.push(hide.range(nd.from, nd.from + 1)); r.push(hide.range(nd.to - 1, nd.to)); }
       }
 
-      // ── Link ──
+      // ?? Link ??
       if (n === 'Link') {
         const lm: { from: number; to: number }[] = [];
         let uF = -1, uT = -1;
@@ -325,7 +325,7 @@ function buildMR(view: EditorView): MR {
         }
       }
 
-      // ── Image ──
+      // ?? Image ??
       if (n === 'Image') {
         const lm: { from: number; to: number }[] = [];
         const c = nd.node.cursor();
@@ -336,17 +336,17 @@ function buildMR(view: EditorView): MR {
         }
       }
 
-      // ── Blockquote ──
+      // ?? Blockquote ??
       if (n === 'Blockquote') addLineDecos(state, nd.from, nd.to, bqLineD, m);
       if (n === 'QuoteMark' && !f) {
         const end = state.doc.sliceString(nd.to, nd.to + 1) === ' ' ? nd.to + 1 : nd.to;
         r.push(hide.range(nd.from, end));
       }
 
-      // ── HR ──
+      // ?? HR ??
       if (n === 'HorizontalRule' && !f) r.push(Decoration.replace({ widget: new HrWidget() }).range(nd.from, nd.to));
 
-      // ── Lists ──
+      // ?? Lists ??
       if (n === 'ListMark' && !f) {
         const mt = state.doc.sliceString(nd.from, nd.to);
         const after = state.doc.sliceString(nd.to, nd.to + 5);
@@ -371,7 +371,7 @@ function buildMR(view: EditorView): MR {
   return { marks: Decoration.set(m, true), reps: Decoration.set(r, true) };
 }
 
-// ── Cache ──
+// ?? Cache ??
 interface MrCacheEntry {
   doc: EditorState['doc'];
   head: number;
@@ -394,9 +394,9 @@ function getMR(v: EditorView): MR {
   return value;
 }
 
-// ══════════════════════════════════════
+// ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧
 //  FRONTMATTER STATE FIELD (block replace, multi-line)
-// ══════════════════════════════════════
+// ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧
 
 function buildFrontmatterDecos(state: EditorState): DecorationSet {
   const fm = getFrontmatterRange(state);
@@ -437,9 +437,9 @@ const frontmatterField = StateField.define<DecorationSet>({
   provide: f => EditorView.decorations.from(f),
 });
 
-// ══════════════════════════════════════
+// ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧
 //  TABLE STATE FIELD (block replace, multi-line)
-// ══════════════════════════════════════
+// ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧
 
 function buildTableDecos(state: EditorState): DecorationSet {
   const fl = focusedLines(state);
@@ -473,9 +473,9 @@ const tableField = StateField.define<DecorationSet>({
   provide: f => EditorView.decorations.from(f),
 });
 
-// ══════════════════════════════════════
+// ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧
 //  CHECKBOX CLICK (capture phase)
-// ══════════════════════════════════════
+// ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧
 
 const checkboxPlugin = ViewPlugin.fromClass(class {
   view: EditorView;
@@ -508,9 +508,9 @@ const checkboxPlugin = ViewPlugin.fromClass(class {
   destroy() { this.view.dom.removeEventListener('mousedown', this.handler, true); }
 });
 
-// ══════════════════════════════════════
+// ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧
 //  LINK CLICK
-// ══════════════════════════════════════
+// ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧
 
 function createLinkHandler(onLinkClick?: MarkdownLinkHandler): Extension {
   return EditorView.domEventHandlers({
@@ -531,9 +531,9 @@ function createLinkHandler(onLinkClick?: MarkdownLinkHandler): Extension {
   });
 }
 
-// ══════════════════════════════════════
+// ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧
 //  MARK + REPLACE PLUGINS
-// ══════════════════════════════════════
+// ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧
 
 const markPlugin = ViewPlugin.fromClass(
   class {
@@ -553,17 +553,17 @@ const replacePlugin = ViewPlugin.fromClass(
   { decorations: v => v.decorations },
 );
 
-// ══════════════════════════════════════
+// ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧
 //  EXPORT
-// ══════════════════════════════════════
+// ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧
 
 export function createLivePreviewPlugin(onLinkClick?: MarkdownLinkHandler): Extension[] {
   return [markPlugin, replacePlugin, frontmatterField, tableField, checkboxPlugin, createLinkHandler(onLinkClick)];
 }
 
-// ══════════════════════════════════════
+// ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧
 //  THEME
-// ══════════════════════════════════════
+// ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧
 
 export const livePreviewTheme = EditorView.theme({
   '.md-h1': { fontSize: '1.8em', fontWeight: '700', lineHeight: '1.4' },

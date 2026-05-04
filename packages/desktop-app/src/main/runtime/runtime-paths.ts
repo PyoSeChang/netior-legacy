@@ -1,4 +1,4 @@
-import { app } from 'electron';
+﻿import { app } from 'electron';
 import { join } from 'path';
 import { createRuntimeScope, createScopedPort, extractWorktreeLabel, isPackagedRuntimeScope } from './runtime-scope';
 

@@ -1,4 +1,4 @@
-import React, { useCallback, useRef } from 'react';
+﻿import React, { useCallback, useRef } from 'react';
 import Editor, { type OnMount } from '@monaco-editor/react';
 import { getCssColorAsHex } from './editor-utils';
 import { useViewState } from '../../hooks/useViewState';

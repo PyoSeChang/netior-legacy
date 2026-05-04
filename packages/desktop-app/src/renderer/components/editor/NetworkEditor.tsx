@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo } from 'react';
+﻿import React, { useCallback, useEffect, useMemo } from 'react';
 import type { EditorTab } from '@netior/shared/types';
 import { ArrowLeft } from 'lucide-react';
 import { useNetworkStore } from '../../stores/network-store';
@@ -273,7 +273,7 @@ export function NetworkEditor({ tab }: NetworkEditorProps): JSX.Element {
                   {t('network.layoutSettings') === 'network.layoutSettings' ? 'Layout settings' : t('network.layoutSettings')}
                 </div>
 
-                {activePlugin.configSchema.map((field) => (
+                {activePlugin.configModel.map((field) => (
                   <div key={field.key} className="flex flex-col gap-1">
                     <label className="text-xs text-secondary">{t(field.label as never) === field.label ? field.label : t(field.label as never)}</label>
                     {field.type === 'number' ? (

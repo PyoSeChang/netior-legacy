@@ -4,6 +4,7 @@ import { randomUUID } from 'crypto';
 import { loadScenarios } from './loader.js';
 import { setupScenario, teardownScenario, setRunId } from './harness.js';
 import { runScenario } from './runner/session-runner.js';
+import { runOrchestrationScenario } from './runner/orchestration-runner.js';
 import { NarreServerAdapter } from './agents/narre-server.js';
 import { gradeScenario, errorMetrics, skippedMetrics, GRADING_VERSION, type GradeContext } from './grader.js';
 import { recordResult, recordRunResult, printSummary } from './report.js';
@@ -116,10 +117,6 @@ function checkCompatibility(
   execution: ScenarioExecutionConfig,
   adapter: EvalAgentAdapter,
 ): string | null {
-  if (execution.execution_mode !== 'single_agent') {
-    return `execution_mode "${execution.execution_mode}" is not yet supported by the current runner`;
-  }
-
   if (
     execution.supported_agents.length > 0 &&
     !execution.supported_agents.includes(execution.agent_id) &&
@@ -309,9 +306,11 @@ async function main() {
           env: buildAdapterEnv(execution),
         });
 
-        console.log('  Sending turns...');
+        console.log(execution.execution_mode === 'multi_agent' ? '  Running orchestration...' : '  Sending turns...');
         const startTime = Date.now();
-        const transcript = await runScenario(adapter, scenario, setup.projectId, setup.templateVars);
+        const transcript = execution.execution_mode === 'multi_agent'
+          ? await runOrchestrationScenario(adapter, scenario, setup.projectId, setup.templateVars)
+          : await runScenario(adapter, scenario, setup.projectId, setup.templateVars);
         const durationMs = Date.now() - startTime;
 
         console.log(`  Completed in ${(durationMs / 1000).toFixed(1)}s (${transcript.totalToolCalls} tool calls)`);

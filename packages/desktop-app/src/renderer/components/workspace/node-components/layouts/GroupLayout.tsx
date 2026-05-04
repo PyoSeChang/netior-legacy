@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { NodeVisual } from '../NodeVisual';
 import type { ShapeLayoutProps } from '../types';
@@ -41,7 +41,9 @@ export const GroupLayout: React.FC<ShapeLayoutProps> = ({
           </button>
         )}
       </div>
-      <span className="block w-full truncate text-[11px] leading-[1.35] text-secondary">{semanticTypeLabel}</span>
+      {semanticTypeLabel && (
+        <span className="block w-full truncate text-[11px] leading-[1.35] text-secondary">{semanticTypeLabel}</span>
+      )}
       {collapsed && (
         <div className="mt-auto flex items-center gap-2 text-[11px] leading-[1.35] text-secondary">
           <span>{childCount} items</span>

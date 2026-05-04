@@ -1,4 +1,4 @@
-import type { LayoutComputeInput, LayoutComputeResult } from '../types';
+﻿import type { LayoutComputeInput, LayoutComputeResult } from '../types';
 import { PIXELS_PER_DAY, todayEpochDays } from './scale-utils';
 import { HEADER_TOTAL_HEIGHT } from './TimelineBackground';
 import { getSemanticNumber } from '../semantic';

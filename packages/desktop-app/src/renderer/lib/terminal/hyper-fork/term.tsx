@@ -180,18 +180,8 @@ export function syncViewportScrollPosition(term: Terminal): void {
   const viewport = rawTerm.element?.querySelector<HTMLElement>('.xterm-viewport');
   if (!viewport) return;
 
-  const cellHeight = getViewportCellHeight(rawTerm);
-  if (!cellHeight) return;
-
   const viewportY = rawTerm.buffer.active.viewportY;
   term.scrollToLine(viewportY);
-
-  const targetScrollTop = Math.max(0, Math.round(viewportY * cellHeight));
-  if (Math.abs(viewport.scrollTop - targetScrollTop) <= 1) {
-    return;
-  }
-
-  viewport.scrollTop = targetScrollTop;
 }
 
 class ForkedHyperSearchController implements TerminalSearchController {

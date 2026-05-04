@@ -5,6 +5,7 @@ import { syncProjectOntologyForDb } from './system-networks';
 import {
   SEMANTIC_MEANING_DEFINITIONS,
   MODEL_DEFINITIONS,
+  SEMANTIC_CATEGORY_LABELS,
   getMeaningSlotDefinition,
 } from '@netior/shared/constants';
 import type {
@@ -61,6 +62,7 @@ const FIELD_TYPES: readonly FieldType[] = [
   'rating',
   'tags',
   'schema_ref',
+  'model_ref',
 ];
 
 const REPRESENTATION_KINDS: readonly ModelRepresentationKind[] = [
@@ -300,15 +302,53 @@ function ensureObjectForModel(db: Db, model: Pick<ModelRow, 'id' | 'project_id' 
   createObject('model', 'project', model.project_id, model.id);
 }
 
+function ensureBuiltInModelGroup(db: Db, projectId: string, category: string, sortOrder: number, now: string): string | null {
+  const hasGroupId = (db.pragma('table_info(models)') as { name: string }[])
+    .some((column) => column.name === 'group_id');
+  if (!hasGroupId) return null;
+
+  const rootId = `type-group-${projectId}-models`;
+  const id = `type-group-${projectId}-model-${category}`;
+  const fallbackName = SEMANTIC_CATEGORY_LABELS[category as keyof typeof SEMANTIC_CATEGORY_LABELS] ?? category;
+  db.prepare(`
+    INSERT OR IGNORE INTO type_groups (
+      id, scope, project_id, kind, name, parent_group_id, sort_order, created_at, updated_at
+    )
+    VALUES (?, 'project', ?, 'model', 'Models', NULL, 0, ?, ?)
+  `).run(rootId, projectId, now, now);
+  db.prepare(`
+    INSERT OR IGNORE INTO objects (id, object_type, scope, project_id, ref_id, created_at)
+    VALUES (?, 'type_group', 'project', ?, ?, ?)
+  `).run(`object-type-group-${rootId}`, projectId, rootId, now);
+  db.prepare(`
+    INSERT OR IGNORE INTO type_groups (
+      id, scope, project_id, kind, name, parent_group_id, sort_order, created_at, updated_at
+    )
+    VALUES (?, 'project', ?, 'model', ?, ?, ?, ?, ?)
+  `).run(id, projectId, fallbackName, rootId, sortOrder + 1, now, now);
+  db.prepare(`
+    UPDATE type_groups
+       SET parent_group_id = ?, sort_order = ?, updated_at = ?
+     WHERE id = ?
+  `).run(rootId, sortOrder + 1, now, id);
+  db.prepare(`
+    INSERT OR IGNORE INTO objects (id, object_type, scope, project_id, ref_id, created_at)
+    VALUES (?, 'type_group', 'project', ?, ?, ?)
+  `).run(`object-type-group-${id}`, projectId, id, now);
+
+  return id;
+}
+
 export function seedBuiltInModelsForProjectDb(db: Db, projectId: string): void {
   const now = new Date().toISOString();
+  const categoryOrder = new Map(Object.keys(SEMANTIC_CATEGORY_LABELS).map((category, index) => [category, index]));
   const insertModel = db.prepare(`
     INSERT OR IGNORE INTO models (
-      id, project_id, key, name, description, category,
+      id, project_id, group_id, key, name, description, category,
       target_kind, meaning_keys, core_slots, optional_slots, recipe_json,
-      line_style, directed, built_in, created_at, updated_at
+      color, icon, line_style, directed, built_in, created_at, updated_at
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, 1, ?, ?)
   `);
   const updateMissingDescription = db.prepare(`
     UPDATE models
@@ -326,14 +366,39 @@ export function seedBuiltInModelsForProjectDb(db: Db, projectId: string): void {
        AND built_in = 1
        AND (recipe_json IS NULL OR trim(recipe_json) = '' OR recipe_json = '{"roles":[],"rules":[]}' OR recipe_json = '{"meanings":[],"rules":[]}')
   `);
+  const updateMissingIcon = db.prepare(`
+    UPDATE models
+       SET icon = ?, updated_at = ?
+     WHERE project_id = ?
+       AND key = ?
+       AND built_in = 1
+       AND (icon IS NULL OR trim(icon) = '' OR icon IN ('box', 'boxes'))
+  `);
+  const updateMissingGroup = db.prepare(`
+    UPDATE models
+       SET group_id = ?, updated_at = ?
+     WHERE project_id = ?
+       AND key = ?
+       AND built_in = 1
+       AND (group_id IS NULL OR trim(group_id) = '')
+  `);
 
   for (const definition of MODEL_DEFINITIONS) {
     const id = `model-${projectId}-${definition.key}`;
     const description = definition.description ?? null;
     const recipeJson = serializeModelRecipe(buildRecipeForBuiltInModel(definition));
+    const icon = (definition as { icon?: string }).icon ?? null;
+    const groupId = ensureBuiltInModelGroup(
+      db,
+      projectId,
+      definition.category,
+      categoryOrder.get(definition.category) ?? categoryOrder.size,
+      now,
+    );
     insertModel.run(
       id,
       projectId,
+      groupId,
       definition.key,
       definition.label,
       description,
@@ -343,6 +408,7 @@ export function seedBuiltInModelsForProjectDb(db: Db, projectId: string): void {
       serializeStringArray(definition.coreSlots),
       serializeStringArray(definition.optionalSlots),
       recipeJson,
+      icon,
       definition.lineStyle ?? null,
       definition.directed == null ? null : (definition.directed ? 1 : 0),
       now,
@@ -351,68 +417,19 @@ export function seedBuiltInModelsForProjectDb(db: Db, projectId: string): void {
     if (description) {
       updateMissingDescription.run(description, now, projectId, definition.key);
     }
+    if (icon) {
+      updateMissingIcon.run(icon, now, projectId, definition.key);
+    }
+    if (groupId) {
+      updateMissingGroup.run(groupId, now, projectId, definition.key);
+    }
     updateMissingRecipe.run(recipeJson, now, projectId, definition.key);
     ensureObjectForModel(db, { id, project_id: projectId, created_at: now });
   }
 }
 
-function removeModelKeyFromSchemas(db: Db, projectId: string, modelKey: string): void {
-  const rows = db.prepare(
-    'SELECT id, models FROM schemas WHERE project_id = ?',
-  ).all(projectId) as Array<{
-    id: string;
-    models: string | null;
-  }>;
-
-  for (const row of rows) {
-    const nextModels = parseStringArray<string>(row.models).filter((key) => key !== modelKey);
-    db.prepare(
-      `UPDATE schemas
-          SET models = ?, updated_at = ?
-        WHERE id = ?`,
-    ).run(
-      serializeStringArray(nextModels),
-      new Date().toISOString(),
-      row.id,
-    );
-  }
-}
-
 function removeModelFromEdges(db: Db, modelId: string): void {
   db.prepare('UPDATE edges SET model_id = NULL WHERE model_id = ?').run(modelId);
-}
-
-function replaceModelKeyInSchemas(db: Db, projectId: string, oldKey: string, newKey: string): void {
-  if (oldKey === newKey) return;
-
-  const rows = db.prepare(
-    'SELECT id, models FROM schemas WHERE project_id = ?',
-  ).all(projectId) as Array<{
-    id: string;
-    models: string | null;
-  }>;
-
-  const replaceKeys = (raw: string | null): string[] => {
-    const next: string[] = [];
-    for (const key of parseStringArray<string>(raw)) {
-      const value = key === oldKey ? newKey : key;
-      if (!next.includes(value)) next.push(value);
-    }
-    return next;
-  };
-
-  const now = new Date().toISOString();
-  for (const row of rows) {
-    db.prepare(
-      `UPDATE schemas
-          SET models = ?, updated_at = ?
-        WHERE id = ?`,
-    ).run(
-      serializeStringArray(replaceKeys(row.models)),
-      now,
-      row.id,
-    );
-  }
 }
 
 export function createModel(data: ModelCreate): Model {
@@ -425,14 +442,15 @@ export function createModel(data: ModelCreate): Model {
 
   db.prepare(
     `INSERT INTO models (
-      id, project_id, key, name, description, category,
+      id, project_id, group_id, key, name, description, category,
       target_kind, meaning_keys, core_slots, optional_slots, recipe_json,
       color, icon, line_style, directed, built_in, created_at, updated_at
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     id,
     data.project_id,
+    data.group_id ?? null,
     key,
     data.name,
     data.description ?? null,
@@ -460,6 +478,9 @@ export function createModel(data: ModelCreate): Model {
 
 export function listModels(projectId: string): Model[] {
   const db = getDatabase();
+  db.transaction(() => {
+    syncProjectOntologyForDb(db, projectId);
+  })();
   const rows = db
     .prepare('SELECT * FROM models WHERE project_id = ? ORDER BY built_in DESC, category, name')
     .all(projectId) as ModelRow[];
@@ -506,11 +527,12 @@ export function updateModel(id: string, data: ModelUpdate): Model | undefined {
 
   db.prepare(
     `UPDATE models
-        SET key = ?, name = ?, description = ?, category = ?, target_kind = ?, meaning_keys = ?,
+        SET group_id = ?, key = ?, name = ?, description = ?, category = ?, target_kind = ?, meaning_keys = ?,
             core_slots = ?, optional_slots = ?, recipe_json = ?, color = ?, icon = ?,
             line_style = ?, directed = ?, built_in = ?, updated_at = ?
       WHERE id = ?`,
   ).run(
+    data.group_id !== undefined ? data.group_id : existing.group_id,
     nextKey,
     data.name !== undefined ? data.name : existing.name,
     data.description !== undefined ? data.description : existing.description,
@@ -529,8 +551,6 @@ export function updateModel(id: string, data: ModelUpdate): Model | undefined {
     id,
   );
 
-  replaceModelKeyInSchemas(db, existing.project_id, existing.key, nextKey);
-
   const row = db.prepare('SELECT * FROM models WHERE id = ?').get(id) as ModelRow;
   return toModel(row);
 }
@@ -538,13 +558,43 @@ export function updateModel(id: string, data: ModelUpdate): Model | undefined {
 export function deleteModel(id: string): boolean {
   const db = getDatabase();
   const existing = db.prepare('SELECT * FROM models WHERE id = ?').get(id) as ModelRow | undefined;
-  if (!existing) return false;
+  if (!existing) {
+    console.warn('[ModelDelete][core] missing model row', { id });
+    return false;
+  }
+
+  const object = getObjectByRef('model', id);
+  const objectNodeCount = object
+    ? (db.prepare('SELECT COUNT(*) AS count FROM network_nodes WHERE object_id = ?').get(object.id) as { count: number }).count
+    : 0;
+  const edgeModelCount = (db.prepare('SELECT COUNT(*) AS count FROM edges WHERE model_id = ?').get(id) as { count: number }).count;
+  const schemaModelRefCount = (db.prepare('SELECT COUNT(*) AS count FROM schemas WHERE models LIKE ?').get(`%${id}%`) as { count: number }).count;
+  console.info('[ModelDelete][core] start', {
+    id,
+    projectId: existing.project_id,
+    key: existing.key,
+    builtIn: !!existing.built_in,
+    objectId: object?.id ?? null,
+    objectNodeCount,
+    edgeModelCount,
+    schemaModelRefCount,
+  });
+
+  removeModelFromEdges(db, id);
+  const deletedObject = deleteObjectByRef('model', id);
+  console.info('[ModelDelete][core] object cleanup', { id, deletedObject });
 
   const result = db.prepare('DELETE FROM models WHERE id = ?').run(id);
+  console.info('[ModelDelete][core] model delete statement', { id, changes: result.changes });
   if (result.changes === 0) return false;
 
-  deleteObjectByRef('model', id);
-  removeModelKeyFromSchemas(db, existing.project_id, existing.key);
-  removeModelFromEdges(db, id);
+  syncProjectOntologyForDb(db, existing.project_id);
+  const remainingModel = db.prepare('SELECT id FROM models WHERE id = ?').get(id) as { id: string } | undefined;
+  const remainingObject = getObjectByRef('model', id);
+  console.info('[ModelDelete][core] after ontology sync', {
+    id,
+    remainingModel: Boolean(remainingModel),
+    remainingObject: Boolean(remainingObject),
+  });
   return true;
 }

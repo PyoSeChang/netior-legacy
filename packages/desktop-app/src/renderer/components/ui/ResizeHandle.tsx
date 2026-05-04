@@ -13,8 +13,8 @@ export function ResizeHandle({ direction = 'horizontal', onMouseDown }: ResizeHa
       className={`group relative z-10 shrink-0 ${isHorizontal ? 'cursor-col-resize' : 'cursor-row-resize'}`}
       style={
         isHorizontal
-          ? { width: 1, marginLeft: -2, marginRight: -2, paddingLeft: 2, paddingRight: 2 }
-          : { height: 1, marginTop: -2, marginBottom: -2, paddingTop: 2, paddingBottom: 2 }
+          ? { width: 8, paddingLeft: 3, paddingRight: 3 }
+          : { height: 8, paddingTop: 3, paddingBottom: 3 }
       }
       onMouseDown={onMouseDown}
     >

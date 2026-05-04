@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+﻿import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { useConceptStore } from '../../stores/concept-store';
 
 interface ConceptAgentViewProps {
@@ -14,7 +14,7 @@ export function ConceptAgentView({ conceptId, agentContent }: ConceptAgentViewPr
   const isFocusedRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Sync external prop → local state (only when not actively editing)
+  // Sync external prop ??local state (only when not actively editing)
   useEffect(() => {
     if (!isFocusedRef.current) {
       setLocalValue(agentContent ?? '');
