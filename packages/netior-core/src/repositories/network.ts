@@ -261,7 +261,7 @@ export function getNetworkFull(networkId: string): NetworkFullData | undefined {
     `SELECT nn.*,
             o.id as o_id, o.object_type as o_object_type, o.scope as o_scope,
             o.project_id as o_project_id, o.ref_id as o_ref_id, o.created_at as o_created_at,
-            c.title, c.color, c.icon, c.model_id, c.project_id as concept_project_id,
+            c.title, c.color, c.icon, c.schema_id, c.project_id as concept_project_id,
             c.created_at as concept_created_at, c.updated_at as concept_updated_at,
             f.id as f_id, f.project_id as f_project_id, f.path as f_path, f.type as f_type,
             f.metadata as f_metadata, f.created_at as f_created_at, f.updated_at as f_updated_at
@@ -298,7 +298,7 @@ export function getNetworkFull(networkId: string): NetworkFullData | undefined {
         concept: {
           id: row.o_ref_id as string,
           project_id: row.concept_project_id as string,
-          model_id: (row.model_id as string | null) ?? null,
+          schema_id: (row.schema_id as string | null) ?? null,
           title: row.title as string,
           color: row.color as string | null,
           icon: row.icon as string | null,
