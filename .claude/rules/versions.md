@@ -27,9 +27,9 @@ packages:
     impact: local
     contracts: []
   desktop-app:
-    version: "1.2.1"
+    version: "1.3.1"
     type: patch
-    summary: "프로필 이미지 시각화와 터미널 복원 동작을 안정화한 릴리스"
+    summary: "프로덕션 Narre Claude 실행 경로를 안정화한 릴리스"
     impact: local
     contracts: []
   narre-eval:

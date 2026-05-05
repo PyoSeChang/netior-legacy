@@ -37,6 +37,13 @@ const sidecarTargets = [
     source: path.join(repoRoot, 'packages', 'narre-server', 'dist'),
     destinationRoot: path.join(packagedSidecarsRoot, 'narre-server'),
     copyDistOnly: true,
+    runtimeFiles: [
+      {
+        packageId: '@anthropic-ai/claude-agent-sdk',
+        relativeSourcePath: 'cli.js',
+        relativeDestinationPath: path.join('vendor', 'claude-agent-sdk', 'cli.js'),
+      },
+    ],
   },
   {
     name: 'netior-mcp',
@@ -216,6 +223,24 @@ function rehydrateNativeArtifacts(destinationRoot, nativeArtifacts) {
   }
 }
 
+function copyRuntimeFiles(destinationRoot, runtimeFiles) {
+  for (const runtimeFile of runtimeFiles ?? []) {
+    const packageRoot = findInstalledPackageRoot(runtimeFile.packageId);
+    if (!packageRoot) {
+      throw new Error(`[prepare-sidecars] Could not resolve package root for ${runtimeFile.packageId}`);
+    }
+
+    const sourcePath = path.join(packageRoot, runtimeFile.relativeSourcePath);
+    if (!fs.existsSync(sourcePath)) {
+      throw new Error(`[prepare-sidecars] Missing runtime file for ${runtimeFile.packageId}: ${sourcePath}`);
+    }
+
+    const destinationPath = path.join(destinationRoot, runtimeFile.relativeDestinationPath);
+    fs.mkdirSync(path.dirname(destinationPath), { recursive: true });
+    fs.copyFileSync(sourcePath, destinationPath);
+  }
+}
+
 function materializeNodeModules(sourceNodeModulesPath, destinationNodeModulesPath, seen) {
   if (!fs.existsSync(sourceNodeModulesPath)) {
     return;
@@ -341,6 +366,7 @@ for (const sidecar of sidecarTargets) {
       force: true,
       dereference: true,
     });
+    copyRuntimeFiles(sidecar.destinationRoot, sidecar.runtimeFiles);
     console.log(`[prepare-sidecars] Copied bundled ${sidecar.name}`);
     console.log(`[prepare-sidecars] Target: ${sidecar.destinationRoot}`);
     continue;

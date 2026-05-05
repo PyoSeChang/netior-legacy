@@ -1,6 +1,10 @@
 ﻿import { query } from '@anthropic-ai/claude-agent-sdk';
 import { getNarreToolMetadata } from '@netior/shared/constants';
 import type { NarreToolCall } from '@netior/shared/types';
+import { existsSync } from 'fs';
+import { createRequire } from 'module';
+import { dirname, join } from 'path';
+import { fileURLToPath } from 'url';
 import type {
   NarreProviderAdapter,
   NarreProviderRunContext,
@@ -8,6 +12,40 @@ import type {
 } from '../runtime/provider-adapter.js';
 import { createClaudeSdkUiServer } from './shared/claude-sdk-ui-server.js';
 import { NarreUiBridge } from './shared/ui-bridge.js';
+
+const currentFilePath = typeof __filename === 'string'
+  ? __filename
+  : fileURLToPath(import.meta.url);
+const currentDir = typeof __dirname === 'string'
+  ? __dirname
+  : dirname(currentFilePath);
+const require = createRequire(currentFilePath);
+
+function resolveClaudeCodeExecutablePath(): string | undefined {
+  const candidates = [
+    process.env.NARRE_CLAUDE_CODE_EXECUTABLE_PATH,
+    join(currentDir, '..', 'vendor', 'claude-agent-sdk', 'cli.js'),
+    join(currentDir, '..', 'node_modules', '@anthropic-ai', 'claude-agent-sdk', 'cli.js'),
+  ].filter((value): value is string => Boolean(value));
+
+  for (const candidate of candidates) {
+    if (existsSync(candidate)) {
+      return candidate;
+    }
+  }
+
+  try {
+    const sdkEntryPath = require.resolve('@anthropic-ai/claude-agent-sdk');
+    const sdkCliPath = join(dirname(sdkEntryPath), 'cli.js');
+    if (existsSync(sdkCliPath)) {
+      return sdkCliPath;
+    }
+  } catch {
+    // The packaged sidecar may be fully bundled and have no resolvable SDK package.
+  }
+
+  return undefined;
+}
 
 export class ClaudeProviderAdapter implements NarreProviderAdapter {
   readonly name = 'claude';
@@ -31,6 +69,10 @@ export class ClaudeProviderAdapter implements NarreProviderAdapter {
       model: 'sonnet',
       mcpServers: this.buildMcpServers(context),
     };
+    const claudeCodeExecutablePath = resolveClaudeCodeExecutablePath();
+    if (claudeCodeExecutablePath) {
+      queryOptions.pathToClaudeCodeExecutable = claudeCodeExecutablePath;
+    }
 
     if (context.isResume) {
       queryOptions.resume = context.sessionId;
