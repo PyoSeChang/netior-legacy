@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback, useSyncExternalStore } from 'react';
-import { ArrowLeft, Bot } from 'lucide-react';
+import { ArrowLeft, Bot, Check, MoreVertical, X } from 'lucide-react';
 import { SLASH_TRIGGER_SKILLS } from '@netior/shared/constants';
 import type {
   NarreCard,
@@ -24,6 +24,7 @@ import {
   prepareNarreAssistantStream,
   primeNarreSession,
   promoteNarreDraftSession,
+  setNarreSessionTitle,
   setNarreSessionPendingSkillInvocation,
   setNarreSessionInterrupting,
   setNarreSessionDraft,
@@ -32,6 +33,8 @@ import {
   type NarreDisplayMessage,
 } from '../../../lib/narre-session-store';
 import { IconButton } from '../../ui/IconButton';
+import { Input } from '../../ui/Input';
+import { ContextMenu, type ContextMenuEntry } from '../../ui/ContextMenu';
 import { ScrollArea } from '../../ui/ScrollArea';
 import { Spinner } from '../../ui/Spinner';
 import { NarreMessageBubble } from './NarreMessageBubble';
@@ -41,7 +44,7 @@ import { useProjectStore } from '../../../stores/project-store';
 import type { NarrePendingSkillInvocationState } from '../../../lib/narre-ui-state';
 import { toAbsolutePath } from '../../../utils/path-utils';
 import { buildIndexMessage } from '../../../utils/pdf-toc-utils';
-import { getLocalizedAgentName, getLocalizedAgentRole } from './agent-display';
+import { getLocalizedAgentName } from './agent-display';
 
 interface NarreChatProps {
   sessionId: string | null;
@@ -229,6 +232,11 @@ export function NarreChat({
   const [sessionId, setSessionId] = useState<string | null>(initialSessionId);
   const [availableSkills, setAvailableSkills] = useState<readonly SkillDefinition[]>(SLASH_TRIGGER_SKILLS);
   const [activeAgent, setActiveAgent] = useState<AgentDefinition | null>(null);
+  const [isRenamingTitle, setIsRenamingTitle] = useState(false);
+  const [renameTitle, setRenameTitle] = useState('');
+  const [isSavingTitle, setIsSavingTitle] = useState(false);
+  const [moreMenu, setMoreMenu] = useState<{ x: number; y: number } | null>(null);
+  const moreButtonRef = useRef<HTMLButtonElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const autoScrollRef = useRef(true);
   useEffect(() => {
@@ -523,8 +531,50 @@ export function NarreChat({
 
   const title = sessionTitle || t('narre.newChat');
   const agentName = activeAgent ? getLocalizedAgentName(activeAgent, t) : agentKey ?? '';
-  const agentRole = activeAgent ? getLocalizedAgentRole(activeAgent, t) : '';
   const sendLocked = isStreaming;
+
+  const startRenameTitle = useCallback(() => {
+    if (!sessionId) return;
+    setRenameTitle(title);
+    setIsRenamingTitle(true);
+    setMoreMenu(null);
+  }, [sessionId, title]);
+
+  const cancelRenameTitle = useCallback(() => {
+    setIsRenamingTitle(false);
+    setRenameTitle('');
+  }, []);
+
+  const saveRenameTitle = useCallback(async () => {
+    if (!sessionId || isSavingTitle) return;
+    const nextTitle = renameTitle.trim();
+    if (!nextTitle) return;
+
+    setIsSavingTitle(true);
+    try {
+      const updated = await narreService.updateSessionTitle(projectId, sessionId, nextTitle);
+      setNarreSessionTitle(projectId, sessionId, updated.title || nextTitle);
+      cancelRenameTitle();
+    } catch (error) {
+      appendNarreAssistantErrorMessage(
+        projectId,
+        sessionId,
+        error instanceof Error ? error.message : 'Failed to rename Narre session',
+      );
+    } finally {
+      setIsSavingTitle(false);
+    }
+  }, [cancelRenameTitle, isSavingTitle, projectId, renameTitle, sessionId]);
+
+  const openMoreMenu = useCallback(() => {
+    const rect = moreButtonRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const menuWidth = 168;
+    setMoreMenu({
+      x: Math.max(8, rect.right - menuWidth),
+      y: rect.bottom + 4,
+    });
+  }, []);
 
   const handleInterrupt = useCallback(async () => {
     if (!sessionId || !isStreaming || isInterrupting) {
@@ -593,26 +643,60 @@ export function NarreChat({
   return (
     <div className="flex h-full flex-col">
       {/* Header */}
-      <div className="flex items-center gap-3 border-b border-subtle px-3 py-2">
+      <div className="group flex items-center gap-3 border-b border-subtle px-3 py-2">
         <IconButton label={t('narre.backToList')} onClick={onBackToList}>
           <ArrowLeft size={16} />
         </IconButton>
-        <div className="flex min-w-0 flex-col">
-          <div className="flex min-w-0 items-center gap-2">
-            <h2 className="truncate text-sm font-medium text-default">
-              {title}
-            </h2>
-            {agentName && (
-              <span className="inline-flex min-w-0 items-center gap-1.5 rounded-md bg-surface-card px-2 py-0.5 text-xs text-secondary">
-                <Bot size={12} className="shrink-0" />
-                <span className="truncate">{agentName}</span>
-              </span>
-            )}
-          </div>
-          {agentRole && (
-            <div className="mt-0.5 truncate text-xs text-muted">
-              {agentRole}
-            </div>
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          {isRenamingTitle ? (
+            <form
+              className="flex min-w-0 max-w-[520px] flex-1 items-center gap-2"
+              onSubmit={(event) => {
+                event.preventDefault();
+                void saveRenameTitle();
+              }}
+            >
+              <Input
+                autoFocus
+                inputSize="sm"
+                value={renameTitle}
+                disabled={isSavingTitle}
+                onChange={(event) => setRenameTitle(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Escape') {
+                    event.preventDefault();
+                    cancelRenameTitle();
+                  }
+                }}
+              />
+              <IconButton
+                label={t('common.save')}
+                type="submit"
+                disabled={!renameTitle.trim() || isSavingTitle}
+              >
+                <Check size={15} />
+              </IconButton>
+              <IconButton
+                label={t('common.cancel')}
+                type="button"
+                disabled={isSavingTitle}
+                onClick={cancelRenameTitle}
+              >
+                <X size={15} />
+              </IconButton>
+            </form>
+          ) : (
+            <>
+              <h2 className="truncate text-sm font-medium text-default">
+                {title}
+              </h2>
+            </>
+          )}
+          {agentName && (
+            <span className="inline-flex min-w-0 items-center gap-1.5 rounded-md bg-surface-card px-2 py-0.5 text-xs text-secondary">
+              <Bot size={12} className="shrink-0" />
+              <span className="truncate">{agentName}</span>
+            </span>
           )}
         </div>
         {isStreaming && (
@@ -620,6 +704,24 @@ export function NarreChat({
             <Spinner size="sm" />
             <span>{isInterrupting ? t('narre.interrupting') : t('narre.streaming')}</span>
           </div>
+        )}
+        {sessionId && !isRenamingTitle && (
+          <IconButton ref={moreButtonRef} label={t('common.more' as never)} onClick={openMoreMenu}>
+            <MoreVertical size={16} />
+          </IconButton>
+        )}
+        {moreMenu && (
+          <ContextMenu
+            x={moreMenu.x}
+            y={moreMenu.y}
+            onClose={() => setMoreMenu(null)}
+            items={[
+              {
+                label: t('narre.renameSession'),
+                onClick: startRenameTitle,
+              },
+            ] satisfies ContextMenuEntry[]}
+          />
         )}
       </div>
 

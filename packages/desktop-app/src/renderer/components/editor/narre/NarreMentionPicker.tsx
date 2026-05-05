@@ -1,17 +1,38 @@
 ﻿import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { Search, ArrowRight, Minus } from 'lucide-react';
+import * as LucideIcons from 'lucide-react';
+import {
+  ArrowRight,
+  BadgeCheck,
+  Bot,
+  Boxes,
+  FileText,
+  Link as LinkIcon,
+  Lightbulb,
+  Minus,
+  Network,
+  Paperclip,
+  Search,
+  Shapes,
+  Stamp,
+} from 'lucide-react';
 import { narreService, type MentionResult } from '../../../services/narre-service';
 import { useI18n } from '../../../hooks/useI18n';
 import { Spinner } from '../../ui/Spinner';
 import type { TranslationKey } from '@netior/shared/i18n';
+import type { Model, ModelKey } from '@netior/shared/types';
 import { logShortcut } from '../../../shortcuts/shortcut-utils';
+import {
+  getModelDisplayDescription,
+  getModelDisplayName,
+} from '../../../lib/model-i18n';
 
 interface NarreMentionPickerProps {
   query: string;
   projectId: string;
   position: { bottom: number; left: number };
   initialCategory?: string;
+  agentMentions?: MentionResult[];
   onSelect: (mention: MentionResult) => void;
   onClose: () => void;
 }
@@ -20,10 +41,117 @@ const MENTION_CATEGORIES = [
   { key: 'all', i18nKey: 'narre.mentionAll' },
   { key: 'concept', i18nKey: 'narre.mentionConcept' },
   { key: 'network', i18nKey: 'narre.mentionNetwork' },
+  { key: 'schema', i18nKey: 'narre.mentionSchema' },
   { key: 'model', i18nKey: 'narre.mentionModel' },
   { key: 'file', i18nKey: 'narre.mentionFile' },
   { key: 'agent', i18nKey: 'narre.mentionAgent' },
 ] as const;
+
+const PICKER_MIN_HEIGHT = 280;
+
+const ICONS = {
+  bot: Bot,
+  stamp: Stamp,
+  'badge-check': BadgeCheck,
+  paperclip: Paperclip,
+  link: LinkIcon,
+  concept: Lightbulb,
+  model: Boxes,
+  schema: Shapes,
+  network: Network,
+  file: FileText,
+} as const;
+
+type LucideIconComponent = React.ComponentType<{ size?: number; className?: string }>;
+
+function toLucideExportName(value: string): string {
+  return value
+    .split('-')
+    .filter(Boolean)
+    .map((part) => (
+      part === 'az' || part === 'za'
+        ? part.toUpperCase()
+        : part.charAt(0).toUpperCase() + part.slice(1)
+    ))
+    .join('');
+}
+
+function resolveIcon(icon: string | null | undefined, type: string): LucideIconComponent | null {
+  const explicit = icon ? ICONS[icon as keyof typeof ICONS] : null;
+  if (explicit) return explicit;
+
+  const fallback = ICONS[type as keyof typeof ICONS] ?? null;
+  if (!icon) return fallback;
+
+  const candidate = (LucideIcons as Record<string, unknown>)[toLucideExportName(icon)];
+  return typeof candidate === 'function' ? candidate as LucideIconComponent : fallback;
+}
+
+function isImageSource(value: string): boolean {
+  return /^(https?:|file:|data:image\/)/i.test(value);
+}
+
+function MentionIcon({ icon, type }: { icon?: string | null; type: string }): JSX.Element | null {
+  if (icon && isImageSource(icon)) {
+    return <img src={icon} alt="" className="h-4 w-4 shrink-0 rounded object-cover" />;
+  }
+
+  const Icon = resolveIcon(icon, type);
+  if (Icon) return <Icon size={14} className="shrink-0 text-muted" />;
+  return icon ? <span className="shrink-0 text-sm">{icon}</span> : null;
+}
+
+function stringMeta(meta: Record<string, unknown> | undefined, key: string): string | null {
+  const value = meta?.[key];
+  return typeof value === 'string' ? value : null;
+}
+
+function booleanMeta(meta: Record<string, unknown> | undefined, key: string): boolean | null {
+  const value = meta?.[key];
+  return typeof value === 'boolean' ? value : null;
+}
+
+function toModelDisplaySource(item: MentionResult): Pick<Model, 'key' | 'name' | 'description' | 'built_in'> | null {
+  const name = stringMeta(item.meta, 'name') ?? item.display;
+  const key = stringMeta(item.meta, 'key') ?? name;
+  const builtIn = booleanMeta(item.meta, 'builtIn') ?? false;
+  return {
+    key: key as ModelKey,
+    name,
+    description: item.description ?? null,
+    built_in: builtIn,
+  };
+}
+
+function localizeMentionResult(item: MentionResult, t: (key: TranslationKey) => string): MentionResult {
+  if (item.type === 'model') {
+    const model = toModelDisplaySource(item);
+    if (!model) return item;
+    return {
+      ...item,
+      display: getModelDisplayName(model, t),
+      description: getModelDisplayDescription(model, t),
+    };
+  }
+
+  if (item.type === 'concept' && stringMeta(item.meta, 'model')) {
+    const model = {
+      key: (stringMeta(item.meta, 'modelKey') ?? stringMeta(item.meta, 'model') ?? '') as ModelKey,
+      name: stringMeta(item.meta, 'model') ?? '',
+      description: stringMeta(item.meta, 'modelDescription'),
+      built_in: booleanMeta(item.meta, 'modelBuiltIn') ?? false,
+    };
+    return {
+      ...item,
+      meta: {
+        ...item.meta,
+        model: getModelDisplayName(model, t),
+      },
+    };
+  }
+
+  return item;
+}
 
 function PreviewPanel({ item, t }: { item: MentionResult; t: (key: TranslationKey) => string }): JSX.Element {
   const catLabel = MENTION_CATEGORIES.find((c) => c.key === item.type)?.i18nKey;
@@ -37,7 +165,7 @@ function PreviewPanel({ item, t }: { item: MentionResult; t: (key: TranslationKe
     <div className="flex flex-col gap-2 p-3">
       {/* Header */}
       <div className="flex items-center gap-2">
-        {item.icon && <span className="text-base">{item.icon}</span>}
+        <MentionIcon icon={item.icon} type={item.type} />
         {item.color && (
           <span className="inline-block h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: item.color }} />
         )}
@@ -102,6 +230,7 @@ export function NarreMentionPicker({
   projectId,
   position,
   initialCategory = 'all',
+  agentMentions = [],
   onSelect,
   onClose,
 }: NarreMentionPickerProps): JSX.Element {
@@ -120,6 +249,7 @@ export function NarreMentionPicker({
   // Sync external query to internal search
   useEffect(() => { setSearch(query); }, [query]);
   useEffect(() => { setActiveCategory(initialCategory); }, [initialCategory]);
+  useEffect(() => { searchRef.current?.focus(); }, []);
 
   // Search with debounce
   useEffect(() => {
@@ -129,7 +259,7 @@ export function NarreMentionPicker({
       setLoading(true);
       try {
         const data = await narreService.searchMentions(projectId, search);
-        setResults(data);
+        setResults(data.map((item) => localizeMentionResult(item, t)));
         setSelectedIndex(0);
       } catch {
         setResults([]);
@@ -138,19 +268,38 @@ export function NarreMentionPicker({
       }
     }, delay);
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-  }, [search, projectId]);
+  }, [search, projectId, t]);
+
+  const allResults = useMemo(() => {
+    const lowerSearch = search.toLowerCase();
+    const filteredAgents = agentMentions
+      .filter((item) => (
+        lowerSearch.length === 0
+        || item.display.toLowerCase().includes(lowerSearch)
+        || (item.description ?? '').toLowerCase().includes(lowerSearch)
+      ));
+    return [...filteredAgents, ...results];
+  }, [agentMentions, results, search]);
 
   // Filter by active category
   const displayResults = useMemo(() => {
-    if (activeCategory === 'all') return results;
-    return results.filter((r) => r.type === activeCategory);
-  }, [results, activeCategory]);
+    if (activeCategory === 'all') return allResults;
+    return allResults.filter((r) => r.type === activeCategory);
+  }, [allResults, activeCategory]);
 
-  // Categories with results
-  const visibleCategories = useMemo(() => {
-    const types = new Set(results.map((r) => r.type));
-    return MENTION_CATEGORIES.filter((c) => c.key === 'all' || types.has(c.key));
-  }, [results]);
+  const hasAgentMentions = agentMentions.length > 0;
+  const visibleCategories = useMemo(() => (
+    hasAgentMentions
+      ? MENTION_CATEGORIES
+      : MENTION_CATEGORIES.filter((c) => c.key !== 'agent')
+  ), [hasAgentMentions]);
+
+  useEffect(() => {
+    if (!hasAgentMentions && activeCategory === 'agent') {
+      setActiveCategory('all');
+      setSelectedIndex(0);
+    }
+  }, [activeCategory, hasAgentMentions]);
 
   // Preview item
   const previewItem = displayResults[selectedIndex] ?? null;
@@ -158,6 +307,25 @@ export function NarreMentionPicker({
   // Keyboard navigation: arrows, enter, escape, tab
   // stopImmediatePropagation prevents the event from reaching contentEditable's handler
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    const target = e.target as HTMLElement | null;
+    const isSearchInput = Boolean(target?.closest('[data-mention-search]'));
+    if (isSearchInput) {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        logShortcut('shortcut.narreMentionPicker.close');
+        onClose();
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        if (displayResults[selectedIndex]) {
+          logShortcut('shortcut.narreMentionPicker.confirmSelection');
+          onSelect(displayResults[selectedIndex]);
+        }
+      }
+      return;
+    }
+
     if (e.key === 'ArrowDown') {
       e.preventDefault();
       e.stopImmediatePropagation();
@@ -209,7 +377,7 @@ export function NarreMentionPicker({
     return () => document.removeEventListener('mousedown', handleClick);
   }, [onClose]);
 
-  // Don't auto-focus search ??contentEditable must keep focus for chip insertion.
+  // Keep contentEditable focused so chip insertion still works.
   // Search syncs from the external query (text after @).
 
   const showPreview = previewItem && (previewItem.description || previewItem.meta);
@@ -222,10 +390,14 @@ export function NarreMentionPicker({
         bottom: position.bottom,
         left: position.left,
         width: showPreview ? 500 : 360,
+        minHeight: PICKER_MIN_HEIGHT,
         zIndex: 10001,
         boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
       }}
-      onMouseDown={(e) => e.preventDefault()}
+      onMouseDown={(e) => {
+        if ((e.target as HTMLElement).closest('[data-allow-focus]')) return;
+        e.preventDefault();
+      }}
     >
       {/* Left: categories */}
       <div className="w-[90px] shrink-0 border-r border-subtle bg-surface-editor flex flex-col py-1">
@@ -244,16 +416,25 @@ export function NarreMentionPicker({
         ))}
         {/* Tab hint */}
         <div className="mt-auto px-2 py-1.5 text-[9px] text-muted">
-          Tab ??
+          {t('narre.mentionTabHint' as TranslationKey)}
         </div>
       </div>
 
       {/* Middle: search + list */}
-      <div className="flex-1 flex flex-col max-h-[280px] min-w-0">
-        <div className="flex items-center gap-1.5 px-2.5 py-2 border-b border-subtle">
+      <div className="flex-1 flex min-h-[280px] max-h-[280px] flex-col min-w-0">
+        <div
+          data-allow-focus
+          className="flex items-center gap-1.5 px-2.5 py-2 border-b border-subtle"
+          onMouseDown={(e) => {
+            e.stopPropagation();
+            searchRef.current?.focus();
+          }}
+        >
           <Search size={12} className="shrink-0 text-muted" />
           <input
             ref={searchRef}
+            data-allow-focus
+            data-mention-search
             type="text"
             value={search}
             onChange={(e) => { setSearch(e.target.value); setActiveCategory('all'); }}
@@ -261,7 +442,7 @@ export function NarreMentionPicker({
             className="w-full bg-transparent text-xs text-default outline-none placeholder:text-muted"
           />
         </div>
-        <div className="overflow-y-auto py-1">
+        <div className="min-h-0 flex-1 overflow-y-auto py-1">
           {loading && (
             <div className="flex items-center justify-center py-3"><Spinner size="sm" /></div>
           )}
@@ -281,7 +462,7 @@ export function NarreMentionPicker({
                 onClick={() => onSelect(item)}
                 onMouseEnter={() => setSelectedIndex(idx)}
               >
-                {item.icon && <span className="shrink-0 text-sm">{item.icon}</span>}
+                <MentionIcon icon={item.icon} type={item.type} />
                 {item.color && !item.icon && (
                   <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: item.color }} />
                 )}

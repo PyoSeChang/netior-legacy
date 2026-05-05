@@ -11,6 +11,7 @@ import { showToast } from '../ui/Toast';
 import { fsService, type StashedDeleteResult } from '../../services';
 import { isPrimaryModifier, logShortcut } from '../../shortcuts/shortcut-utils';
 import { setFileOpenDragData } from '../../hooks/useFileOpenDrag';
+import { setNarreMentionDragData } from '../../hooks/useNarreMentionDrag';
 
 interface FileTreeProps {
   nodes: FileTreeNode[];
@@ -1024,6 +1025,14 @@ export function FileTree({ nodes, onFileClick }: FileTreeProps): JSX.Element {
     setFileOpenDragData(event, dragPaths.filter((path) =>
       visibleItems.some((item) => item.node.type === 'file' && item.node.path === path),
     ));
+    setNarreMentionDragData(event, {
+      type: 'file',
+      id: node.path,
+      display: node.name,
+      icon: node.type === 'directory' ? 'folder' : undefined,
+      description: node.type,
+      meta: { path: node.path, fileType: node.type },
+    });
     event.dataTransfer.effectAllowed = 'copyMove';
   }, [getActiveSelection, selectedPaths, visibleItems]);
 

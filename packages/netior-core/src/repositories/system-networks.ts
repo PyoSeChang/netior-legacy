@@ -546,6 +546,13 @@ function removeStaleManagedOntologyNodes(
   ).run(ontologyNetworkId, ...desiredObjectIds);
 }
 
+function getExcludedObjectIdsForNetwork(db: Database.Database, networkId: string): Set<string> {
+  const rows = db.prepare(
+    'SELECT object_id FROM network_node_exclusions WHERE network_id = ?',
+  ).all(networkId) as { object_id: string }[];
+  return new Set(rows.map((row) => row.object_id));
+}
+
 function ensureOntologyContainsEdge(
   db: Database.Database,
   networkId: string,
@@ -592,7 +599,9 @@ export function syncProjectOntologyForDb(db: Database.Database, projectId: strin
   ensureBuiltInModelGroupsForDb(db, projectId);
   ensureOntologyObjectRecordsForDb(db, projectId);
 
-  const objects = listOntologyObjectsForDb(db, projectId);
+  const excludedObjectIds = getExcludedObjectIdsForNetwork(db, ontology.id);
+  const objects = listOntologyObjectsForDb(db, projectId)
+    .filter((object) => !excludedObjectIds.has(object.id));
   removeStaleManagedOntologyNodes(db, ontology.id, objects.map((object) => object.id));
   const builtInModels = db.prepare(`
     SELECT id, group_id

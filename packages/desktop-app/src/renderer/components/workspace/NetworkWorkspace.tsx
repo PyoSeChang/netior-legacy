@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Bug, ExternalLink, SlidersHorizontal, Waypoints } from 'lucide-react';
 import { NodeLayer } from './NodeLayer';
 import { EdgeLayer } from './EdgeLayer';
@@ -15,6 +16,7 @@ import { useNetworkStore, type NetworkNodeWithObject, type NetworkEdgeWithModel 
 import { networkService, layoutService, fileService, objectService } from '../../services';
 import { conceptPropertyService } from '../../services';
 import type { NodePosition, EdgeVisual } from '../../services/network-service';
+import type { MentionResult } from '../../services/narre-service';
 import { useConceptStore } from '../../stores/concept-store';
 import { useEditorStore } from '../../stores/editor-store';
 import { useUIStore } from '../../stores/ui-store';
@@ -42,6 +44,11 @@ import { useNetworkShortcuts } from './useNetworkShortcuts';
 import { openNetworkViewerTab } from '../../lib/open-network-viewer-tab';
 import { getModelDisplayName } from '../../lib/model-i18n';
 import { getFieldMeaningSlot } from '../../lib/field-meaning-bindings';
+import { resolveIcon } from '../../utils/icon-resolver';
+import {
+  dispatchNarreMentionDrop,
+  NARRE_MENTION_DROP_TARGET_SELECTOR,
+} from '../../hooks/useNarreMentionDrag';
 import {
   CONTAINS_MODEL_KEY,
   ENTRY_PORTAL_MODEL_KEY,
@@ -96,6 +103,13 @@ interface NodeResizePreview {
   height: number;
 }
 
+interface NarreMentionDragPreviewState {
+  x: number;
+  y: number;
+  mention: MentionResult;
+  canDrop: boolean;
+}
+
 interface ParsedTemporalMetadataValue {
   epochDay: number;
   minutesOfDay?: number;
@@ -115,6 +129,10 @@ const HIERARCHY_MAGNETIC_THRESHOLD = 28;
 const HIERARCHY_X_MAGNETIC_THRESHOLD = 28;
 const GROUP_COLLAPSED_SIZE = { width: 240, height: 80 };
 const HIERARCHY_COLLAPSED_SIZE = { width: 260, height: 84 };
+const NARRE_MENTION_HOLD_MS = 2000;
+const NARRE_MENTION_PREVIEW_DELAY_MS = 220;
+const NARRE_MENTION_INTENT_DRAG_MS = 650;
+const NARRE_MENTION_INTENT_DRAG_DISTANCE = 24;
 
 function toEpochDay(year: number, month: number, day: number): number {
   return Math.floor(Date.UTC(year, month - 1, day) / 86400000);
@@ -3475,6 +3493,7 @@ export function NetworkWorkspace({
     dragState,
     nodeDragOffset,
     spanResizeOffset,
+    mentionDragPreview: interactionMentionDragPreview,
     handleWorkspaceMouseDown,
     handleNodeDragStart,
     handleSpanResizeStart,
@@ -3494,6 +3513,283 @@ export function NetworkWorkspace({
     onWorkspaceClick: handleNetworkClick,
     onWheel: handleWheel,
   });
+
+  const [workspaceMentionDragPreview, setWorkspaceMentionDragPreview] = useState<NarreMentionDragPreviewState | null>(null);
+  const activeNarreMentionDropTargetRef = useRef<Element | null>(null);
+  const workspaceMentionDragSessionRef = useRef<{
+    nodeId: string;
+    startX: number;
+    startY: number;
+    mention: MentionResult;
+    startedAt: number;
+    active: boolean;
+    lastClientX: number;
+    lastClientY: number;
+    timer: number | null;
+    previewTimer: number | null;
+    progressTimer: number | null;
+    raf: number | null;
+    cleanup: (() => void) | null;
+  } | null>(null);
+
+  const clearNarreMentionDropTargetFeedback = useCallback(() => {
+    activeNarreMentionDropTargetRef.current?.removeAttribute('data-narre-mention-drop-active');
+    activeNarreMentionDropTargetRef.current = null;
+  }, []);
+
+  const endWorkspaceMentionDrag = useCallback(() => {
+    const session = workspaceMentionDragSessionRef.current;
+    if (session?.timer != null) {
+      window.clearTimeout(session.timer);
+    }
+    if (session?.previewTimer != null) {
+      window.clearTimeout(session.previewTimer);
+    }
+    if (session?.progressTimer != null) {
+      window.clearInterval(session.progressTimer);
+    }
+    if (session?.raf != null) {
+      window.cancelAnimationFrame(session.raf);
+    }
+    session?.cleanup?.();
+    clearNarreMentionDropTargetFeedback();
+    workspaceMentionDragSessionRef.current = null;
+    setWorkspaceMentionDragPreview(null);
+  }, [clearNarreMentionDropTargetFeedback]);
+
+  useEffect(() => () => {
+    endWorkspaceMentionDrag();
+  }, [endWorkspaceMentionDrag]);
+
+  const isNarreMentionDropTargetAt = useCallback((clientX: number, clientY: number) => (
+    document.elementsFromPoint(clientX, clientY)
+      .some((element) => element.matches(NARRE_MENTION_DROP_TARGET_SELECTOR))
+  ), []);
+
+  const updateNarreMentionDropTargetFeedback = useCallback((clientX: number, clientY: number) => {
+    const dropTarget = document.elementsFromPoint(clientX, clientY)
+      .find((element) => element.matches(NARRE_MENTION_DROP_TARGET_SELECTOR)) ?? null;
+    if (activeNarreMentionDropTargetRef.current !== dropTarget) {
+      clearNarreMentionDropTargetFeedback();
+      dropTarget?.setAttribute('data-narre-mention-drop-active', 'true');
+      activeNarreMentionDropTargetRef.current = dropTarget;
+    }
+    return !!dropTarget;
+  }, [clearNarreMentionDropTargetFeedback]);
+
+  const handleWorkspaceNodeDragStart = useCallback(
+    (...args: Parameters<typeof handleNodeDragStart>) => {
+      const [nodeId, startX, startY, narreMention] = args;
+      console.log('[NarreMentionDrag][NetworkWorkspace] forwarding nodeDragStart to interaction', {
+        nodeId,
+        workspaceMode,
+        hasMention: !!narreMention,
+        mentionType: narreMention?.type,
+        mentionId: narreMention?.id,
+        x: startX,
+        y: startY,
+      });
+
+      if (workspaceMode === 'browse' && narreMention) {
+        endWorkspaceMentionDrag();
+
+        const session = {
+          nodeId,
+          startX,
+          startY,
+          mention: narreMention,
+          startedAt: performance.now(),
+          active: false,
+          lastClientX: startX,
+          lastClientY: startY,
+          timer: null as number | null,
+          previewTimer: null as number | null,
+          progressTimer: null as number | null,
+          raf: null as number | null,
+          cleanup: null as (() => void) | null,
+        };
+
+        const showPreview = (clientX: number, clientY: number, mention: MentionResult) => {
+          const canDrop = updateNarreMentionDropTargetFeedback(clientX, clientY);
+          setWorkspaceMentionDragPreview({
+            x: clientX,
+            y: clientY - 8,
+            mention,
+            canDrop,
+          });
+        };
+
+        const activate = (clientX: number, clientY: number, source: string) => {
+          const current = workspaceMentionDragSessionRef.current;
+          if (!current || current.nodeId !== nodeId) return;
+          if (current.active) return;
+          current.active = true;
+          if (current.timer != null) {
+            window.clearTimeout(current.timer);
+            current.timer = null;
+          }
+          if (current.previewTimer != null) {
+            window.clearTimeout(current.previewTimer);
+            current.previewTimer = null;
+          }
+          if (current.progressTimer != null) {
+            window.clearInterval(current.progressTimer);
+            current.progressTimer = null;
+          }
+          if (current.raf != null) {
+            window.cancelAnimationFrame(current.raf);
+            current.raf = null;
+          }
+          console.log(
+            `[NarreMentionDrag][NetworkWorkspace] local hold activated nodeId=${nodeId} source=${source} elapsedMs=${Math.round(performance.now() - current.startedAt)} x=${clientX} y=${clientY}`,
+          );
+          showPreview(clientX, clientY, current.mention);
+        };
+
+        const handleMouseMove = (event: MouseEvent) => {
+          const current = workspaceMentionDragSessionRef.current;
+          if (!current || current.nodeId !== nodeId) return;
+          current.lastClientX = event.clientX;
+          current.lastClientY = event.clientY;
+          if (workspaceMentionDragPreview || performance.now() - current.startedAt >= NARRE_MENTION_PREVIEW_DELAY_MS) {
+            showPreview(event.clientX, event.clientY, current.mention);
+          }
+          const elapsedMs = performance.now() - current.startedAt;
+          const movedDistance = Math.hypot(event.clientX - current.startX, event.clientY - current.startY);
+          if (
+            !current.active
+            && (
+              elapsedMs >= NARRE_MENTION_HOLD_MS
+              || (elapsedMs >= NARRE_MENTION_INTENT_DRAG_MS && movedDistance >= NARRE_MENTION_INTENT_DRAG_DISTANCE)
+            )
+          ) {
+            activate(
+              event.clientX,
+              event.clientY,
+              elapsedMs >= NARRE_MENTION_HOLD_MS ? 'mousemove-elapsed' : 'intent-drag',
+            );
+            return;
+          }
+          if (current.active) {
+            showPreview(event.clientX, event.clientY, current.mention);
+          }
+        };
+
+        const handleMouseUp = (event: MouseEvent) => {
+          const current = workspaceMentionDragSessionRef.current;
+          if (!current || current.nodeId !== nodeId) return;
+          const elapsedMs = performance.now() - current.startedAt;
+          const movedDistance = Math.hypot(event.clientX - current.startX, event.clientY - current.startY);
+          if (
+            !current.active
+            && (
+              elapsedMs >= NARRE_MENTION_HOLD_MS
+              || (elapsedMs >= NARRE_MENTION_INTENT_DRAG_MS && movedDistance >= NARRE_MENTION_INTENT_DRAG_DISTANCE)
+            )
+          ) {
+            activate(
+              event.clientX,
+              event.clientY,
+              elapsedMs >= NARRE_MENTION_HOLD_MS ? 'mouseup-elapsed' : 'mouseup-intent-drag',
+            );
+          }
+
+          const activeSession = workspaceMentionDragSessionRef.current;
+          if (!activeSession?.active) {
+            const earlyDropTarget = document.elementsFromPoint(event.clientX, event.clientY)
+              .find((element) => element.matches(NARRE_MENTION_DROP_TARGET_SELECTOR));
+            if (earlyDropTarget) {
+              console.log(
+                `[NarreMentionDrag][NetworkWorkspace] local early mouseUp over input, dropping mention nodeId=${nodeId} elapsedMs=${Math.round(elapsedMs)} holdMs=${NARRE_MENTION_HOLD_MS} x=${event.clientX} y=${event.clientY}`,
+              );
+              dispatchNarreMentionDrop(earlyDropTarget, {
+                mention: activeSession?.mention ?? current.mention,
+                clientX: event.clientX,
+                clientY: event.clientY,
+              });
+              endWorkspaceMentionDrag();
+              return;
+            }
+            console.log(
+              `[NarreMentionDrag][NetworkWorkspace] local mouseUp before hold nodeId=${nodeId} elapsedMs=${Math.round(elapsedMs)} holdMs=${NARRE_MENTION_HOLD_MS} movedDistance=${Math.round(movedDistance)} x=${event.clientX} y=${event.clientY}`,
+            );
+            endWorkspaceMentionDrag();
+            return;
+          }
+
+          const dropTarget = document.elementsFromPoint(event.clientX, event.clientY)
+            .find((element) => element.matches(NARRE_MENTION_DROP_TARGET_SELECTOR));
+          console.log('[NarreMentionDrag][NetworkWorkspace] local mouseUp after hold', {
+            nodeId,
+            hasDropTarget: !!dropTarget,
+            x: event.clientX,
+            y: event.clientY,
+          });
+          if (dropTarget) {
+            dispatchNarreMentionDrop(dropTarget, {
+              mention: activeSession.mention,
+              clientX: event.clientX,
+              clientY: event.clientY,
+            });
+          }
+          endWorkspaceMentionDrag();
+        };
+
+        session.cleanup = () => {
+          window.removeEventListener('mousemove', handleMouseMove);
+          window.removeEventListener('mouseup', handleMouseUp);
+        };
+        session.timer = window.setTimeout(() => {
+          const current = workspaceMentionDragSessionRef.current;
+          if (!current || current.nodeId !== nodeId) return;
+          activate(current.lastClientX, current.lastClientY, 'timer');
+        }, NARRE_MENTION_HOLD_MS);
+        session.previewTimer = window.setTimeout(() => {
+          const current = workspaceMentionDragSessionRef.current;
+          if (!current || current.nodeId !== nodeId) return;
+          showPreview(current.lastClientX, current.lastClientY, current.mention);
+          current.previewTimer = null;
+        }, NARRE_MENTION_PREVIEW_DELAY_MS);
+        const tickHold = () => {
+          const current = workspaceMentionDragSessionRef.current;
+          if (!current || current.nodeId !== nodeId || current.active) return;
+          if (performance.now() - current.startedAt >= NARRE_MENTION_HOLD_MS) {
+            activate(current.lastClientX, current.lastClientY, 'raf-elapsed');
+            return;
+          }
+          current.raf = window.requestAnimationFrame(tickHold);
+        };
+        session.raf = window.requestAnimationFrame(tickHold);
+        session.progressTimer = window.setInterval(() => {
+          const current = workspaceMentionDragSessionRef.current;
+          if (!current || current.nodeId !== nodeId || current.active) return;
+          console.log(
+            `[NarreMentionDrag][NetworkWorkspace] local hold progress nodeId=${nodeId} elapsedMs=${Math.round(performance.now() - current.startedAt)} holdMs=${NARRE_MENTION_HOLD_MS}`,
+          );
+        }, 500);
+        workspaceMentionDragSessionRef.current = session;
+        window.addEventListener('mousemove', handleMouseMove);
+        window.addEventListener('mouseup', handleMouseUp);
+        console.log(
+          `[NarreMentionDrag][NetworkWorkspace] local hold waiting nodeId=${nodeId} holdMs=${NARRE_MENTION_HOLD_MS}`,
+        );
+        return;
+      }
+
+      handleNodeDragStart(...args);
+      console.log('[NarreMentionDrag][NetworkWorkspace] forwarded nodeDragStart to interaction', { nodeId });
+    },
+    [endWorkspaceMentionDrag, handleNodeDragStart, updateNarreMentionDropTargetFeedback, workspaceMentionDragPreview, workspaceMode],
+  );
+
+  const mentionDragPreview = workspaceMentionDragPreview ?? (
+    interactionMentionDragPreview
+      ? {
+          ...interactionMentionDragPreview,
+          canDrop: isNarreMentionDropTargetAt(interactionMentionDragPreview.x, interactionMentionDragPreview.y),
+        }
+      : null
+  );
 
   const magneticNodeDragOffset = useMemo(() => {
     if (dragState.type !== 'node' || !nodeDragOffset) return nodeDragOffset;
@@ -3859,8 +4155,17 @@ export function NetworkWorkspace({
     <div
       ref={containerRef}
       className="relative h-full w-full overflow-hidden bg-surface-canvas"
-      style={{ cursor: dragState.type === 'pan' ? 'grabbing' : dragState.type === 'node' ? 'move' : 'default' }}
+      style={{ cursor: mentionDragPreview || dragState.type === 'pan' || dragState.type === 'mention-drag' ? 'grabbing' : dragState.type === 'node' ? 'move' : 'default' }}
       onMouseDown={(e) => {
+        const target = e.target instanceof HTMLElement ? e.target : null;
+        console.log('[NarreMentionDrag][NetworkWorkspace] container mouseDown', {
+          button: e.button,
+          targetTag: target?.tagName,
+          targetClass: typeof target?.className === 'string' ? target.className.slice(0, 120) : '',
+          targetText: target?.textContent?.trim().slice(0, 80),
+          x: e.clientX,
+          y: e.clientY,
+        });
         setNetworkContextMenu(null);
         setContextMenu(null);
         setEdgeContextMenu(null);
@@ -4048,7 +4353,7 @@ export function NetworkWorkspace({
             if (node) openNodeObject(node);
           })();
         }}
-        onNodeDragStart={handleNodeDragStart}
+        onNodeDragStart={handleWorkspaceNodeDragStart}
         onContextMenu={(type, x, y, targetId) => {
           if (type === 'node' && targetId) {
             void (async () => {
@@ -4058,6 +4363,30 @@ export function NetworkWorkspace({
           }
         }}
       />
+
+      {mentionDragPreview && createPortal(
+        <div
+          className="pointer-events-none fixed z-[10080] flex max-w-[240px] items-center gap-2 rounded-md border border-default bg-surface-floating px-3 py-2 text-xs text-default shadow-xl"
+          style={{
+            left: mentionDragPreview.x,
+            top: mentionDragPreview.y,
+            transform: 'translate(-50%, -100%) scale(1.03)',
+          }}
+        >
+          <span className="flex h-5 w-5 shrink-0 items-center justify-center text-accent">
+            {resolveIcon(mentionDragPreview.mention.icon ?? 'at-sign', 15)}
+          </span>
+          <span className="min-w-0">
+            <span className="block truncate font-medium">
+              @{mentionDragPreview.mention.display}
+            </span>
+            <span className="block text-[10px] leading-3 text-muted">
+              {mentionDragPreview.mention.type}
+            </span>
+          </span>
+        </div>,
+        document.body,
+      )}
 
 
 
@@ -4294,3 +4623,4 @@ export function NetworkWorkspace({
     </div>
   );
 }
+

@@ -383,6 +383,7 @@ const electronAPI = {
     resolveSupervisorApproval: (data: Record<string, unknown>) => ipcRenderer.invoke('narre:supervisorResolveApproval', data),
     createSession: (projectId: string) => ipcRenderer.invoke('narre:createSession', projectId),
     getSession: (sessionId: string) => ipcRenderer.invoke('narre:getSession', sessionId),
+    updateSessionTitle: (data: Record<string, unknown>) => ipcRenderer.invoke('narre:updateSessionTitle', data),
     deleteSession: (sessionId: string) => ipcRenderer.invoke('narre:deleteSession', sessionId),
     getApiKeyStatus: () => ipcRenderer.invoke('narre:getApiKeyStatus'),
     setApiKey: (key: string) => ipcRenderer.invoke('narre:setApiKey', key),

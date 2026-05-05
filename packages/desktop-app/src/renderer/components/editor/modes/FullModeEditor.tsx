@@ -9,6 +9,7 @@ import { SplitPaneRenderer, type PaneAdjacency } from '../SplitPaneRenderer';
 import { DropZoneOverlay } from '../DropZoneOverlay';
 import { isTabDrag } from '../../../hooks/useTabDrag';
 import { isFileOpenDrag } from '../../../hooks/useFileOpenDrag';
+import { isEditableMentionDropTarget } from '../../../hooks/useNarreMentionDrag';
 import { openFileBesideTab, openFileInPane } from '../../../lib/open-file-tab';
 import { getAllowedViewModes } from '../../../lib/editor-view-mode-rules';
 import type { DropResult } from '../DropZoneOverlay';
@@ -120,7 +121,7 @@ export function FullModeEditor(): JSX.Element | null {
   return (
     <div
       className="flex h-full min-h-0 w-full min-w-0 bg-surface-chrome"
-        onDragEnter={(e) => { if (isTabDrag(e) || isFileOpenDrag(e)) setIsDragging(true); }}
+      onDragEnter={(e) => { if (!isEditableMentionDropTarget(e.target) && (isTabDrag(e) || isFileOpenDrag(e))) setIsDragging(true); }}
       onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setIsDragging(false); }}
       onDrop={() => setIsDragging(false)}
     >

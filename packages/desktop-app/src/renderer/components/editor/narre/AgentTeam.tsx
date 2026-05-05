@@ -20,7 +20,7 @@ import type {
   OrchestrationTask,
 } from '@netior/shared/types';
 import type { TranslationKey } from '@netior/shared/i18n';
-import { narreService, type OrchestrationSnapshot } from '../../../services/narre-service';
+import { narreService, type MentionResult, type OrchestrationSnapshot } from '../../../services/narre-service';
 import { useI18n } from '../../../hooks/useI18n';
 import { Badge } from '../../ui/Badge';
 import { Button } from '../../ui/Button';
@@ -170,6 +170,11 @@ export function AgentTeam({ projectId, onBackHome }: AgentTeamProps): JSX.Elemen
     [agents, agentByKey, snapshot?.tasks, t],
   );
 
+  const participantAgentMentions = useMemo(
+    () => buildParticipantAgentMentions(snapshot, agentByKey, t),
+    [agentByKey, snapshot, t],
+  );
+
   const messages = useMemo(
     () => buildMessages(snapshot?.events ?? [], snapshot?.approvals ?? [], agentByKey, t),
     [agentByKey, snapshot?.approvals, snapshot?.events, t],
@@ -269,6 +274,7 @@ export function AgentTeam({ projectId, onBackHome }: AgentTeamProps): JSX.Elemen
               placeholder={t(tk('narre.agentTeamUi.inputPlaceholder'))}
               allowMentions
               allowSlashSkills={false}
+              agentMentions={participantAgentMentions}
               footerLabel={t(tk('narre.agentTeamUi.teamComposerHint'))}
               onStop={stopTeamRun}
             />
@@ -366,6 +372,41 @@ function buildParticipants(
       status: task?.status ?? 'ready',
     };
   }).slice(0, taskByAgent.size > 0 ? undefined : 8);
+}
+
+function buildParticipantAgentMentions(
+  snapshot: OrchestrationSnapshot | null,
+  agentByKey: Map<string, AgentDefinition>,
+  t: (key: TranslationKey) => string,
+): MentionResult[] {
+  if (!snapshot) return [];
+
+  const keys = new Set<string>();
+  for (const task of snapshot.tasks) {
+    if (task.assignedAgentKey) keys.add(task.assignedAgentKey);
+  }
+  for (const event of snapshot.events) {
+    if (event.agentKey) keys.add(event.agentKey);
+  }
+  for (const approval of snapshot.approvals) {
+    if (approval.agentKey) keys.add(approval.agentKey);
+  }
+
+  return Array.from(keys).map((key) => {
+    const agent = agentByKey.get(key);
+    return {
+      type: 'agent',
+      id: key,
+      display: getLocalizedAgentName(agent, t, key),
+      icon: 'bot',
+      description: getLocalizedAgentRole(agent, t),
+      meta: {
+        kind: agent?.kind ?? null,
+        provider: agent?.runtimeProfile?.provider ?? null,
+        model: agent?.runtimeProfile?.model ?? null,
+      },
+    };
+  });
 }
 
 function buildMessages(

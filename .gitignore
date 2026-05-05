@@ -12,6 +12,7 @@ out/
 
 # Electron
 release/
+packages/desktop-app/release-*/
 !.claude/skills/release/
 
 # Environment

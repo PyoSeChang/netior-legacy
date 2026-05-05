@@ -99,6 +99,10 @@ export async function getSession(sessionId: string): Promise<NarreSessionDetail>
   return unwrapIpc(await window.electron.narre.getSession(sessionId));
 }
 
+export async function updateSessionTitle(projectId: string, sessionId: string, title: string): Promise<NarreSession> {
+  return unwrapIpc(await window.electron.narre.updateSessionTitle({ projectId, sessionId, title }));
+}
+
 export async function deleteSession(sessionId: string): Promise<boolean> {
   return unwrapIpc(await window.electron.narre.deleteSession(sessionId));
 }
@@ -168,6 +172,7 @@ export const narreService = {
   resolveSupervisorApproval,
   createSession,
   getSession,
+  updateSessionTitle,
   deleteSession,
   getApiKeyStatus,
   setApiKey,

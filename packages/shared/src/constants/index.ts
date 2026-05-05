@@ -260,6 +260,7 @@ export const IPC_CHANNELS = {
   NARRE_SUPERVISOR_RESOLVE_APPROVAL: 'narre:supervisorResolveApproval',
   NARRE_GET_SESSION: 'narre:getSession',
   NARRE_CREATE_SESSION: 'narre:createSession',
+  NARRE_UPDATE_SESSION_TITLE: 'narre:updateSessionTitle',
   NARRE_DELETE_SESSION: 'narre:deleteSession',
   NARRE_STREAM_EVENT: 'narre:streamEvent',
   NARRE_SEARCH_MENTIONS: 'narre:searchMentions',

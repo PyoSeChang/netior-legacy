@@ -28,6 +28,7 @@ import { useUIStore } from '../../stores/ui-store';
 import { useSettingsStore } from '../../stores/settings-store';
 import { isTabDrag, getTabDragDataAsync, flushTabDragData } from '../../hooks/useTabDrag';
 import { getFileOpenDragData, isFileOpenDrag } from '../../hooks/useFileOpenDrag';
+import { isEditableMentionDropTarget } from '../../hooks/useNarreMentionDrag';
 import { openFileBesideTab, openFileInPane, openFileTab } from '../../lib/open-file-tab';
 import { getAllowedViewModes } from '../../lib/editor-view-mode-rules';
 import type { DropResult } from '../editor/DropZoneOverlay';
@@ -406,10 +407,12 @@ export function WorkspaceShell({ project, rightChrome = null }: WorkspaceShellPr
 
   // Global drag tracking for drop zone activation
   const handleShellDragEnter = useCallback((e: React.DragEvent) => {
+    if (isEditableMentionDropTarget(e.target)) return;
     if (isTabDrag(e) || isFileOpenDrag(e)) setIsTabDragging(true);
   }, []);
 
   const handleShellDragOver = useCallback((e: React.DragEvent) => {
+    if (isEditableMentionDropTarget(e.target)) return;
     if (!isTabDrag(e) && !isFileOpenDrag(e)) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = isFileOpenDrag(e) ? 'copy' : 'move';

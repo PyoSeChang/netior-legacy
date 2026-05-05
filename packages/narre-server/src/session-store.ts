@@ -370,13 +370,15 @@ export class SessionStore {
     await this.appendTurn(sessionId, projectId, legacyMessageToTurn(message));
   }
 
-  async updateSessionTitle(sessionId: string, projectId: string, title: string): Promise<void> {
+  async updateSessionTitle(sessionId: string, projectId: string, title: string): Promise<NarreSession | null> {
     const index = await this.readIndex(projectId);
     const session = index.sessions.find((s) => s.id === sessionId);
     if (session) {
       session.title = title;
       await this.writeIndex(projectId, index);
+      return { ...session };
     }
+    return null;
   }
 
   async deleteSession(sessionId: string, projectId: string): Promise<boolean> {

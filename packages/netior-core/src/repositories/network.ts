@@ -399,6 +399,9 @@ export function addNetworkNode(data: NetworkNodeCreate): NetworkNode {
     now, now,
   );
 
+  db.prepare('DELETE FROM network_node_exclusions WHERE network_id = ? AND object_id = ?')
+    .run(data.network_id, data.object_id);
+
   return db.prepare('SELECT * FROM network_nodes WHERE id = ?').get(id) as NetworkNode;
 }
 
@@ -429,6 +432,20 @@ export function updateNetworkNode(id: string, data: NetworkNodeUpdate): NetworkN
 
 export function removeNetworkNode(id: string): boolean {
   const db = getDatabase();
+  const existing = db.prepare(
+    `SELECT nn.id, nn.network_id, nn.object_id, nn.metadata, n.kind AS network_kind
+       FROM network_nodes nn
+       JOIN networks n ON n.id = nn.network_id
+      WHERE nn.id = ?`,
+  ).get(id) as { id: string; network_id: string; object_id: string; metadata: string | null; network_kind: string } | undefined;
+
+  if (existing?.network_kind === 'ontology' && existing.metadata?.includes('"managedBy":"ontology"')) {
+    db.prepare(
+      `INSERT OR IGNORE INTO network_node_exclusions (id, network_id, object_id, created_at)
+       VALUES (?, ?, ?, ?)`,
+    ).run(randomUUID(), existing.network_id, existing.object_id, new Date().toISOString());
+  }
+
   const result = db.prepare('DELETE FROM network_nodes WHERE id = ?').run(id);
   return result.changes > 0;
 }

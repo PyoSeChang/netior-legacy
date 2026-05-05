@@ -4,6 +4,7 @@ import type { WorkspaceMode } from '../../stores/ui-store';
 import { NodeCardDefault } from './node-components/NodeCardDefault';
 import type { NodeResizeDirection, NodeShape } from './node-components/types';
 import type { LayoutViewportMode } from './layout-plugins/types';
+import type { MentionResult } from '../../services/narre-service';
 
 interface NodeLayerProps {
   nodes: RenderNode[];
@@ -18,13 +19,91 @@ interface NodeLayerProps {
   dragFollowerIds?: Set<string>;
   onNodeClick: (id: string, event: React.MouseEvent) => void;
   onNodeDoubleClick: (id: string) => void;
-  onNodeDragStart: (nodeId: string, startX: number, startY: number) => void;
+  onNodeDragStart: (nodeId: string, startX: number, startY: number, narreMention?: MentionResult | null) => void;
   onNodeResizeStart?: (nodeId: string, direction: NodeResizeDirection, startX: number, startY: number) => void;
   onNodeToggleCollapse?: (nodeId: string) => void;
   onNodePortalChipClick?: (nodeId: string, chipId: string, networkId: string) => void;
   onContextMenu?: (type: 'workspace' | 'node' | 'edge', x: number, y: number, targetId?: string) => void;
   onNodeMouseEnter?: (id: string, screenX: number, screenY: number) => void;
   onNodeMouseLeave?: (id: string) => void;
+}
+
+function buildNarreMentionForNode(node: RenderNode): MentionResult | null {
+  if (node.nodeType === 'concept') {
+    return {
+      type: 'concept',
+      id: node.conceptId ?? node.objectTargetId ?? node.id,
+      display: node.label,
+      icon: node.icon,
+      description: node.semanticTypeLabel,
+    };
+  }
+
+  if (node.nodeType === 'network') {
+    return {
+      type: 'network',
+      id: node.networkId ?? node.objectTargetId ?? node.id,
+      display: node.label,
+      icon: node.icon,
+      description: node.semanticTypeLabel,
+    };
+  }
+
+  if (node.nodeType === 'file' || node.nodeType === 'dir') {
+    const path = node.filePath ?? node.label;
+    return {
+      type: 'file',
+      id: node.fileId ?? path,
+      display: node.label,
+      icon: node.icon,
+      description: node.nodeType === 'dir' ? 'directory' : node.semanticTypeLabel,
+      meta: { path, fileType: node.nodeType === 'dir' ? 'directory' : 'file' },
+    };
+  }
+
+  if (node.nodeType === 'object') {
+    if (node.objectType === 'schema') {
+      return {
+        type: 'schema',
+        id: node.objectTargetId ?? node.id,
+        display: node.label,
+        icon: node.icon,
+        description: node.semanticTypeLabel,
+      };
+    }
+
+    if (node.objectType === 'model') {
+      return {
+        type: 'model',
+        id: node.objectTargetId ?? node.id,
+        display: node.label,
+        icon: node.icon,
+        description: node.semanticTypeLabel,
+      };
+    }
+
+    if (node.objectType === 'module') {
+      return {
+        type: 'module',
+        id: node.objectTargetId ?? node.id,
+        display: node.label,
+        icon: node.icon,
+        description: node.semanticTypeLabel,
+      };
+    }
+
+    if (node.objectType === 'agent') {
+      return {
+        type: 'agent',
+        id: node.objectTargetId ?? node.id,
+        display: node.label,
+        icon: node.icon,
+        description: node.semanticTypeLabel,
+      };
+    }
+  }
+
+  return null;
 }
 
 export const NodeLayer: React.FC<NodeLayerProps> = ({
@@ -100,6 +179,32 @@ export const NodeLayer: React.FC<NodeLayerProps> = ({
     return { x, y };
   };
 
+  const handleNodeDragStart = React.useCallback(
+    (nodeId: string, startX: number, startY: number, narreMention?: MentionResult | null) => {
+      console.log('[NarreMentionDrag][NodeLayer] forwarding nodeDragStart', {
+        nodeId,
+        mode,
+        hasMention: !!narreMention,
+        mentionType: narreMention?.type,
+        mentionId: narreMention?.id,
+        x: startX,
+        y: startY,
+        hasHandler: typeof onNodeDragStart === 'function',
+      });
+
+      try {
+        onNodeDragStart(nodeId, startX, startY, narreMention);
+        console.log('[NarreMentionDrag][NodeLayer] forwarded nodeDragStart', { nodeId });
+      } catch (error) {
+        console.error('[NarreMentionDrag][NodeLayer] nodeDragStart handler threw', {
+          nodeId,
+          error,
+        });
+      }
+    },
+    [mode, onNodeDragStart],
+  );
+
   // Screen-based layouts manage their own framing and render in absolute coordinates.
   const containerStyle = viewportMode !== 'world'
     ? { position: 'absolute' as const, left: 0, top: 0, zIndex: 2 }
@@ -109,6 +214,7 @@ export const NodeLayer: React.FC<NodeLayerProps> = ({
     <div style={containerStyle}>
       {orderedNodes.map((node) => {
         const t = getNodePosition(node);
+        const narreMention = buildNarreMentionForNode(node);
 
         return (
           <div key={node.id} style={{ opacity: node.dimmed ? 0.25 : 1, transition: 'opacity 120ms ease' }}>
@@ -134,7 +240,8 @@ export const NodeLayer: React.FC<NodeLayerProps> = ({
               onPortalChipClick={onNodePortalChipClick}
               onClick={onNodeClick}
               onDoubleClick={onNodeDoubleClick}
-              onDragStart={onNodeDragStart}
+              onDragStart={handleNodeDragStart}
+              narreMention={narreMention}
               onContextMenu={onContextMenu}
               onMouseEnter={onNodeMouseEnter ? (e: React.MouseEvent) => onNodeMouseEnter(node.id, e.clientX, e.clientY) : undefined}
               onMouseLeave={onNodeMouseLeave ? () => onNodeMouseLeave(node.id) : undefined}

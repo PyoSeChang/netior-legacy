@@ -1,7 +1,13 @@
-﻿import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import type { SplitDirection } from '@netior/shared/types';
 import { isTabDrag, getTabDragDataAsync, flushTabDragData } from '../../hooks/useTabDrag';
 import { getFileOpenDragData, isFileOpenDrag } from '../../hooks/useFileOpenDrag';
+import {
+  dispatchNarreMentionDrop,
+  getNarreMentionDragData,
+  isNarreMentionDrag,
+  NARRE_MENTION_DROP_TARGET_SELECTOR,
+} from '../../hooks/useNarreMentionDrag';
 
 export type DropZone = 'top' | 'bottom' | 'left' | 'right' | 'center';
 
@@ -45,11 +51,30 @@ function getZone(e: React.DragEvent<HTMLDivElement>, centerOnly?: boolean): Drop
   return 'center';
 }
 
+function getMentionDropTargetUnderOverlay(e: React.DragEvent): Element | null {
+  if (!isNarreMentionDrag(e)) return null;
+
+  return document.elementsFromPoint(e.clientX, e.clientY)
+    .find((element) => element.matches(NARRE_MENTION_DROP_TARGET_SELECTOR)) ?? null;
+}
+
 export function DropZoneOverlay({ onDrop, onFileDrop, centerOnly, active }: DropZoneOverlayProps): JSX.Element | null {
   const [activeZone, setActiveZone] = useState<DropZone | null>(null);
 
   const handleDragOver = useCallback(
     (e: React.DragEvent<HTMLDivElement>) => {
+      if (getMentionDropTargetUnderOverlay(e)) {
+        console.log('[NarreMentionDrag][DropZoneOverlay] dragOver forwarded to mention target', {
+          x: e.clientX,
+          y: e.clientY,
+        });
+        e.preventDefault();
+        e.stopPropagation();
+        e.dataTransfer.dropEffect = 'copy';
+        setActiveZone(null);
+        return;
+      }
+
       if (!isTabDrag(e) && !isFileOpenDrag(e)) return;
       e.preventDefault();
       e.stopPropagation();
@@ -69,6 +94,28 @@ export function DropZoneOverlay({ onDrop, onFileDrop, centerOnly, active }: Drop
     async (e: React.DragEvent<HTMLDivElement>) => {
       e.preventDefault();
       e.stopPropagation();
+      const mentionDropTarget = getMentionDropTargetUnderOverlay(e);
+      if (mentionDropTarget) {
+        const payload = getNarreMentionDragData(e);
+        console.log('[NarreMentionDrag][DropZoneOverlay] drop on mention target', {
+          hasPayload: !!payload,
+          mentionType: payload?.mention.type,
+          mentionId: payload?.mention.id,
+          display: payload?.mention.display,
+          x: e.clientX,
+          y: e.clientY,
+        });
+        if (payload) {
+          dispatchNarreMentionDrop(mentionDropTarget, {
+            mention: payload.mention,
+            clientX: e.clientX,
+            clientY: e.clientY,
+          });
+        }
+        setActiveZone(null);
+        return;
+      }
+
       const zone = getZone(e, centerOnly);
       const { direction, position } = zoneToSplit(zone);
       setActiveZone(null);
@@ -124,3 +171,4 @@ export function DropZoneOverlay({ onDrop, onFileDrop, centerOnly, active }: Drop
     </div>
   );
 }
+

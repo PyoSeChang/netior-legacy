@@ -1031,7 +1031,7 @@ export interface NarreMessage {
 }
 
 export interface NarreMention {
-  type: 'concept' | 'network' | 'edge' | 'schema' | 'model' | 'module' | 'file';
+  type: 'concept' | 'network' | 'edge' | 'schema' | 'model' | 'module' | 'file' | 'agent';
   id?: string;
   path?: string;
   display: string;

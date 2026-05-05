@@ -11,6 +11,12 @@ import { NarreMentionPicker } from './NarreMentionPicker';
 import { PdfTocInputForm, type PdfTocFormState } from './PdfTocInputForm';
 import { NarreSlashPicker } from './NarreSlashPicker';
 import { logShortcut } from '../../../shortcuts/shortcut-utils';
+import {
+  getNarreMentionDragData,
+  isNarreMentionDrag,
+  NARRE_MENTION_CUSTOM_DROP_EVENT,
+  type NarreMentionCustomDropDetail,
+} from '../../../hooks/useNarreMentionDrag';
 
 export interface NarreComposerSubmit {
   text: string;
@@ -32,6 +38,7 @@ interface NarreMentionInputProps {
   pendingSkillInvocation?: NarrePendingSkillInvocationState | null;
   allowMentions?: boolean;
   allowSlashSkills?: boolean;
+  agentMentions?: MentionResult[];
   footerLabel?: string;
   onDraftChange?: (draftHtml: string) => void;
   onPendingSkillInvocationChange?: (pendingSkillInvocation: NarrePendingSkillInvocationState | null) => void;
@@ -109,11 +116,52 @@ function createMentionChip(mention: MentionResult): HTMLSpanElement {
     chip.dataset.mentionPath = mention.meta.path;
   }
   chip.className =
-    'inline-flex items-center gap-0.5 rounded px-1 py-0 mx-0.5 text-xs font-medium cursor-default select-none bg-[var(--accent)]/15 text-[var(--accent)]';
+    'mx-0.5 inline-flex items-center gap-1 rounded-md border border-accent bg-accent-muted px-1.5 py-0.5 text-xs font-medium text-accent shadow-sm cursor-default select-none';
   chip.textContent = mention.display;
   // Make the chip respond to selection correctly
   chip.setAttribute('data-chip', 'true');
   return chip;
+}
+
+function getDropRange(event: React.DragEvent, fallback: HTMLDivElement): Range {
+  const doc = fallback.ownerDocument;
+  const maybeDocument = doc as Document & {
+    caretRangeFromPoint?: (x: number, y: number) => Range | null;
+    caretPositionFromPoint?: (x: number, y: number) => { offsetNode: Node; offset: number } | null;
+  };
+  const pointRange = maybeDocument.caretRangeFromPoint?.(event.clientX, event.clientY);
+  if (pointRange) return pointRange;
+
+  const caretPosition = maybeDocument.caretPositionFromPoint?.(event.clientX, event.clientY);
+  if (caretPosition) {
+    const range = doc.createRange();
+    range.setStart(caretPosition.offsetNode, caretPosition.offset);
+    range.collapse(true);
+    return range;
+  }
+
+  const range = doc.createRange();
+  range.selectNodeContents(fallback);
+  range.collapse(false);
+  return range;
+}
+
+function insertMentionChipAtRange(el: HTMLDivElement, mention: MentionResult, range: Range): void {
+  const chip = createMentionChip(mention);
+  const spacer = document.createTextNode('\u200B');
+
+  range.deleteContents();
+  range.insertNode(spacer);
+  range.insertNode(chip);
+
+  const nextRange = document.createRange();
+  nextRange.setStart(spacer, 1);
+  nextRange.collapse(true);
+
+  const selection = window.getSelection();
+  selection?.removeAllRanges();
+  selection?.addRange(nextRange);
+  el.focus();
 }
 
 function getSlashSkillByName(skillName: string, skills: readonly SkillDefinition[]): SkillDefinition | null {
@@ -167,6 +215,7 @@ export function NarreMentionInput({
   pendingSkillInvocation = null,
   allowMentions = true,
   allowSlashSkills = true,
+  agentMentions = [],
   footerLabel,
   onDraftChange,
   onPendingSkillInvocationChange,
@@ -188,6 +237,7 @@ export function NarreMentionInput({
     position: { bottom: 0, left: 0 },
   });
   const mentionSearchStart = useRef<number | null>(null);
+  const mentionReplaceRange = useRef<{ node: Text; atPos: number; cursorPos: number } | null>(null);
   const previousDisabled = useRef(disabled);
   const selectedSkill = pendingSkillInvocation ? getSlashSkillByName(pendingSkillInvocation.name, availableSkills) : null;
   const fileMention = snapshot.mentions.find((mention) => mention.type === 'file');
@@ -218,6 +268,7 @@ export function NarreMentionInput({
     setPicker((p) => ({ ...p, isOpen: false }));
     setSlashPicker((p) => ({ ...p, isOpen: false }));
     mentionSearchStart.current = null;
+    mentionReplaceRange.current = null;
     onDraftChange?.('');
     onPendingSkillInvocationChange?.(null);
   }, [onDraftChange, onPendingSkillInvocationChange]);
@@ -354,6 +405,7 @@ export function NarreMentionInput({
       if (picker.isOpen) {
         setPicker((p) => ({ ...p, isOpen: false }));
         mentionSearchStart.current = null;
+        mentionReplaceRange.current = null;
       }
       return;
     }
@@ -398,6 +450,7 @@ export function NarreMentionInput({
     if (allowMentions && atPos >= 0) {
       const query = text.slice(atPos + 1, cursorPos);
       mentionSearchStart.current = atPos;
+      mentionReplaceRange.current = { node: node as Text, atPos, cursorPos };
 
       // Get caret position in viewport coordinates for fixed-positioned picker
       const caretRange = document.createRange();
@@ -417,6 +470,7 @@ export function NarreMentionInput({
       if (picker.isOpen) {
         setPicker((p) => ({ ...p, isOpen: false }));
         mentionSearchStart.current = null;
+        mentionReplaceRange.current = null;
       }
     }
   }, [allowMentions, allowSlashSkills, pendingSkillInvocation, picker.isOpen, slashPicker.isOpen, onDraftChange, syncComposerState]);
@@ -426,15 +480,20 @@ export function NarreMentionInput({
     if (!el) return;
 
     const sel = window.getSelection();
-    if (!sel || sel.rangeCount === 0) return;
-
-    const range = sel.getRangeAt(0);
-    const node = range.startContainer;
-    if (node.nodeType !== Node.TEXT_NODE) return;
+    const range = sel && sel.rangeCount > 0 ? sel.getRangeAt(0) : null;
+    const selectedNode = range?.startContainer ?? null;
+    const storedRange = mentionReplaceRange.current;
+    const canUseSelection = Boolean(
+      selectedNode
+      && selectedNode.nodeType === Node.TEXT_NODE
+      && el.contains(selectedNode),
+    );
+    const node = canUseSelection ? selectedNode as Text : storedRange?.node;
+    if (!node || !node.isConnected) return;
 
     const text = node.textContent || '';
-    const cursorPos = range.startOffset;
-    const atPos = mentionSearchStart.current;
+    const cursorPos = canUseSelection && range ? range.startOffset : storedRange?.cursorPos ?? text.length;
+    const atPos = canUseSelection ? mentionSearchStart.current : storedRange?.atPos ?? mentionSearchStart.current;
 
     if (atPos === null || atPos < 0) return;
 
@@ -456,11 +515,13 @@ export function NarreMentionInput({
     const newRange = document.createRange();
     newRange.setStart(afterNode, after ? 0 : 1);
     newRange.collapse(true);
-    sel.removeAllRanges();
-    sel.addRange(newRange);
+    const nextSelection = window.getSelection();
+    nextSelection?.removeAllRanges();
+    nextSelection?.addRange(newRange);
 
     setPicker((p) => ({ ...p, isOpen: false }));
     mentionSearchStart.current = null;
+    mentionReplaceRange.current = null;
     syncComposerState();
     onDraftChange?.(el.innerHTML);
     el.focus();
@@ -469,8 +530,95 @@ export function NarreMentionInput({
   const handlePickerClose = useCallback(() => {
     setPicker((p) => ({ ...p, isOpen: false }));
     mentionSearchStart.current = null;
+    mentionReplaceRange.current = null;
     setPickerCategory('all');
   }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    if (disabled || !allowMentions || !isNarreMentionDrag(e)) return;
+    console.log('[NarreMentionDrag][Input] native dragOver', {
+      types: Array.from(e.dataTransfer.types),
+      x: e.clientX,
+      y: e.clientY,
+    });
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = 'copy';
+  }, [allowMentions, disabled]);
+
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    if (disabled || !allowMentions || !isNarreMentionDrag(e)) return;
+    console.log('[NarreMentionDrag][Input] native dragEnter', {
+      types: Array.from(e.dataTransfer.types),
+      x: e.clientX,
+      y: e.clientY,
+    });
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = 'copy';
+  }, [allowMentions, disabled]);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    if (disabled || !allowMentions || !isNarreMentionDrag(e)) return;
+    e.preventDefault();
+    e.stopPropagation();
+
+    const payload = getNarreMentionDragData(e);
+    const el = editorRef.current;
+    if (!payload || !el) return;
+    console.log('[NarreMentionDrag][Input] native drop', {
+      mentionType: payload.mention.type,
+      mentionId: payload.mention.id,
+      display: payload.mention.display,
+      x: e.clientX,
+      y: e.clientY,
+    });
+
+    const range = getDropRange(e, el);
+    if (!el.contains(range.startContainer)) {
+      range.selectNodeContents(el);
+      range.collapse(false);
+    }
+    insertMentionChipAtRange(el, payload.mention, range);
+    setPicker((p) => ({ ...p, isOpen: false }));
+    setSlashPicker((p) => ({ ...p, isOpen: false }));
+    mentionSearchStart.current = null;
+    mentionReplaceRange.current = null;
+    syncComposerState();
+    onDraftChange?.(el.innerHTML);
+  }, [allowMentions, disabled, onDraftChange, syncComposerState]);
+
+  useEffect(() => {
+    const el = editorRef.current;
+    if (!el || disabled || !allowMentions) return;
+
+    const handleCustomDrop = (event: Event) => {
+      const customEvent = event as CustomEvent<NarreMentionCustomDropDetail>;
+      event.preventDefault();
+      event.stopPropagation();
+      console.log('[NarreMentionDrag][Input] custom drop', {
+        mentionType: customEvent.detail.mention.type,
+        mentionId: customEvent.detail.mention.id,
+        display: customEvent.detail.mention.display,
+        x: customEvent.detail.clientX,
+        y: customEvent.detail.clientY,
+      });
+
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      range.collapse(false);
+      insertMentionChipAtRange(el, customEvent.detail.mention, range);
+      setPicker((p) => ({ ...p, isOpen: false }));
+      setSlashPicker((p) => ({ ...p, isOpen: false }));
+      mentionSearchStart.current = null;
+      mentionReplaceRange.current = null;
+      syncComposerState();
+      onDraftChange?.(el.innerHTML);
+    };
+
+    el.addEventListener(NARRE_MENTION_CUSTOM_DROP_EVENT, handleCustomDrop);
+    return () => el.removeEventListener(NARRE_MENTION_CUSTOM_DROP_EVENT, handleCustomDrop);
+  }, [allowMentions, disabled, onDraftChange, syncComposerState]);
 
   const openMentionPickerFromMenu = useCallback((category: 'all' | 'agent') => {
     if (!allowMentions || disabled) return;
@@ -493,6 +641,11 @@ export function NarreMentionInput({
     selection?.addRange(range);
 
     mentionSearchStart.current = triggerText.length - 1;
+    mentionReplaceRange.current = {
+      node: triggerNode,
+      atPos: triggerText.length - 1,
+      cursorPos: triggerText.length,
+    };
     const rect = el.getBoundingClientRect();
     setPickerCategory(category);
     setPicker({
@@ -544,14 +697,19 @@ export function NarreMentionInput({
       <div className="relative rounded-2xl border border-input bg-surface-input px-3 pb-2 pt-2 shadow-sm transition-colors hover:border-strong focus-within:border-accent">
         <div
           ref={editorRef}
+          data-narre-mention-drop-target="true"
           contentEditable={!disabled}
           role="textbox"
           className={[
             'min-h-[44px] max-h-[140px] overflow-y-auto rounded-md bg-transparent px-0 py-1 text-sm text-default outline-none',
+            'data-[narre-mention-drop-active=true]:rounded-md data-[narre-mention-drop-active=true]:bg-accent-muted data-[narre-mention-drop-active=true]:ring-2 data-[narre-mention-drop-active=true]:ring-accent',
             disabled ? 'opacity-50 cursor-not-allowed' : '',
           ].join(' ')}
           onInput={handleInput}
           onKeyDown={handleKeyDown}
+          onDragEnter={handleDragEnter}
+          onDragOver={handleDragOver}
+          onDrop={handleDrop}
           suppressContentEditableWarning
         />
         {isEmpty && !disabled && (
@@ -652,6 +810,7 @@ export function NarreMentionInput({
           projectId={projectId}
           position={picker.position}
           initialCategory={pickerCategory}
+          agentMentions={agentMentions}
           onSelect={handleMentionSelect}
           onClose={handlePickerClose}
         />
@@ -668,3 +827,4 @@ export function NarreMentionInput({
     </div>
   );
 }
+

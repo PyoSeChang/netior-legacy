@@ -40,6 +40,7 @@ import { migrate036 } from './migrations/036-edge-models-and-relation-type-retir
 import { migrate038 } from './migrations/038-schema-model-resplit';
 import { migrate039 } from './migrations/039-field-meaning-bindings-schema-fk';
 import { migrate040 } from './migrations/040-model-type-groups';
+import { migrate041 } from './migrations/041-network-node-exclusions';
 import {
   ensureProjectNodeInUniverseForDb,
   ensureProjectOntologyNetworkForDb,
@@ -93,6 +94,7 @@ const migrations: Migration[] = [
   { version: 38, migrate: migrate038 },
   { version: 39, migrate: migrate039 },
   { version: 40, migrate: migrate040 },
+  { version: 41, migrate: migrate041 },
 ];
 
 export function hasColumn(db: Database.Database, table: string, column: string): boolean {

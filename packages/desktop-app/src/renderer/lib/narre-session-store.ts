@@ -623,6 +623,12 @@ export function primeNarreSession(projectId: string, sessionId: string | null, t
   notify();
 }
 
+export function setNarreSessionTitle(projectId: string, sessionId: string | null, title: string): void {
+  const state = ensureSessionState(projectId, sessionId);
+  state.title = title;
+  notify();
+}
+
 export function promoteNarreDraftSession(
   projectId: string,
   sessionId: string,

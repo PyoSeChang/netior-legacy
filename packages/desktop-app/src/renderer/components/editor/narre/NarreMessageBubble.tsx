@@ -37,7 +37,7 @@ function renderContentWithMentions(text: string): React.ReactNode[] {
     parts.push(
       <span
         key={match.index}
-        className="mx-0.5 inline-flex items-center gap-0.5 rounded px-1 py-0 text-xs font-medium bg-[var(--accent)]/15 text-[var(--accent)]"
+        className="mx-0.5 inline-flex translate-y-[-1px] items-center rounded border border-subtle bg-surface-card px-1.5 py-px text-[11px] font-medium leading-4 text-secondary"
       >
         @{display}
       </span>,

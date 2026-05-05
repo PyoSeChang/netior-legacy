@@ -20,8 +20,9 @@ import type {
 } from '@netior/shared/types';
 import { BUILT_IN_SKILLS, IPC_CHANNELS } from '@netior/shared/constants';
 import {
-  listRemoteModels,
+  listRemoteConceptsByProject,
   listRemoteFilesByProject,
+  listRemoteSchemas,
   listRemoteNetworks,
   listRemoteModels,
   searchRemoteConcepts,
@@ -192,19 +193,6 @@ function buildSessionDetail(
     transcript: file.transcript,
     messages: transcriptToMessages(file.transcript),
   };
-}
-
-function getSupervisorAgentKey(agent: AgentDefinition): string {
-  if (agent.kind === 'terminal') return `terminal:${agent.terminalAgentType}:${agent.id}`;
-  if (agent.narreAgentType === 'system') return `narre:system:${agent.systemAgentType}:${agent.id}`;
-  if (agent.userAgentType === 'project') return `narre:user:project:${agent.projectId}:${agent.id}`;
-  return `narre:user:global:${agent.id}`;
-}
-
-function getSupervisorAgentScopeLabel(agent: AgentDefinition): string {
-  if (agent.kind === 'terminal') return agent.terminalAgentType === 'codex-cli' ? 'Codex CLI' : 'Claude Code';
-  if (agent.narreAgentType === 'system') return 'System agent';
-  return agent.userAgentType === 'project' ? 'Project agent' : 'Global agent';
 }
 
 function getNarreServerUrl(path: string): URL {
@@ -381,6 +369,13 @@ async function deleteRemoteNarreSession(sessionId: string): Promise<boolean> {
     method: 'DELETE',
   });
   return payload.success;
+}
+
+async function updateRemoteNarreSessionTitle(projectId: string, sessionId: string, title: string): Promise<NarreSession> {
+  return requestNarreServer<NarreSession>(`/sessions/${encodeURIComponent(sessionId)}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ projectId, title }),
+  });
 }
 
 function emitNarreStreamEvent(
@@ -638,6 +633,40 @@ export function registerNarreIpc(): void {
     }
   });
 
+  ipcMain.handle(
+    IPC_CHANNELS.NARRE_UPDATE_SESSION_TITLE,
+    async (_e, input: { projectId?: unknown; sessionId?: unknown; title?: unknown }): Promise<IpcResult<NarreSession>> => {
+      try {
+        const projectId = typeof input.projectId === 'string' ? input.projectId : '';
+        const sessionId = typeof input.sessionId === 'string' ? input.sessionId : '';
+        const title = typeof input.title === 'string' ? input.title.trim() : '';
+        if (!projectId) {
+          return { success: false, error: 'projectId required' };
+        }
+        if (!sessionId) {
+          return { success: false, error: 'sessionId required' };
+        }
+        if (!title) {
+          return { success: false, error: 'title required' };
+        }
+        if (isNarreServerRunning()) {
+          return { success: true, data: await updateRemoteNarreSessionTitle(projectId, sessionId, title) };
+        }
+
+        const index = getSessionsIndex(projectId);
+        const session = index.sessions.find((s) => s.id === sessionId);
+        if (!session) {
+          return { success: false, error: 'Session not found' };
+        }
+        session.title = title;
+        saveSessionsIndex(projectId, index);
+        return { success: true, data: session };
+      } catch (err) {
+        return { success: false, error: (err as Error).message };
+      }
+    },
+  );
+
   ipcMain.handle(IPC_CHANNELS.NARRE_DELETE_SESSION, async (_e, sessionId: string): Promise<IpcResult<boolean>> => {
     try {
       if (isNarreServerRunning()) {
@@ -711,78 +740,75 @@ export function registerNarreIpc(): void {
         color?: string | null; icon?: string | null;
         description?: string | null; meta?: Record<string, unknown>;
       }> = [];
-      const maxResults = 30;
+      const maxResults = 80;
+      const categoryLimit = 16;
       const lowerQuery = query.toLowerCase();
-
-      try {
-        const agents = await listRemoteSupervisorAgents(projectId);
-        for (const agent of agents) {
-          if (results.length >= maxResults) break;
-          const description = agent.description ?? getSupervisorAgentScopeLabel(agent);
-          if (
-            lowerQuery.length === 0
-            || agent.name.toLowerCase().includes(lowerQuery)
-            || description.toLowerCase().includes(lowerQuery)
-          ) {
-            results.push({
-              type: 'agent',
-              id: getSupervisorAgentKey(agent),
-              display: agent.name,
-              icon: 'bot',
-              description,
-              meta: {
-                kind: agent.kind,
-                provider: agent.runtimeProfile?.provider ?? null,
-                model: agent.runtimeProfile?.model ?? null,
-              },
-            });
-          }
-        }
-      } catch {
-        // Agent mentions depend on the supervisor endpoint; keep project context mentions usable if it is unavailable.
-      }
+      const matches = (parts: Array<string | null | undefined>): boolean => (
+        lowerQuery.length === 0
+        || parts.some((part) => part?.toLowerCase().includes(lowerQuery))
+      );
+      const take = <T>(items: T[]): T[] => items.slice(0, categoryLimit);
 
       const models = await listRemoteModels(projectId);
       const modelMap = new Map(models.map((a) => [a.id, a]));
-      const concepts = await searchRemoteConcepts(projectId, query);
+      const concepts = lowerQuery.length === 0
+        ? await listRemoteConceptsByProject(projectId)
+        : await searchRemoteConcepts(projectId, query);
 
-      for (const c of concepts) {
-        if (results.length >= maxResults) break;
+      for (const c of take(concepts)) {
         const arch = c.model_id ? modelMap.get(c.model_id) : null;
         results.push({
           type: 'concept', id: c.id, display: c.title, color: c.color, icon: c.icon,
-          meta: { model: arch?.name ?? null },
+          meta: arch
+            ? { model: arch.name, modelKey: arch.key, modelBuiltIn: arch.built_in, modelDescription: arch.description }
+            : { model: null },
         });
-      }
-
-      // Search models
-      for (const a of modelMap.values()) {
-        if (results.length >= maxResults) break;
-        if (a.name.toLowerCase().includes(lowerQuery)) {
-          results.push({
-            type: 'model', id: a.id, display: a.name, color: a.color, icon: a.icon,
-            description: a.description, meta: { nodeShape: a.node_shape },
-          });
-        }
       }
 
       // Search networks
       const networks = await listRemoteNetworks(projectId);
-      for (const nw of networks) {
-        if (results.length >= maxResults) break;
-        if (nw.name.toLowerCase().includes(lowerQuery)) {
-          results.push({
-            type: 'network', id: nw.id, display: nw.name,
-            meta: {},
-          });
-        }
+      for (const nw of take(networks.filter((nw) => matches([nw.name, nw.kind, nw.scope])))) {
+        results.push({
+          type: 'network', id: nw.id, display: nw.name,
+          description: nw.kind,
+          meta: { kind: nw.kind, scope: nw.scope },
+        });
+      }
+
+      // Search schemas
+      const schemas = await listRemoteSchemas(projectId);
+      for (const schema of take(schemas.filter((schema) => matches([schema.name, schema.description])))) {
+        results.push({
+          type: 'schema',
+          id: schema.id,
+          display: schema.name,
+          color: schema.color,
+          icon: schema.icon,
+          description: schema.description,
+          meta: { nodeShape: schema.node_shape, models: schema.models },
+        });
+      }
+
+      // Search models
+      for (const a of take(Array.from(modelMap.values()).filter((a) => matches([a.name, a.description, a.key])))) {
+        results.push({
+          type: 'model', id: a.id, display: a.name, color: a.color, icon: a.icon,
+          description: a.description,
+          meta: {
+            key: a.key,
+            name: a.name,
+            builtIn: a.built_in,
+            lineStyle: a.line_style,
+            directed: a.directed,
+          },
+        });
       }
 
       // Search file entities
       const files = await listRemoteFilesByProject(projectId);
       for (const fe of files) {
-        if (results.length >= maxResults) break;
         const fileName = fe.path.split('/').pop() ?? fe.path;
+        if (results.filter((result) => result.type === 'file').length >= categoryLimit) break;
         if (fileName.toLowerCase().includes(lowerQuery) || fe.path.toLowerCase().includes(lowerQuery)) {
           results.push({
             type: 'file', id: fe.id, display: fileName,

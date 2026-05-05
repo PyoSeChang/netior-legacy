@@ -42,6 +42,7 @@ import { migrate036 } from '../migrations/036-edge-models-and-relation-type-reti
 import { migrate038 } from '../migrations/038-schema-model-resplit';
 import { migrate039 } from '../migrations/039-field-meaning-bindings-schema-fk';
 import { migrate040 } from '../migrations/040-model-type-groups';
+import { migrate041 } from '../migrations/041-network-node-exclusions';
 
 let testDb: Database.Database | null = null;
 
@@ -89,6 +90,7 @@ export function setupTestDb(): Database.Database {
 migrate038(testDb);
 migrate039(testDb);
 migrate040(testDb);
+migrate041(testDb);
   testDb.pragma('foreign_keys = ON');
   return testDb;
 }

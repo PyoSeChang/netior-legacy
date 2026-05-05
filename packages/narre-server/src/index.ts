@@ -561,6 +561,33 @@ app.get('/sessions/:id', async (req, res) => {
   }
 });
 
+app.patch('/sessions/:id', async (req, res) => {
+  const projectId = typeof req.body?.projectId === 'string'
+    ? req.body.projectId
+    : req.query.projectId as string | undefined;
+  const title = typeof req.body?.title === 'string' ? req.body.title.trim() : '';
+
+  if (!projectId) {
+    res.status(400).json({ error: 'projectId required' });
+    return;
+  }
+  if (!title) {
+    res.status(400).json({ error: 'title required' });
+    return;
+  }
+
+  try {
+    const session = await sessionStore.updateSessionTitle(req.params.id, projectId, title);
+    if (!session) {
+      res.status(404).json({ error: 'Session not found' });
+      return;
+    }
+    res.json(session);
+  } catch (error) {
+    res.status(500).json({ error: (error as Error).message });
+  }
+});
+
 app.delete('/sessions/:id', async (req, res) => {
   try {
     const projectId = req.query.projectId as string | undefined;

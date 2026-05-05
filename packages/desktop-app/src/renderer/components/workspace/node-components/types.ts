@@ -1,5 +1,7 @@
 ﻿import type { WorkspaceMode } from '../../../stores/ui-store';
 
+import type { MentionResult } from '../../../services/narre-service';
+
 /** Shared types for workspace node card rendering. */
 export type NodeShape = 'circle' | 'gear' | 'stadium' | 'portrait' | 'dashed' | 'wide' | 'rectangle' | 'square' | 'group' | 'hierarchy';
 export type NodeResizeDirection = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw';
@@ -57,7 +59,8 @@ export interface NodeComponentProps {
   // Callbacks
   onClick: (id: string, event: React.MouseEvent) => void;
   onDoubleClick: (id: string) => void;
-  onDragStart?: (id: string, startX: number, startY: number) => void;
+  onDragStart?: (id: string, startX: number, startY: number, narreMention?: MentionResult | null) => void;
+  narreMention?: MentionResult | null;
   onContextMenu?: (type: 'workspace' | 'node' | 'edge', x: number, y: number, targetId?: string) => void;
   onMouseEnter?: (e: React.MouseEvent) => void;
   onMouseLeave?: () => void;

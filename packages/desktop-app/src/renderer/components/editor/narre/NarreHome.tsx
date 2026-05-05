@@ -1,5 +1,5 @@
 ﻿import React, { useEffect, useMemo, useState } from 'react';
-import { Bot, ChevronDown, ChevronRight, MessageSquare, Plus, RefreshCw, Users } from 'lucide-react';
+import { Bot, Check, ChevronDown, ChevronRight, MessageSquare, Pencil, Plus, RefreshCw, Users, X } from 'lucide-react';
 import type { AgentDefinition, NarreSession, SupervisorAgentSessionSnapshot, UserAgentRecord } from '@netior/shared/types';
 import type { TranslationKey } from '@netior/shared/i18n';
 import { narreService } from '../../../services/narre-service';
@@ -8,6 +8,7 @@ import { useI18n } from '../../../hooks/useI18n';
 import { Button } from '../../ui/Button';
 import { IconButton } from '../../ui/IconButton';
 import { Badge } from '../../ui/Badge';
+import { Input } from '../../ui/Input';
 import { ScrollArea } from '../../ui/ScrollArea';
 import { Spinner } from '../../ui/Spinner';
 import { ContextMenu, type ContextMenuEntry } from '../../ui/ContextMenu';
@@ -109,6 +110,9 @@ export function NarreHome({
   const [userAgents, setUserAgents] = useState<UserAgentRecord[]>([]);
   const [agentSessions, setAgentSessions] = useState<SupervisorAgentSessionSnapshot[]>([]);
   const [newChatMenu, setNewChatMenu] = useState<{ x: number; y: number } | null>(null);
+  const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
+  const [editingTitle, setEditingTitle] = useState('');
+  const [renamingSessionId, setRenamingSessionId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -188,9 +192,36 @@ export function NarreHome({
     });
   };
 
+  const startRenameSession = (session: NarreSession) => {
+    setEditingSessionId(session.id);
+    setEditingTitle(session.title || t('narre.newChat'));
+  };
+
+  const cancelRenameSession = () => {
+    setEditingSessionId(null);
+    setEditingTitle('');
+  };
+
+  const saveSessionTitle = async (session: NarreSession) => {
+    const title = editingTitle.trim();
+    if (!title || renamingSessionId) return;
+
+    setRenamingSessionId(session.id);
+    setError(null);
+    try {
+      const updated = await narreService.updateSessionTitle(projectId, session.id, title);
+      setSessions((current) => current.map((item) => item.id === updated.id ? updated : item));
+      cancelRenameSession();
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setRenamingSessionId(null);
+    }
+  };
+
   return (
     <div className="flex h-full min-h-0 bg-surface-editor text-default">
-      <aside className="flex w-[296px] shrink-0 flex-col px-5 py-5">
+      <aside className="flex w-[320px] shrink-0 flex-col border-r border-subtle px-5 py-5">
         <div className="mb-4 flex items-center justify-between">
           <div>
             <div className="text-[11px] font-medium uppercase text-muted">{tr('narre.agents')}</div>
@@ -219,9 +250,9 @@ export function NarreHome({
                   <button
                     key={getAgentKey(agent)}
                     type="button"
-                    className="group flex w-full items-start gap-3 rounded-md px-3 py-2.5 text-left transition-colors hover:bg-state-hover"
+                    className="group flex w-full items-start gap-3 rounded-md border border-transparent bg-surface-base px-3 py-3 text-left transition-colors hover:border-subtle hover:bg-surface-card"
                   >
-                    <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-surface-card text-secondary group-hover:text-default">
+                    <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-subtle bg-surface-panel text-secondary group-hover:text-default">
                       <Bot size={16} />
                     </div>
                     <div className="min-w-0 flex-1">
@@ -229,7 +260,7 @@ export function NarreHome({
                         <span className="truncate text-sm font-medium text-default">{getLocalizedAgentName(agent, t)}</span>
                         {status !== 'idle' && <Badge variant={status === 'error' ? 'error' : status === 'blocked' ? 'warning' : 'accent'}>{status}</Badge>}
                       </div>
-                      <div className="mt-0.5 truncate text-xs text-muted">
+                      <div className="mt-1 line-clamp-2 text-xs leading-5 text-muted">
                         {getLocalizedAgentDescription(agent, t) || getAgentRuntime(agent, t)}
                       </div>
                     </div>
@@ -270,32 +301,85 @@ export function NarreHome({
             </div>
           ) : (
             <div className="flex flex-col gap-1 pb-4">
-              {sortedSessions.map((session) => (
-                <button
+              {sortedSessions.map((session) => {
+                const isEditing = editingSessionId === session.id;
+                return (
+                <div
                   key={session.id}
-                  type="button"
-                  className="group flex w-full items-center gap-3 rounded-md px-3 py-3 text-left transition-colors hover:bg-state-hover"
-                  onClick={() => onSelectSession(session.id, session.agentKey ?? null)}
+                  className="group flex w-full items-center gap-3 rounded-md border border-transparent bg-surface-base px-3 py-3 text-left transition-colors hover:border-subtle hover:bg-surface-card"
                 >
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-surface-card text-secondary group-hover:text-default">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-subtle bg-surface-panel text-secondary group-hover:text-default">
                     <MessageSquare size={17} />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-medium text-default">
-                      {session.title || t('narre.newChat')}
-                    </div>
-                    <div className="mt-0.5 text-xs text-muted">
-                      {session.agentKey && agentByKey.get(session.agentKey)
-                        ? `${getLocalizedAgentName(agentByKey.get(session.agentKey), t)} · `
-                        : ''}
-                      {formatRelativeTime(session.last_message_at)}
-                      {' · '}
-                      {t('narre.messageCount', { count: session.message_count })}
-                    </div>
+                    {isEditing ? (
+                      <form
+                        className="flex min-w-0 items-center gap-2"
+                        onSubmit={(event) => {
+                          event.preventDefault();
+                          void saveSessionTitle(session);
+                        }}
+                      >
+                        <Input
+                          autoFocus
+                          inputSize="sm"
+                          value={editingTitle}
+                          disabled={renamingSessionId === session.id}
+                          onChange={(event) => setEditingTitle(event.target.value)}
+                          onKeyDown={(event) => {
+                            if (event.key === 'Escape') {
+                              event.preventDefault();
+                              cancelRenameSession();
+                            }
+                          }}
+                        />
+                        <IconButton
+                          label={t('common.save')}
+                          type="submit"
+                          disabled={!editingTitle.trim() || renamingSessionId === session.id}
+                        >
+                          <Check size={15} />
+                        </IconButton>
+                        <IconButton
+                          label={t('common.cancel')}
+                          type="button"
+                          disabled={renamingSessionId === session.id}
+                          onClick={cancelRenameSession}
+                        >
+                          <X size={15} />
+                        </IconButton>
+                      </form>
+                    ) : (
+                      <button
+                        type="button"
+                        className="block w-full min-w-0 text-left"
+                        onClick={() => onSelectSession(session.id, session.agentKey ?? null)}
+                      >
+                        <div className="truncate text-sm font-medium text-default">
+                          {session.title || t('narre.newChat')}
+                        </div>
+                        <div className="mt-0.5 text-xs text-muted">
+                          {session.agentKey && agentByKey.get(session.agentKey)
+                            ? `${getLocalizedAgentName(agentByKey.get(session.agentKey), t)} · `
+                            : ''}
+                          {formatRelativeTime(session.last_message_at)}
+                          {' · '}
+                          {t('narre.messageCount', { count: session.message_count })}
+                        </div>
+                      </button>
+                    )}
                   </div>
-                  <ChevronRight size={16} className="text-muted opacity-0 transition-opacity group-hover:opacity-100" />
-                </button>
-              ))}
+                  {isEditing ? null : (
+                    <div className="flex shrink-0 items-center gap-1">
+                      <IconButton label={t('narre.renameSession')} onClick={() => startRenameSession(session)}>
+                        <Pencil size={14} />
+                      </IconButton>
+                      <ChevronRight size={16} className="text-muted opacity-0 transition-opacity group-hover:opacity-100" />
+                    </div>
+                  )}
+                </div>
+              );
+              })}
             </div>
           )}
         </ScrollArea>
