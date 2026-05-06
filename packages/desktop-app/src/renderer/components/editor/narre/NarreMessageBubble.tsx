@@ -186,6 +186,12 @@ function buildAssistantRenderSegments(
       return;
     }
 
+    if (block.type === 'card' && isInteractiveCard(block.card) && !isResolvedInteractiveCard(block.card)) {
+      flushCluster();
+      clusterMembers.add(index);
+      return;
+    }
+
     if (block.type === 'card' && block.card.type === 'permission') {
       if (!activeCluster) {
         activeCluster = {
@@ -225,6 +231,11 @@ function buildAssistantRenderSegments(
     }
 
     if (block.type === 'card' || block.type === 'draft') {
+      flushCluster();
+      return;
+    }
+
+    if (activeCluster) {
       flushCluster();
     }
   });

@@ -912,7 +912,7 @@ export interface NetworkBreadcrumbItem {
 // ============================================
 
 export type EditorViewMode = 'float' | 'full' | 'side' | 'detached';
-export type EditorTabType = 'concept' | 'file' | 'schema' | 'model' | 'terminal' | 'edge' | 'network' | 'networkViewer' | 'ontology' | 'project' | 'narre' | 'agent' | 'fileMetadata' | 'context';
+export type EditorTabType = 'concept' | 'file' | 'schema' | 'model' | 'terminal' | 'edge' | 'network' | 'networkViewer' | 'ontology' | 'project' | 'narre' | 'agent' | 'fileMetadata' | 'context' | 'browser';
 
 /** Identifies a window that hosts editor tabs (main window or detached window) */
 export interface EditorHostState {
@@ -976,6 +976,8 @@ export interface EditorTab {
   terminalCwd?: string;
   /** Launch override for terminal tabs (for example agent-specific terminals) */
   terminalLaunchConfig?: Pick<TerminalLaunchConfig, 'shell' | 'args' | 'agent'>;
+  /** Favicon URL for embedded browser tabs */
+  browserFaviconUrl?: string;
   /** Draft data for unsaved new entities (concept creation flow) */
   draftData?: {
     networkId?: string;
@@ -1304,10 +1306,33 @@ export interface NarreDraftCard {
   submittedResponse?: NarreDraftResponse;
 }
 
+export interface NarreOperationPreviewItem {
+  label: string;
+  value?: string;
+  detail?: string;
+  kind?: 'text' | 'icon' | 'color' | 'node_shape' | 'model_list';
+  models?: Array<{
+    key: string;
+    name: string;
+    description?: string | null;
+    built_in?: boolean;
+  }>;
+}
+
+export interface NarreOperationPreview {
+  toolKey?: string;
+  title: string;
+  description?: string;
+  summary: string;
+  items?: NarreOperationPreviewItem[];
+  details?: string[];
+}
+
 export interface NarrePermissionCard {
   type: 'permission';
   toolCallId: string;
   message: string;
+  preview?: NarreOperationPreview;
   resolvedActionKey?: string;
   actions: Array<{ key: string; label: string; variant?: 'danger' | 'default' }>;
 }

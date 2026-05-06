@@ -18,6 +18,8 @@ const COUNT_NOUNS: Record<string, { ko: string; en: string }> = {
   list_directory: { ko: 'entry', en: 'entry' },
 };
 
+const PERMISSION_TOOL_RE = /tool "([^"]+)"/i;
+
 function resolveLocale(locale: string): Locale {
   return locale.toLowerCase().startsWith('ko') ? 'ko' : 'en';
 }
@@ -184,6 +186,29 @@ export function getLocalizedToolLabel(
   fallbackDisplayName?: string,
 ): string {
   return resolveToolLabel(toolName, resolveLocale(locale), fallbackDisplayName);
+}
+
+export function getLocalizedToolDescription(
+  toolName: string,
+  locale: string,
+  fallbackDescription?: string,
+): string | null {
+  const resolvedLocale = resolveLocale(locale);
+  const normalizedToolName = normalizeNetiorToolName(toolName);
+  const translated = translateOrNull(resolvedLocale, `narre.toolDescription.${snakeToCamel(normalizedToolName)}`);
+  if (translated) return translated;
+
+  return fallbackDescription ?? getNarreToolMetadata(normalizedToolName).description ?? null;
+}
+
+export function getLocalizedPermissionMessage(message: string, locale: string): string {
+  const match = message.match(PERMISSION_TOOL_RE);
+  if (!match?.[1]) return message;
+
+  const resolvedLocale = resolveLocale(locale);
+  const toolLabel = resolveToolLabel(match[1], resolvedLocale);
+  const translated = translateOrNull(resolvedLocale, 'narre.card.permissionRequest', { tool: toolLabel });
+  return translated ?? message;
 }
 
 export function getLocalizedToolCategoryLabel(category: NarreToolCategory, locale: string): string {

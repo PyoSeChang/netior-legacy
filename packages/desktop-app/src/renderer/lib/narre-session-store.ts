@@ -146,6 +146,15 @@ function cloneCard(card: NarreCard): NarreCard {
     case 'permission':
       return {
         ...card,
+        ...(card.preview
+          ? {
+            preview: {
+              ...card.preview,
+              ...(card.preview.items ? { items: card.preview.items.map((item) => ({ ...item })) } : {}),
+              ...(card.preview.details ? { details: [...card.preview.details] } : {}),
+            },
+          }
+          : {}),
         actions: card.actions.map((action) => ({ ...action })),
       };
     case 'interview':

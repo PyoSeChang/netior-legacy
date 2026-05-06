@@ -1,8 +1,9 @@
 ﻿import { spawn, type ChildProcess } from 'child_process';
 import { createServer } from 'net';
-import { getNarreToolMetadata } from '@netior/shared/constants';
+import { getNarreToolMetadata, normalizeNetiorToolName } from '@netior/shared/constants';
 import type { NarreCodexSettings, NarreToolCall } from '@netior/shared/types';
 import { ApprovalStore } from '../../approval-store.js';
+import { buildNarreOperationPreview } from '../../operation-preview.js';
 import type { NarreMcpServerConfig } from '../../runtime/provider-adapter.js';
 import { CodexThreadStore } from '../codex-thread-store.js';
 import { askToolModel, confirmToolModel, draftToolModel } from '../shared/ui-schemas.js';
@@ -60,6 +61,13 @@ interface ActiveTurn {
 interface McpServerStartupState {
   status: 'starting' | 'ready' | 'failed' | 'cancelled';
   error: string | null;
+}
+
+interface RecentToolCall {
+  callId: string;
+  tool: string;
+  input: Record<string, unknown>;
+  startedAt: number;
 }
 
 interface McpServerStatusListResponse {
@@ -263,6 +271,7 @@ class CodexAppServerClient {
   private activeTurn: ActiveTurn | null = null;
   private startupError: Error | null = null;
   private readonly mcpServerStartupStates = new Map<string, McpServerStartupState>();
+  private readonly recentToolCalls = new Map<string, RecentToolCall>();
 
   constructor(
     private readonly context: OpenAIFamilyTransportRunContext,
@@ -644,6 +653,9 @@ class CodexAppServerClient {
     const requestedModel = payload.requestedModel;
     const toolCallId = `mcp-elicitation:${request.id}`;
     const requestedToolName = extractRequestedMcpToolName(message);
+    const requestedToolPreview = requestedToolName
+      ? await this.buildPreviewForRecentTool(requestedToolName)
+      : null;
 
     console.log(
       `[narre:codex] ${this.getTracePrefix()} MCP elicitation server=${serverName} mode=${mode} ` +
@@ -656,6 +668,7 @@ class CodexAppServerClient {
         this.context.onCard,
         {
           message: `${message}${url ? `\n${url}` : ''}`,
+          ...(requestedToolPreview ? { preview: requestedToolPreview } : {}),
           actions: [
             { key: 'cancel', label: 'Cancel' },
           ],
@@ -698,6 +711,7 @@ class CodexAppServerClient {
       this.context.onCard,
       {
         message,
+        ...(requestedToolPreview ? { preview: requestedToolPreview } : {}),
         actions: [
           { key: 'accept', label: 'Approve' },
           ...(isNetiorMcpServerName(serverName) && requestedToolName
@@ -788,6 +802,7 @@ class CodexAppServerClient {
     }
 
     console.log(`[narre:codex] ${this.getTracePrefix()} Tool start ${mapped.tool}`);
+    this.rememberToolCall(mapped.callId, mapped.tool, mapped.input);
     this.onToolStart?.(mapped.callId, mapped.tool, mapped.input);
   }
 
@@ -845,6 +860,38 @@ class CodexAppServerClient {
 
     this.mcpServerStartupStates.set(name, { status, error });
     console.log(`[narre:codex] ${this.getTracePrefix()} MCP startup ${name} status=${status}${error ? ` error=${error}` : ''}`);
+  }
+
+  private rememberToolCall(callId: string, tool: string, input: Record<string, unknown>): void {
+    this.recentToolCalls.set(callId, {
+      callId,
+      tool,
+      input,
+      startedAt: Date.now(),
+    });
+
+    if (this.recentToolCalls.size <= 30) {
+      return;
+    }
+
+    const oldest = [...this.recentToolCalls.values()]
+      .sort((left, right) => left.startedAt - right.startedAt)[0];
+    if (oldest) {
+      this.recentToolCalls.delete(oldest.callId);
+    }
+  }
+
+  private async buildPreviewForRecentTool(toolName: string) {
+    const normalizedToolName = normalizeNetiorToolName(toolName);
+    const recent = [...this.recentToolCalls.values()]
+      .filter((call) => normalizeNetiorToolName(call.tool) === normalizedToolName)
+      .sort((left, right) => right.startedAt - left.startedAt)[0];
+
+    return buildNarreOperationPreview(
+      { projectId: this.context.projectId },
+      normalizedToolName,
+      recent?.input ?? {},
+    );
   }
 }
 

@@ -1,5 +1,5 @@
 ﻿import { randomUUID } from 'crypto';
-import type { NarreCard } from '@netior/shared/types';
+import type { NarreCard, NarreOperationPreview } from '@netior/shared/types';
 import { PendingUiResponses } from '../../tools/pending-ui-responses.js';
 
 interface InterviewOption {
@@ -84,6 +84,7 @@ export class NarreUiBridge {
     emitCard: EmitCard,
     payload: {
       message: string;
+      preview?: NarreOperationPreview;
       actions: PermissionAction[];
     },
     toolCallId?: string,
@@ -95,6 +96,7 @@ export class NarreUiBridge {
         type: 'permission',
         toolCallId: resolvedToolCallId,
         message: payload.message,
+        ...(payload.preview ? { preview: payload.preview } : {}),
         actions: payload.actions,
       }),
     );

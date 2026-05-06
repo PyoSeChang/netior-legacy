@@ -26,6 +26,25 @@ export const askToolModel = z.object({
 
 export const confirmToolModel = z.object({
   message: z.string().describe('Description of the action requiring confirmation'),
+  preview: z.object({
+    toolKey: z.string().optional(),
+    title: z.string(),
+    description: z.string().optional(),
+    summary: z.string(),
+    items: z.array(z.object({
+      label: z.string(),
+      value: z.string().optional(),
+      detail: z.string().optional(),
+      kind: z.enum(['text', 'icon', 'color', 'node_shape', 'model_list']).optional(),
+      models: z.array(z.object({
+        key: z.string(),
+        name: z.string(),
+        description: z.string().nullable().optional(),
+        built_in: z.boolean().optional(),
+      })).optional(),
+    })).optional(),
+    details: z.array(z.string()).optional(),
+  }).optional().describe('Optional structured preview of the action being confirmed'),
   actions: z.array(z.object({
     key: z.string(),
     label: z.string(),

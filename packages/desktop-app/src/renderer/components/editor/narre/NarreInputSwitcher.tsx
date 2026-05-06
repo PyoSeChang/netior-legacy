@@ -13,6 +13,7 @@ import { NarreMentionInput, type NarreComposerSubmit } from './NarreMentionInput
 import { DraftCard } from './cards/DraftCard';
 import { InterviewCard } from './cards/InterviewCard';
 import { PermissionCard } from './cards/PermissionCard';
+import { getLocalizedPermissionMessage } from './narre-tool-presenter-localized';
 
 export type NarreInteractivePrompt =
   | { kind: 'permission'; card: NarrePermissionCard }
@@ -74,13 +75,13 @@ export function NarreInputSwitcher({
   activePrompt,
   onPromptRespond,
 }: NarreInputSwitcherProps): JSX.Element {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
 
   if (activePrompt?.kind === 'permission') {
     return (
       <NarrePromptShell title={t('narre.input.permissionTitle')} badge={t('narre.input.permissionBadge')}>
         <div className="text-sm text-secondary">
-          {activePrompt.card.message}
+          {getLocalizedPermissionMessage(activePrompt.card.message, locale)}
         </div>
         <PermissionCard
           key={activePrompt.card.toolCallId}
