@@ -13,7 +13,6 @@ import { ObjectPanel } from './ObjectPanel';
 import { BookmarkedNetworkSidebar } from './BookmarkedNetworkSidebar';
 import { useConceptStore } from '../../stores/concept-store';
 import { useModelStore } from '../../stores/model-store';
-import { useTypeGroupStore } from '../../stores/type-group-store';
 import { ScrollArea } from '../ui/ScrollArea';
 import { Spinner } from '../ui/Spinner';
 import { Tooltip } from '../ui/Tooltip';
@@ -35,15 +34,10 @@ const OBJECT_PANEL_TYPES = {
   contexts: ['context'],
 } as const;
 
-function normalizeRootDir(rootDir: string): string {
-  return rootDir.replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase();
-}
-
 function AppWorkspaceSidebar(): JSX.Element {
   const { t } = useI18n();
   const currentNetwork = useNetworkStore((s) => s.currentNetwork);
   const projects = useProjectStore((s) => s.projects);
-  const loadProjects = useProjectStore((s) => s.loadProjects);
   const createProject = useProjectStore((s) => s.createProject);
   const openProject = useProjectStore((s) => s.openProject);
   const currentProject = useProjectStore((s) => s.currentProject);
@@ -57,28 +51,9 @@ function AppWorkspaceSidebar(): JSX.Element {
   const universeIsActive = currentNetwork?.kind === 'universe';
 
   const handleCreateProject = async (name: string, rootDir: string) => {
-    const existingProject = projects.find((project) => normalizeRootDir(project.root_dir) === normalizeRootDir(rootDir));
-    if (existingProject) {
-      await openProject(existingProject);
-      setShowCreateProject(false);
-      return;
-    }
-
-    try {
-      const project = await createProject(name, rootDir);
-      await createModule({ project_id: project.id, name, path: rootDir });
-      await openProject(project);
-    } catch (error) {
-      if (!(error instanceof Error) || !error.message.includes('UNIQUE constraint failed: projects.root_dir')) {
-        throw error;
-      }
-      await loadProjects();
-      const project = useProjectStore.getState().projects.find((item) => (
-        normalizeRootDir(item.root_dir) === normalizeRootDir(rootDir)
-      ));
-      if (!project) throw error;
-      await openProject(project);
-    }
+    const project = await createProject(name, rootDir);
+    await createModule({ project_id: project.id, name, path: rootDir });
+    await openProject(project);
   };
 
   const handleOpenProject = async (project: Project) => {
@@ -191,7 +166,6 @@ export function Sidebar({ project }: SidebarProps): JSX.Element {
   const { loadModules, directories } = useModuleStore();
   const { loadByProject: loadConcepts } = useConceptStore();
   const { loadByProject: loadModels } = useModelStore();
-  const { loadByProject: loadTypeGroups } = useTypeGroupStore();
 
   useEffect(() => {
     if (!project) return;
@@ -200,8 +174,7 @@ export function Sidebar({ project }: SidebarProps): JSX.Element {
     loadModules(project.id);
     loadConcepts(project.id);
     loadModels(project.id);
-    loadTypeGroups(project.id);
-  }, [project?.id, loadNetworks, loadNetworkTree, loadModules, loadConcepts, loadModels, loadTypeGroups]);
+  }, [project?.id, loadNetworks, loadNetworkTree, loadModules, loadConcepts, loadModels]);
 
   useEffect(() => {
     if (!project) return undefined;

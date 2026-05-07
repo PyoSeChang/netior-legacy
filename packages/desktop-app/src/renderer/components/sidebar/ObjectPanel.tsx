@@ -477,9 +477,9 @@ export function ObjectPanel({ types }: ObjectPanelProps = {}): JSX.Element {
         kind: 'object',
         objectType: 'concept',
         title: concept.title,
-        subtitle: concept.model_id
+        subtitle: concept.schema_id
           ? (() => {
-            const model = models.find((item) => item.id === concept.model_id);
+            const model = models.find((item) => item.id === concept.schema_id);
             return model ? getModelDisplayName(model, t) : t('objectPanel.concept' as TranslationKey);
           })()
           : t('objectPanel.concept' as TranslationKey),

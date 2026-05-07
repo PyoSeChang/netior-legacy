@@ -18,6 +18,8 @@ export interface MissingFileEntry {
   newPath?: string;
 }
 
+export const PROJECT_ROOT_DIR_DUPLICATE_ERROR = 'PROJECT_ROOT_DIR_DUPLICATE';
+
 interface ProjectStore {
   projects: Project[];
   currentProject: Project | null;
@@ -41,6 +43,14 @@ interface ProjectStore {
 
 function normalizePath(path: string): string {
   return path.replace(/\\/g, '/');
+}
+
+function normalizeRootDir(path: string): string {
+  return normalizePath(path).replace(/\/+$/, '').toLowerCase();
+}
+
+function createDuplicateRootDirError(rootDir: string): Error {
+  return new Error(`${PROJECT_ROOT_DIR_DUPLICATE_ERROR}:${rootDir}`);
 }
 
 function isAbsolutePath(path: string): boolean {
@@ -88,7 +98,25 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
   },
 
   createProject: async (name, rootDir) => {
-    const project = await projectService.create({ name, root_dir: rootDir });
+    const normalizedRootDir = normalizeRootDir(rootDir);
+    const existingProject = get().projects.find((project) => normalizeRootDir(project.root_dir) === normalizedRootDir);
+    if (existingProject) {
+      throw createDuplicateRootDirError(rootDir);
+    }
+
+    let project: Project;
+    try {
+      project = await projectService.create({ name, root_dir: rootDir });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (
+        message.startsWith(`${PROJECT_ROOT_DIR_DUPLICATE_ERROR}:`) ||
+        message.includes('UNIQUE constraint failed: projects.root_dir')
+      ) {
+        throw createDuplicateRootDirError(rootDir);
+      }
+      throw error;
+    }
     set((s) => ({ projects: [project, ...s.projects] }));
     return project;
   },

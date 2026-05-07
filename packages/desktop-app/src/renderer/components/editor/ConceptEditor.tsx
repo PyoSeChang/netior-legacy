@@ -264,20 +264,34 @@ export function ConceptEditor({ tab }: ConceptEditorProps): JSX.Element {
 
   const syncConceptProperties = useCallback(async (
     conceptId: string,
+    schemaId: string | null,
     nextProperties: Record<string, string | null>,
   ) => {
     const existingProperties = await conceptPropertyService.getByConcept(conceptId);
+    let validFieldIds = new Set<string>();
+    if (schemaId) {
+      let schemaFields = useSchemaStore.getState().fields[schemaId] ?? [];
+      if (schemaFields.length === 0) {
+        await useSchemaStore.getState().loadFields(schemaId);
+        schemaFields = useSchemaStore.getState().fields[schemaId] ?? [];
+      }
+      validFieldIds = new Set(schemaFields.map((field) => field.id));
+    }
     const nextPropertyMap = new Map(Object.entries(nextProperties));
 
     await Promise.all(
       existingProperties
-        .filter((property) => !nextPropertyMap.has(property.field_id) || nextPropertyMap.get(property.field_id) == null)
+        .filter((property) => (
+          !validFieldIds.has(property.field_id)
+          || !nextPropertyMap.has(property.field_id)
+          || nextPropertyMap.get(property.field_id) == null
+        ))
         .map((property) => deleteConceptProperty(property.id, conceptId)),
     );
 
     await Promise.all(
       Object.entries(nextProperties)
-        .filter(([, value]) => value != null)
+        .filter(([fieldId, value]) => value != null && validFieldIds.has(fieldId))
         .map(([fieldId, value]) => upsertProperty({ concept_id: conceptId, field_id: fieldId, value })),
     );
   }, [deleteConceptProperty, upsertProperty]);
@@ -369,7 +383,7 @@ export function ConceptEditor({ tab }: ConceptEditorProps): JSX.Element {
             : { nodeOccurrences: [] };
           return {
             title: c?.title ?? '',
-            modelId: c?.model_id ?? null,
+            modelId: c?.schema_id ?? null,
             icon: c?.icon ?? null,
             color: c?.color ?? null,
             content: c?.content ?? null,
@@ -384,12 +398,12 @@ export function ConceptEditor({ tab }: ConceptEditorProps): JSX.Element {
           const newConcept = await createConcept({
             project_id: currentProject.id,
             title: state.title.trim(),
-            model_id: state.modelId || undefined,
+            schema_id: state.modelId || undefined,
             icon: state.icon || undefined,
             color: state.color || undefined,
             content: state.content || undefined,
           });
-          await syncConceptProperties(newConcept.id, state.properties);
+          await syncConceptProperties(newConcept.id, state.modelId, state.properties);
           if (draft?.networkId) {
             const conceptObj = await objectService.getByRef('concept', newConcept.id);
             if (conceptObj) {
@@ -442,12 +456,12 @@ export function ConceptEditor({ tab }: ConceptEditorProps): JSX.Element {
           const conceptId = tab.targetId;
           await updateConcept(conceptId, {
             title: state.title,
-            model_id: state.modelId,
+            schema_id: state.modelId,
             icon: state.icon,
             color: state.color,
             content: state.content,
           });
-          await syncConceptProperties(conceptId, state.properties);
+          await syncConceptProperties(conceptId, state.modelId, state.properties);
           await maybePromoteOccurrenceToSeries(conceptId, state);
           await Promise.all(state.nodeOccurrences.map(async (occurrence) => {
             const nextMetadata = occurrence.metadata.trim() ? occurrence.metadata : null;
@@ -466,7 +480,7 @@ export function ConceptEditor({ tab }: ConceptEditorProps): JSX.Element {
           }));
           useEditorStore.getState().updateTitle(tab.id, state.title);
         },
-    deps: isDraft ? [] : [tab.targetId, concept?.model_id, currentProject?.id],
+    deps: isDraft ? [] : [tab.targetId, concept?.schema_id, currentProject?.id],
   });
 
   useEffect(() => {
@@ -576,7 +590,7 @@ export function ConceptEditor({ tab }: ConceptEditorProps): JSX.Element {
     const directConceptNodes = selectedOccurrenceNetworkData.nodes.filter((node) => (
       directChildIds.has(node.id)
       && node.object?.object_type === 'concept'
-      && !!node.concept?.model_id
+      && !!node.concept?.schema_id
     ));
 
     if (directConceptNodes.length > 0) {
@@ -585,14 +599,14 @@ export function ConceptEditor({ tab }: ConceptEditorProps): JSX.Element {
 
     return selectedOccurrenceNetworkData.nodes.filter((node) => (
       node.object?.object_type === 'concept'
-      && !!node.concept?.model_id
+      && !!node.concept?.schema_id
     ));
   }, [directChildIds, selectedOccurrenceNetworkData]);
 
   const sortableModelIds = useMemo(() => (
     Array.from(new Set(
       sortableConceptNodes
-        .map((node) => node.concept?.model_id)
+        .map((node) => node.concept?.schema_id)
         .filter((value): value is string => !!value),
     ))
   ), [sortableConceptNodes]);

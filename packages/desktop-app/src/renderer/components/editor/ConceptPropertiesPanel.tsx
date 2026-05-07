@@ -696,7 +696,7 @@ function useFieldChoiceOptions(field: SchemaField): { value: string; label: stri
       label: choice,
     }));
     const conceptOptions = concepts
-      .filter((concept) => concept.model_id && sourceIds.includes(concept.model_id))
+      .filter((concept) => concept.schema_id && sourceIds.includes(concept.schema_id))
       .map((concept) => ({
         value: toConceptOptionValue(concept.id),
         label: concept.title,

@@ -7,7 +7,7 @@ import { RadioGroup } from '../ui/RadioGroup';
 import { FilePicker } from '../ui/FilePicker';
 import { IconSelector } from '../ui/IconSelector';
 import { useI18n } from '../../hooks/useI18n';
-import { useSchemaStore as useModelStore } from '../../stores/schema-store';
+import { useSchemaStore } from '../../stores/schema-store';
 import { isImageSourceValue } from './node-components/node-visual-utils';
 import { getModelDisplayName } from '../../lib/model-i18n';
 
@@ -25,7 +25,7 @@ type VisualMode = 'icon' | 'image';
 interface ConceptCreateModalProps {
   open: boolean;
   onClose: () => void;
-  onCreate: (data: { title: string; color?: string; icon?: string; model_id?: string }) => void;
+  onCreate: (data: { title: string; color?: string; icon?: string; schema_id?: string }) => void;
 }
 
 export function ConceptCreateModal({ open, onClose, onCreate }: ConceptCreateModalProps): JSX.Element {
@@ -35,7 +35,7 @@ export function ConceptCreateModal({ open, onClose, onCreate }: ConceptCreateMod
   const [icon, setIcon] = useState('');
   const [visualMode, setVisualMode] = useState<VisualMode>('icon');
   const [modelId, setModelId] = useState<string | undefined>(undefined);
-  const models = useModelStore((s) => s.models);
+  const models = useSchemaStore((s) => s.schemas);
 
   // Apply model defaults when selected
   useEffect(() => {
@@ -57,7 +57,7 @@ export function ConceptCreateModal({ open, onClose, onCreate }: ConceptCreateMod
       title: title.trim(),
       color: color || undefined,
       icon: icon.trim() || undefined,
-      model_id: modelId || undefined,
+      schema_id: modelId || undefined,
     });
     setTitle('');
     setColor(undefined);

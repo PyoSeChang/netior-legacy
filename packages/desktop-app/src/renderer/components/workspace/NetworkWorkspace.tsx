@@ -780,7 +780,7 @@ function toRenderNodes(
     const portalChipStripHeight = getPortalChipStripHeight(portalChips.length);
     const parsedMetadata = parseNodeMetadataRecord(n.metadata);
     if (objectType === 'concept' && n.concept) {
-      const arch = n.concept.model_id ? archMap.get(n.concept.model_id) : undefined;
+      const arch = n.concept.schema_id ? archMap.get(n.concept.schema_id) : undefined;
       const label = n.concept.title;
       const icon = n.concept.icon || arch?.icon || 'pin';
       const baseWidth = isPortal ? 180 : isHierarchy ? 380 : isGroup ? 360 : 160;
@@ -2001,7 +2001,7 @@ export function NetworkWorkspace({
   useEffect(() => {
     const modelIds = new Set(
       nodes
-        .map((node) => node.concept?.model_id)
+        .map((node) => node.concept?.schema_id)
         .filter((value): value is string => !!value),
     );
 
@@ -2016,7 +2016,7 @@ export function NetworkWorkspace({
     visibleRenderNodes.map((n) => {
       const sourceNode = nodes.find((candidate) => candidate.id === n.id);
       const modelId = n.nodeType === 'concept'
-        ? sourceNode?.concept?.model_id ?? undefined
+        ? sourceNode?.concept?.schema_id ?? undefined
         : undefined;
       const metadata: Record<string, unknown> = { ...(n.metadata ?? {}) };
       const conceptId = n.conceptId;
@@ -2570,7 +2570,7 @@ export function NetworkWorkspace({
       materializedConcept = await createConcept({
         project_id: sourceConcept.project_id,
         title: sourceConcept.title,
-        model_id: sourceConcept.model_id ?? undefined,
+        schema_id: sourceConcept.schema_id ?? undefined,
         recurrence_source_concept_id: sourceConcept.id,
         recurrence_occurrence_key: occurrenceKey,
         icon: sourceConcept.icon ?? undefined,

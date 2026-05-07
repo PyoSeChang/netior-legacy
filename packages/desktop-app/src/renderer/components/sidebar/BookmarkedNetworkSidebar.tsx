@@ -183,9 +183,9 @@ export function BookmarkedNetworkSidebar({ networkId }: BookmarkedNetworkSidebar
         }
         case 'concept': {
           const concept = node.concept;
-          const modelName = concept?.model_id
+          const modelName = concept?.schema_id
             ? (() => {
-              const model = modelsById.get(concept.model_id);
+              const model = modelsById.get(concept.schema_id);
               return model ? getModelDisplayName(model, t) : null;
             })()
             : null;
