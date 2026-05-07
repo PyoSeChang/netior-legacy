@@ -87,7 +87,7 @@ export function ProjectEditor({ tab }: ProjectEditorProps): JSX.Element {
           </div>
         )}
       >
-        <NetworkObjectEditorSection title={t('editorShell.overview' as never)}>
+        <NetworkObjectEditorSection title={t('editorShell.overview' as never)} viewMode="body">
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium text-muted">{t('project.name')}</label>
             <Input
@@ -99,7 +99,7 @@ export function ProjectEditor({ tab }: ProjectEditorProps): JSX.Element {
           </div>
         </NetworkObjectEditorSection>
 
-        <NetworkObjectEditorSection title={t('project.folder')} defaultOpen={false}>
+        <NetworkObjectEditorSection title={t('project.folder')} defaultOpen={false} viewMode="details">
           <NetworkObjectMetadataList
             items={[
               { label: t('project.folder'), value: project.root_dir },
@@ -107,7 +107,7 @@ export function ProjectEditor({ tab }: ProjectEditorProps): JSX.Element {
           />
         </NetworkObjectEditorSection>
 
-        <NetworkObjectEditorSection title={t('editorShell.metadata' as never)} defaultOpen={false}>
+        <NetworkObjectEditorSection title={t('editorShell.metadata' as never)} defaultOpen={false} viewMode="details">
           <NetworkObjectMetadataList
             items={[
               { label: t('editorShell.objectId' as never), value: <code className="font-mono text-xs">{project.id}</code> },

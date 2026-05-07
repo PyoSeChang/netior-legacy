@@ -47,6 +47,7 @@ import { migrate042 } from '../migrations/042-remove-type-groups';
 import { migrate043 } from '../migrations/043-remove-concept-model-id';
 import { migrate044 } from '../migrations/044-concept-properties-schema-field-fk';
 import { migrate045 } from '../migrations/045-source-provenance-and-model-category-concepts';
+import { migrate046 } from '../migrations/046-instance-rename';
 
 let testDb: Database.Database | null = null;
 
@@ -99,6 +100,7 @@ export function setupTestDb(): Database.Database {
   migrate043(testDb);
   migrate044(testDb);
   migrate045(testDb);
+  migrate046(testDb);
   testDb.pragma('foreign_keys = ON');
   return testDb;
 }

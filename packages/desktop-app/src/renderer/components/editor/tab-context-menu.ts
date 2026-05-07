@@ -6,6 +6,7 @@ import { translate, type TranslationKey } from '@netior/shared/i18n';
 import { useSettingsStore } from '../../stores/settings-store';
 import { isTodoEnabled, toggleTodoEnabled } from '../../lib/terminal-todo-store';
 import { openTerminalTab } from '../../lib/terminal/open-terminal-tab';
+import { openBrowserTab } from '../../lib/open-browser-tab';
 import { getAllowedViewModes } from '../../lib/editor-view-mode-rules';
 
 // Common items (all tab types)
@@ -103,9 +104,9 @@ function buildHostMoveItems(tab: EditorTab): ContextMenuEntry[] {
   return items;
 }
 
-// Concept-specific items
+// Instance-specific items
 
-function buildConceptItems(tab: EditorTab): ContextMenuEntry[] {
+function buildInstanceItems(tab: EditorTab): ContextMenuEntry[] {
   const items: ContextMenuEntry[] = [];
 
   if (tab.activeFilePath) {
@@ -178,7 +179,7 @@ export interface TabContextMenuCallbacks {
 type TypeBuilder = (tab: EditorTab, callbacks?: TabContextMenuCallbacks) => ContextMenuEntry[];
 
 const typeBuilders: Record<string, TypeBuilder> = {
-  concept: buildConceptItems,
+  instance: buildInstanceItems,
   file: buildFileItems,
   terminal: buildTerminalItems,
 };
@@ -224,8 +225,16 @@ export function buildStripContextMenu(tabs: EditorTab[], hostId?: string): Conte
     { type: 'divider' },
     {
       label: 'New Terminal',
+      shortcut: 'Ctrl+Shift+N',
       onClick: () => {
         openTerminalTab(resolvedHostId);
+      },
+    },
+    {
+      label: 'New Browser',
+      shortcut: 'Ctrl+Shift+B',
+      onClick: () => {
+        void openBrowserTab(useSettingsStore.getState().browser.homeUrl, resolvedHostId);
       },
     },
   ];

@@ -42,9 +42,9 @@ export interface SystemPromptModelSummary {
   icon?: string | null;
   color?: string | null;
   description?: string | null;
-  category_concept_id?: string | null;
-  category_concept_title?: string | null;
-  category_concept_source_ref?: string | null;
+  category_instance_id?: string | null;
+  category_instance_title?: string | null;
+  category_instance_source_ref?: string | null;
   target_kind?: 'object' | 'edge' | 'both' | string;
   meaning_keys?: string[];
   line_style?: string | null;
@@ -127,7 +127,7 @@ export function normalizeNarreBehaviorSettings(value: unknown): NarreBehaviorSet
 
 export function buildBehaviorGuidanceSection(behavior: NarreBehaviorSettings): string {
   return [
-    '- Your primary job is to manage Netior modeling state: schemas, semantic models, meanings, fields, concepts, networks, edges, files, and related instance metadata.',
+    '- Your primary job is to manage Netior modeling state: schemas, semantic models, meanings, fields, instances, networks, edges, files, and related instance metadata.',
     '- Treat requests as Netior modeling work by default, not as general software engineering or local coding work.',
     '- Prefer Netior/MCP tools and graph-object operations over browsing arbitrary local workspace files.',
     '- Interpret the user intent before naming implementation details. Start from the user\'s expected outcome, not from internal field or route names.',
@@ -209,7 +209,7 @@ function buildSchemaSurfaceList(schemas: SystemPromptSchemaSummary[]): string {
     const propertyFields = fields.filter((field) => !isRelationalField(field));
     const relationalFields = fields.filter((field) => isRelationalField(field));
     const searchSurface = Array.from(new Set([
-      'concept_title',
+      'instance_title',
       ...fields
         .filter((field) => isSearchableField(field))
         .flatMap((field) => field.meaning_bindings && field.meaning_bindings.length > 0 ? field.meaning_bindings : [field.name]),
@@ -254,7 +254,7 @@ function buildModelList(models: SystemPromptModelSummary[]): string {
         : '(none)';
     const details = [
       `key=${model.key}`,
-      `category=${model.category_concept_title ?? model.category_concept_source_ref ?? 'none'}`,
+      `category=${model.category_instance_title ?? model.category_instance_source_ref ?? 'none'}`,
       `target=${model.target_kind ?? 'object'}`,
       `source=${model.source_kind ?? (model.built_in ? 'system' : 'project')}${model.source_ref ? `:${model.source_ref}` : ''}`,
       ...(model.description ? [`description=${model.description}`] : []),
@@ -387,7 +387,7 @@ export function buildSystemPrompt(
   const edgeModelList = buildEdgeModelList(models);
   const networkContext = buildNetworkContextSection(universeNetwork, ontologyNetwork, networkTree);
 
-  return `You are Narre, the AI assistant for Netior (Map of Concepts).
+  return `You are Narre, the AI assistant for Netior (Map of Instances).
 You help users model and organize a Netior project graph.
 
 ## Current Execution
@@ -403,7 +403,7 @@ Use this digest as the primary search surface before calling tools.
 ## Semantic Models (${models.length})
 ${modelList}
 
-## Model Category Concepts (${modelCategories?.length ?? 0})
+## Model Category Instances (${modelCategories?.length ?? 0})
 ${modelCategoryList}
 
 ## Schema Search Surfaces (${schemas.length})
@@ -422,7 +422,7 @@ ${networkContext}
 - Start from the modeling digest in this prompt: schemas, semantic models, meanings, fields, meaning bindings, field relations, edge models, and network hierarchy.
 - For bootstrap or early-structure work, reason ontology-first: infer entity kinds, relation kinds, artifact kinds, and workflow structure before deciding network splits or schemas.
 - Treat networks as a workspace projection of inferred ontology, not as the first thing the user must specify.
-- Before searching concepts, infer these three things first:
+- Before searching instances, infer these three things first:
   1. likely target schema
   2. likely fields or meaning bindings
   3. whether another schema must be resolved first through a typed reference
@@ -431,14 +431,14 @@ ${networkContext}
   - if Document.supersedes -> Document exists, use that typed field before inventing a graph edge search
 - Distinguish these layers:
   - object, schema, or model change
-  - concept instance search or mutation
+  - instance instance search or mutation
   - node placement or network structure change
   - layout/view change
-- Model categories are concepts under the built-in Model Category schema. Do not store or invent model category strings.
-- To classify a model, use a Model Category concept ID. If missing, inspect or create the category concept first.
+- Model categories are instances under the built-in Model Category schema. Do not store or invent model category strings.
+- To classify a model, use a Model Category instance ID. If missing, inspect or create the category instance first.
 - Network group nodes are projections from object fields or relations, not standalone taxonomy/type-group objects.
 - Use edge-target models for graph-edge meaning.
-- Use schema fields for concept property filtering, typed references, and type-level relations.
+- Use schema fields for instance property filtering, typed references, and type-level relations.
 - Ask a short confirmation only when the structural meaning can materially diverge:
   - field vs edge
   - inline enum vs instance-backed choice
@@ -465,8 +465,8 @@ ${networkContext}
 - When deleting an entity with dependent data, warn about cascading effects.
 - Respond in the same language the user uses.
 - Be concise and action-oriented.
-- Before searching or mutating concepts, identify the target schema and likely fields or meaning bindings from the modeling digest first.
-- For field-level schema work, inspect fields, meanings, and concept properties before changing relationship structure.
+- Before searching or mutating instances, identify the target schema and likely fields or meaning bindings from the modeling digest first.
+- For field-level schema work, inspect fields, meanings, and instance properties before changing relationship structure.
 - Before assigning reference or choice values, inspect the candidate set instead of guessing from memory.
 - Use graph primitives when the user is talking about network structure, navigation hierarchy, node placement, or independent object-to-object relations in the graph.
 - Do not replace a true graph relation with a field just because a field tool exists, and do not replace a model field with an edge just because a graph tool exists.

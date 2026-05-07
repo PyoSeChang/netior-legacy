@@ -361,7 +361,7 @@ export function ensureProjectNodeInUniverseForDb(db: Database.Database, projectI
 function ensureOntologyObjectRecordsForDb(db: Database.Database, projectId: string): void {
   const categories = listModelCategoriesForProjectDb(db, projectId);
   for (const category of categories) {
-    ensureObjectForDb(db, 'concept', 'project', projectId, category.id, category.created_at);
+    ensureObjectForDb(db, 'instance', 'project', projectId, category.id, category.created_at);
   }
 
   const models = db.prepare(
@@ -379,17 +379,29 @@ function listOntologyObjectsForDb(
   ontology_role: OntologyObjectRole;
   sort_order: number;
   sort_created_at: string;
-  category_concept_id?: string | null;
+  category_instance_id?: string | null;
 }> {
   return db.prepare(`
-    SELECT o.*, 'model_category' AS ontology_role, 0 AS sort_order, c.created_at AS sort_created_at, NULL AS category_concept_id
+    SELECT o.*, 'model_category' AS ontology_role,
+           CASE c.source_ref
+             WHEN 'model-category.time' THEN 0
+             WHEN 'model-category.workflow' THEN 1
+             WHEN 'model-category.structure' THEN 2
+             WHEN 'model-category.knowledge' THEN 3
+             WHEN 'model-category.space' THEN 4
+             WHEN 'model-category.quant' THEN 5
+             WHEN 'model-category.governance' THEN 6
+             ELSE 99
+           END AS sort_order,
+           c.created_at AS sort_created_at,
+           NULL AS category_instance_id
       FROM objects o
-      JOIN concepts c ON o.object_type = 'concept' AND o.ref_id = c.id
+      JOIN instances c ON o.object_type = 'instance' AND o.ref_id = c.id
       JOIN schemas s ON c.schema_id = s.id
      WHERE c.project_id = ?
        AND s.source_ref = 'schema.model_category'
     UNION ALL
-    SELECT o.*, 'model' AS ontology_role, 1 AS sort_order, sm.created_at AS sort_created_at, sm.category_concept_id AS category_concept_id
+    SELECT o.*, 'model' AS ontology_role, 1000 AS sort_order, sm.created_at AS sort_created_at, sm.category_instance_id AS category_instance_id
       FROM objects o
       JOIN models sm ON o.object_type = 'model' AND o.ref_id = sm.id
      WHERE sm.project_id = ?
@@ -398,7 +410,7 @@ function listOntologyObjectsForDb(
     ontology_role: OntologyObjectRole;
     sort_order: number;
     sort_created_at: string;
-    category_concept_id?: string | null;
+    category_instance_id?: string | null;
   }>;
 }
 
@@ -410,6 +422,28 @@ function getDefaultOntologyNodePosition(role: OntologyObjectRole, index: number)
   return JSON.stringify({
     x: laneX[role],
     y: index * 150,
+  });
+}
+
+function getOntologyNodeMetadata(role: OntologyObjectRole, order: number): string {
+  return JSON.stringify({
+    managedBy: 'ontology',
+    ontologyRole: role,
+    ontologyOrder: order,
+    ...(role === 'model_category'
+      ? {
+          nodeConfig: {
+            kind: 'grid',
+            columns: 2,
+            gapX: 16,
+            gapY: 16,
+            padding: 24,
+            itemWidth: 160,
+            itemHeight: 60,
+            sort: null,
+          },
+        }
+      : {}),
   });
 }
 
@@ -433,6 +467,28 @@ function ensureOntologyContainsEdge(
   ).run(randomUUID(), data.networkId, data.sourceNodeId, data.targetNodeId, modelId, new Date().toISOString());
 }
 
+function removeManagedOntologyContainsEdges(
+  db: Database.Database,
+  data: { networkId: string; projectId: string },
+): void {
+  const modelId = `model-${data.projectId}-contains_relation`;
+  db.prepare(
+    `DELETE FROM edges
+      WHERE network_id = ?
+        AND model_id = ?
+        AND source_node_id IN (
+          SELECT id FROM network_nodes
+           WHERE network_id = ?
+             AND metadata LIKE '%managedBy%ontology%'
+        )
+        AND target_node_id IN (
+          SELECT id FROM network_nodes
+           WHERE network_id = ?
+             AND metadata LIKE '%managedBy%ontology%'
+        )`,
+  ).run(data.networkId, modelId, data.networkId, data.networkId);
+}
+
 function removeStaleManagedOntologyNodes(
   db: Database.Database,
   ontologyNetworkId: string,
@@ -442,7 +498,7 @@ function removeStaleManagedOntologyNodes(
     db.prepare(
       `DELETE FROM network_nodes
         WHERE network_id = ?
-          AND metadata LIKE '%"managedBy":"ontology"%'`,
+          AND metadata LIKE '%managedBy%ontology%'`,
     ).run(ontologyNetworkId);
     return;
   }
@@ -451,7 +507,7 @@ function removeStaleManagedOntologyNodes(
   db.prepare(
     `DELETE FROM network_nodes
       WHERE network_id = ?
-        AND metadata LIKE '%"managedBy":"ontology"%'
+        AND metadata LIKE '%managedBy%ontology%'
         AND object_id NOT IN (${placeholders})`,
   ).run(ontologyNetworkId, ...desiredObjectIds);
 }
@@ -471,13 +527,14 @@ export function syncProjectOntologyForDb(db: Database.Database, projectId: strin
   const objects = listOntologyObjectsForDb(db, projectId)
     .filter((object) => !excludedObjectIds.has(object.id));
   removeStaleManagedOntologyNodes(db, ontology.id, objects.map((object) => object.id));
+  removeManagedOntologyContainsEdges(db, { networkId: ontology.id, projectId });
 
   const roleIndexes: Record<OntologyObjectRole, number> = {
     model_category: 0,
     model: 0,
   };
   const nodeByObjectId = new Map<string, NetworkNode>();
-  const categoryNodeByConceptId = new Map<string, NetworkNode>();
+  const categoryNodeByInstanceId = new Map<string, NetworkNode>();
 
   for (const object of objects) {
     const index = roleIndexes[object.ontology_role]++;
@@ -485,22 +542,19 @@ export function syncProjectOntologyForDb(db: Database.Database, projectId: strin
       networkId: ontology.id,
       objectId: object.id,
       nodeType: object.ontology_role === 'model_category' ? 'group' : 'basic',
-      metadata: JSON.stringify({
-        managedBy: 'ontology',
-        ontologyRole: object.ontology_role,
-      }),
+      metadata: getOntologyNodeMetadata(object.ontology_role, index),
       positionJson: getDefaultOntologyNodePosition(object.ontology_role, index),
     });
     nodeByObjectId.set(object.id, node);
     if (object.ontology_role === 'model_category') {
-      categoryNodeByConceptId.set(object.ref_id, node);
+      categoryNodeByInstanceId.set(object.ref_id, node);
     }
   }
 
   for (const object of objects) {
-    if (object.ontology_role !== 'model' || !object.category_concept_id) continue;
+    if (object.ontology_role !== 'model' || !object.category_instance_id) continue;
     const modelNode = nodeByObjectId.get(object.id);
-    const categoryNode = categoryNodeByConceptId.get(object.category_concept_id);
+    const categoryNode = categoryNodeByInstanceId.get(object.category_instance_id);
     if (!modelNode || !categoryNode) continue;
     ensureOntologyContainsEdge(db, {
       networkId: ontology.id,

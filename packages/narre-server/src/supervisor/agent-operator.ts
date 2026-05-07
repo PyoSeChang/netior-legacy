@@ -53,7 +53,7 @@ export class AgentOperator {
           runId,
           title: 'Discover relevant project context',
           input: [
-            'Find relevant concepts, networks, files, models, relation types, and unresolved context for the user request.',
+            'Find relevant instances, networks, files, models, relation types, and unresolved context for the user request.',
             'Return concise findings with stable references and avoid mutations.',
           ].join('\n'),
           agentKey: finderKey,
@@ -67,7 +67,7 @@ export class AgentOperator {
           title: 'Build or propose Netior structure',
           input: [
             'Use the user request and upstream findings to build or propose the needed Netior structure.',
-            'Keep the output explicit about created/proposed concepts, models, relation types, edges, and questions.',
+            'Keep the output explicit about created/proposed instances, models, relation types, edges, and questions.',
           ].join('\n'),
           agentKey: builderKey,
           dependsOnTaskIds: createdTasks.map((task) => task.id),

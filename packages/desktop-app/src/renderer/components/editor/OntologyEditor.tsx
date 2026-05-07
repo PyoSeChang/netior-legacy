@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import type { EditorTab } from '@netior/shared/types';
 import { Boxes, CircleDot, Layers3, Plus, Waypoints } from 'lucide-react';
-import { useConceptStore } from '../../stores/concept-store';
+import { useInstanceStore } from '../../stores/instance-store';
 import { useContextStore } from '../../stores/context-store';
 import { useEditorStore } from '../../stores/editor-store';
 import { useNetworkStore } from '../../stores/network-store';
@@ -9,10 +9,7 @@ import { useProjectStore } from '../../stores/project-store';
 import { useModelStore } from '../../stores/model-store';
 import { useSchemaStore } from '../../stores/schema-store';
 import { useI18n } from '../../hooks/useI18n';
-import {
-  getModelDisplayDescription,
-  getModelDisplayName,
-} from '../../lib/model-i18n';
+import { createOntologyDisplayResolver } from '@netior/shared';
 import { networkService } from '../../services';
 import { Button } from '../ui/Button';
 import {
@@ -30,12 +27,13 @@ function getNetworkKindLabel(kind: string): string {
   return 'Network';
 }
 
-type CreatableOntologyType = 'network' | 'concept' | 'schema' | 'model' | 'context';
+type CreatableOntologyType = 'network' | 'instance' | 'schema' | 'model' | 'context';
 
 const EMPTY_LIST: never[] = [];
 
 export function OntologyEditor({ tab }: OntologyEditorProps): JSX.Element {
   const { t } = useI18n();
+  const display = useMemo(() => createOntologyDisplayResolver(t), [t]);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
 
   const openEditorTab = useEditorStore((s) => s.openTab);
@@ -48,8 +46,8 @@ export function OntologyEditor({ tab }: OntologyEditorProps): JSX.Element {
   const loadNetworkTree = useNetworkStore((s) => s.loadNetworkTree);
   const createNetwork = useNetworkStore((s) => s.createNetwork);
   const openNetwork = useNetworkStore((s) => s.openNetwork);
-  const rawConcepts = useConceptStore((s) => s.concepts);
-  const loadConcepts = useConceptStore((s) => s.loadByProject);
+  const rawInstances = useInstanceStore((s) => s.instances);
+  const loadInstances = useInstanceStore((s) => s.loadByProject);
   const rawSchemas = useSchemaStore((s) => s.schemas);
   const loadSchemas = useSchemaStore((s) => s.loadByProject);
   const createSchema = useSchemaStore((s) => s.createSchema);
@@ -60,7 +58,7 @@ export function OntologyEditor({ tab }: OntologyEditorProps): JSX.Element {
   const loadContexts = useContextStore((s) => s.loadContexts);
   const createContext = useContextStore((s) => s.createContext);
   const networks = Array.isArray(rawNetworks) ? rawNetworks : EMPTY_LIST;
-  const concepts = Array.isArray(rawConcepts) ? rawConcepts : EMPTY_LIST;
+  const instances = Array.isArray(rawInstances) ? rawInstances : EMPTY_LIST;
   const schemas = Array.isArray(rawSchemas) ? rawSchemas : EMPTY_LIST;
   const models = Array.isArray(rawModels) ? rawModels : EMPTY_LIST;
   const contexts = Array.isArray(rawContexts) ? rawContexts : EMPTY_LIST;
@@ -84,11 +82,11 @@ export function OntologyEditor({ tab }: OntologyEditorProps): JSX.Element {
     if (!projectId) return;
     void loadNetworks(projectId);
     void loadNetworkTree(projectId);
-    void loadConcepts(projectId);
+    void loadInstances(projectId);
     void loadSchemas(projectId);
     void loadModels(projectId);
   }, [
-    loadConcepts,
+    loadInstances,
     loadModels,
     loadNetworks,
     loadNetworkTree,
@@ -152,12 +150,12 @@ export function OntologyEditor({ tab }: OntologyEditorProps): JSX.Element {
         });
         break;
       }
-      case 'concept': {
+      case 'instance': {
         const draftId = `draft-${Date.now()}`;
         await openEditorTab({
-          type: 'concept',
+          type: 'instance',
           targetId: draftId,
-          title: tr('concept.defaultTitle', 'New Concept'),
+          title: tr('instance.defaultTitle', 'New Instance'),
           projectId,
           draftData: currentNetwork?.project_id === projectId
             ? { networkId: currentNetwork.id }
@@ -187,7 +185,7 @@ export function OntologyEditor({ tab }: OntologyEditorProps): JSX.Element {
         await openEditorTab({
           type: 'model',
           targetId: created.id,
-          title: getModelDisplayName(created, t),
+          title: display.modelName(created),
           projectId,
           isDirty: true,
         });
@@ -221,6 +219,7 @@ export function OntologyEditor({ tab }: OntologyEditorProps): JSX.Element {
     createNetwork,
     currentNetwork?.id,
     currentNetwork?.project_id,
+    display,
     ensureContextNetworkId,
     loadContexts,
     loadNetworkTree,
@@ -238,7 +237,7 @@ export function OntologyEditor({ tab }: OntologyEditorProps): JSX.Element {
     icon: React.ElementType;
   }>>(() => [
     { key: 'network', label: t('sidebar.networks'), icon: Waypoints },
-    { key: 'concept', label: t('objectPanel.concept' as never), icon: CircleDot },
+    { key: 'instance', label: t('objectPanel.instance' as never), icon: CircleDot },
     { key: 'schema', label: t('schema.title'), icon: Boxes },
     { key: 'model', label: t('model.title' as never), icon: Boxes },
     { key: 'context', label: t('context.title'), icon: Layers3 },
@@ -266,20 +265,20 @@ export function OntologyEditor({ tab }: OntologyEditorProps): JSX.Element {
           })),
       },
       {
-        key: 'concept' as const,
-        label: t('objectPanel.concept' as never),
-        items: [...concepts]
+        key: 'instance' as const,
+        label: t('objectPanel.instance' as never),
+        items: [...instances]
           .sort((a, b) => a.title.localeCompare(b.title))
           .map((item) => ({
             id: item.id,
-            objectType: 'concept' as const,
+            objectType: 'instance' as const,
             title: item.title,
             subtitle: item.schema_id
               ? (() => {
                 const schema = schemas.find((candidate) => candidate.id === item.schema_id);
-                return schema ? schema.name : t('objectPanel.concept' as never);
+                return schema ? schema.name : t('objectPanel.instance' as never);
               })()
-              : t('objectPanel.concept' as never),
+              : t('objectPanel.instance' as never),
           })),
       },
       {
@@ -298,12 +297,12 @@ export function OntologyEditor({ tab }: OntologyEditorProps): JSX.Element {
         key: 'model' as const,
         label: t('model.title' as never),
         items: [...models]
-          .sort((a, b) => getModelDisplayName(a, t).localeCompare(getModelDisplayName(b, t)))
+          .sort((a, b) => display.modelName(a).localeCompare(display.modelName(b)))
           .map((item) => ({
             id: item.id,
             objectType: 'model' as const,
-            title: getModelDisplayName(item, t),
-            subtitle: getModelDisplayDescription(item, t) ?? t('model.title' as never),
+            title: display.modelName(item),
+            subtitle: display.modelDescription(item) ?? t('model.title' as never),
           })),
       },
       {
@@ -322,7 +321,7 @@ export function OntologyEditor({ tab }: OntologyEditorProps): JSX.Element {
 
     return sections;
   }, [
-    concepts,
+    instances,
     contexts,
     currentNetwork?.id,
     currentProject?.id,
@@ -331,6 +330,7 @@ export function OntologyEditor({ tab }: OntologyEditorProps): JSX.Element {
     projectId,
     projects,
     schemas,
+    display,
     t,
   ]);
 
@@ -350,8 +350,8 @@ export function OntologyEditor({ tab }: OntologyEditorProps): JSX.Element {
       case 'project':
         await openEditorTab({ type: 'project', targetId: item.id, title: item.title });
         break;
-      case 'concept':
-        await openEditorTab({ type: 'concept', targetId: item.id, title: item.title });
+      case 'instance':
+        await openEditorTab({ type: 'instance', targetId: item.id, title: item.title });
         break;
       case 'schema':
         await openEditorTab({ type: 'schema', targetId: item.id, title: item.title, projectId: projectId ?? undefined });

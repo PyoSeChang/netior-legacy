@@ -18,9 +18,9 @@ describe('IPC_CHANNELS', () => {
     expect(IPC_CHANNELS.PROJECT_DELETE).toBe('project:delete');
   });
 
-  it('should have concept channels', () => {
-    expect(IPC_CHANNELS.CONCEPT_CREATE).toBe('concept:create');
-    expect(IPC_CHANNELS.CONCEPT_GET_BY_PROJECT).toBe('concept:getByProject');
+  it('should have instance channels', () => {
+    expect(IPC_CHANNELS.INSTANCE_CREATE).toBe('instance:create');
+    expect(IPC_CHANNELS.INSTANCE_GET_BY_PROJECT).toBe('instance:getByProject');
   });
 
   it('should have network channels', () => {
@@ -68,11 +68,11 @@ describe('BUILT_IN_SKILLS', () => {
 
 describe('NETIOR_MCP_TOOL_SPECS', () => {
   it('should expose shared MCP tool specs', () => {
-    const spec = getNetiorMcpToolSpec('create_concept');
+    const spec = getNetiorMcpToolSpec('create_instance');
 
     expect(spec).not.toBeNull();
-    expect(spec?.key).toBe('create_concept');
-    expect(spec?.category).toBe('concepts');
+    expect(spec?.key).toBe('create_instance');
+    expect(spec?.category).toBe('instances');
     expect(spec?.kind).toBe('mutation');
   });
 

@@ -5,7 +5,9 @@ import { useEditorStore } from '../../stores/editor-store';
 import { useProjectStore } from '../../stores/project-store';
 import { useNetworkStore } from '../../stores/network-store';
 import { useActivityBarStore } from '../../stores/activity-bar-store';
+import { useSettingsStore } from '../../stores/settings-store';
 import { useI18n } from '../../hooks/useI18n';
+import { openBrowserTab } from '../../lib/open-browser-tab';
 import { openTerminalTab } from '../../lib/terminal/open-terminal-tab';
 import {
   ACTIVITY_BAR_BOTTOM_ITEM_DEFINITIONS,
@@ -31,6 +33,7 @@ export function ActivityBar(): JSX.Element {
   const openNetwork = useNetworkStore((state) => state.openNetwork);
   const config = useActivityBarStore((state) => state.config);
   const ensureLoaded = useActivityBarStore((state) => state.ensureLoaded);
+  const browserHomeUrl = useSettingsStore((state) => state.browser.homeUrl);
   const shellClassName = sidebarOpen
     ? 'rail-surface--open'
     : 'rail-surface--closed';
@@ -63,8 +66,8 @@ export function ActivityBar(): JSX.Element {
 
   const bottomItemKeys = useMemo(() => {
     return currentProject
-      ? (['ontology', 'narre', 'terminal', 'agents', 'settings'] as const satisfies readonly ActivityBarBottomItemKey[])
-      : (['agents', 'settings'] as const satisfies readonly ActivityBarBottomItemKey[]);
+      ? (['ontology', 'narre', 'terminal', 'agents', 'browser', 'settings'] as const satisfies readonly ActivityBarBottomItemKey[])
+      : (['agents', 'browser', 'settings'] as const satisfies readonly ActivityBarBottomItemKey[]);
   }, [currentProject]);
 
   const bookmarkNetworks = useMemo(() => {
@@ -113,6 +116,9 @@ export function ActivityBar(): JSX.Element {
           title: t('agentEditor.title' as never),
           projectId: currentProject?.id,
         });
+        return;
+      case 'browser':
+        void openBrowserTab(browserHomeUrl);
         return;
       case 'settings':
         useUIStore.getState().setShowSettings(true);

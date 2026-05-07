@@ -245,15 +245,15 @@ export const calendarPlugin: WorkspaceLayoutPlugin = {
     const slotFieldIds = getSlotFieldIds(context.node);
     const duration = resolveCalendarDuration(context.node);
 
-    if (!slotFieldIds?.start_at || !context.node.conceptId || !duration) {
+    if (!slotFieldIds?.start_at || !context.node.instanceId || !duration) {
       return { position: { x: Math.round(context.newX), y: Math.round(context.newY) } };
     }
 
-    const propertyUpdates: Array<{ conceptId: string; fieldId: string; value: string }> = [];
+    const propertyUpdates: Array<{ instanceId: string; fieldId: string; value: string }> = [];
     const pushUpdate = (fieldId: string | undefined, value: string | boolean) => {
-      if (!fieldId || !context.node.conceptId) return;
+      if (!fieldId || !context.node.instanceId) return;
       propertyUpdates.push({
-        conceptId: context.node.conceptId,
+        instanceId: context.node.instanceId,
         fieldId,
         value: typeof value === 'boolean' ? String(value) : value,
       });

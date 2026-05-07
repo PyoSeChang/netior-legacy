@@ -63,6 +63,14 @@ process/*.ts                                       components/**/*.tsx
 
 **IPC pattern**: every response uses `IpcResult<T>` (`{ success: true, data } | { success: false, error }`). Channel constants live in `@netior/shared/constants` as `IPC_CHANNELS`.
 
+### i18n and Display Names
+
+- i18n is a presentation concern only. Do not use translated labels as identifiers, ordering keys, grouping keys, sync predicates, or layout predicates.
+- Identity and behavior must use stable data such as `id`, `key`, `source_kind`, `source_id`, `source_ref`, `object_type`, `ref_id`, model keys, schema/instance source refs, or explicit metadata.
+- Built-in ontology display names should go through the shared ontology display resolver (`@netior/shared`), not desktop-only helpers or ad hoc `t(...)` calls in consumers.
+- Built-in model categories are schema/instance data. Category instances should be displayed from `source_ref` such as `model-category.time`, while network grouping must use category instance ids or contains edges, never the localized category label.
+- When adding a built-in source kind or source ref, update shared i18n/display rules and every consumer path that surfaces it: desktop renderer, Narre prompts/tool previews, MCP metadata, and any service response that must carry source fields.
+
 ### Production Packaging
 
 - The packaged desktop app includes a bundled Node runtime under `resources/node-runtime`.

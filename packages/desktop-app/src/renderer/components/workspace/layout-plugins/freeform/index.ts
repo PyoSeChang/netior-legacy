@@ -2,8 +2,40 @@
 import type { RenderEdge } from '../../types';
 import type { WorkspaceLayoutPlugin, LayoutRenderNode } from '../types';
 import { extractNodeConfig } from '../../../../lib/node-config';
+import { CONTAINS_MODEL_KEY } from '../../../../lib/edge-models';
 import { getMeaningBindingValue } from '../semantic';
 import { FreeformBackground } from './FreeformBackground';
+
+const GROUP_HEADER_TOP_PADDING = 56;
+const ONTOLOGY_CATEGORY_GROUP_CONFIG: NodeConfig = {
+  kind: 'grid',
+  columns: 2,
+  gapX: 16,
+  gapY: 16,
+  padding: 24,
+  itemWidth: 160,
+  itemHeight: 60,
+  sort: null,
+};
+const ONTOLOGY_CATEGORY_ORDER_BY_LABEL = new Map([
+  ['Time', 0],
+  ['Workflow', 1],
+  ['Structure', 2],
+  ['Knowledge', 3],
+  ['Space', 4],
+  ['Quant', 5],
+  ['Governance', 6],
+]);
+function debugOntologyLayout(stage: string, payload: unknown): void {
+  const key = `__netiorOntologyLayoutDebug:${stage}`;
+  if (sessionStorage.getItem(key) === '1') return;
+  sessionStorage.setItem(key, '1');
+  console.log(`[OntologyLayout] ${stage}`, payload);
+}
+
+function isContainsRelationMeaning(value: string | null | undefined): boolean {
+  return value === 'structure.contains' || value === CONTAINS_MODEL_KEY;
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object' && !Array.isArray(value);
@@ -17,22 +49,122 @@ function getNodeHeight(node: Pick<LayoutRenderNode, 'height'>): number {
   return Math.max(node.height ?? 60, 1);
 }
 
+function isOntologyCategoryContainmentEdge(
+  parent: LayoutRenderNode,
+  child: LayoutRenderNode,
+): boolean {
+  if (!isManagedOntologyCategoryGroup(parent)) return true;
+
+  const childCategoryId = child.metadata.__modelCategoryInstanceId;
+  if (typeof childCategoryId !== 'string') return true;
+
+  return parent.objectTargetId === childCategoryId;
+}
+
 function buildContainsMaps(nodes: LayoutRenderNode[], edges: RenderEdge[]): {
   childrenByParent: Map<string, string[]>;
   parentByChild: Map<string, string>;
 } {
-  const visibleNodeIds = new Set(nodes.map((node) => node.id));
+  const nodeById = new Map(nodes.map((node) => [node.id, node] as const));
   const childrenByParent = new Map<string, string[]>();
   const parentByChild = new Map<string, string>();
+  const containsEdgeDiagnostics: Array<{
+    edgeId: string;
+    relationMeaning: string | null | undefined;
+    sourceId: string;
+    targetId: string;
+    sourceLabel?: string;
+    targetLabel?: string;
+    sourceObjectTargetId?: string;
+    targetObjectTargetId?: string;
+    targetCategoryInstanceId?: unknown;
+    accepted: boolean;
+    reason?: string;
+  }> = [];
+  const setParent = (parentId: string, childId: string): void => {
+    const previousParentId = parentByChild.get(childId);
+    if (previousParentId === parentId) return;
+    if (previousParentId) {
+      const previousChildren = childrenByParent.get(previousParentId) ?? [];
+      childrenByParent.set(previousParentId, previousChildren.filter((id) => id !== childId));
+    }
+
+    const children = childrenByParent.get(parentId) ?? [];
+    if (!children.includes(childId)) {
+      children.push(childId);
+    }
+    childrenByParent.set(parentId, children);
+    parentByChild.set(childId, parentId);
+  };
 
   for (const edge of edges) {
-    if (edge.relationMeaning !== 'structure.contains') continue;
-    if (!visibleNodeIds.has(edge.sourceId) || !visibleNodeIds.has(edge.targetId)) continue;
+    if (!isContainsRelationMeaning(edge.relationMeaning)) continue;
+    const parent = nodeById.get(edge.sourceId);
+    const child = nodeById.get(edge.targetId);
+    const diagnostic = {
+      edgeId: edge.id,
+      relationMeaning: edge.relationMeaning,
+      sourceId: edge.sourceId,
+      targetId: edge.targetId,
+      sourceLabel: parent?.label,
+      targetLabel: child?.label,
+      sourceObjectTargetId: parent?.objectTargetId,
+      targetObjectTargetId: child?.objectTargetId,
+      targetCategoryInstanceId: child?.metadata.__modelCategoryInstanceId,
+      accepted: false,
+      reason: undefined as string | undefined,
+    };
+    if (!parent || !child) {
+      diagnostic.reason = 'missing-visible-node';
+      containsEdgeDiagnostics.push(diagnostic);
+      continue;
+    }
+    if (!isOntologyCategoryContainmentEdge(parent, child)) {
+      diagnostic.reason = 'category-mismatch';
+      containsEdgeDiagnostics.push(diagnostic);
+      continue;
+    }
 
-    const children = childrenByParent.get(edge.sourceId) ?? [];
-    children.push(edge.targetId);
-    childrenByParent.set(edge.sourceId, children);
-    parentByChild.set(edge.targetId, edge.sourceId);
+    diagnostic.accepted = true;
+    containsEdgeDiagnostics.push(diagnostic);
+    setParent(edge.sourceId, edge.targetId);
+  }
+
+  const ontologyCategoryNodeByInstanceId = new Map(
+    nodes
+      .filter(isManagedOntologyCategoryGroup)
+      .filter((node) => typeof node.objectTargetId === 'string')
+      .map((node) => [node.objectTargetId as string, node.id] as const),
+  );
+
+  for (const node of nodes) {
+    const categoryInstanceId = node.metadata.__modelCategoryInstanceId;
+    if (typeof categoryInstanceId !== 'string') continue;
+    const inferredParentId = ontologyCategoryNodeByInstanceId.get(categoryInstanceId);
+    if (!inferredParentId || inferredParentId === node.id) continue;
+    setParent(inferredParentId, node.id);
+  }
+
+  if (nodes.some(isManagedOntologyCategoryGroup)) {
+    debugOntologyLayout('contains-map', {
+      nodeCount: nodes.length,
+      edgeCount: edges.length,
+      categoryGroups: nodes.filter(isManagedOntologyCategoryGroup).map((node) => ({
+        id: node.id,
+        label: node.label,
+        objectTargetId: node.objectTargetId,
+        ontologyOrder: node.metadata.ontologyOrder,
+        childIds: childrenByParent.get(node.id) ?? [],
+      })),
+      modelNodes: nodes.filter((node) => node.objectType === 'model').map((node) => ({
+        id: node.id,
+        label: node.label,
+        objectTargetId: node.objectTargetId,
+        categoryInstanceId: node.metadata.__modelCategoryInstanceId,
+        parentId: parentByChild.get(node.id) ?? null,
+      })),
+      containsEdges: containsEdgeDiagnostics,
+    });
   }
 
   return { childrenByParent, parentByChild };
@@ -94,8 +226,34 @@ function isSortableNodeConfig(nodeConfig: NodeConfig | null | undefined): nodeCo
 
 function getGroupNodeConfig(node: LayoutRenderNode): NodeConfig | null {
   const nodeConfig = extractNodeConfig(node.metadata);
-  if (!node.isGroup || !nodeConfig) return null;
-  return nodeConfig;
+  if (!node.isGroup) return null;
+  return nodeConfig ?? (isManagedOntologyCategoryGroup(node) ? ONTOLOGY_CATEGORY_GROUP_CONFIG : null);
+}
+
+function isManagedOntologyCategoryGroup(node: LayoutRenderNode): boolean {
+  return node.isGroup === true
+    && node.metadata?.managedBy === 'ontology'
+    && node.metadata?.ontologyRole === 'model_category';
+}
+
+function getOntologyOrder(node: LayoutRenderNode): number | null {
+  if (typeof node.metadata?.ontologyOrder === 'number') return node.metadata.ontologyOrder;
+  return ONTOLOGY_CATEGORY_ORDER_BY_LABEL.get(node.label) ?? null;
+}
+
+function compareManagedOntologyCategoryGroups(left: LayoutRenderNode, right: LayoutRenderNode): number {
+  const leftOrder = getOntologyOrder(left);
+  const rightOrder = getOntologyOrder(right);
+  if (leftOrder !== null && rightOrder !== null && leftOrder !== rightOrder) {
+    return leftOrder - rightOrder;
+  }
+  if (leftOrder !== null && rightOrder === null) return -1;
+  if (leftOrder === null && rightOrder !== null) return 1;
+  return comparePosition(left, right);
+}
+
+function getGroupTopPadding(padding: number): number {
+  return Math.max(padding, GROUP_HEADER_TOP_PADDING);
 }
 
 function getSortValue(node: LayoutRenderNode, sort: NodeSortConfig): unknown {
@@ -177,6 +335,7 @@ function getGridMetrics(
   cellWidth: number;
   cellHeight: number;
   padding: number;
+  topPadding: number;
   gapX: number;
   gapY: number;
 } {
@@ -184,6 +343,7 @@ function getGridMetrics(
   const gapX = Math.max(0, config.gapX ?? 16);
   const gapY = Math.max(0, config.gapY ?? 16);
   const padding = Math.max(0, config.padding ?? 24);
+  const topPadding = getGroupTopPadding(padding);
   const cellWidth = Math.max(config.itemWidth ?? 0, ...children.map(getNodeWidth), 160);
   const cellHeight = Math.max(config.itemHeight ?? 0, ...children.map(getNodeHeight), 60);
   const usedColumns = Math.min(columns, children.length);
@@ -196,12 +356,13 @@ function getGridMetrics(
     ),
     height: Math.max(
       getNodeHeight(container),
-      padding * 2 + rows * cellHeight + Math.max(0, rows - 1) * gapY,
+      topPadding + padding + rows * cellHeight + Math.max(0, rows - 1) * gapY,
     ),
     columns,
     cellWidth,
     cellHeight,
     padding,
+    topPadding,
     gapX,
     gapY,
   };
@@ -216,9 +377,11 @@ function getListMetrics(
   height: number;
   itemHeight: number;
   padding: number;
+  topPadding: number;
   gap: number;
 } {
   const padding = Math.max(0, config.padding ?? 24);
+  const topPadding = getGroupTopPadding(padding);
   const gap = Math.max(0, config.gap ?? 12);
   const maxChildWidth = Math.max(...children.map(getNodeWidth), 160);
   const itemHeight = Math.max(config.itemHeight ?? 0, ...children.map(getNodeHeight), 60);
@@ -227,10 +390,11 @@ function getListMetrics(
     width: Math.max(getNodeWidth(container), padding * 2 + maxChildWidth),
     height: Math.max(
       getNodeHeight(container),
-      padding * 2 + children.length * itemHeight + Math.max(0, children.length - 1) * gap,
+      topPadding + padding + children.length * itemHeight + Math.max(0, children.length - 1) * gap,
     ),
     itemHeight,
     padding,
+    topPadding,
     gap,
   };
 }
@@ -271,7 +435,7 @@ function applyGroupNodePositions(
       const column = index % metrics.columns;
       const row = Math.floor(index / metrics.columns);
       const targetX = left + metrics.padding + column * (metrics.cellWidth + metrics.gapX) + metrics.cellWidth / 2;
-      const targetY = top + metrics.padding + row * (metrics.cellHeight + metrics.gapY) + metrics.cellHeight / 2;
+      const targetY = top + metrics.topPadding + row * (metrics.cellHeight + metrics.gapY) + metrics.cellHeight / 2;
       shiftSubtree(child.id, targetX - child.x, targetY - child.y, nodeMap, childrenByParent);
     });
     return;
@@ -286,9 +450,35 @@ function applyGroupNodePositions(
 
   children.forEach((child, index) => {
     const targetX = left + metrics.padding + getNodeWidth(child) / 2;
-    const targetY = top + metrics.padding + index * (metrics.itemHeight + metrics.gap) + metrics.itemHeight / 2;
+    const targetY = top + metrics.topPadding + index * (metrics.itemHeight + metrics.gap) + metrics.itemHeight / 2;
     shiftSubtree(child.id, targetX - child.x, targetY - child.y, nodeMap, childrenByParent);
   });
+}
+
+function stackManagedOntologyCategoryGroups(
+  configuredGroups: Array<{ node: LayoutRenderNode; config: NodeConfig }>,
+  nodeMap: Map<string, LayoutRenderNode>,
+  parentByChild: Map<string, string>,
+  childrenByParent: Map<string, string[]>,
+): void {
+  const groups = configuredGroups
+    .map(({ node }) => nodeMap.get(node.id))
+    .filter((node): node is LayoutRenderNode => !!node)
+    .filter((node) => isManagedOntologyCategoryGroup(node) && !parentByChild.has(node.id))
+    .sort(compareManagedOntologyCategoryGroups);
+
+  if (groups.length <= 1) return;
+
+  const gap = 24;
+  const left = Math.min(...groups.map((node) => node.x - getNodeWidth(node) / 2));
+  let cursorY = Math.min(...groups.map((node) => node.y - getNodeHeight(node) / 2));
+
+  for (const group of groups) {
+    const targetX = left + getNodeWidth(group) / 2;
+    const targetY = cursorY + getNodeHeight(group) / 2;
+    shiftSubtree(group.id, targetX - group.x, targetY - group.y, nodeMap, childrenByParent);
+    cursorY += getNodeHeight(group) + gap;
+  }
 }
 
 function projectConfiguredGroupNodes(nodes: LayoutRenderNode[], edges: RenderEdge[]): LayoutRenderNode[] {
@@ -315,6 +505,8 @@ function projectConfiguredGroupNodes(nodes: LayoutRenderNode[], edges: RenderEdg
 
     applyGroupNodeSize(liveContainer, children, config);
   }
+
+  stackManagedOntologyCategoryGroups(configuredGroups, nodeMap, parentByChild, childrenByParent);
 
   const positionOrder = [...configuredGroups].sort(
     (left, right) => getNodeDepth(left.node.id, parentByChild) - getNodeDepth(right.node.id, parentByChild),

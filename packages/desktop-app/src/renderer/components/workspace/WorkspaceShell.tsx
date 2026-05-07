@@ -47,7 +47,6 @@ function NetworkTabStrip({ controls }: { controls: LayoutControlsRendererProps |
     >
       <div
         className="flex min-w-0 items-center justify-start"
-        style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
       >
         <AppChromeMark />
       </div>
@@ -59,10 +58,11 @@ function NetworkTabStrip({ controls }: { controls: LayoutControlsRendererProps |
       </div>
       <div
         className="relative z-10 flex min-w-0 items-center justify-end"
-        style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
       >
         {controls && (
-          <NetworkControls {...controls} presentation="header-fixed" />
+          <div style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
+            <NetworkControls {...controls} presentation="header-fixed" />
+          </div>
         )}
       </div>
     </div>

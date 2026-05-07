@@ -1,7 +1,7 @@
-import { app, shell, BrowserWindow, ipcMain, Menu, Notification, nativeImage, screen, session, dialog } from 'electron';
-import { basename, join } from 'path';
+import { app, shell, BrowserWindow, ipcMain, Menu, Notification, nativeImage, screen, session } from 'electron';
+import { basename, dirname, join } from 'path';
 import { electronApp, optimizer, is } from '@electron-toolkit/utils';
-import { mkdirSync, existsSync } from 'fs';
+import { mkdirSync, existsSync, readFileSync, unlinkSync, writeFileSync } from 'fs';
 import { registerAllIpc } from './ipc';
 import { ptyManager } from './pty/pty-manager';
 import { stopNarreServer } from './process/narre-server-manager';
@@ -66,6 +66,53 @@ interface BrowserDownloadEvent {
   url: string;
 }
 
+interface BrowserPermissionRequest {
+  id: string;
+  origin: string;
+  permission: string;
+  requestingUrl: string;
+}
+
+const pendingBrowserPermissions = new Map<string, {
+  callback: (allowed: boolean) => void;
+  key: string;
+  timeout: ReturnType<typeof setTimeout>;
+}>();
+
+function getBrowserPermissionPath(): string {
+  return join(app.getPath('userData'), 'data', 'browser-permissions.json');
+}
+
+function loadBrowserPermissionDecisions(): void {
+  try {
+    const raw = JSON.parse(readFileSync(getBrowserPermissionPath(), 'utf8')) as unknown;
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return;
+    browserPermissionDecisions.clear();
+    for (const [key, value] of Object.entries(raw)) {
+      if (typeof value === 'boolean') {
+        browserPermissionDecisions.set(key, value);
+      }
+    }
+  } catch { /* no persisted browser permissions yet */ }
+}
+
+function saveBrowserPermissionDecisions(): void {
+  const permissionPath = getBrowserPermissionPath();
+  mkdirSync(dirname(permissionPath), { recursive: true });
+  writeFileSync(
+    permissionPath,
+    JSON.stringify(Object.fromEntries(browserPermissionDecisions), null, 2),
+    'utf8',
+  );
+}
+
+function clearBrowserPermissionDecisions(): void {
+  browserPermissionDecisions.clear();
+  try {
+    unlinkSync(getBrowserPermissionPath());
+  } catch { /* already clear */ }
+}
+
 function sendBrowserDownloadEvent(payload: BrowserDownloadEvent): void {
   const targets = [mainWindow, ...detachedWindows.values()].filter(
     (win): win is BrowserWindow => Boolean(win) && !win.isDestroyed(),
@@ -73,6 +120,32 @@ function sendBrowserDownloadEvent(payload: BrowserDownloadEvent): void {
   for (const win of targets) {
     win.webContents.send('browser:download-event', payload);
   }
+}
+
+function sendBrowserPermissionRequest(
+  webContentsId: number,
+  payload: BrowserPermissionRequest,
+  key: string,
+  callback: (allowed: boolean) => void,
+): void {
+  const targets = [mainWindow, ...detachedWindows.values()].filter(
+    (win): win is BrowserWindow => Boolean(win) && !win.isDestroyed(),
+  );
+  const target = targets.find((win) => win.webContents.id === webContentsId) ?? mainWindow;
+
+  if (!target || target.isDestroyed()) {
+    callback(false);
+    return;
+  }
+
+  const timeout = setTimeout(() => {
+    if (!pendingBrowserPermissions.has(payload.id)) return;
+    pendingBrowserPermissions.delete(payload.id);
+    callback(false);
+  }, 30000);
+
+  pendingBrowserPermissions.set(payload.id, { callback, key, timeout });
+  target.webContents.send('browser:permission-request', payload);
 }
 
 function getAvailableDownloadPath(filename: string): string {
@@ -94,6 +167,7 @@ function getAvailableDownloadPath(filename: string): string {
 
 function configureBrowserSession(): void {
   const browserSession = session.fromPartition(browserPartition);
+  loadBrowserPermissionDecisions();
 
   browserSession.setPermissionRequestHandler((webContents, permission, callback, details) => {
     const requestingUrl = details.requestingUrl || webContents.getURL();
@@ -109,27 +183,12 @@ function configureBrowserSession(): void {
       return;
     }
 
-    const owner = BrowserWindow.fromWebContents(webContents) ?? mainWindow ?? undefined;
-    const options = {
-      type: 'question' as const,
-      buttons: ['Allow', 'Block'],
-      defaultId: 1,
-      cancelId: 1,
-      title: 'Browser permission request',
-      message: `${origin} wants to use ${permission}.`,
-      detail: 'This applies to the embedded Netior browser session.',
-      noLink: true,
-    };
-
-    const result = owner
-      ? dialog.showMessageBox(owner, options)
-      : dialog.showMessageBox(options);
-
-    void result.then(({ response }) => {
-      const allowed = response === 0;
-      browserPermissionDecisions.set(key, allowed);
-      callback(allowed);
-    }).catch(() => callback(false));
+    sendBrowserPermissionRequest(webContents.id, {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      origin,
+      permission,
+      requestingUrl,
+    }, key, callback);
   });
 
   browserSession.on('will-download', (_event, item) => {
@@ -458,7 +517,7 @@ app.whenReady().then(async () => {
   });
   ipcMain.handle('browser:clearData', async () => {
     const browserSession = session.fromPartition(browserPartition);
-    browserPermissionDecisions.clear();
+    clearBrowserPermissionDecisions();
     await browserSession.clearStorageData();
     await browserSession.clearCache();
     return true;
@@ -466,6 +525,15 @@ app.whenReady().then(async () => {
   ipcMain.handle('browser:openDownload', async (_event, savePath: string) => {
     shell.showItemInFolder(savePath);
     return true;
+  });
+  ipcMain.on('browser:permission-response', (_event, payload: { id: string; allowed: boolean }) => {
+    const pending = pendingBrowserPermissions.get(payload.id);
+    if (!pending) return;
+    pendingBrowserPermissions.delete(payload.id);
+    clearTimeout(pending.timeout);
+    browserPermissionDecisions.set(pending.key, payload.allowed);
+    saveBrowserPermissionDecisions();
+    pending.callback(payload.allowed);
   });
   ipcMain.handle('agent:notifyNative', (event, payload: {
     tabId: string;

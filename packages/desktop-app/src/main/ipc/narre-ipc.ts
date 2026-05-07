@@ -20,12 +20,12 @@ import type {
 } from '@netior/shared/types';
 import { BUILT_IN_SKILLS, IPC_CHANNELS } from '@netior/shared/constants';
 import {
-  listRemoteConceptsByProject,
+  listRemoteInstancesByProject,
   listRemoteFilesByProject,
   listRemoteSchemas,
   listRemoteNetworks,
   listRemoteModels,
-  searchRemoteConcepts,
+  searchRemoteInstances,
 } from '../netior-service/netior-service-client';
 import {
   getNarreServerBaseUrl,
@@ -751,14 +751,14 @@ export function registerNarreIpc(): void {
 
       const models = await listRemoteModels(projectId);
       const modelMap = new Map(models.map((a) => [a.id, a]));
-      const concepts = lowerQuery.length === 0
-        ? await listRemoteConceptsByProject(projectId)
-        : await searchRemoteConcepts(projectId, query);
+      const instances = lowerQuery.length === 0
+        ? await listRemoteInstancesByProject(projectId)
+        : await searchRemoteInstances(projectId, query);
 
-      for (const c of take(concepts)) {
+      for (const c of take(instances)) {
         const arch = c.model_id ? modelMap.get(c.model_id) : null;
         results.push({
-          type: 'concept', id: c.id, display: c.title, color: c.color, icon: c.icon,
+          type: 'instance', id: c.id, display: c.title, color: c.color, icon: c.icon,
           meta: arch
             ? { model: arch.name, modelKey: arch.key, modelBuiltIn: arch.built_in, modelDescription: arch.description }
             : { model: null },

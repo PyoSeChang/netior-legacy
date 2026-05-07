@@ -1,34 +1,34 @@
 import { describe, expect, it } from 'vitest';
 import {
-  fromConceptOptionValue,
+  fromInstanceOptionValue,
   parseSchemaFieldOptions,
   stringifySchemaFieldOptions,
-  toConceptOptionValue,
+  toInstanceOptionValue,
 } from '../lib/schema-field-options';
 
 describe('model field options', () => {
-  it('parses empty field options as empty choices and concept sources', () => {
+  it('parses empty field options as empty choices and instance sources', () => {
     expect(parseSchemaFieldOptions(null)).toEqual({
       choices: [],
-      conceptOptionSourceIds: [],
+      instanceOptionSourceIds: [],
     });
   });
 
-  it('round-trips direct choices and concept option sources together', () => {
+  it('round-trips direct choices and instance option sources together', () => {
     const serialized = stringifySchemaFieldOptions({
       choices: ['manual'],
-      conceptOptionSourceIds: ['job-model'],
+      instanceOptionSourceIds: ['job-model'],
     });
 
     expect(parseSchemaFieldOptions(serialized)).toEqual({
       choices: ['manual'],
-      conceptOptionSourceIds: ['job-model'],
+      instanceOptionSourceIds: ['job-model'],
     });
   });
 
-  it('namespaces concept option values', () => {
-    expect(toConceptOptionValue('concept-id')).toBe('concept:concept-id');
-    expect(fromConceptOptionValue('concept:concept-id')).toBe('concept-id');
-    expect(fromConceptOptionValue('manual')).toBeNull();
+  it('namespaces instance option values', () => {
+    expect(toInstanceOptionValue('instance-id')).toBe('instance:instance-id');
+    expect(fromInstanceOptionValue('instance:instance-id')).toBe('instance-id');
+    expect(fromInstanceOptionValue('manual')).toBeNull();
   });
 });

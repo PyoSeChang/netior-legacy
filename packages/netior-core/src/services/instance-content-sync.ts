@@ -1,14 +1,14 @@
-import type { Schema, SchemaField, Concept } from '@netior/shared/types';
+import type { Schema, SchemaField, Instance } from '@netior/shared/types';
 
 interface SerializeParams {
-  concept: Concept;
+  instance: Instance;
   schema: Schema | null;
   fields: SchemaField[];
   properties: Record<string, string | null>;
 }
 
 /**
- * Serialize concept data to agent-readable flat text.
+ * Serialize instance data to agent-readable flat text.
  *
  * Format:
  * # {title}
@@ -21,10 +21,10 @@ interface SerializeParams {
  * {body}
  */
 export function serializeToAgent(params: SerializeParams): string {
-  const { concept, schema, fields, properties } = params;
+  const { instance, schema, fields, properties } = params;
   const lines: string[] = [];
 
-  lines.push(`# ${concept.title}`);
+  lines.push(`# ${instance.title}`);
   if (schema) {
     lines.push(`schema: ${schema.name}`);
   }
@@ -40,7 +40,7 @@ export function serializeToAgent(params: SerializeParams): string {
   }
 
   lines.push('## Content');
-  lines.push(concept.content ?? '');
+  lines.push(instance.content ?? '');
 
   return lines.join('\n');
 }

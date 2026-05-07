@@ -1,12 +1,12 @@
 import type Database from 'better-sqlite3';
 import { getDatabase } from '../connection';
 import {
-  MODEL_CATEGORY_CONCEPT_DEFINITIONS,
+  MODEL_CATEGORY_INSTANCE_DEFINITIONS,
   MODEL_CATEGORY_SCHEMA_SOURCE_REF,
   SYSTEM_ONTOLOGY_SOURCE_ID,
   SYSTEM_ONTOLOGY_SOURCE_VERSION,
 } from '@netior/shared/constants';
-import type { Concept } from '@netior/shared/types';
+import type { Instance } from '@netior/shared/types';
 
 function ensureObject(
   db: Database.Database,
@@ -26,14 +26,14 @@ export function getModelCategorySchemaId(projectId: string): string {
   return `schema-${projectId}-model_category`;
 }
 
-export function getModelCategoryConceptId(projectId: string, categoryKey: string): string {
-  return `concept-${projectId}-model-category-${categoryKey}`;
+export function getModelCategoryInstanceId(projectId: string, categoryKey: string): string {
+  return `instance-${projectId}-model-category-${categoryKey}`;
 }
 
 export function ensureModelCategoryTaxonomyForProjectDb(
   db: Database.Database,
   projectId: string,
-): { schemaId: string; conceptsByKey: Map<string, Concept> } {
+): { schemaId: string; instancesByKey: Map<string, Instance> } {
   const now = new Date().toISOString();
   const schemaId = getModelCategorySchemaId(projectId);
 
@@ -56,16 +56,16 @@ export function ensureModelCategoryTaxonomyForProjectDb(
   `).run(SYSTEM_ONTOLOGY_SOURCE_ID, MODEL_CATEGORY_SCHEMA_SOURCE_REF, SYSTEM_ONTOLOGY_SOURCE_VERSION, now, schemaId);
   ensureObject(db, 'schema', 'project', projectId, schemaId, now);
 
-  const insertConcept = db.prepare(`
-    INSERT OR IGNORE INTO concepts (
-      id, project_id, schema_id, recurrence_source_concept_id, recurrence_occurrence_key,
+  const insertInstance = db.prepare(`
+    INSERT OR IGNORE INTO instances (
+      id, project_id, schema_id, recurrence_source_instance_id, recurrence_occurrence_key,
       title, color, icon, content, agent_content,
       source_kind, source_id, source_ref, source_version, created_at, updated_at
     )
     VALUES (?, ?, ?, NULL, NULL, ?, NULL, NULL, NULL, NULL, 'system', ?, ?, ?, ?, ?)
   `);
-  const updateConcept = db.prepare(`
-    UPDATE concepts
+  const updateInstance = db.prepare(`
+    UPDATE instances
        SET schema_id = ?,
            source_kind = 'system',
            source_id = ?,
@@ -75,24 +75,24 @@ export function ensureModelCategoryTaxonomyForProjectDb(
      WHERE id = ?
   `);
 
-  const conceptsByKey = new Map<string, Concept>();
-  for (const category of MODEL_CATEGORY_CONCEPT_DEFINITIONS) {
-    const conceptId = getModelCategoryConceptId(projectId, category.key);
-    insertConcept.run(conceptId, projectId, schemaId, category.title, SYSTEM_ONTOLOGY_SOURCE_ID, category.sourceRef, SYSTEM_ONTOLOGY_SOURCE_VERSION, now, now);
-    updateConcept.run(schemaId, SYSTEM_ONTOLOGY_SOURCE_ID, category.sourceRef, SYSTEM_ONTOLOGY_SOURCE_VERSION, now, conceptId);
-    ensureObject(db, 'concept', 'project', projectId, conceptId, now);
-    const concept = db.prepare('SELECT * FROM concepts WHERE id = ?').get(conceptId) as Concept;
-    conceptsByKey.set(category.key, concept);
+  const instancesByKey = new Map<string, Instance>();
+  for (const category of MODEL_CATEGORY_INSTANCE_DEFINITIONS) {
+    const instanceId = getModelCategoryInstanceId(projectId, category.key);
+    insertInstance.run(instanceId, projectId, schemaId, category.title, SYSTEM_ONTOLOGY_SOURCE_ID, category.sourceRef, SYSTEM_ONTOLOGY_SOURCE_VERSION, now, now);
+    updateInstance.run(schemaId, SYSTEM_ONTOLOGY_SOURCE_ID, category.sourceRef, SYSTEM_ONTOLOGY_SOURCE_VERSION, now, instanceId);
+    ensureObject(db, 'instance', 'project', projectId, instanceId, now);
+    const instance = db.prepare('SELECT * FROM instances WHERE id = ?').get(instanceId) as Instance;
+    instancesByKey.set(category.key, instance);
   }
 
-  return { schemaId, conceptsByKey };
+  return { schemaId, instancesByKey };
 }
 
-export function listModelCategoriesForProjectDb(db: Database.Database, projectId: string): Concept[] {
+export function listModelCategoriesForProjectDb(db: Database.Database, projectId: string): Instance[] {
   const { schemaId } = ensureModelCategoryTaxonomyForProjectDb(db, projectId);
   return db.prepare(`
     SELECT *
-      FROM concepts
+      FROM instances
      WHERE project_id = ?
        AND schema_id = ?
      ORDER BY
@@ -107,9 +107,9 @@ export function listModelCategoriesForProjectDb(db: Database.Database, projectId
          ELSE 100
        END,
        title
-  `).all(projectId, schemaId) as Concept[];
+  `).all(projectId, schemaId) as Instance[];
 }
 
-export function listModelCategories(projectId: string): Concept[] {
+export function listModelCategories(projectId: string): Instance[] {
   return listModelCategoriesForProjectDb(getDatabase(), projectId);
 }

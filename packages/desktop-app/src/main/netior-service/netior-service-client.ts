@@ -10,13 +10,13 @@ import type {
   SchemaMeaningSlotBindingUpdate,
   SchemaMeaningUpdate,
   SchemaUpdate,
-  ConceptEditorPrefs,
-  ConceptEditorPrefsUpdate,
-  Concept,
-  ConceptCreate,
-  ConceptProperty,
-  ConceptPropertyUpsert,
-  ConceptUpdate,
+  InstanceEditorPrefs,
+  InstanceEditorPrefsUpdate,
+  Instance,
+  InstanceCreate,
+  InstanceProperty,
+  InstancePropertyUpsert,
+  InstanceUpdate,
   Context,
   ContextCreate,
   ContextMember,
@@ -102,42 +102,42 @@ export async function deleteRemoteProject(id: string): Promise<boolean> {
   });
 }
 
-export async function listRemoteConceptsByProject(projectId: string): Promise<Concept[]> {
-  return requestJson<Concept[]>(`/concepts${toQueryString({ projectId })}`);
+export async function listRemoteInstancesByProject(projectId: string): Promise<Instance[]> {
+  return requestJson<Instance[]>(`/instances${toQueryString({ projectId })}`);
 }
 
-export async function createRemoteConcept(data: ConceptCreate): Promise<Concept> {
-  return requestJson<Concept>('/concepts', {
+export async function createRemoteInstance(data: InstanceCreate): Promise<Instance> {
+  return requestJson<Instance>('/instances', {
     method: 'POST',
     body: JSON.stringify(data),
   });
 }
 
-export async function updateRemoteConcept(id: string, data: ConceptUpdate): Promise<Concept | null> {
-  return requestJson<Concept | null>(`/concepts/${encodeURIComponent(id)}`, {
+export async function updateRemoteInstance(id: string, data: InstanceUpdate): Promise<Instance | null> {
+  return requestJson<Instance | null>(`/instances/${encodeURIComponent(id)}`, {
     method: 'PATCH',
     body: JSON.stringify(data),
   });
 }
 
-export async function deleteRemoteConcept(id: string): Promise<boolean> {
-  return requestJson<boolean>(`/concepts/${encodeURIComponent(id)}`, {
+export async function deleteRemoteInstance(id: string): Promise<boolean> {
+  return requestJson<boolean>(`/instances/${encodeURIComponent(id)}`, {
     method: 'DELETE',
   });
 }
 
-export async function searchRemoteConcepts(projectId: string, query: string): Promise<Concept[]> {
-  return requestJson<Concept[]>(`/concepts/search${toQueryString({ projectId, query })}`);
+export async function searchRemoteInstances(projectId: string, query: string): Promise<Instance[]> {
+  return requestJson<Instance[]>(`/instances/search${toQueryString({ projectId, query })}`);
 }
 
-export async function syncRemoteConceptToAgent(conceptId: string): Promise<Concept | null> {
-  return requestJson<Concept | null>(`/concepts/${encodeURIComponent(conceptId)}/sync-to-agent`, {
+export async function syncRemoteInstanceToAgent(instanceId: string): Promise<Instance | null> {
+  return requestJson<Instance | null>(`/instances/${encodeURIComponent(instanceId)}/sync-to-agent`, {
     method: 'POST',
   });
 }
 
-export async function syncRemoteConceptFromAgent(conceptId: string, agentContent: string): Promise<Concept | null> {
-  return requestJson<Concept | null>(`/concepts/${encodeURIComponent(conceptId)}/sync-from-agent`, {
+export async function syncRemoteInstanceFromAgent(instanceId: string, agentContent: string): Promise<Instance | null> {
+  return requestJson<Instance | null>(`/instances/${encodeURIComponent(instanceId)}/sync-from-agent`, {
     method: 'POST',
     body: JSON.stringify({ agentContent }),
   });
@@ -393,32 +393,32 @@ export async function deleteRemoteModel(id: string): Promise<boolean> {
   });
 }
 
-export async function getRemoteConceptProperties(conceptId: string): Promise<ConceptProperty[]> {
-  return requestJson<ConceptProperty[]>(`/concept-properties${toQueryString({ conceptId })}`);
+export async function getRemoteInstanceProperties(instanceId: string): Promise<InstanceProperty[]> {
+  return requestJson<InstanceProperty[]>(`/instance-properties${toQueryString({ instanceId })}`);
 }
 
-export async function upsertRemoteConceptProperty(data: ConceptPropertyUpsert): Promise<ConceptProperty> {
-  return requestJson<ConceptProperty>('/concept-properties', {
+export async function upsertRemoteInstanceProperty(data: InstancePropertyUpsert): Promise<InstanceProperty> {
+  return requestJson<InstanceProperty>('/instance-properties', {
     method: 'POST',
     body: JSON.stringify(data),
   });
 }
 
-export async function deleteRemoteConceptProperty(id: string): Promise<boolean> {
-  return requestJson<boolean>(`/concept-properties/${encodeURIComponent(id)}`, {
+export async function deleteRemoteInstanceProperty(id: string): Promise<boolean> {
+  return requestJson<boolean>(`/instance-properties/${encodeURIComponent(id)}`, {
     method: 'DELETE',
   });
 }
 
-export async function getRemoteEditorPrefs(conceptId: string): Promise<ConceptEditorPrefs | null> {
-  return requestJson<ConceptEditorPrefs | null>(`/editor-prefs/${encodeURIComponent(conceptId)}`);
+export async function getRemoteEditorPrefs(instanceId: string): Promise<InstanceEditorPrefs | null> {
+  return requestJson<InstanceEditorPrefs | null>(`/editor-prefs/${encodeURIComponent(instanceId)}`);
 }
 
 export async function upsertRemoteEditorPrefs(
-  conceptId: string,
-  data: ConceptEditorPrefsUpdate,
-): Promise<ConceptEditorPrefs> {
-  return requestJson<ConceptEditorPrefs>(`/editor-prefs/${encodeURIComponent(conceptId)}`, {
+  instanceId: string,
+  data: InstanceEditorPrefsUpdate,
+): Promise<InstanceEditorPrefs> {
+  return requestJson<InstanceEditorPrefs>(`/editor-prefs/${encodeURIComponent(instanceId)}`, {
     method: 'PUT',
     body: JSON.stringify(data),
   });

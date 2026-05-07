@@ -21,7 +21,7 @@ import { fsService } from '../../services';
 import { replaceDraftCache } from '../../hooks/useEditorSession';
 import { setKnownFileTabSignature } from '../../lib/file-tab-stale-registry';
 import { useI18n } from '../../hooks/useI18n';
-import { useConceptStore } from '../../stores/concept-store';
+import { useInstanceStore } from '../../stores/instance-store';
 import { useModelStore } from '../../stores/model-store';
 import { useSchemaStore } from '../../stores/schema-store';
 import { NodeVisual } from '../workspace/node-components/NodeVisual';
@@ -56,11 +56,36 @@ function useAgentState(targetId: string) {
   return getAgentSessionStateByTerminal(targetId);
 }
 
+function BrowserTabIcon({ faviconUrl }: { faviconUrl?: string }): JSX.Element {
+  const [failedUrl, setFailedUrl] = useState<string | null>(null);
+  const shouldShowImage = Boolean(faviconUrl && faviconUrl !== failedUrl);
+
+  useEffect(() => {
+    setFailedUrl(null);
+  }, [faviconUrl]);
+
+  if (shouldShowImage && faviconUrl) {
+    return (
+      <img
+        src={faviconUrl}
+        alt=""
+        width={ICON_SIZE}
+        height={ICON_SIZE}
+        draggable={false}
+        className="block h-[15px] w-[15px] shrink-0 object-contain"
+        onError={() => setFailedUrl(faviconUrl)}
+      />
+    );
+  }
+
+  return <Globe size={ICON_SIZE} style={{ flexShrink: 0 }} />;
+}
+
 function TabIcon({ tab }: { tab: EditorTab }): JSX.Element {
   const agentState = useAgentState(tab.targetId);
-  const conceptIcon = useConceptStore((s) => (
-    tab.type === 'concept' && !tab.targetId.startsWith('draft-')
-      ? s.concepts.find((concept) => concept.id === tab.targetId)?.icon ?? null
+  const instanceIcon = useInstanceStore((s) => (
+    tab.type === 'instance' && !tab.targetId.startsWith('draft-')
+      ? s.instances.find((instance) => instance.id === tab.targetId)?.icon ?? null
       : null
   ));
   const modelIcon = useModelStore((s) => (
@@ -87,8 +112,8 @@ function TabIcon({ tab }: { tab: EditorTab }): JSX.Element {
         return <CodexIcon size={ICON_SIZE} />;
       }
       return <Terminal size={ICON_SIZE} style={{ flexShrink: 0 }} />;
-    case 'concept':
-      return <NodeVisual icon={conceptIcon ?? 'box'} size={ICON_SIZE} imageSize={16} className="shrink-0" />;
+    case 'instance':
+      return <NodeVisual icon={instanceIcon ?? 'box'} size={ICON_SIZE} imageSize={16} className="shrink-0" />;
     case 'model':
       return <NodeVisual icon={modelIcon ?? 'boxes'} size={ICON_SIZE} imageSize={16} className="shrink-0" />;
     case 'schema':
@@ -110,10 +135,7 @@ function TabIcon({ tab }: { tab: EditorTab }): JSX.Element {
     case 'fileMetadata':
       return <FileText size={ICON_SIZE} style={{ flexShrink: 0 }} />;
     case 'browser':
-      if (tab.browserFaviconUrl) {
-        return <NodeVisual icon={tab.browserFaviconUrl} size={ICON_SIZE} imageSize={16} className="shrink-0" />;
-      }
-      return <Globe size={ICON_SIZE} style={{ flexShrink: 0 }} />;
+      return <BrowserTabIcon faviconUrl={tab.browserFaviconUrl} />;
     default:
       return <span style={{ width: ICON_SIZE, height: ICON_SIZE, flexShrink: 0 }} />;
   }
@@ -224,7 +246,7 @@ function TabItem({
             }`
           : 'text-secondary hover:text-default hover:bg-state-hover/40 tab-inactive'
       }`}
-      style={{ height: 30, WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+      style={{ height: 34, minWidth: 126, maxWidth: 220, WebkitAppRegion: 'no-drag' } as React.CSSProperties}
       onClick={() => !isRenaming && onActivate(tab.id)}
       onContextMenu={(e) => onContextMenu(e, tab)}
       onDragOver={(e) => {
@@ -256,7 +278,7 @@ function TabItem({
           onCancel={onRenameCancel}
         />
       ) : (
-        <span className={isActive ? 'whitespace-nowrap' : 'max-w-[120px] truncate'}>{label}</span>
+        <span className="min-w-0 flex-1 truncate whitespace-nowrap pr-5">{label}</span>
       )}
       {showRefresh && (
         <Tooltip content={t('fileEditor.reloadFromDisk')} position="bottom">
@@ -268,7 +290,7 @@ function TabItem({
           </button>
         </Tooltip>
       )}
-      <span className="relative ml-0.5 flex h-4 w-4 shrink-0 items-center justify-center">
+      <span className="absolute right-2 top-1/2 flex h-4 w-4 -translate-y-1/2 shrink-0 items-center justify-center">
         {statusDot ? <span className="absolute inset-0 flex items-center justify-center">{statusDot}</span> : null}
         <button
           className="absolute inset-0 rounded p-0.5 text-muted opacity-0 hover:text-default group-hover:opacity-100"
@@ -386,6 +408,7 @@ export function EditorTabStrip({
 
   const handleStripContextMenu = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     setCtxMenu({ x: e.clientX, y: e.clientY, items: buildStripContextMenu(tabs, hostId) });
   }, [tabs, hostId]);
 
@@ -504,7 +527,7 @@ export function EditorTabStrip({
       className={`tab-strip flex shrink-0 items-end bg-surface-chrome transition-colors ${
         dragOver ? 'bg-state-muted' : ''
       }`}
-      style={{ height: 35, WebkitAppRegion: 'drag' } as React.CSSProperties}
+      style={{ height: 40, WebkitAppRegion: 'no-drag' } as React.CSSProperties}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
@@ -515,14 +538,14 @@ export function EditorTabStrip({
           className="tab-leading-slot flex h-full shrink-0 items-end pl-1 pr-2"
           style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
         >
-          <div className="flex h-[30px] items-center">
+          <div className="flex h-[34px] items-center">
             {leftSlot}
           </div>
         </div>
       )}
       <div
         ref={scrollRef}
-        className={`tab-scroll flex min-w-0 flex-1 items-end pr-2 ${leftSlot ? 'pl-0' : 'pl-6'}`}
+        className={`tab-scroll flex min-w-0 flex-1 items-end pr-2 ${leftSlot ? 'pl-[var(--tab-curve-size)]' : 'pl-6'}`}
         style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
       >
         {tabs.map((tab) => (
@@ -544,6 +567,11 @@ export function EditorTabStrip({
             activeRef={activeRef}
           />
         ))}
+        <div
+          className="h-full min-w-4 flex-1"
+          style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+          onContextMenu={handleStripContextMenu}
+        />
       </div>
       {rightSlot && (
         <div

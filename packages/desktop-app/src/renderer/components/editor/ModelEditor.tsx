@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import type {
-  Concept,
+  Instance,
   Model,
   SchemaField,
   EditorTab,
@@ -27,7 +27,7 @@ import {
 import { Plus, Trash2 } from 'lucide-react';
 import { useModelStore } from '../../stores/model-store';
 import { useSchemaStore } from '../../stores/schema-store';
-import { useConceptStore } from '../../stores/concept-store';
+import { useInstanceStore } from '../../stores/instance-store';
 import { useProjectStore } from '../../stores/project-store';
 import { useEditorStore } from '../../stores/editor-store';
 import { useEditorSession } from '../../hooks/useEditorSession';
@@ -49,10 +49,7 @@ import {
   NetworkObjectMetadataList,
 } from './NetworkObjectEditorShell';
 import { getFieldMeaningSlot } from '../../lib/field-meaning-bindings';
-import {
-  getModelDisplayDescription,
-  getModelDisplayName,
-} from '../../lib/model-i18n';
+import { createOntologyDisplayResolver } from '@netior/shared';
 import { isImageSourceValue } from '../workspace/node-components/node-visual-utils';
 import { NodeVisual } from '../workspace/node-components/NodeVisual';
 
@@ -64,7 +61,7 @@ interface ModelEditorState {
   key: ModelRefKey;
   name: string;
   description: string | null;
-  category_concept_id: string | null;
+  category_instance_id: string | null;
   target_kind: ModelTargetKind;
   meaning_keys: SemanticMeaningKey[];
   core_slots: MeaningSlotKey[];
@@ -86,7 +83,7 @@ const EMPTY_MODEL_STATE: ModelEditorState = {
   key: 'model',
   name: '',
   description: null,
-  category_concept_id: null,
+  category_instance_id: null,
   target_kind: 'object',
   meaning_keys: [],
   core_slots: [],
@@ -276,21 +273,32 @@ function normalizeModelRefs(value: unknown): ModelRefKey[] {
   return [];
 }
 
-function getModelCategorySourceKey(concept: Concept): string | null {
+function getModelCategorySourceKey(instance: Instance): string | null {
   const prefix = 'model-category.';
-  return concept.source_ref?.startsWith(prefix) ? concept.source_ref.slice(prefix.length) : null;
+  return instance.source_ref?.startsWith(prefix) ? instance.source_ref.slice(prefix.length) : null;
+}
+
+function makeModelCategoryDisplaySource(instance: Instance) {
+  return {
+    kind: 'instance' as const,
+    title: instance.title,
+    description: null,
+    source_kind: instance.source_kind,
+    source_ref: instance.source_ref,
+  };
 }
 
 export function ModelEditor({ tab }: ModelEditorProps): JSX.Element {
   const { t } = useI18n();
+  const display = useMemo(() => createOntologyDisplayResolver(t), [t]);
   const modelId = tab.targetId;
   const models = useModelStore((s) => s.models);
   const loadModels = useModelStore((s) => s.loadByProject);
   const updateModel = useModelStore((s) => s.updateModel);
   const currentProject = useProjectStore((s) => s.currentProject);
-  const concepts = useConceptStore((s) => s.concepts);
-  const loadConcepts = useConceptStore((s) => s.loadByProject);
-  const createConcept = useConceptStore((s) => s.createConcept);
+  const instances = useInstanceStore((s) => s.instances);
+  const loadInstances = useInstanceStore((s) => s.loadByProject);
+  const createInstance = useInstanceStore((s) => s.createInstance);
   const schemas = useSchemaStore((s) => s.schemas);
   const loadSchemas = useSchemaStore((s) => s.loadByProject);
   const fieldsByModel = useSchemaStore((s) => s.fields);
@@ -307,9 +315,9 @@ export function ModelEditor({ tab }: ModelEditorProps): JSX.Element {
     if (projectId) {
       void loadModels(projectId);
       void loadSchemas(projectId);
-      void loadConcepts(projectId);
+      void loadInstances(projectId);
     }
-  }, [loadConcepts, loadModels, loadSchemas, projectId]);
+  }, [loadInstances, loadModels, loadSchemas, projectId]);
 
   const projectModels = useMemo(
     () => models.filter((model) => !projectId || model.project_id === projectId),
@@ -348,7 +356,7 @@ export function ModelEditor({ tab }: ModelEditorProps): JSX.Element {
         key: current.key,
         name: current.name,
         description: current.description,
-        category_concept_id: current.category_concept_id,
+        category_instance_id: current.category_instance_id,
         target_kind: current.target_kind,
         meaning_keys: current.meaning_keys,
         core_slots: current.core_slots,
@@ -370,7 +378,7 @@ export function ModelEditor({ tab }: ModelEditorProps): JSX.Element {
         key: modelKey,
         name: state.name,
         description: state.description,
-        category_concept_id: state.category_concept_id,
+        category_instance_id: state.category_instance_id,
         target_kind: state.target_kind,
         meaning_keys: state.meaning_keys,
         core_slots: state.core_slots,
@@ -388,7 +396,7 @@ export function ModelEditor({ tab }: ModelEditorProps): JSX.Element {
         target_kind: state.target_kind,
         built_in: state.built_in,
       };
-      useEditorStore.getState().updateTitle(tab.id, getModelDisplayName(nextDisplayModel, t) || t('model.title' as never));
+      useEditorStore.getState().updateTitle(tab.id, display.modelName(nextDisplayModel) || t('model.title' as never));
     },
     deps: [modelId],
   });
@@ -456,13 +464,13 @@ export function ModelEditor({ tab }: ModelEditorProps): JSX.Element {
       && schema.source_ref === MODEL_CATEGORY_SCHEMA_SOURCE_REF
     )) ?? null
   ), [projectId, schemas]);
-  const modelCategoryConcepts = useMemo(() => (
-    concepts
-      .filter((concept) => (
-        concept.project_id === projectId
+  const modelCategoryInstances = useMemo(() => (
+    instances
+      .filter((instance) => (
+        instance.project_id === projectId
         && (
-          concept.schema_id === modelCategorySchema?.id
-          || concept.source_ref?.startsWith('model-category.')
+          instance.schema_id === modelCategorySchema?.id
+          || instance.source_ref?.startsWith('model-category.')
         )
       ))
       .sort((a, b) => {
@@ -470,16 +478,22 @@ export function ModelEditor({ tab }: ModelEditorProps): JSX.Element {
         const bKey = getModelCategorySourceKey(b) ?? b.title;
         return aKey.localeCompare(bKey);
       })
-  ), [concepts, modelCategorySchema?.id, projectId]);
+  ), [instances, modelCategorySchema?.id, projectId]);
   const modelCategoryOptions = useMemo(() => {
-    const optionByValue = new Map(modelCategoryConcepts.map((concept) => [concept.id, {
-      value: concept.id,
-      label: concept.title,
+    const optionByValue = new Map(modelCategoryInstances.map((instance) => [instance.id, {
+      value: instance.id,
+      label: display.name(makeModelCategoryDisplaySource(instance)),
     }]));
-    if (currentEditorState.category_concept_id && !optionByValue.has(currentEditorState.category_concept_id)) {
-      optionByValue.set(currentEditorState.category_concept_id, {
-        value: currentEditorState.category_concept_id,
-        label: model?.category_concept_title ?? currentEditorState.category_concept_id,
+    if (currentEditorState.category_instance_id && !optionByValue.has(currentEditorState.category_instance_id)) {
+      optionByValue.set(currentEditorState.category_instance_id, {
+        value: currentEditorState.category_instance_id,
+        label: model?.category_instance_source_ref
+          ? display.name({
+            kind: 'instance',
+            title: model.category_instance_title ?? currentEditorState.category_instance_id,
+            source_ref: model.category_instance_source_ref,
+          })
+          : model?.category_instance_title ?? currentEditorState.category_instance_id,
       });
     }
     return [
@@ -490,10 +504,17 @@ export function ModelEditor({ tab }: ModelEditorProps): JSX.Element {
         label: t('model.addCategory' as never),
       },
     ];
-  }, [currentEditorState.category_concept_id, model?.category_concept_title, modelCategoryConcepts, t]);
+  }, [
+    currentEditorState.category_instance_id,
+    display,
+    model?.category_instance_source_ref,
+    model?.category_instance_title,
+    modelCategoryInstances,
+    t,
+  ]);
   const visualModeOptions = useMemo(() => [
-    { value: 'icon', label: t('concept.visualModeOptions.icon' as never) },
-    { value: 'image', label: t('concept.visualModeOptions.image' as never) },
+    { value: 'icon', label: t('instance.visualModeOptions.icon' as never) },
+    { value: 'image', label: t('instance.visualModeOptions.image' as never) },
   ], [t]);
 
   if (!model) {
@@ -514,8 +535,8 @@ export function ModelEditor({ tab }: ModelEditorProps): JSX.Element {
     description: session.state.description,
     built_in: session.state.built_in,
   };
-  const displayName = getModelDisplayName(displayModel, t);
-  const displayDescription = getModelDisplayDescription(displayModel, t) ?? '';
+  const displayName = display.modelName(displayModel);
+  const displayDescription = display.modelDescription(displayModel) ?? '';
   const duplicateModelKey = models.some((item) => item.id !== modelId && item.key === session.state.key);
   const getKeyError = (key: string, duplicate: boolean): string | null => {
     if (!isValidQueryKey(key)) return t('model.keyInvalid' as never);
@@ -642,14 +663,14 @@ export function ModelEditor({ tab }: ModelEditorProps): JSX.Element {
     if (!newCategoryName.trim() || !projectId || !modelCategorySchema) return;
     const name = newCategoryName.trim();
     const sourceKey = normalizeKey(name, 'category');
-    const created = await createConcept({
+    const created = await createInstance({
       project_id: projectId,
       schema_id: modelCategorySchema.id,
       title: name,
       source_kind: 'project',
       source_ref: `model-category.${sourceKey}`,
     });
-    update({ category_concept_id: created.id });
+    update({ category_instance_id: created.id });
     setNewCategoryName('');
     setShowCategoryCreator(false);
   };
@@ -663,7 +684,7 @@ export function ModelEditor({ tab }: ModelEditorProps): JSX.Element {
         description={displayDescription || t('model.descriptionPlaceholder' as never)}
         leadingVisual={<NodeVisual icon={displayIcon} size={24} imageSize={56} className="shrink-0" />}
       >
-        <NetworkObjectEditorSection title={t('editorShell.overview' as never)}>
+        <NetworkObjectEditorSection title={t('editorShell.overview' as never)} viewMode="body">
           <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_170px]">
             <div className="flex flex-col gap-1">
               <label className="text-xs font-medium text-secondary">{t('model.name' as never)}</label>
@@ -704,7 +725,7 @@ export function ModelEditor({ tab }: ModelEditorProps): JSX.Element {
             <div className="flex flex-col gap-1">
               <label className="text-xs font-medium text-secondary">{t('model.category' as never)}</label>
               <Select
-                value={session.state.category_concept_id ?? ''}
+                value={session.state.category_instance_id ?? ''}
                 options={modelCategoryOptions}
                 onChange={(event) => {
                   if (event.target.value === ADD_CATEGORY_OPTION_VALUE) {
@@ -712,7 +733,7 @@ export function ModelEditor({ tab }: ModelEditorProps): JSX.Element {
                     return;
                   }
                   setShowCategoryCreator(false);
-                  update({ category_concept_id: event.target.value || null });
+                  update({ category_instance_id: event.target.value || null });
                 }}
               />
             </div>
@@ -760,7 +781,7 @@ export function ModelEditor({ tab }: ModelEditorProps): JSX.Element {
           )}
         </NetworkObjectEditorSection>
 
-        <NetworkObjectEditorSection title={t('model.meanings' as never)}>
+        <NetworkObjectEditorSection title={t('model.meanings' as never)} viewMode="body">
           <div className="flex flex-col gap-3">
             <div className="flex justify-end">
               <Button
@@ -998,7 +1019,7 @@ export function ModelEditor({ tab }: ModelEditorProps): JSX.Element {
           </div>
         </NetworkObjectEditorSection>
 
-        <NetworkObjectEditorSection title={t('model.rules' as never)}>
+        <NetworkObjectEditorSection title={t('model.rules' as never)} viewMode="body">
           <div className="flex flex-col gap-2">
             <div className="flex justify-end">
               <Button
@@ -1048,7 +1069,7 @@ export function ModelEditor({ tab }: ModelEditorProps): JSX.Element {
           </div>
         </NetworkObjectEditorSection>
 
-        <NetworkObjectEditorSection title={t('model.preview' as never)} defaultOpen={false}>
+        <NetworkObjectEditorSection title={t('model.preview' as never)} defaultOpen={false} viewMode="details">
           <div className="flex flex-col gap-2">
             {previewFields.length === 0 && (
               <div className="rounded-lg border border-subtle bg-surface-editor px-3 py-3 text-xs text-muted">
@@ -1070,7 +1091,7 @@ export function ModelEditor({ tab }: ModelEditorProps): JSX.Element {
           </div>
         </NetworkObjectEditorSection>
 
-        <NetworkObjectEditorSection title={t('model.consumers' as never)} defaultOpen={false}>
+        <NetworkObjectEditorSection title={t('model.consumers' as never)} defaultOpen={false} viewMode="details">
           <div className="flex flex-col gap-2">
             {modelConsumers.length === 0 && (
               <div className="rounded-lg border border-subtle bg-surface-editor px-3 py-3 text-xs text-muted">
@@ -1081,7 +1102,7 @@ export function ModelEditor({ tab }: ModelEditorProps): JSX.Element {
               <div key={consumer.model.id} className="rounded-lg border border-subtle bg-surface-editor px-3 py-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="min-w-0">
-                    <div className="truncate text-sm font-medium text-default">{getModelDisplayName(consumer.model, t)}</div>
+                    <div className="truncate text-sm font-medium text-default">{display.modelName(consumer.model)}</div>
                     <div className="mt-0.5 text-[11px] text-secondary">{t('model.title')}</div>
                   </div>
                   <div className="flex flex-wrap gap-1">
@@ -1126,10 +1147,10 @@ export function ModelEditor({ tab }: ModelEditorProps): JSX.Element {
           </div>
         </NetworkObjectEditorSection>
 
-        <NetworkObjectEditorSection title={t('model.visualDefaults')} defaultOpen={false}>
+        <NetworkObjectEditorSection title={t('model.visualDefaults')} defaultOpen={false} viewMode="details">
           <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
             <div className="flex flex-col gap-2">
-              <span className="text-xs text-secondary">{t('concept.visual' as never)}</span>
+              <span className="text-xs text-secondary">{t('instance.visual' as never)}</span>
               <RadioGroup
                 options={visualModeOptions}
                 value={visualMode}
@@ -1140,7 +1161,7 @@ export function ModelEditor({ tab }: ModelEditorProps): JSX.Element {
                 <FilePicker
                   value={isImageSourceValue(session.state.icon) ? session.state.icon ?? '' : ''}
                   onChange={(path) => update({ icon: path || null })}
-                  placeholder={t('concept.selectProfileImage' as never)}
+                  placeholder={t('instance.selectProfileImage' as never)}
                   filters={[...IMAGE_FILE_FILTERS]}
                 />
               ) : (
@@ -1160,7 +1181,7 @@ export function ModelEditor({ tab }: ModelEditorProps): JSX.Element {
           </div>
         </NetworkObjectEditorSection>
 
-        <NetworkObjectEditorSection title={t('editorShell.metadata' as never)} defaultOpen={false}>
+        <NetworkObjectEditorSection title={t('editorShell.metadata' as never)} defaultOpen={false} viewMode="details">
           <NetworkObjectMetadataList
             items={[
               { label: t('editorShell.objectId' as never), value: <code className="font-mono text-xs">{model.id}</code> },

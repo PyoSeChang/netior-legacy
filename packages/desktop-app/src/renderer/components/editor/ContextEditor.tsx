@@ -51,7 +51,7 @@ export function ContextEditor({ tab }: ContextEditorProps): JSX.Element {
       if (member.member_type === 'object') {
         const node = nodes.find((candidate) => candidate.object?.id === member.member_id);
         const label =
-          node?.concept?.title ??
+          node?.instance?.title ??
           node?.file?.path?.replace(/\\/g, '/').split('/').pop() ??
           node?.object?.object_type ??
           member.member_id;
@@ -66,8 +66,8 @@ export function ContextEditor({ tab }: ContextEditorProps): JSX.Element {
       const source = nodes.find((candidate) => candidate.id === edge?.source_node_id);
       const target = nodes.find((candidate) => candidate.id === edge?.target_node_id);
       const label = edge
-        ? `${source?.concept?.title ?? source?.file?.path?.replace(/\\/g, '/').split('/').pop() ?? '?'} -> ${
-            target?.concept?.title ?? target?.file?.path?.replace(/\\/g, '/').split('/').pop() ?? '?'
+        ? `${source?.instance?.title ?? source?.file?.path?.replace(/\\/g, '/').split('/').pop() ?? '?'} -> ${
+            target?.instance?.title ?? target?.file?.path?.replace(/\\/g, '/').split('/').pop() ?? '?'
           }`
         : member.member_id;
       return {
@@ -137,7 +137,7 @@ export function ContextEditor({ tab }: ContextEditorProps): JSX.Element {
           </Button>
         )}
       >
-        <NetworkObjectEditorSection title={t('editorShell.overview' as never)}>
+        <NetworkObjectEditorSection title={t('editorShell.overview' as never)} viewMode="details">
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium text-muted">{t('context.name')}</label>
             <Input
@@ -158,6 +158,7 @@ export function ContextEditor({ tab }: ContextEditorProps): JSX.Element {
 
         <NetworkObjectEditorSection
           title={t('context.members')}
+          viewMode="body"
           actions={(
             <Button type="button" size="sm" variant="secondary" onClick={() => setPickerOpen(true)}>
               {t('context.addMember')}
@@ -189,7 +190,7 @@ export function ContextEditor({ tab }: ContextEditorProps): JSX.Element {
           </div>
         </NetworkObjectEditorSection>
 
-        <NetworkObjectEditorSection title={t('editorShell.metadata' as never)} defaultOpen={false}>
+        <NetworkObjectEditorSection title={t('editorShell.metadata' as never)} defaultOpen={false} viewMode="details">
           <NetworkObjectMetadataList
             items={[
               { label: t('editorShell.objectId' as never), value: <code className="font-mono text-xs">{context.id}</code> },

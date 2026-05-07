@@ -606,9 +606,9 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
       return;
     }
 
-    // Load prefs (concept tabs only)
+    // Load prefs (instance tabs only)
     let prefs;
-    if (type === 'concept') {
+    if (type === 'instance') {
       try {
         prefs = await editorPrefsService.get(targetId);
       } catch (err) {
@@ -805,7 +805,7 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
       window.electron.terminal.shutdown(tab.targetId).catch(() => {});
       cleanupTodoSession(tab.targetId);
     }
-    if (tab.type === 'concept' && !tab.targetId.startsWith('draft-')) {
+    if (tab.type === 'instance' && !tab.targetId.startsWith('draft-')) {
       editorPrefsService.upsert(tab.targetId, {
         view_mode: tab.viewMode,
         float_x: tab.floatRect.x,
@@ -961,7 +961,7 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
           t.id === tabId ? { ...t, viewMode: 'float', floatRect: normalizeFloatRect(t.floatRect) } : t
         )),
       }));
-      if (oldTab.type === 'concept') debouncedSavePrefs(oldTab.targetId, { view_mode: nextMode });
+      if (oldTab.type === 'instance') debouncedSavePrefs(oldTab.targetId, { view_mode: nextMode });
       return;
     }
 
@@ -986,7 +986,7 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
       }));
 
       tabsInOldMode.forEach((t) => {
-        if (t.type === 'concept') debouncedSavePrefs(t.targetId, { view_mode: nextMode });
+        if (t.type === 'instance') debouncedSavePrefs(t.targetId, { view_mode: nextMode });
       });
       return;
     }
@@ -1012,7 +1012,7 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
       }));
     }
 
-    if (oldTab.type === 'concept') debouncedSavePrefs(oldTab.targetId, { view_mode: nextMode });
+    if (oldTab.type === 'instance') debouncedSavePrefs(oldTab.targetId, { view_mode: nextMode });
   },
 
   toggleMinimize: (tabId) => {
@@ -1113,7 +1113,7 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
       ),
     }));
     const tab = get().tabs.find((t) => t.id === tabId);
-    if (tab?.type === 'concept') {
+    if (tab?.type === 'instance') {
       const merged = { ...tab.floatRect, ...rect };
       debouncedSavePrefs(tab.targetId, {
         float_x: merged.x, float_y: merged.y,
@@ -1130,7 +1130,7 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
       ),
     }));
     const tab = get().tabs.find((t) => t.id === tabId);
-    if (tab?.type === 'concept') {
+    if (tab?.type === 'instance') {
       debouncedSavePrefs(tab.targetId, { side_split_ratio: clamped });
     }
   },

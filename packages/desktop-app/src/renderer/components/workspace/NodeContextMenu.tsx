@@ -15,14 +15,14 @@ interface NodeContextMenuProps {
   objectType?: NetworkObjectType;
   objectTargetId?: string;
   objectTitle?: string;
-  conceptId?: string;
+  instanceId?: string;
   fileId?: string;
   filePath?: string;
   networkId?: string;
   mode: WorkspaceMode;
   onAddConnection?: (nodeId: string) => void;
   onOpenNetwork?: (networkId: string) => void;
-  onCreateNetwork?: (conceptId: string) => void;
+  onCreateNetwork?: (instanceId: string) => void;
   onAttachNetwork?: (nodeId: string) => void;
   onExcludeNode?: (nodeId: string) => void;
   onDeleteObject?: (nodeId: string, objectType: NetworkObjectType, objectTargetId: string, objectTitle?: string) => void;
@@ -36,7 +36,7 @@ export function NodeContextMenu({
   objectType,
   objectTargetId,
   objectTitle,
-  conceptId,
+  instanceId,
   fileId,
   filePath,
   networkId,
@@ -70,11 +70,11 @@ export function NodeContextMenu({
         targetId: objectTargetId,
         title: objectTitle ?? t('project.name'),
       });
-    } else if (objectType === 'concept') {
+    } else if (objectType === 'instance') {
       useEditorStore.getState().openTab({
-        type: 'concept',
+        type: 'instance',
         targetId: objectTargetId,
-        title: objectTitle ?? t('concept.title'),
+        title: objectTitle ?? t('instance.title'),
         networkId: currentNetwork?.id,
         nodeId,
       });
@@ -110,11 +110,11 @@ export function NodeContextMenu({
   const canOpenEditor =
     !!objectType &&
     !!objectTargetId &&
-    ['network', 'project', 'concept', 'schema', 'model', 'context', 'file'].includes(objectType);
+    ['network', 'project', 'instance', 'schema', 'model', 'context', 'file'].includes(objectType);
   const canDeleteObject =
     !!objectType &&
     !!objectTargetId &&
-    ['concept', 'schema', 'model'].includes(objectType);
+    ['instance', 'schema', 'model'].includes(objectType);
 
   const handleOpenNetwork = useCallback(() => {
     if (networkId) onOpenNetwork?.(networkId);
@@ -131,9 +131,9 @@ export function NodeContextMenu({
   }, [objectTargetId, objectType, onClose, openProject]);
 
   const handleCreateNetwork = useCallback(() => {
-    if (conceptId) onCreateNetwork?.(conceptId);
+    if (instanceId) onCreateNetwork?.(instanceId);
     onClose();
-  }, [onCreateNetwork, conceptId, onClose]);
+  }, [onCreateNetwork, instanceId, onClose]);
 
   const handleAttachNetwork = useCallback(() => {
     onAttachNetwork?.(nodeId);
@@ -205,7 +205,7 @@ export function NodeContextMenu({
       )}
 
       {/* Network creation */}
-      {conceptId && (
+      {instanceId && (
         <button
           className="flex w-full items-center gap-2 px-3 py-1 text-xs text-default hover:bg-state-hover cursor-pointer"
           onClick={handleCreateNetwork}
@@ -215,7 +215,7 @@ export function NodeContextMenu({
         </button>
       )}
 
-      {conceptId && (
+      {instanceId && (
         <button
           className="flex w-full items-center gap-2 px-3 py-1 text-xs text-default hover:bg-state-hover cursor-pointer"
           onClick={handleAttachNetwork}

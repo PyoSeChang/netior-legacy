@@ -536,11 +536,6 @@ export function NarreMentionInput({
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     if (disabled || !allowMentions || !isNarreMentionDrag(e)) return;
-    console.log('[NarreMentionDrag][Input] native dragOver', {
-      types: Array.from(e.dataTransfer.types),
-      x: e.clientX,
-      y: e.clientY,
-    });
     e.preventDefault();
     e.stopPropagation();
     e.dataTransfer.dropEffect = 'copy';
@@ -548,11 +543,6 @@ export function NarreMentionInput({
 
   const handleDragEnter = useCallback((e: React.DragEvent) => {
     if (disabled || !allowMentions || !isNarreMentionDrag(e)) return;
-    console.log('[NarreMentionDrag][Input] native dragEnter', {
-      types: Array.from(e.dataTransfer.types),
-      x: e.clientX,
-      y: e.clientY,
-    });
     e.preventDefault();
     e.stopPropagation();
     e.dataTransfer.dropEffect = 'copy';
@@ -566,13 +556,6 @@ export function NarreMentionInput({
     const payload = getNarreMentionDragData(e);
     const el = editorRef.current;
     if (!payload || !el) return;
-    console.log('[NarreMentionDrag][Input] native drop', {
-      mentionType: payload.mention.type,
-      mentionId: payload.mention.id,
-      display: payload.mention.display,
-      x: e.clientX,
-      y: e.clientY,
-    });
 
     const range = getDropRange(e, el);
     if (!el.contains(range.startContainer)) {
@@ -596,13 +579,6 @@ export function NarreMentionInput({
       const customEvent = event as CustomEvent<NarreMentionCustomDropDetail>;
       event.preventDefault();
       event.stopPropagation();
-      console.log('[NarreMentionDrag][Input] custom drop', {
-        mentionType: customEvent.detail.mention.type,
-        mentionId: customEvent.detail.mention.id,
-        display: customEvent.detail.mention.display,
-        x: customEvent.detail.clientX,
-        y: customEvent.detail.clientY,
-      });
 
       const range = document.createRange();
       range.selectNodeContents(el);

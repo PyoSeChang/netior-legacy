@@ -9,10 +9,7 @@ import { useNetworkStore } from '../../stores/network-store';
 import { useProjectStore } from '../../stores/project-store';
 import { useI18n } from '../../hooks/useI18n';
 import { openFileTab } from '../../lib/open-file-tab';
-import {
-  getModelDisplayDescription,
-  getModelDisplayName,
-} from '../../lib/model-i18n';
+import { createOntologyDisplayResolver } from '@netior/shared';
 import {
   NetworkObjectBrowser,
   type NetworkBrowserItem,
@@ -26,7 +23,7 @@ interface BookmarkedNetworkSidebarProps {
 
 type SupportedSidebarObjectType = Extract<
   NetworkObjectType,
-  'project' | 'network' | 'concept' | 'model' | 'context' | 'file'
+  'project' | 'network' | 'instance' | 'model' | 'context' | 'file'
 >;
 
 interface BookmarkedSidebarItem extends NetworkBrowserItem {
@@ -37,7 +34,7 @@ interface BookmarkedSidebarItem extends NetworkBrowserItem {
 const SECTION_ORDER: SupportedSidebarObjectType[] = [
   'project',
   'network',
-  'concept',
+  'instance',
   'file',
   'model',
   'context',
@@ -47,7 +44,7 @@ function isSupportedSidebarObjectType(type: NetworkObjectType): type is Supporte
   return (
     type === 'project'
     || type === 'network'
-    || type === 'concept'
+    || type === 'instance'
     || type === 'model'
     || type === 'context'
     || type === 'file'
@@ -66,6 +63,7 @@ function getFileTitle(path: string): string {
 
 export function BookmarkedNetworkSidebar({ networkId }: BookmarkedNetworkSidebarProps): JSX.Element {
   const { t } = useI18n();
+  const display = useMemo(() => createOntologyDisplayResolver(t), [t]);
   const [fullData, setFullData] = useState<NetworkFullData | null>(null);
   const [contexts, setContexts] = useState<Context[]>([]);
   const [loading, setLoading] = useState(true);
@@ -131,7 +129,7 @@ export function BookmarkedNetworkSidebar({ networkId }: BookmarkedNetworkSidebar
     () => ({
       project: t('project.title' as never) ?? 'Projects',
       network: t('sidebar.networks'),
-      concept: t('objectPanel.concept' as never),
+      instance: t('objectPanel.instance' as never),
       file: t('sidebar.files'),
       model: t('model.title' as never),
       context: t('context.title'),
@@ -181,19 +179,19 @@ export function BookmarkedNetworkSidebar({ networkId }: BookmarkedNetworkSidebar
           });
           break;
         }
-        case 'concept': {
-          const concept = node.concept;
-          const modelName = concept?.schema_id
+        case 'instance': {
+          const instance = node.instance;
+          const modelName = instance?.schema_id
             ? (() => {
-              const model = modelsById.get(concept.schema_id);
-              return model ? getModelDisplayName(model, t) : null;
+              const model = modelsById.get(instance.schema_id);
+              return model ? display.modelName(model) : null;
             })()
             : null;
           nextItems.push({
             id: object.ref_id,
-            objectType: 'concept',
-            title: concept?.title ?? object.ref_id,
-            subtitle: modelName ?? t('objectPanel.concept' as never),
+            objectType: 'instance',
+            title: instance?.title ?? object.ref_id,
+            subtitle: modelName ?? t('objectPanel.instance' as never),
           });
           break;
         }
@@ -213,8 +211,8 @@ export function BookmarkedNetworkSidebar({ networkId }: BookmarkedNetworkSidebar
           nextItems.push({
             id: object.ref_id,
             objectType: 'model',
-            title: model ? getModelDisplayName(model, t) : object.ref_id,
-            subtitle: model ? getModelDisplayDescription(model, t) ?? t('model.title' as never) : t('model.title' as never),
+            title: model ? display.modelName(model) : object.ref_id,
+            subtitle: model ? display.modelDescription(model) ?? t('model.title' as never) : t('model.title' as never),
           });
           break;
         }
@@ -233,6 +231,7 @@ export function BookmarkedNetworkSidebar({ networkId }: BookmarkedNetworkSidebar
 
     return nextItems;
   }, [
+    display,
     modelsById,
     contextsById,
     fullData,
@@ -277,9 +276,9 @@ export function BookmarkedNetworkSidebar({ networkId }: BookmarkedNetworkSidebar
         await openNetwork(item.id);
         await useEditorStore.getState().openTab({ type: 'network', targetId: item.id, title: item.title });
         return;
-      case 'concept':
+      case 'instance':
         await openNetwork(networkId);
-        await useEditorStore.getState().openTab({ type: 'concept', targetId: item.id, title: item.title });
+        await useEditorStore.getState().openTab({ type: 'instance', targetId: item.id, title: item.title });
         return;
       case 'file':
         if (item.filePath) {

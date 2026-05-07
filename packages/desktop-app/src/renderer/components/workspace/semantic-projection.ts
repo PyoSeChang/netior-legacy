@@ -25,7 +25,7 @@ interface ParsedDateTimeParts {
   minute?: number;
 }
 
-interface ApplyConceptSemanticProjectionInput {
+interface ApplyInstanceSemanticProjectionInput {
   metadata: Record<string, unknown>;
   modelId?: string;
   models?: ModelRefKey[];
@@ -212,13 +212,13 @@ function getPrimarySystemMeaning(bindings: readonly FieldMeaningBindingKey[]): F
   return null;
 }
 
-export function applyConceptSemanticProjection({
+export function applyInstanceSemanticProjection({
   metadata,
   modelId,
   models,
   fields,
   propertyValues,
-}: ApplyConceptSemanticProjectionInput): LayoutSemanticProjection {
+}: ApplyInstanceSemanticProjectionInput): LayoutSemanticProjection {
   const selectedModels = models ?? [];
   const semantic: LayoutSemanticProjection = {
     modelId,

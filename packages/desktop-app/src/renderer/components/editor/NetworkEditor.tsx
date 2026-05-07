@@ -205,6 +205,7 @@ export function NetworkEditor({ tab }: NetworkEditorProps): JSX.Element {
         >
           <NetworkObjectEditorSection
             title={t('editorShell.overview' as never)}
+            viewMode="details"
             actions={(
               <div className="flex flex-wrap justify-end gap-2">
                 <Button
@@ -252,7 +253,7 @@ export function NetworkEditor({ tab }: NetworkEditorProps): JSX.Element {
             </div>
           </NetworkObjectEditorSection>
 
-          <NetworkObjectEditorSection title={t('network.layout')}>
+          <NetworkObjectEditorSection title={t('network.layout')} viewMode="body">
             <div className="flex flex-col gap-1">
               <label className="text-xs font-medium text-muted">{t('network.layout') === 'network.layout' ? 'Layout' : t('network.layout')}</label>
               <Select
@@ -306,7 +307,7 @@ export function NetworkEditor({ tab }: NetworkEditorProps): JSX.Element {
             )}
           </NetworkObjectEditorSection>
 
-          <NetworkObjectEditorSection title={t('editorShell.metadata' as never)} defaultOpen={false}>
+          <NetworkObjectEditorSection title={t('editorShell.metadata' as never)} defaultOpen={false} viewMode="details">
             <NetworkObjectMetadataList
               items={[
                 { label: t('editorShell.objectId' as never), value: <code className="font-mono text-xs">{network.id}</code> },

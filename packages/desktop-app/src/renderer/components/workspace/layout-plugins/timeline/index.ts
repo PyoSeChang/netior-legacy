@@ -163,7 +163,7 @@ export const timelinePlugin: WorkspaceLayoutPlugin = {
   onNodeDrop(context: NodeDropContext): NodeDropResult {
     const { newX, node, zoom } = context;
     const bounds = resolveTimelineBounds(node);
-    if (!bounds || !node.conceptId) {
+    if (!bounds || !node.instanceId) {
       return {
         position: { x: Math.round(node.x), y: Math.round(node.y) },
       };
@@ -180,8 +180,8 @@ export const timelinePlugin: WorkspaceLayoutPlugin = {
     const deltaDays = (newX - node.x) / pxPerDay;
     const nextStart = splitAbsoluteDay(bounds.startAbsDay + deltaDays, bounds.startHasTime);
 
-    const propertyUpdates: Array<{ conceptId: string; fieldId: string; value: string }> = [{
-      conceptId: node.conceptId,
+    const propertyUpdates: Array<{ instanceId: string; fieldId: string; value: string }> = [{
+      instanceId: node.instanceId,
       fieldId: slotFieldIds.start_at,
       value: formatTemporalSlotValue(
         node,
@@ -196,7 +196,7 @@ export const timelinePlugin: WorkspaceLayoutPlugin = {
       if (bounds.endHasTime) {
         const nextEnd = splitAbsoluteDay(bounds.endAbsDay + deltaDays, true);
         propertyUpdates.push({
-          conceptId: node.conceptId,
+          instanceId: node.instanceId,
           fieldId: slotFieldIds.end_at,
           value: formatTemporalSlotValue(
             node,
@@ -210,7 +210,7 @@ export const timelinePlugin: WorkspaceLayoutPlugin = {
         const nextDisplayEnd = Math.max(bounds.startAbsDay + deltaDays + 1, bounds.endAbsDay + deltaDays);
         const nextEndEpochDay = Math.max(nextStart.epochDay, Math.ceil(nextDisplayEnd) - 1);
         propertyUpdates.push({
-          conceptId: node.conceptId,
+          instanceId: node.instanceId,
           fieldId: slotFieldIds.end_at,
           value: formatTemporalSlotValue(
             node,

@@ -1,4 +1,4 @@
-﻿import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import * as LucideIcons from 'lucide-react';
 import { getFieldMeaningBindingDefinition } from '@netior/shared/constants';
 import type { NarrePermissionCard } from '@netior/shared/types';
@@ -6,7 +6,7 @@ import type { TranslationKey } from '@netior/shared/i18n';
 import { useI18n } from '../../../../hooks/useI18n';
 import { Badge } from '../../../ui/Badge';
 import { Button } from '../../../ui/Button';
-import { getModelDisplayName } from '../../../../lib/model-i18n';
+import { createOntologyDisplayResolver } from '@netior/shared';
 import {
   getLocalizedToolDescription,
   getLocalizedToolLabel,
@@ -351,9 +351,11 @@ function localizePreviewSummary(
 function PreviewValue({
   item,
   t,
+  display,
 }: {
   item: NonNullable<NarrePermissionCard['preview']>['items'][number];
   t: ReturnType<typeof useI18n>['t'];
+  display: ReturnType<typeof createOntologyDisplayResolver>;
 }): JSX.Element {
   const labelKey = toPreviewLabelKey(item.label);
 
@@ -363,12 +365,12 @@ function PreviewValue({
         {item.models.map((model) => (
           <span key={model.key} className="inline-flex items-center gap-1">
             <span>
-              {getModelDisplayName({
+              {display.modelName({
                 key: model.key as never,
                 name: model.name,
                 description: model.description ?? null,
                 built_in: model.built_in === true,
-              }, t)}
+              })}
             </span>
           </span>
         ))}
@@ -417,6 +419,7 @@ export function PermissionCard({
   hidePreviewHeader = false,
 }: PermissionCardProps): JSX.Element {
   const { t, locale } = useI18n();
+  const display = useMemo(() => createOntologyDisplayResolver(t), [t]);
   const [status, setStatus] = useState<'idle' | 'submitting' | 'submitted' | 'error'>('idle');
   const [submittedActionKey, setSubmittedActionKey] = useState<string | null>(null);
 
@@ -494,7 +497,7 @@ export function PermissionCard({
             <div key={`${item.label}:${index}`} className="grid grid-cols-[96px_minmax(0,1fr)] gap-2">
               <span className="text-muted">{formatPreviewLabel(item.label, t)}</span>
               <span className="min-w-0 break-words text-secondary">
-                <PreviewValue item={item} t={t} />
+                <PreviewValue item={item} t={t} display={display} />
               </span>
             </div>
           ))}

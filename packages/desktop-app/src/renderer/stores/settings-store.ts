@@ -40,6 +40,13 @@ export type PrimaryPresetId = string;
 export type TerminalPresetId = 'hyper' | 'netior' | 'codex' | 'claude' | 'powershell';
 export type AppFontRole = 'ui' | 'body' | 'code';
 
+export interface BrowserSettingsConfig {
+  homeUrl: string;
+  openLinksInApp: boolean;
+  openPopupsInTabs: boolean;
+  showDownloadToast: boolean;
+}
+
 export interface FontRoleConfig {
   fontFamily: string;
   fontSize: number;
@@ -141,9 +148,17 @@ interface SettingsSyncState {
   typography: TypographyConfig;
   terminalPresetId: TerminalPresetId;
   terminalAppearance: TerminalAppearanceConfig;
+  browser: BrowserSettingsConfig;
+  browser: BrowserSettingsConfig;
 }
 
 const DEFAULT_TERMINAL_PRESET_ID: TerminalPresetId = 'hyper';
+const DEFAULT_BROWSER_SETTINGS: BrowserSettingsConfig = {
+  homeUrl: 'https://www.google.com/',
+  openLinksInApp: true,
+  openPopupsInTabs: true,
+  showDownloadToast: true,
+};
 
 const CSS_GENERIC_FONT_FAMILIES = new Set([
   'serif',
@@ -920,6 +935,18 @@ function normalizeTypographyConfig(config: Partial<TypographyConfig> | undefined
   };
 }
 
+function normalizeBrowserSettings(config: Partial<BrowserSettingsConfig> | undefined): BrowserSettingsConfig {
+  const homeUrl = typeof config?.homeUrl === 'string' && config.homeUrl.trim().length > 0
+    ? config.homeUrl.trim()
+    : DEFAULT_BROWSER_SETTINGS.homeUrl;
+  return {
+    homeUrl,
+    openLinksInApp: config?.openLinksInApp ?? DEFAULT_BROWSER_SETTINGS.openLinksInApp,
+    openPopupsInTabs: config?.openPopupsInTabs ?? DEFAULT_BROWSER_SETTINGS.openPopupsInTabs,
+    showDownloadToast: config?.showDownloadToast ?? DEFAULT_BROWSER_SETTINGS.showDownloadToast,
+  };
+}
+
 function getTerminalAppearanceFromPreset(presetId: TerminalPresetId | undefined): TerminalAppearanceConfig {
   const preset = findTerminalPreset(presetId);
   return {
@@ -1173,7 +1200,7 @@ function applyThemeToDocument(state: {
   };
 
   root.setAttribute('data-mode', resolvedThemeMode);
-  root.setAttribute('data-concept', activeTheme.family);
+  root.setAttribute('data-instance', activeTheme.family);
   root.setAttribute('data-theme-family', activeTheme.family);
   root.setAttribute('data-theme-variant', activeTheme.variant);
   root.setAttribute('data-theme-primary-mode', activeTheme.primaryMode);
@@ -1228,6 +1255,7 @@ export interface SettingsStore {
   updateTypography: (role: AppFontRole, patch: Partial<FontRoleConfig>) => void;
   setTerminalPresetId: (presetId: TerminalPresetId) => void;
   updateTerminalAppearance: (patch: Partial<TerminalAppearanceConfig>) => void;
+  updateBrowserSettings: (patch: Partial<BrowserSettingsConfig>) => void;
 }
 
 function applyCurrentThemeSnapshot(
@@ -1257,6 +1285,7 @@ function getSettingsSyncState(state: Pick<
   typography?: Partial<TypographyConfig>;
   terminalPresetId?: TerminalPresetId;
   terminalAppearance?: Partial<TerminalAppearanceConfig>;
+  browser?: Partial<BrowserSettingsConfig>;
 }): SettingsSyncState {
   const terminalPresetId = findTerminalPreset(state.terminalPresetId ?? DEFAULT_TERMINAL_PRESET_ID).id;
   return {
@@ -1272,6 +1301,7 @@ function getSettingsSyncState(state: Pick<
     typography: normalizeTypographyConfig(state.typography),
     terminalPresetId,
     terminalAppearance: normalizeTerminalAppearanceConfig(state.terminalAppearance, terminalPresetId),
+    browser: normalizeBrowserSettings(state.browser),
   };
 }
 
@@ -1307,6 +1337,7 @@ export const useSettingsStore = create<SettingsStore>()(
       typography: getDefaultTypographyConfig(),
       terminalPresetId: DEFAULT_TERMINAL_PRESET_ID,
       terminalAppearance: getTerminalAppearanceFromPreset(DEFAULT_TERMINAL_PRESET_ID),
+      browser: DEFAULT_BROWSER_SETTINGS,
 
       setAppearanceMode: (appearanceMode) => {
         set({ appearanceMode });
@@ -1490,6 +1521,14 @@ export const useSettingsStore = create<SettingsStore>()(
         const resolvedThemeMode = applyCurrentThemeSnapshot(get());
         set((state) => ({ resolvedThemeMode, themeRevision: state.themeRevision + 1 }));
       },
+      updateBrowserSettings: (patch) => {
+        set((state) => ({
+          browser: normalizeBrowserSettings({
+            ...state.browser,
+            ...patch,
+          }),
+        }));
+      },
     }),
     {
       name: SETTINGS_STORAGE_KEY,
@@ -1507,6 +1546,7 @@ export const useSettingsStore = create<SettingsStore>()(
         typography: state.typography,
         terminalPresetId: state.terminalPresetId,
         terminalAppearance: state.terminalAppearance,
+        browser: state.browser,
       }),
       onRehydrateStorage: () => (state) => {
         if (!state) return;
@@ -1520,6 +1560,7 @@ export const useSettingsStore = create<SettingsStore>()(
             state.terminalAppearance,
             findTerminalPreset(state.terminalPresetId ?? DEFAULT_TERMINAL_PRESET_ID).id,
           ),
+          browser: normalizeBrowserSettings(state.browser),
         };
         const resolvedThemeMode = applyThemeToDocument(normalizedState);
         state.lightTheme = normalizedState.lightTheme;
@@ -1529,6 +1570,7 @@ export const useSettingsStore = create<SettingsStore>()(
         state.resolvedThemeMode = resolvedThemeMode;
         state.terminalPresetId = findTerminalPreset(state.terminalPresetId ?? DEFAULT_TERMINAL_PRESET_ID).id;
         state.terminalAppearance = normalizedState.terminalAppearance;
+        state.browser = normalizedState.browser;
         state.themeRevision += 1;
       },
     },
@@ -1587,7 +1629,8 @@ export function initializeSettingsStore(): void {
         nextState.networkViewerPlacement === prevState.networkViewerPlacement &&
         nextState.typography === prevState.typography &&
         nextState.terminalPresetId === prevState.terminalPresetId &&
-        nextState.terminalAppearance === prevState.terminalAppearance
+        nextState.terminalAppearance === prevState.terminalAppearance &&
+        nextState.browser === prevState.browser
       ) {
         return;
       }

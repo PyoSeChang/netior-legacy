@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import * as LucideIcons from 'lucide-react';
 import {
@@ -22,10 +22,7 @@ import { Spinner } from '../../ui/Spinner';
 import type { TranslationKey } from '@netior/shared/i18n';
 import type { Model, ModelKey } from '@netior/shared/types';
 import { logShortcut } from '../../../shortcuts/shortcut-utils';
-import {
-  getModelDisplayDescription,
-  getModelDisplayName,
-} from '../../../lib/model-i18n';
+import { createOntologyDisplayResolver } from '@netior/shared';
 
 interface NarreMentionPickerProps {
   query: string;
@@ -39,7 +36,7 @@ interface NarreMentionPickerProps {
 
 const MENTION_CATEGORIES = [
   { key: 'all', i18nKey: 'narre.mentionAll' },
-  { key: 'concept', i18nKey: 'narre.mentionConcept' },
+  { key: 'instance', i18nKey: 'narre.mentionInstance' },
   { key: 'network', i18nKey: 'narre.mentionNetwork' },
   { key: 'schema', i18nKey: 'narre.mentionSchema' },
   { key: 'model', i18nKey: 'narre.mentionModel' },
@@ -55,7 +52,7 @@ const ICONS = {
   'badge-check': BadgeCheck,
   paperclip: Paperclip,
   link: LinkIcon,
-  concept: Lightbulb,
+  instance: Lightbulb,
   model: Boxes,
   schema: Shapes,
   network: Network,
@@ -123,18 +120,21 @@ function toModelDisplaySource(item: MentionResult): Pick<Model, 'key' | 'name' |
   };
 }
 
-function localizeMentionResult(item: MentionResult, t: (key: TranslationKey) => string): MentionResult {
+function localizeMentionResult(
+  item: MentionResult,
+  display: ReturnType<typeof createOntologyDisplayResolver>,
+): MentionResult {
   if (item.type === 'model') {
     const model = toModelDisplaySource(item);
     if (!model) return item;
     return {
       ...item,
-      display: getModelDisplayName(model, t),
-      description: getModelDisplayDescription(model, t),
+      display: display.modelName(model),
+      description: display.modelDescription(model),
     };
   }
 
-  if (item.type === 'concept' && stringMeta(item.meta, 'model')) {
+  if (item.type === 'instance' && stringMeta(item.meta, 'model')) {
     const model = {
       key: (stringMeta(item.meta, 'modelKey') ?? stringMeta(item.meta, 'model') ?? '') as ModelKey,
       name: stringMeta(item.meta, 'model') ?? '',
@@ -145,7 +145,7 @@ function localizeMentionResult(item: MentionResult, t: (key: TranslationKey) => 
       ...item,
       meta: {
         ...item.meta,
-        model: getModelDisplayName(model, t),
+        model: display.modelName(model),
       },
     };
   }
@@ -155,7 +155,7 @@ function localizeMentionResult(item: MentionResult, t: (key: TranslationKey) => 
 
 function PreviewPanel({ item, t }: { item: MentionResult; t: (key: TranslationKey) => string }): JSX.Element {
   const catLabel = MENTION_CATEGORIES.find((c) => c.key === item.type)?.i18nKey;
-  const conceptModel = item.type === 'concept' && typeof item.meta?.model === 'string' ? item.meta.model : null;
+  const instanceModel = item.type === 'instance' && typeof item.meta?.model === 'string' ? item.meta.model : null;
   const modelNodeShape = item.type === 'model' && typeof item.meta?.nodeShape === 'string' ? item.meta.nodeShape : null;
   const modelDirected = item.type === 'model' && typeof item.meta?.directed === 'boolean' ? item.meta.directed : null;
   const modelLineStyle = item.type === 'model' && typeof item.meta?.lineStyle === 'string' ? item.meta.lineStyle : null;
@@ -185,10 +185,10 @@ function PreviewPanel({ item, t }: { item: MentionResult; t: (key: TranslationKe
       {/* Type-specific meta */}
       {item.meta && (
         <div className="flex flex-col gap-1 text-[10px] text-muted">
-          {conceptModel && (
+          {instanceModel && (
             <div className="flex items-center gap-1">
               <span className="text-secondary">Model:</span>
-              <span className="text-default">{conceptModel}</span>
+              <span className="text-default">{instanceModel}</span>
             </div>
           )}
           {modelNodeShape && (
@@ -235,6 +235,7 @@ export function NarreMentionPicker({
   onClose,
 }: NarreMentionPickerProps): JSX.Element {
   const { t } = useI18n();
+  const display = useMemo(() => createOntologyDisplayResolver(t), [t]);
   const [results, setResults] = useState<MentionResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -259,7 +260,7 @@ export function NarreMentionPicker({
       setLoading(true);
       try {
         const data = await narreService.searchMentions(projectId, search);
-        setResults(data.map((item) => localizeMentionResult(item, t)));
+        setResults(data.map((item) => localizeMentionResult(item, display)));
         setSelectedIndex(0);
       } catch {
         setResults([]);
@@ -268,7 +269,7 @@ export function NarreMentionPicker({
       }
     }, delay);
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-  }, [search, projectId, t]);
+  }, [display, search, projectId]);
 
   const allResults = useMemo(() => {
     const lowerSearch = search.toLowerCase();

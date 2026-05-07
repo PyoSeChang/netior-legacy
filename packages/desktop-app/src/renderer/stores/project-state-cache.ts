@@ -1,16 +1,16 @@
 import { useNetworkStore, type NetworkNodeWithObject, type NetworkEdgeWithModel } from './network-store';
 import { useEditorStore } from './editor-store';
 import { useModuleStore } from './module-store';
-import { useConceptStore } from './concept-store';
+import { useInstanceStore } from './instance-store';
 import { useSchemaStore } from './schema-store';
 import { useModelStore } from './model-store';
 import { useFileStore, type OpenFile, type ClipboardAction, type ClipboardState } from './file-store';
 import type {
-  Network, NetworkNode, Edge, Concept,
+  Network, NetworkNode, Edge, Instance,
   NetworkBreadcrumbItem, NetworkTreeNode,
   EditorTab, SplitNode,
   Module, ModuleDirectory,
-  ConceptProperty,
+  InstanceProperty,
   Model, SchemaField,
   FileTreeNode,
 } from '@netior/shared/types';
@@ -42,9 +42,9 @@ interface ModuleSnapshot {
   directories: ModuleDirectory[];
 }
 
-interface ConceptSnapshot {
-  concepts: Concept[];
-  properties: Record<string, ConceptProperty[]>;
+interface InstanceSnapshot {
+  instances: Instance[];
+  properties: Record<string, InstanceProperty[]>;
 }
 
 interface SchemaStructureSnapshot {
@@ -69,7 +69,7 @@ interface WorkspaceSnapshot {
   network: NetworkSnapshot;
   editor: EditorSnapshot;
   module: ModuleSnapshot;
-  concept: ConceptSnapshot;
+  instance: InstanceSnapshot;
   schemaStructure: SchemaStructureSnapshot;
   model: ModelSnapshot;
   file: FileSnapshot;
@@ -110,7 +110,7 @@ function capture(): WorkspaceSnapshot {
   const network = useNetworkStore.getState();
   const editor = useEditorStore.getState();
   const module = useModuleStore.getState();
-  const concept = useConceptStore.getState();
+  const instance = useInstanceStore.getState();
   const schemaStructure = useSchemaStore.getState();
   const model = useModelStore.getState();
   const file = useFileStore.getState();
@@ -140,9 +140,9 @@ function capture(): WorkspaceSnapshot {
       activeModuleId: module.activeModuleId,
       directories: module.directories,
     },
-    concept: {
-      concepts: concept.concepts,
-      properties: concept.properties,
+    instance: {
+      instances: instance.instances,
+      properties: instance.properties,
     },
     schemaStructure: {
       schemas: schemaStructure.schemas,
@@ -166,7 +166,7 @@ function restore(snapshot: WorkspaceSnapshot): void {
   useNetworkStore.setState(snapshot.network);
   useEditorStore.setState({ ...normalizeEditorSnapshot(snapshot.editor), pendingCloseTabId: null });
   useModuleStore.setState(snapshot.module);
-  useConceptStore.setState(snapshot.concept);
+  useInstanceStore.setState(snapshot.instance);
   useSchemaStore.setState(snapshot.schemaStructure);
   useModelStore.setState(snapshot.model);
   useFileStore.setState(snapshot.file);
@@ -176,7 +176,7 @@ export function clearAllProjectStores(): void {
   useNetworkStore.getState().clear();
   useEditorStore.getState().clear();
   useModuleStore.getState().clear();
-  useConceptStore.getState().clear();
+  useInstanceStore.getState().clear();
   useSchemaStore.getState().clear();
   useModelStore.getState().clear();
   useFileStore.getState().clear();

@@ -3,7 +3,7 @@
   | 'networks'
   | 'files'
   | 'sessions';
-export type ActivityBarBottomItemKey = 'ontology' | 'narre' | 'terminal' | 'agents' | 'settings';
+export type ActivityBarBottomItemKey = 'ontology' | 'narre' | 'terminal' | 'agents' | 'browser' | 'settings';
 
 export const ACTIVITY_BAR_TOP_ITEM_KEYS = [
   'projects',
@@ -17,6 +17,7 @@ export const ACTIVITY_BAR_BOTTOM_ITEM_KEYS = [
   'narre',
   'terminal',
   'agents',
+  'browser',
   'settings',
 ] as const satisfies readonly ActivityBarBottomItemKey[];
 

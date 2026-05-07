@@ -45,6 +45,7 @@ import { migrate042 } from './migrations/042-remove-type-groups';
 import { migrate043 } from './migrations/043-remove-concept-model-id';
 import { migrate044 } from './migrations/044-concept-properties-schema-field-fk';
 import { migrate045 } from './migrations/045-source-provenance-and-model-category-concepts';
+import { migrate046 } from './migrations/046-instance-rename';
 import {
   ensureProjectNodeInUniverseForDb,
   ensureProjectOntologyNetworkForDb,
@@ -103,6 +104,7 @@ const migrations: Migration[] = [
   { version: 43, migrate: migrate043 },
   { version: 44, migrate: migrate044 },
   { version: 45, migrate: migrate045 },
+  { version: 46, migrate: migrate046 },
 ];
 
 export function hasColumn(db: Database.Database, table: string, column: string): boolean {
@@ -155,25 +157,6 @@ export function initDatabase(dbPath: string, options?: InitDatabaseOptions): voi
   const tables = (db.prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name").all() as { name: string }[]).map((r) => r.name);
   console.log(`[DB] Existing tables: ${tables.join(', ')}`);
 
-  // Patch: create concept_editor_prefs if migration 002 partially applied
-  if (!tables.includes('concept_editor_prefs')) {
-    console.log('[DB] Patching: creating missing concept_editor_prefs table');
-    db.exec(`
-      CREATE TABLE concept_editor_prefs (
-        id TEXT PRIMARY KEY,
-        concept_id TEXT NOT NULL REFERENCES concepts(id) ON DELETE CASCADE,
-        view_mode TEXT NOT NULL DEFAULT 'float',
-        float_x REAL,
-        float_y REAL,
-        float_width REAL DEFAULT 600,
-        float_height REAL DEFAULT 450,
-        side_split_ratio REAL DEFAULT 0.5,
-        updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-        UNIQUE(concept_id)
-      )
-    `);
-  }
-
   for (const m of migrations) {
     if (!applied.has(m.version)) {
       console.log(`[DB] Running migration v${m.version}...`);
@@ -193,6 +176,25 @@ export function initDatabase(dbPath: string, options?: InitDatabaseOptions): voi
       }
       db.pragma('foreign_keys = ON');
     }
+  }
+
+  // Patch partial databases after the storage rename has completed.
+  if (tableExists(db, 'instances') && !tableExists(db, 'instance_editor_prefs')) {
+    console.log('[DB] Patching: creating missing instance_editor_prefs table');
+    db.exec(`
+      CREATE TABLE instance_editor_prefs (
+        id TEXT PRIMARY KEY,
+        instance_id TEXT NOT NULL REFERENCES instances(id) ON DELETE CASCADE,
+        view_mode TEXT NOT NULL DEFAULT 'float',
+        float_x REAL,
+        float_y REAL,
+        float_width REAL DEFAULT 600,
+        float_height REAL DEFAULT 450,
+        side_split_ratio REAL DEFAULT 0.5,
+        updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+        UNIQUE(instance_id)
+      )
+    `);
   }
 
   ensureUniverseNetworkForDb(db);

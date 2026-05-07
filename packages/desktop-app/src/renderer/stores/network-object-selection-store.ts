@@ -1,6 +1,6 @@
 ﻿import { create } from 'zustand';
 
-export type NetworkObjectSelectionType = 'network' | 'project' | 'concept' | 'model' | 'context';
+export type NetworkObjectSelectionType = 'network' | 'project' | 'instance' | 'model' | 'context';
 
 export interface NetworkObjectSelection {
   objectType: NetworkObjectSelectionType;

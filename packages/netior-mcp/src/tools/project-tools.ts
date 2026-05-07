@@ -9,11 +9,11 @@ import {
   listSchemaFields,
   listSchemas,
   listModels,
-  getConceptsByProject,
+  getInstancesByProject,
   listNetworks,
 } from '../netior-service-client.js';
 import { projectIdSchema, registerNetiorTool, resolveProjectId } from './shared-tool-registry.js';
-import { toAgentConcept, toAgentFieldType } from './schema-surface.js';
+import { toAgentInstance, toAgentFieldType } from './schema-surface.js';
 
 function buildOptionsPreview(options: string | null): string[] | undefined {
   if (!options) {
@@ -94,7 +94,7 @@ export function registerProjectTools(server: McpServer): void {
         const [
           schemas,
           models,
-          concepts,
+          instances,
           networks,
           universeNetwork,
           ontologyNetwork,
@@ -102,7 +102,7 @@ export function registerProjectTools(server: McpServer): void {
         ] = await Promise.all([
           listSchemas(targetProjectId),
           listModels(targetProjectId),
-          getConceptsByProject(targetProjectId),
+          getInstancesByProject(targetProjectId),
           listNetworks(targetProjectId),
           getUniverseNetwork(),
           getProjectOntologyNetwork(targetProjectId),
@@ -146,11 +146,11 @@ export function registerProjectTools(server: McpServer): void {
               description: model.description,
             })),
           },
-          concepts: {
-            count: concepts.length,
-            items: concepts.map((concept) => {
-              const agentConcept = toAgentConcept(concept);
-              return { id: agentConcept.id, title: agentConcept.title, schema_id: agentConcept.schema_id };
+          instances: {
+            count: instances.length,
+            items: instances.map((instance) => {
+              const agentInstance = toAgentInstance(instance);
+              return { id: agentInstance.id, title: agentInstance.title, schema_id: agentInstance.schema_id };
             }),
           },
           networks: {

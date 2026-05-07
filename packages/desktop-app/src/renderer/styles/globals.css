@@ -310,12 +310,12 @@ body,
   z-index: 2;
   overflow: visible;
   background: var(--workspace-chrome-bg, var(--surface-chrome));
-  --tab-curve-size: 12px;
-  --tab-radius: 12px;
+  --tab-curve-size: 10px;
+  --tab-radius: 11px;
 }
 
 .tab-strip .window-control-button {
-  height: 35px;
+  height: 40px;
 }
 
 .tab-strip::after {
@@ -341,19 +341,29 @@ body,
   width: var(--tab-curve-size);
   height: var(--tab-curve-size);
   pointer-events: none;
-  z-index: 0;
+  z-index: -1;
 }
 
 .tab-active::before {
   left: calc(var(--tab-curve-size) * -1);
-  border-bottom-right-radius: var(--tab-curve-size);
-  box-shadow: 4px 4px 0 4px var(--surface-editor);
+  background:
+    radial-gradient(
+      circle at 0 0,
+      transparent 0,
+      transparent calc(var(--tab-curve-size) - 0.5px),
+      var(--surface-editor) var(--tab-curve-size)
+    );
 }
 
 .tab-active::after {
   right: calc(var(--tab-curve-size) * -1);
-  border-bottom-left-radius: var(--tab-curve-size);
-  box-shadow: -4px 4px 0 4px var(--surface-editor);
+  background:
+    radial-gradient(
+      circle at 100% 0,
+      transparent 0,
+      transparent calc(var(--tab-curve-size) - 0.5px),
+      var(--surface-editor) var(--tab-curve-size)
+    );
 }
 
 .tab-active-indicator {
@@ -412,7 +422,7 @@ body,
 /* Tab scroll — no scrollbar, wheel scrolls horizontally */
 .tab-scroll {
   box-sizing: border-box;
-  height: calc(30px + var(--tab-curve-size));
+  height: calc(34px + var(--tab-curve-size));
   margin-bottom: calc(var(--tab-curve-size) * -1);
   padding-bottom: var(--tab-curve-size);
   overflow-x: scroll;

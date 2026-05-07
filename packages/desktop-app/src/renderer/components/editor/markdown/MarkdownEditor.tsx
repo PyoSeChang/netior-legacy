@@ -48,7 +48,7 @@ interface MdViewState {
 interface MarkdownEditorProps {
   tabId: string;
   content: string;
-  filePath: string;
+  filePath?: string;
   onChange: (content: string) => void;
 }
 
@@ -140,6 +140,7 @@ export function MarkdownEditor({ tabId, content, filePath, onChange }: MarkdownE
   ), [setViewState]);
 
   const handleLinkClick = useCallback((href: string) => {
+    if (!filePath) return;
     void openMarkdownLink({ href, currentFilePath: filePath, sourceTabId: tabId }).catch((error) => {
       console.error('[MarkdownEditor] Failed to open link:', error);
     });

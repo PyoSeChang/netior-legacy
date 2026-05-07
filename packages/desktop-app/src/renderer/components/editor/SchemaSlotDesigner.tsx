@@ -16,8 +16,6 @@ import {
   SEMANTIC_CATEGORY_LABELS,
   SEMANTIC_MEANING_DEFINITIONS,
   MODEL_DEFINITIONS,
-  getSemanticCategoryDescriptionKey,
-  getSemanticCategoryLabelKey,
   getSemanticMeaningDescriptionKey,
   getSemanticMeaningLabelKey,
   getModelDescriptionKey,
@@ -26,6 +24,7 @@ import {
   getMeaningSlotDescriptionKey,
   getMeaningSlotLabelKey,
 } from '@netior/shared/constants';
+import { createOntologyDisplayResolver } from '@netior/shared';
 import type { TranslationKey } from '@netior/shared/i18n';
 import {
   CheckCircle2,
@@ -146,6 +145,7 @@ export function SchemaSlotDesigner({
   modelCategories = [],
 }: SchemaSlotDesignerProps): JSX.Element {
   const { t } = useI18n();
+  const display = useMemo(() => createOntologyDisplayResolver(t), [t]);
   const sortedFields = useMemo(() => sortFields(fields), [fields]);
   const fieldById = useMemo(() => new Map(fields.map((field) => [field.id, field])), [fields]);
   const fieldBySlot = useMemo(() => {
@@ -212,17 +212,25 @@ export function SchemaSlotDesigner({
       return {
         categoryKey,
         categoryLabel: categoryOption?.label ?? (
-          isSystemCategory ? t(getSemanticCategoryLabelKey(categoryKey as SemanticCategoryKey) as never) : categoryKey
+          display.name({
+            kind: 'instance',
+            title: categoryKey,
+            source_ref: `model-category.${categoryKey}`,
+          })
         ),
         categoryDescription: categoryOption?.description ?? (
-          isSystemCategory ? t(getSemanticCategoryDescriptionKey(categoryKey as SemanticCategoryKey) as never) : ''
+          display.description({
+            kind: 'instance',
+            title: categoryKey,
+            source_ref: `model-category.${categoryKey}`,
+          }) ?? ''
         ),
         modelDefinitions: categoryModelDefinitions,
         meaningDefinitions,
         activeMeanings,
       };
     });
-  }, [availableModelDefinitions, meaningByKey, modelCategories, t]);
+  }, [availableModelDefinitions, display, meaningByKey, modelCategories]);
 
   const activeModel = categoryModels.find((category) => category.categoryKey === activeCategory) ?? categoryModels[0];
 

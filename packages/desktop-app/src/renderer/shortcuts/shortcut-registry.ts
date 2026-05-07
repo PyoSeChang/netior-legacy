@@ -62,6 +62,16 @@ export const SHORTCUT_REGISTRY: ShortcutDefinition[] = [
     implemented: true,
   },
   {
+    id: 'shortcut.global.openBrowser',
+    labelKey: 'shortcuts.items.global.openBrowserLabel',
+    descriptionKey: 'shortcuts.items.global.openBrowser',
+    keybinding: 'Ctrl/Cmd+Shift+B',
+    scope: 'global',
+    owner: 'globalDispatcher',
+    priority: 'global',
+    implemented: true,
+  },
+  {
     id: 'shortcut.global.openNarre',
     labelKey: 'shortcuts.items.global.openNarreLabel',
     descriptionKey: 'shortcuts.items.global.openNarre',

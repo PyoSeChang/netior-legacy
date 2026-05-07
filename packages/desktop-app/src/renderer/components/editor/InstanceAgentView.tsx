@@ -1,16 +1,16 @@
 ﻿import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { useConceptStore } from '../../stores/concept-store';
+import { useInstanceStore } from '../../stores/instance-store';
 
-interface ConceptAgentViewProps {
-  conceptId: string;
+interface InstanceAgentViewProps {
+  instanceId: string;
   agentContent: string | null;
 }
 
 const DEBOUNCE_MS = 500;
 
-export function ConceptAgentView({ conceptId, agentContent }: ConceptAgentViewProps): JSX.Element {
+export function InstanceAgentView({ instanceId, agentContent }: InstanceAgentViewProps): JSX.Element {
   const [localValue, setLocalValue] = useState(agentContent ?? '');
-  const updateAgentContent = useConceptStore((s) => s.updateAgentContent);
+  const updateAgentContent = useInstanceStore((s) => s.updateAgentContent);
   const isFocusedRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -25,9 +25,9 @@ export function ConceptAgentView({ conceptId, agentContent }: ConceptAgentViewPr
     (value: string) => {
       if (timerRef.current) clearTimeout(timerRef.current);
       timerRef.current = null;
-      updateAgentContent(conceptId, value);
+      updateAgentContent(instanceId, value);
     },
-    [conceptId, updateAgentContent],
+    [instanceId, updateAgentContent],
   );
 
   const handleChange = useCallback(

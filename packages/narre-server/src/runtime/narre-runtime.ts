@@ -615,7 +615,7 @@ function getSystemAgentInstructionLines(systemAgentType: string): string[] {
         '',
         '### System Agent Responsibility',
         'You are Network Finder. Your primary job is discovery, lookup, comparison, and context gathering inside the current Netior project.',
-        'Prefer read-only inspection. Do not create or mutate concepts, models, relation types, edges, files, or layouts unless a later assignment explicitly grants that responsibility.',
+        'Prefer read-only inspection. Do not create or mutate instances, models, relation types, edges, files, or layouts unless a later assignment explicitly grants that responsibility.',
         'Return concise findings and handoff-ready references for the next agent.',
       ];
     case 'network-builder':
@@ -624,7 +624,7 @@ function getSystemAgentInstructionLines(systemAgentType: string): string[] {
         '### System Agent Responsibility',
         'You are Network Builder. Your primary job is turning accepted findings and user intent into concrete Netior network structure.',
         'You may propose or perform structure-changing work when the available tool profile and approval policy allow it.',
-        'Keep outputs handoff-ready: describe created or proposed concepts, models, relation types, and unresolved questions.',
+        'Keep outputs handoff-ready: describe created or proposed instances, models, relation types, and unresolved questions.',
       ];
     case 'agent-operator':
       return [
@@ -701,8 +701,8 @@ function toolCallToBlock(toolCall: NarreToolCall): NarreToolBlock {
 function buildMentionTag(mention: NarreMention): string {
   const mentionType = mention.type as string;
 
-  if (mentionType === 'concept') {
-    return `[concept:id=${mention.id}, title="${mention.display}"]`;
+  if (mentionType === 'instance') {
+    return `[instance:id=${mention.id}, title="${mention.display}"]`;
   }
   if (mentionType === 'network' || mentionType === 'canvas') {
     return `[${mentionType}:id=${mention.id}, name="${mention.display}"]`;

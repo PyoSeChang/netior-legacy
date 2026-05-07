@@ -167,16 +167,6 @@ export function useInteraction({
   // --- Node drag start (called by NodeCard) ---
   const handleNodeDragStart = useCallback(
     (nodeId: string, startX: number, startY: number, narreMention?: MentionResult | null) => {
-      console.log('[NarreMentionDrag][Interaction] nodeDragStart', {
-        nodeId,
-        mode,
-        hasMention: !!narreMention,
-        mentionType: narreMention?.type,
-        mentionId: narreMention?.id,
-        display: narreMention?.display,
-        startX,
-        startY,
-      });
       if (mode === 'browse') {
         if (narreMention) {
           if (mentionDragHoldTimerRef.current != null) {
@@ -188,16 +178,6 @@ export function useInteraction({
           const holdTimer = window.setTimeout(() => {
             mentionDragHoldTimerRef.current = null;
             setDragState((previous) => {
-              const elapsedMs = Math.round(performance.now() - holdStartedAt);
-              console.log('[NarreMentionDrag][Interaction] holdTimer fired', {
-                nodeId,
-                elapsedMs,
-                previousType: previous.type,
-                previousNodeId: previous.type === 'mention-drag' || previous.type === 'node'
-                  ? previous.nodeId
-                  : undefined,
-                previousActive: previous.type === 'mention-drag' ? previous.active : undefined,
-              });
               return previous.type === 'mention-drag' && previous.nodeId === nodeId
                 ? {
                   ...previous,
@@ -217,11 +197,6 @@ export function useInteraction({
           }, MENTION_DRAG_HOLD_MS);
           mentionDragHoldTimerRef.current = holdTimer;
 
-          console.log('[NarreMentionDrag][Interaction] set mention drag waiting', {
-            nodeId,
-            holdMs: MENTION_DRAG_HOLD_MS,
-            holdStartedAt,
-          });
           setDragState({
             type: 'mention-drag',
             nodeId,
@@ -235,7 +210,6 @@ export function useInteraction({
           return;
         }
 
-        console.log('[NarreMentionDrag][Interaction] browse fallback to pan: no mention', { nodeId });
         setDragState({
           type: 'pan',
           startX,
@@ -306,13 +280,6 @@ export function useInteraction({
             if (mentionDragHoldTimerRef.current === dragState.holdTimer) {
               mentionDragHoldTimerRef.current = null;
             }
-            const roundedElapsedMs = Math.round(elapsedMs);
-            console.log('[NarreMentionDrag][Interaction] hold elapsed during move, activating mention drag', {
-              nodeId: dragState.nodeId,
-              elapsedMs: roundedElapsedMs,
-              rawDx,
-              rawDy,
-            });
             setDragState({
               ...dragState,
               active: true,
@@ -322,28 +289,10 @@ export function useInteraction({
             return;
           }
 
-          if (
-            (Math.abs(rawDx) > 2 || Math.abs(rawDy) > 2)
-            && now - mentionDragLastPreHoldLogAtRef.current >= MENTION_DRAG_PRE_HOLD_LOG_MS
-          ) {
+          if ((Math.abs(rawDx) > 2 || Math.abs(rawDy) > 2) && now - mentionDragLastPreHoldLogAtRef.current >= MENTION_DRAG_PRE_HOLD_LOG_MS) {
             mentionDragLastPreHoldLogAtRef.current = now;
-            console.log('[NarreMentionDrag][Interaction] waiting hold, suppressing pre-hold movement', {
-              nodeId: dragState.nodeId,
-              elapsedMs: Math.round(elapsedMs),
-              rawDx,
-              rawDy,
-            });
           }
           return;
-        }
-        if (Math.abs(rawDx) > 2 || Math.abs(rawDy) > 2) {
-          console.log('[NarreMentionDrag][Interaction] mention move', {
-            nodeId: dragState.nodeId,
-            rawDx,
-            rawDy,
-            x: e.clientX,
-            y: e.clientY,
-          });
         }
         setNodeDragOffset({ id: dragState.nodeId, dx: rawDx, dy: rawDy });
         setMentionDragPreview({ x: e.clientX, y: e.clientY - 8, mention: dragState.mention });
@@ -387,42 +336,14 @@ export function useInteraction({
         const elapsedMs = performance.now() - dragState.holdStartedAt;
         const isHoldComplete = dragState.active || elapsedMs >= MENTION_DRAG_HOLD_MS;
         if (!isHoldComplete) {
-          console.log('[NarreMentionDrag][Interaction] mention mouseUp before hold', {
-            nodeId: dragState.nodeId,
-            elapsedMs: Math.round(elapsedMs),
-            x: e.clientX,
-            y: e.clientY,
-          });
           setNodeDragOffset(null);
           setMentionDragPreview(null);
           mentionDragPointerRef.current = null;
           setDragState({ type: 'none' });
           return;
         }
-        if (!dragState.active) {
-          console.log('[NarreMentionDrag][Interaction] hold elapsed by mouseUp, treating as active drop', {
-            nodeId: dragState.nodeId,
-            elapsedMs: Math.round(elapsedMs),
-            x: e.clientX,
-            y: e.clientY,
-          });
-        }
-        const underPointer = document.elementsFromPoint(e.clientX, e.clientY)
-          .slice(0, 8)
-          .map((element) => ({
-            tag: element.tagName,
-            className: typeof element.className === 'string' ? element.className.slice(0, 120) : '',
-            dropTarget: element.matches(NARRE_MENTION_DROP_TARGET_SELECTOR),
-          }));
         const dropTarget = document.elementsFromPoint(e.clientX, e.clientY)
           .find((element) => element.matches(NARRE_MENTION_DROP_TARGET_SELECTOR));
-        console.log('[NarreMentionDrag][Interaction] mention mouseUp', {
-          nodeId: dragState.nodeId,
-          hasDropTarget: !!dropTarget,
-          x: e.clientX,
-          y: e.clientY,
-          underPointer,
-        });
         if (dropTarget) {
           dispatchNarreMentionDrop(dropTarget, {
             mention: dragState.mention,

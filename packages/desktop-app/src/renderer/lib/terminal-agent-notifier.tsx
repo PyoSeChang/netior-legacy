@@ -310,7 +310,6 @@ async function getAgentAudioContext(): Promise<AudioContext | null> {
 
   if (!agentAudioContext) {
     agentAudioContext = new AudioContextCtor();
-    console.log('[AgentSound] created AudioContext', { state: agentAudioContext.state });
   }
 
   if (agentAudioContext.state === 'suspended') {

@@ -1,4 +1,4 @@
-﻿export type WorkspaceNodeType = 'concept' | 'file' | 'dir' | 'network' | 'object';
+﻿export type WorkspaceNodeType = 'instance' | 'file' | 'dir' | 'network' | 'object';
 export interface PortalChip {
   id: string;
   label: string;
@@ -17,7 +17,7 @@ export interface RenderNode {
   semanticTypeLabel: string;
   width?: number;
   height?: number;
-  conceptId?: string;
+  instanceId?: string;
   nodeType: WorkspaceNodeType;
   objectType?: string;
   objectTargetId?: string;

@@ -3,7 +3,7 @@ import type {
   SchemaField,
   SchemaMeaning,
   SchemaMeaningSlotBinding,
-  Concept,
+  Instance,
   FieldType,
   ObjectRecord,
   Model,
@@ -82,11 +82,11 @@ export function toAgentSchemaMeaning(meaning: SchemaMeaning) {
   };
 }
 
-export function toAgentConcept(concept: Concept) {
+export function toAgentInstance(instance: Instance) {
   const {
     schema_id,
     ...rest
-  } = concept;
+  } = instance;
 
   return {
     ...rest,

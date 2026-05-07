@@ -2,7 +2,7 @@
 import type {
   Network, NetworkCreate, NetworkUpdate,
   NetworkNode, NetworkNodeCreate, NetworkNodeUpdate,
-  Edge, EdgeCreate, ObjectRecord, Concept, FileEntity,
+  Edge, EdgeCreate, ObjectRecord, Instance, FileEntity,
   NetworkBreadcrumbItem, NetworkTreeNode, Layout,
 } from '@netior/shared/types';
 import { networkService, layoutService } from '../services';
@@ -18,7 +18,7 @@ import type { EdgeWithModel } from '../lib/edge-models';
 
 export interface NetworkNodeWithObject extends NetworkNode {
   object?: ObjectRecord;
-  concept?: Concept;
+  instance?: Instance;
   file?: FileEntity;
 }
 

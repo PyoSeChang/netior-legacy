@@ -47,7 +47,7 @@ export function registerSchemaTools(server: McpServer): void {
       color: z.string().optional().describe('Color value'),
       node_shape: z.string().optional().describe('Node shape for network rendering'),
       description: z.string().optional().describe('Schema description'),
-      file_template: z.string().nullable().optional().describe('Optional file template for new concepts'),
+      file_template: z.string().nullable().optional().describe('Optional file template for new instances'),
       models: modelKeysSchema.optional().describe('Model keys attached to this schema'),
     },
     async ({ project_id, name, icon, color, node_shape, description, file_template, models }) => {

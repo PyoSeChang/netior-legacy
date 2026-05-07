@@ -1,29 +1,29 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import {
-  getConceptsByProject,
-  searchConcepts,
-  createConcept,
-  updateConcept,
-  deleteConcept,
-  getConceptProperties,
+  getInstancesByProject,
+  searchInstances,
+  createInstance,
+  updateInstance,
+  deleteInstance,
+  getInstanceProperties,
   listSchemaFields,
 } from '../netior-service-client.js';
-import type { Concept, ConceptProperty, SchemaField } from '@netior/shared/types';
+import type { Instance, InstanceProperty, SchemaField } from '@netior/shared/types';
 import { emitChange } from '../events.js';
 import { projectIdSchema, registerNetiorTool, resolveProjectId } from './shared-tool-registry.js';
-import { toAgentConcept } from './schema-surface.js';
+import { toAgentInstance } from './schema-surface.js';
 
-const conceptPropertyFilterSchema = z.object({
+const instancePropertyFilterSchema = z.object({
   field_id: z.string().optional().describe('Exact field ID to filter by'),
   field_name: z.string().optional().describe('Field name to resolve within the target schema'),
   meaning_binding: z.string().optional().describe('Meaning binding key to resolve within the target schema'),
-  value: z.string().describe('Expected serialized value, concept ID, or option value'),
+  value: z.string().describe('Expected serialized value, instance ID, or option value'),
   match: z.enum(['equals', 'contains']).optional().describe('Whether to require exact match or substring/array containment'),
 });
 
-type ConceptPropertyFilterInput = z.infer<typeof conceptPropertyFilterSchema>;
-type ResolvedConceptPropertyFilter = {
+type InstancePropertyFilterInput = z.infer<typeof instancePropertyFilterSchema>;
+type ResolvedInstancePropertyFilter = {
   field_id: string;
   value: string;
   match: 'equals' | 'contains';
@@ -42,7 +42,7 @@ function normalizeOptionalVisualValue(value: string | null | undefined): string 
   return trimmed ? trimmed : null;
 }
 
-function resolveConceptVisualValue(input: {
+function resolveInstanceVisualValue(input: {
   icon?: string | null;
   profile_image?: string | null;
 }): string | null | undefined {
@@ -99,7 +99,7 @@ function matchesNestedValue(actual: unknown, expectedLower: string, match: 'equa
 }
 
 function matchesPropertyValue(
-  property: ConceptProperty | undefined,
+  property: InstanceProperty | undefined,
   expected: string,
   match: 'equals' | 'contains',
 ): boolean {
@@ -112,15 +112,15 @@ function matchesPropertyValue(
 
 async function resolvePropertyFilters(
   schemaId: string | undefined,
-  propertyFilters: ConceptPropertyFilterInput[] | undefined,
-): Promise<ResolvedConceptPropertyFilter[]> {
+  propertyFilters: InstancePropertyFilterInput[] | undefined,
+): Promise<ResolvedInstancePropertyFilter[]> {
   if (!propertyFilters || propertyFilters.length === 0) {
     return [];
   }
 
   const requiresSchemaResolution = propertyFilters.some((filter) => !filter.field_id);
   if (requiresSchemaResolution && !schemaId) {
-    throw new Error('schema_id is required when filtering concepts by field_name or meaning_binding');
+    throw new Error('schema_id is required when filtering instances by field_name or meaning_binding');
   }
 
   const fieldMapById = new Map<string, SchemaField>();
@@ -151,7 +151,7 @@ async function resolvePropertyFilters(
 
     if (!resolvedField?.id) {
       const label = filter.field_name ?? filter.meaning_binding ?? filter.field_id ?? '(unknown filter)';
-      throw new Error(`Could not resolve concept property filter: ${label}`);
+      throw new Error(`Could not resolve instance property filter: ${label}`);
     }
 
     return {
@@ -162,22 +162,22 @@ async function resolvePropertyFilters(
   });
 }
 
-async function filterConceptsByProperties(
-  concepts: Concept[],
-  propertyFilters: ResolvedConceptPropertyFilter[],
-): Promise<Concept[]> {
+async function filterInstancesByProperties(
+  instances: Instance[],
+  propertyFilters: ResolvedInstancePropertyFilter[],
+): Promise<Instance[]> {
   if (propertyFilters.length === 0) {
-    return concepts;
+    return instances;
   }
 
-  const conceptPropertiesById = new Map<string, ConceptProperty[]>(
+  const instancePropertiesById = new Map<string, InstanceProperty[]>(
     await Promise.all(
-      concepts.map(async (concept) => [concept.id, await getConceptProperties(concept.id)] as const),
+      instances.map(async (instance) => [instance.id, await getInstanceProperties(instance.id)] as const),
     ),
   );
 
-  return concepts.filter((concept) => {
-    const properties = conceptPropertiesById.get(concept.id) ?? [];
+  return instances.filter((instance) => {
+    const properties = instancePropertiesById.get(instance.id) ?? [];
     const propertyMap = new Map(properties.map((property) => [property.field_id, property]));
     return propertyFilters.every((filter) =>
       matchesPropertyValue(propertyMap.get(filter.field_id), filter.value, filter.match),
@@ -185,27 +185,27 @@ async function filterConceptsByProperties(
   });
 }
 
-export function registerConceptTools(server: McpServer): void {
+export function registerInstanceTools(server: McpServer): void {
   registerNetiorTool(
     server,
-    'list_concepts',
+    'list_instances',
     {
       project_id: projectIdSchema(),
-      query: z.string().optional().describe('Search query to filter concepts by title'),
-      schema_id: z.string().optional().describe('Optional schema ID to narrow the concept set'),
-      property_filters: z.array(conceptPropertyFilterSchema).optional().describe('Optional property filters resolved against the schema'),
+      query: z.string().optional().describe('Search query to filter instances by title'),
+      schema_id: z.string().optional().describe('Optional schema ID to narrow the instance set'),
+      property_filters: z.array(instancePropertyFilterSchema).optional().describe('Optional property filters resolved against the schema'),
     },
     async ({ project_id, query, schema_id, property_filters }) => {
       try {
         const targetProjectId = resolveProjectId(project_id);
-        const baseConcepts = query
-          ? await searchConcepts(targetProjectId, query)
-          : await getConceptsByProject(targetProjectId);
-        const schemaConcepts = schema_id
-          ? baseConcepts.filter((concept) => concept.schema_id === schema_id)
-          : baseConcepts;
+        const baseInstances = query
+          ? await searchInstances(targetProjectId, query)
+          : await getInstancesByProject(targetProjectId);
+        const schemaInstances = schema_id
+          ? baseInstances.filter((instance) => instance.schema_id === schema_id)
+          : baseInstances;
         const resolvedFilters = await resolvePropertyFilters(schema_id, property_filters);
-        const result = (await filterConceptsByProperties(schemaConcepts, resolvedFilters)).map(toAgentConcept);
+        const result = (await filterInstancesByProperties(schemaInstances, resolvedFilters)).map(toAgentInstance);
         return {
           content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
         };
@@ -220,28 +220,28 @@ export function registerConceptTools(server: McpServer): void {
 
   registerNetiorTool(
     server,
-    'create_concept',
+    'create_instance',
     {
       project_id: projectIdSchema(),
-      title: z.string().describe('Concept title'),
+      title: z.string().describe('Instance title'),
       schema_id: z.string().optional().describe('Schema ID to assign'),
       color: z.string().optional().describe('Color value'),
       icon: z.string().nullable().optional().describe('Icon identifier or emoji text. Use this when not setting profile_image.'),
-      profile_image: z.string().nullable().optional().describe('Profile image source. Can be an image URL, data URL, file URL, or local file path. Stored in the concept icon field.'),
+      profile_image: z.string().nullable().optional().describe('Profile image source. Can be an image URL, data URL, file URL, or local file path. Stored in the instance icon field.'),
     },
     async ({ project_id, title, schema_id, color, icon, profile_image }) => {
       try {
-        const visual = resolveConceptVisualValue({ icon, profile_image });
-        const result = await createConcept({
+        const visual = resolveInstanceVisualValue({ icon, profile_image });
+        const result = await createInstance({
           project_id: resolveProjectId(project_id),
           title,
           schema_id: schema_id,
           color,
           ...(visual !== undefined && visual !== null ? { icon: visual } : {}),
         });
-        emitChange({ type: 'concept', action: 'create', id: result.id });
+        emitChange({ type: 'instance', action: 'create', id: result.id });
         return {
-          content: [{ type: 'text' as const, text: JSON.stringify(toAgentConcept(result), null, 2) }],
+          content: [{ type: 'text' as const, text: JSON.stringify(toAgentInstance(result), null, 2) }],
         };
       } catch (error) {
         return {
@@ -254,19 +254,19 @@ export function registerConceptTools(server: McpServer): void {
 
   registerNetiorTool(
     server,
-    'update_concept',
+    'update_instance',
     {
-      concept_id: z.string().describe('The concept ID to update'),
+      instance_id: z.string().describe('The instance ID to update'),
       title: z.string().optional().describe('New title'),
       schema_id: z.string().optional().describe('New schema ID'),
       color: z.string().optional().describe('New color value'),
       icon: z.string().nullable().optional().describe('New icon identifier or emoji text. Use this when not setting profile_image.'),
-      profile_image: z.string().nullable().optional().describe('New profile image source. Can be an image URL, data URL, file URL, or local file path. Stored in the concept icon field.'),
+      profile_image: z.string().nullable().optional().describe('New profile image source. Can be an image URL, data URL, file URL, or local file path. Stored in the instance icon field.'),
     },
-    async ({ concept_id, title, schema_id, color, icon, profile_image }) => {
+    async ({ instance_id, title, schema_id, color, icon, profile_image }) => {
       try {
-        const visual = resolveConceptVisualValue({ icon, profile_image });
-        const result = await updateConcept(concept_id, {
+        const visual = resolveInstanceVisualValue({ icon, profile_image });
+        const result = await updateInstance(instance_id, {
           title,
           schema_id: schema_id,
           color,
@@ -274,13 +274,13 @@ export function registerConceptTools(server: McpServer): void {
         });
         if (!result) {
           return {
-            content: [{ type: 'text' as const, text: `Error: Concept not found: ${concept_id}` }],
+            content: [{ type: 'text' as const, text: `Error: Instance not found: ${instance_id}` }],
             isError: true,
           };
         }
-        emitChange({ type: 'concept', action: 'update', id: concept_id });
+        emitChange({ type: 'instance', action: 'update', id: instance_id });
         return {
-          content: [{ type: 'text' as const, text: JSON.stringify(toAgentConcept(result), null, 2) }],
+          content: [{ type: 'text' as const, text: JSON.stringify(toAgentInstance(result), null, 2) }],
         };
       } catch (error) {
         return {
@@ -293,20 +293,20 @@ export function registerConceptTools(server: McpServer): void {
 
   registerNetiorTool(
     server,
-    'delete_concept',
-    { concept_id: z.string().describe('The concept ID to delete') },
-    async ({ concept_id }) => {
+    'delete_instance',
+    { instance_id: z.string().describe('The instance ID to delete') },
+    async ({ instance_id }) => {
       try {
-        const deleted = await deleteConcept(concept_id);
+        const deleted = await deleteInstance(instance_id);
         if (!deleted) {
           return {
-            content: [{ type: 'text' as const, text: `Error: Concept not found: ${concept_id}` }],
+            content: [{ type: 'text' as const, text: `Error: Instance not found: ${instance_id}` }],
             isError: true,
           };
         }
-        emitChange({ type: 'concept', action: 'delete', id: concept_id });
+        emitChange({ type: 'instance', action: 'delete', id: instance_id });
         return {
-          content: [{ type: 'text' as const, text: JSON.stringify({ success: true, id: concept_id }) }],
+          content: [{ type: 'text' as const, text: JSON.stringify({ success: true, id: instance_id }) }],
         };
       } catch (error) {
         return {

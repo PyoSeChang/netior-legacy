@@ -7,7 +7,7 @@ import {
   getMeaningSlotLabelKey,
 } from '@netior/shared/constants';
 import { useSchemaStore } from '../../stores/schema-store';
-import { useConceptStore } from '../../stores/concept-store';
+import { useInstanceStore } from '../../stores/instance-store';
 import { useProjectStore } from '../../stores/project-store';
 import { Badge } from '../ui/Badge';
 import { Input } from '../ui/Input';
@@ -27,11 +27,11 @@ import { FilePicker } from '../ui/FilePicker';
 import { useI18n } from '../../hooks/useI18n';
 import {
   parseSchemaFieldOptions,
-  toConceptOptionValue,
+  toInstanceOptionValue,
 } from '../../lib/schema-field-options';
 import { getFieldMeaningSlot } from '../../lib/field-meaning-bindings';
 
-interface ConceptPropertiesPanelProps {
+interface InstancePropertiesPanelProps {
   modelId: string;
   properties: Record<string, string | null>;
   onChange: (fieldId: string, value: string | null) => void;
@@ -111,21 +111,21 @@ function getSlotValidationMessage(
     case 'progress_ratio': {
       const numericValue = Number(value);
       if (!Number.isFinite(numericValue) || numericValue < 0 || numericValue > 1) {
-        return t('concept.slotValidation.progressRatioRange' as never);
+        return t('instance.slotValidation.progressRatioRange' as never);
       }
       return null;
     }
     case 'lat': {
       const numericValue = Number(value);
       if (!Number.isFinite(numericValue) || numericValue < -90 || numericValue > 90) {
-        return t('concept.slotValidation.latitudeRange' as never);
+        return t('instance.slotValidation.latitudeRange' as never);
       }
       return null;
     }
     case 'lng': {
       const numericValue = Number(value);
       if (!Number.isFinite(numericValue) || numericValue < -180 || numericValue > 180) {
-        return t('concept.slotValidation.longitudeRange' as never);
+        return t('instance.slotValidation.longitudeRange' as never);
       }
       return null;
     }
@@ -134,7 +134,7 @@ function getSlotValidationMessage(
   }
 }
 
-export function ConceptPropertiesPanel({ modelId, properties, onChange }: ConceptPropertiesPanelProps): JSX.Element {
+export function InstancePropertiesPanel({ modelId, properties, onChange }: InstancePropertiesPanelProps): JSX.Element {
   const fields = useSchemaStore((s) => s.fields[modelId] ?? []);
   const loadFields = useSchemaStore((s) => s.loadFields);
 
@@ -145,7 +145,7 @@ export function ConceptPropertiesPanel({ modelId, properties, onChange }: Concep
   if (fields.length === 0) return <></>;
 
   return (
-    <ConceptPropertyInputs
+    <InstancePropertyInputs
       fields={fields}
       properties={properties}
       onChange={onChange}
@@ -153,17 +153,17 @@ export function ConceptPropertiesPanel({ modelId, properties, onChange }: Concep
   );
 }
 
-interface ConceptPropertyInputsProps {
+interface InstancePropertyInputsProps {
   fields: SchemaField[];
   properties: Record<string, string | null>;
   onChange: (fieldId: string, value: string | null) => void;
 }
 
-export function ConceptPropertyInputs({
+export function InstancePropertyInputs({
   fields,
   properties,
   onChange,
-}: ConceptPropertyInputsProps): JSX.Element | null {
+}: InstancePropertyInputsProps): JSX.Element | null {
   const recurrenceFields = useMemo(
     () => fields.filter((field) => isRecurrenceField(field) && getFieldMeaningSlot(field) !== 'recurrence_rule'),
     [fields],
@@ -200,7 +200,7 @@ function RecurrenceMeaningInput({
   fields,
   properties,
   onChange,
-}: ConceptPropertyInputsProps): JSX.Element {
+}: InstancePropertyInputsProps): JSX.Element {
   const { t } = useI18n();
   const fieldBySlot = useMemo(() => {
     const map = new Map<MeaningSlotKey, SchemaField>();
@@ -219,18 +219,18 @@ function RecurrenceMeaningInput({
   const countField = fieldBySlot.get('recurrence_count');
 
   const frequencyOptions = [
-    { value: 'daily', label: t('concept.recurrence.frequency.daily' as never) },
-    { value: 'weekly', label: t('concept.recurrence.frequency.weekly' as never) },
-    { value: 'monthly', label: t('concept.recurrence.frequency.monthly' as never) },
+    { value: 'daily', label: t('instance.recurrence.frequency.daily' as never) },
+    { value: 'weekly', label: t('instance.recurrence.frequency.weekly' as never) },
+    { value: 'monthly', label: t('instance.recurrence.frequency.monthly' as never) },
   ];
   const weekdayOptions = [
-    { value: 'SU', label: t('concept.recurrence.weekday.sunday' as never) },
-    { value: 'MO', label: t('concept.recurrence.weekday.monday' as never) },
-    { value: 'TU', label: t('concept.recurrence.weekday.tuesday' as never) },
-    { value: 'WE', label: t('concept.recurrence.weekday.wednesday' as never) },
-    { value: 'TH', label: t('concept.recurrence.weekday.thursday' as never) },
-    { value: 'FR', label: t('concept.recurrence.weekday.friday' as never) },
-    { value: 'SA', label: t('concept.recurrence.weekday.saturday' as never) },
+    { value: 'SU', label: t('instance.recurrence.weekday.sunday' as never) },
+    { value: 'MO', label: t('instance.recurrence.weekday.monday' as never) },
+    { value: 'TU', label: t('instance.recurrence.weekday.tuesday' as never) },
+    { value: 'WE', label: t('instance.recurrence.weekday.wednesday' as never) },
+    { value: 'TH', label: t('instance.recurrence.weekday.thursday' as never) },
+    { value: 'FR', label: t('instance.recurrence.weekday.friday' as never) },
+    { value: 'SA', label: t('instance.recurrence.weekday.saturday' as never) },
   ];
 
   const renderLabel = (field: SchemaField | undefined, slot: MeaningSlotKey) => (
@@ -243,9 +243,9 @@ function RecurrenceMeaningInput({
   return (
     <div className="rounded-lg border border-subtle bg-surface-editor px-3 py-3">
       <div className="mb-3">
-        <div className="text-xs font-semibold text-default">{t('concept.recurrence.title' as never)}</div>
+        <div className="text-xs font-semibold text-default">{t('instance.recurrence.title' as never)}</div>
         <div className="mt-1 text-[11px] leading-relaxed text-secondary">
-          {t('concept.recurrence.description' as never)}
+          {t('instance.recurrence.description' as never)}
         </div>
       </div>
 
@@ -470,8 +470,8 @@ export function FieldInput({ field, value, onChange }: FieldInputProps): JSX.Ele
           field={field}
           value={value}
           onChange={onChange}
-          missingTargetMessage={t('concept.referenceFieldNeedsType' as never)}
-          emptyMessage={t('concept.embeddedFieldEmpty' as never)}
+          missingTargetMessage={t('instance.referenceFieldNeedsType' as never)}
+          emptyMessage={t('instance.embeddedFieldEmpty' as never)}
         />
       );
     case 'file':
@@ -565,17 +565,17 @@ function FieldMeta({
     <div className="flex flex-col gap-1">
       {slotLabel && (
         <div className="flex flex-wrap items-center gap-1">
-          <Badge variant="accent">{`${t('concept.semanticSlot' as never)}: ${slotLabel}`}</Badge>
+          <Badge variant="accent">{`${t('instance.semanticSlot' as never)}: ${slotLabel}`}</Badge>
           {constraintLevel && (
             <Badge variant={constraintLevel === 'strict' ? 'accent' : 'default'}>
-              {t(`concept.slotConstraint.${constraintLevel}` as never)}
+              {t(`instance.slotConstraint.${constraintLevel}` as never)}
             </Badge>
           )}
         </div>
       )}
       {slotLabel && allowedTypeLabels.length > 0 && (
         <div className="text-[11px] text-muted">
-          {`${t('concept.allowedFieldTypes' as never)}: ${allowedTypeLabels.join(', ')}`}
+          {`${t('instance.allowedFieldTypes' as never)}: ${allowedTypeLabels.join(', ')}`}
         </div>
       )}
       {slotDescription && (
@@ -680,29 +680,29 @@ function EmbeddedModelPropertiesInput({
 
 function useFieldChoiceOptions(field: SchemaField): { value: string; label: string; icon?: string | null }[] {
   const currentProjectId = useProjectStore((state) => state.currentProject?.id ?? null);
-  const concepts = useConceptStore((state) => state.concepts);
-  const loadConcepts = useConceptStore((state) => state.loadByProject);
+  const instances = useInstanceStore((state) => state.instances);
+  const loadInstances = useInstanceStore((state) => state.loadByProject);
   const optionsConfig = useMemo(() => parseSchemaFieldOptions(field.options), [field.options]);
-  const sourceIds = optionsConfig.conceptOptionSourceIds;
+  const sourceIds = optionsConfig.instanceOptionSourceIds;
 
   useEffect(() => {
-    if (sourceIds.length === 0 || !currentProjectId || concepts.length > 0) return;
-    loadConcepts(currentProjectId);
-  }, [concepts.length, currentProjectId, loadConcepts, sourceIds.length]);
+    if (sourceIds.length === 0 || !currentProjectId || instances.length > 0) return;
+    loadInstances(currentProjectId);
+  }, [instances.length, currentProjectId, loadInstances, sourceIds.length]);
 
   return useMemo(() => {
     const staticOptions = optionsConfig.choices.map((choice) => ({
       value: choice,
       label: choice,
     }));
-    const conceptOptions = concepts
-      .filter((concept) => concept.schema_id && sourceIds.includes(concept.schema_id))
-      .map((concept) => ({
-        value: toConceptOptionValue(concept.id),
-        label: concept.title,
-        icon: concept.icon,
+    const instanceOptions = instances
+      .filter((instance) => instance.schema_id && sourceIds.includes(instance.schema_id))
+      .map((instance) => ({
+        value: toInstanceOptionValue(instance.id),
+        label: instance.title,
+        icon: instance.icon,
       }));
 
-    return [...staticOptions, ...conceptOptions];
-  }, [concepts, optionsConfig.choices, sourceIds]);
+    return [...staticOptions, ...instanceOptions];
+  }, [instances, optionsConfig.choices, sourceIds]);
 }

@@ -7,7 +7,7 @@ import { translate, type Locale, type TranslationKey } from '@netior/shared/i18n
 import type { NarreToolCall, NarreToolCategory } from '@netior/shared/types';
 
 const COUNT_NOUNS: Record<string, { ko: string; en: string }> = {
-  list_concepts: { ko: 'concept', en: 'concept' },
+  list_instances: { ko: 'instance', en: 'instance' },
   list_models: { ko: 'model', en: 'model' },
   list_networks: { ko: 'network', en: 'network' },
   list_modules: { ko: 'module', en: 'module' },
@@ -142,9 +142,9 @@ function summarizeToolError(error: string | undefined, locale: Locale): string |
       : `Project ${projectId} was not found`;
   }
 
-  if (/^Concept not found:\s*(.+)$/i.test(message)) {
-    const [, conceptId] = message.match(/^Concept not found:\s*(.+)$/i) ?? [];
-    return `Concept ${conceptId} was not found`;
+  if (/^Instance not found:\s*(.+)$/i.test(message)) {
+    const [, instanceId] = message.match(/^Instance not found:\s*(.+)$/i) ?? [];
+    return `Instance ${instanceId} was not found`;
   }
 
   if (/^File entity not found:\s*(.+)$/i.test(message)) {

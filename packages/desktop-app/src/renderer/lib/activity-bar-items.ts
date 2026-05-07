@@ -5,6 +5,7 @@ import {
   Boxes,
   FolderKanban,
   FolderTree,
+  Globe2,
   Settings,
   Sparkles,
   Terminal,
@@ -37,5 +38,6 @@ export const ACTIVITY_BAR_BOTTOM_ITEM_DEFINITIONS: Record<
   narre: { key: 'narre', icon: Sparkles, labelKey: 'narre.title' },
   terminal: { key: 'terminal', icon: Terminal, labelKey: 'sidebar.terminal' },
   agents: { key: 'agents', icon: Bot, labelKey: 'sidebar.agents' },
+  browser: { key: 'browser', icon: Globe2, labelKey: 'sidebar.browser' },
   settings: { key: 'settings', icon: Settings, labelKey: 'sidebar.settings' },
 };

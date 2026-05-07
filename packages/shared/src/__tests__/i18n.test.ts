@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { translate } from '../i18n';
+import { getMissingTranslationKeys, getTranslationKeys, translate, translateStrict } from '../i18n';
 
 describe('translate', () => {
   it('should return Korean translation by default', () => {
@@ -14,6 +14,12 @@ describe('translate', () => {
 
   it('should return key if translation not found', () => {
     expect(translate('ko', 'nonexistent.key' as any)).toBe('nonexistent.key');
+  });
+
+  it('should throw in strict mode if translation is missing', () => {
+    expect(() => translateStrict('ko', 'nonexistent.key')).toThrow(
+      'Missing translation for ko:nonexistent.key',
+    );
   });
 
   it('should interpolate params', () => {
@@ -32,7 +38,7 @@ describe('translate', () => {
       'common.create', 'common.delete', 'common.cancel', 'common.save',
       'project.create', 'project.name',
       'network.create', 'network.defaultName',
-      'concept.create', 'concept.defaultTitle',
+      'instance.create', 'instance.defaultTitle',
       'edge.connect', 'edge.delete',
       'editor.unsaved', 'editor.openExternal',
     ] as const;
@@ -41,5 +47,15 @@ describe('translate', () => {
       expect(() => translate('ko', key)).not.toThrow();
       expect(() => translate('en', key)).not.toThrow();
     }
+  });
+
+  it('should keep locale resources aligned with Korean keys', () => {
+    expect(getTranslationKeys('ko').length).toBeGreaterThan(0);
+    expect(getMissingTranslationKeys('ko', 'en')).toEqual([]);
+  });
+
+  it('should keep locale resources aligned with English keys', () => {
+    expect(getTranslationKeys('en').length).toBeGreaterThan(0);
+    expect(getMissingTranslationKeys('en', 'ko')).toEqual([]);
   });
 });

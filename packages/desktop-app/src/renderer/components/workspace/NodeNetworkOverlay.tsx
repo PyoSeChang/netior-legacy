@@ -4,14 +4,14 @@ import { useNetworkStore } from '../../stores/network-store';
 import { useI18n } from '../../hooks/useI18n';
 
 interface NodeNetworkOverlayProps {
-  conceptId: string;
+  instanceId: string;
   /** Screen-space position of the node */
   x: number;
   y: number;
   onClose: () => void;
 }
 
-export function NodeNetworkOverlay({ conceptId, x, y, onClose }: NodeNetworkOverlayProps): JSX.Element | null {
+export function NodeNetworkOverlay({ instanceId, x, y, onClose }: NodeNetworkOverlayProps): JSX.Element | null {
   const { t } = useI18n();
   const { openNetwork, currentNetwork, networks } = useNetworkStore();
 
@@ -40,7 +40,7 @@ export function NodeNetworkOverlay({ conceptId, x, y, onClose }: NodeNetworkOver
     >
       <div className="px-2 py-1 text-[10px] text-muted uppercase tracking-wider flex items-center gap-1">
         <Layers size={10} />
-        {t('network.networksForConcept') ?? 'Networks'}
+        {t('network.networksForInstance') ?? 'Networks'}
       </div>
       {childNetworks.map((c) => (
         <button

@@ -4,7 +4,6 @@ import type {
   SchemaMeaningSlotBinding,
   EditorTab,
   SemanticCategoryRefKey,
-  SemanticCategoryKey,
   SemanticMeaningKey,
   ModelKey,
   ModelRefKey,
@@ -12,15 +11,13 @@ import type {
 } from '@netior/shared/types';
 import {
   MODEL_DEFINITIONS,
-  SEMANTIC_CATEGORY_LABELS,
-  getSemanticCategoryDescriptionKey,
-  getSemanticCategoryLabelKey,
   getModelDescriptionKey,
   getModelLabelKey,
   getMeaningSlotDefinition,
   getMeaningSlotLabelKey,
   fieldMeaningToMeaningBindings,
 } from '@netior/shared/constants';
+import { createOntologyDisplayResolver } from '@netior/shared';
 import { useSchemaStore } from '../../stores/schema-store';
 import { useEditorStore } from '../../stores/editor-store';
 import { useModelStore } from '../../stores/model-store';
@@ -94,10 +91,6 @@ function normalizeModelRefs(value: unknown): ModelRefKey[] {
   return [];
 }
 
-function isBuiltInSemanticCategory(value: SemanticCategoryRefKey): value is SemanticCategoryKey {
-  return Object.prototype.hasOwnProperty.call(SEMANTIC_CATEGORY_LABELS, value);
-}
-
 function getCategoryKeyFromModelSource(sourceRef?: string | null): SemanticCategoryRefKey {
   const prefix = 'model-category.';
   if (sourceRef?.startsWith(prefix)) {
@@ -125,6 +118,7 @@ function getAutoCreateBindingsForMeaning(meaning: SchemaMeaning): SchemaMeaningS
 
 export function SchemaEditor({ tab }: SchemaEditorProps): JSX.Element {
   const { t } = useI18n();
+  const display = useMemo(() => createOntologyDisplayResolver(t), [t]);
   const schemaId = tab.targetId;
   const rawSchemas = useSchemaStore((s) => s.schemas);
   const rawFields = useSchemaStore((s) => s.fields[schemaId]);
@@ -208,7 +202,7 @@ export function SchemaEditor({ tab }: SchemaEditorProps): JSX.Element {
     if (schemaModels.length > 0) {
       return schemaModels.map((model) => ({
         key: model.key,
-        category: getCategoryKeyFromModelSource(model.category_concept_source_ref),
+        category: getCategoryKeyFromModelSource(model.category_instance_source_ref),
         label: model.built_in ? t(getModelLabelKey(model.key as ModelKey) as never) : model.name,
         description: model.built_in ? t(getModelDescriptionKey(model.key as ModelKey) as never) : model.description,
         meanings: model.meaning_keys,
@@ -234,16 +228,18 @@ export function SchemaEditor({ tab }: SchemaEditorProps): JSX.Element {
   const modelCategories = useMemo<readonly ModelCategoryOption[]>(() => {
     const categoryByKey = new Map<SemanticCategoryRefKey, ModelCategoryOption>();
     const getCategoryOption = (key: SemanticCategoryRefKey, fallbackLabel: string): ModelCategoryOption => {
-      if (isBuiltInSemanticCategory(key)) {
-        return {
-          key,
-          label: t(getSemanticCategoryLabelKey(key) as never),
-          description: t(getSemanticCategoryDescriptionKey(key) as never),
-        };
-      }
       return {
         key,
-        label: fallbackLabel,
+        label: display.name({
+          kind: 'instance',
+          title: fallbackLabel,
+          source_ref: `model-category.${key}`,
+        }),
+        description: display.description({
+          kind: 'instance',
+          title: fallbackLabel,
+          source_ref: `model-category.${key}`,
+        }) ?? undefined,
       };
     };
 
@@ -254,14 +250,14 @@ export function SchemaEditor({ tab }: SchemaEditorProps): JSX.Element {
     }
 
     for (const model of projectModels) {
-      const categoryKey = getCategoryKeyFromModelSource(model.category_concept_source_ref);
+      const categoryKey = getCategoryKeyFromModelSource(model.category_instance_source_ref);
       if ((model.target_kind === 'object' || model.target_kind === 'both') && !categoryByKey.has(categoryKey)) {
-        categoryByKey.set(categoryKey, getCategoryOption(categoryKey, model.category_concept_title ?? categoryKey));
+        categoryByKey.set(categoryKey, getCategoryOption(categoryKey, model.category_instance_title ?? categoryKey));
       }
     }
 
     return [...categoryByKey.values()];
-  }, [modelDefinitions, projectModels, t]);
+  }, [display, modelDefinitions, projectModels]);
   const modelDefinitionByKey = useMemo(
     () => new Map(modelDefinitions.map((definition) => [definition.key, definition])),
     [modelDefinitions],
@@ -273,8 +269,8 @@ export function SchemaEditor({ tab }: SchemaEditorProps): JSX.Element {
   };
 
   const visualModeOptions = useMemo(() => [
-    { value: 'icon', label: t('concept.visualModeOptions.icon' as never) },
-    { value: 'image', label: t('concept.visualModeOptions.image' as never) },
+    { value: 'icon', label: t('instance.visualModeOptions.icon' as never) },
+    { value: 'image', label: t('instance.visualModeOptions.image' as never) },
   ], [t]);
 
   const handleVisualModeChange = (mode: VisualMode) => {
@@ -450,7 +446,7 @@ export function SchemaEditor({ tab }: SchemaEditorProps): JSX.Element {
         description={t('schema.descriptionPlaceholder')}
         leadingVisual={<NodeVisual icon={editorState.icon ?? 'boxes'} size={24} imageSize={56} className="shrink-0" />}
       >
-        <NetworkObjectEditorSection title={t('editorShell.overview' as never)}>
+        <NetworkObjectEditorSection title={t('editorShell.overview' as never)} viewMode="details">
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium text-secondary">{t('schema.name')}</label>
             <Input
@@ -470,9 +466,9 @@ export function SchemaEditor({ tab }: SchemaEditorProps): JSX.Element {
           </div>
         </NetworkObjectEditorSection>
 
-        <NetworkObjectEditorSection title={t('schema.visualDefaults')}>
+        <NetworkObjectEditorSection title={t('schema.visualDefaults')} viewMode="details">
           <div className="flex flex-col gap-2">
-            <span className="text-xs text-secondary">{t('concept.visual' as never)}</span>
+            <span className="text-xs text-secondary">{t('instance.visual' as never)}</span>
             <RadioGroup
               options={visualModeOptions}
               value={visualMode}
@@ -483,7 +479,7 @@ export function SchemaEditor({ tab }: SchemaEditorProps): JSX.Element {
               <FilePicker
                 value={isImageSourceValue(editorState.icon) ? editorState.icon ?? '' : ''}
                 onChange={(path) => update({ icon: path || null })}
-                placeholder={t('concept.selectProfileImage' as never)}
+                placeholder={t('instance.selectProfileImage' as never)}
                 filters={[...IMAGE_FILE_FILTERS]}
               />
             ) : (
@@ -514,7 +510,7 @@ export function SchemaEditor({ tab }: SchemaEditorProps): JSX.Element {
           </div>
         </NetworkObjectEditorSection>
 
-        <NetworkObjectEditorSection title={t('schema.fileTemplate')} defaultOpen={false}>
+        <NetworkObjectEditorSection title={t('schema.fileTemplate')} defaultOpen={false} viewMode="details">
           <TextArea
             value={editorState.file_template ?? ''}
             onChange={(e) => update({ file_template: e.target.value || null })}
@@ -524,7 +520,7 @@ export function SchemaEditor({ tab }: SchemaEditorProps): JSX.Element {
           />
         </NetworkObjectEditorSection>
 
-        <NetworkObjectEditorSection title={t('schema.propertySchema')}>
+        <NetworkObjectEditorSection title={t('schema.propertySchema')} viewMode="body">
           <SchemaSlotDesigner
             tabId={tab.id}
             fields={fields}
@@ -547,7 +543,7 @@ export function SchemaEditor({ tab }: SchemaEditorProps): JSX.Element {
           />
         </NetworkObjectEditorSection>
 
-        <NetworkObjectEditorSection title={t('editorShell.metadata' as never)} defaultOpen={false}>
+        <NetworkObjectEditorSection title={t('editorShell.metadata' as never)} defaultOpen={false} viewMode="details">
           <NetworkObjectMetadataList
             items={[
               { label: t('editorShell.objectId' as never), value: <code className="font-mono text-xs">{schema.id}</code> },

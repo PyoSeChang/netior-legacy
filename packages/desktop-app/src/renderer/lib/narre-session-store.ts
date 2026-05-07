@@ -12,7 +12,7 @@ import type {
 import { SLASH_TRIGGER_SKILLS } from '@netior/shared/constants';
 import { narreService } from '../services/narre-service';
 import { useSchemaStore as useModelStore } from '../stores/schema-store';
-import { useConceptStore } from '../stores/concept-store';
+import { useInstanceStore } from '../stores/instance-store';
 import { useNetworkStore } from '../stores/network-store';
 import { useModelStore } from '../stores/model-store';
 import {
@@ -61,7 +61,7 @@ let displayBlockCounter = 0;
 
 function refreshStores(projectId: string): void {
   useModelStore.getState().loadByProject(projectId);
-  useConceptStore.getState().loadByProject(projectId);
+  useInstanceStore.getState().loadByProject(projectId);
   useModelStore.getState().loadByProject(projectId);
   useNetworkStore.getState().loadNetworks(projectId);
 }

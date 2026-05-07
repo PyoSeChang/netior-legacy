@@ -4,14 +4,14 @@ export type { InitDatabaseOptions } from './connection';
 
 // Repositories
 export * from './repositories/project';
-export * from './repositories/concept';
+export * from './repositories/instance';
 export * from './repositories/network';
 export * from './repositories/layout';
 export * from './repositories/schema';
 export * from './repositories/model';
 export * from './repositories/model-category';
 export * from './repositories/file';
-export * from './repositories/concept-property';
+export * from './repositories/instance-property';
 export * from './repositories/editor-prefs';
 export * from './repositories/module';
 export * from './repositories/objects';
@@ -19,4 +19,4 @@ export * from './repositories/context';
 export * from './repositories/settings';
 
 // Services
-export { serializeToAgent, parseFromAgent, renderTemplate } from './services/concept-content-sync';
+export { serializeToAgent, parseFromAgent, renderTemplate } from './services/instance-content-sync';

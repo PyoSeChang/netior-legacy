@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { Badge } from '../ui/Badge';
 
@@ -11,6 +11,7 @@ interface NetworkObjectEditorShellProps {
   actions?: React.ReactNode;
   showHeader?: boolean;
   fillHeight?: boolean;
+  bodySectionCount?: number;
   children: React.ReactNode;
 }
 
@@ -19,6 +20,8 @@ interface NetworkObjectEditorSectionProps {
   description?: string;
   defaultOpen?: boolean;
   actions?: React.ReactNode;
+  viewMode?: 'body' | 'details';
+  fullBleed?: boolean;
   children: React.ReactNode;
 }
 
@@ -35,13 +38,58 @@ export function NetworkObjectEditorShell({
   actions,
   showHeader = true,
   fillHeight = true,
+  bodySectionCount = 2,
   children,
 }: NetworkObjectEditorShellProps): JSX.Element {
+  const [viewMode, setViewMode] = useState<'body' | 'details'>('body');
+  const sections = useMemo(() => React.Children.toArray(children), [children]);
+  const explicitBodySections = sections.filter((section) => (
+    React.isValidElement<NetworkObjectEditorSectionProps>(section) && section.props.viewMode === 'body'
+  ));
+  const explicitDetailSections = sections.filter((section) => (
+    React.isValidElement<NetworkObjectEditorSectionProps>(section) && section.props.viewMode === 'details'
+  ));
+  const hasExplicitModes = explicitBodySections.length > 0 || explicitDetailSections.length > 0;
+  const bodySections = hasExplicitModes ? explicitBodySections : sections.slice(0, bodySectionCount);
+  const detailSections = hasExplicitModes ? explicitDetailSections : sections.slice(bodySectionCount);
+  const visibleSections = viewMode === 'body' ? bodySections : detailSections;
+
   return (
     <div className={`${fillHeight ? 'min-h-full' : 'min-h-0'} bg-surface-editor`}>
-      <div className="mx-auto flex w-full max-w-[760px] flex-col gap-4 px-6 py-5">
-        {showHeader && (
-          <section className="rounded-xl border border-default bg-surface-panel p-5 shadow-sm">
+      <div className="sticky top-0 z-10 flex justify-end bg-surface-editor px-6 py-2">
+          <div className="flex items-center rounded-lg border border-default bg-surface-card p-0.5 shadow-sm">
+            <button
+              type="button"
+              onClick={() => setViewMode('body')}
+              className={[
+                'h-8 rounded-md px-3 text-xs font-semibold transition-colors',
+                viewMode === 'body'
+                  ? 'bg-accent text-on-accent shadow-sm'
+                  : 'text-secondary hover:bg-state-hover hover:text-default',
+              ].join(' ')}
+            >
+              Body
+            </button>
+            {detailSections.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setViewMode('details')}
+                className={[
+                  'h-8 rounded-md px-3 text-xs font-semibold transition-colors',
+                  viewMode === 'details'
+                    ? 'bg-accent text-on-accent shadow-sm'
+                    : 'text-secondary hover:bg-state-hover hover:text-default',
+                ].join(' ')}
+              >
+                Details
+              </button>
+            )}
+          </div>
+      </div>
+
+      <div className="flex w-full flex-col gap-5 py-5">
+        {showHeader && viewMode === 'details' && (
+          <section className="mx-auto w-full max-w-[760px] border-b border-subtle px-6 pb-5">
             <div className="flex items-start justify-between gap-4">
               <div className="flex min-w-0 flex-1 items-start gap-4">
                 {leadingVisual && <div className="shrink-0">{leadingVisual}</div>}
@@ -58,7 +106,7 @@ export function NetworkObjectEditorShell({
             </div>
           </section>
         )}
-        {children}
+        {visibleSections.length > 0 ? visibleSections : bodySections}
       </div>
     </div>
   );
@@ -69,13 +117,18 @@ export function NetworkObjectEditorSection({
   description,
   defaultOpen = true,
   actions,
+  viewMode: _viewMode,
+  fullBleed = false,
   children,
 }: NetworkObjectEditorSectionProps): JSX.Element {
   const [open, setOpen] = useState(defaultOpen);
+  const sectionClass = fullBleed ? 'w-full' : 'mx-auto w-full max-w-[760px] px-6';
+  const headerClass = fullBleed ? 'mx-auto w-full max-w-[760px] px-6' : '';
+  const contentClass = fullBleed ? 'flex flex-col gap-4 py-3' : 'flex flex-col gap-4 py-3';
 
   return (
-    <section className="overflow-hidden rounded-xl border border-subtle bg-surface-card">
-      <div className="flex items-center gap-3 border-b border-subtle px-4 py-3">
+    <section className={`${sectionClass} border-b border-subtle pb-5 last:border-b-0`}>
+      <div className={`${headerClass} flex items-center gap-3 py-2`}>
         <button
           type="button"
           onClick={() => setOpen((current) => !current)}
@@ -93,7 +146,7 @@ export function NetworkObjectEditorSection({
         </button>
         {actions && <div className="shrink-0">{actions}</div>}
       </div>
-      {open && <div className="flex flex-col gap-4 px-4 py-4">{children}</div>}
+      {open && <div className={contentClass}>{children}</div>}
     </section>
   );
 }

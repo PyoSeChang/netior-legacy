@@ -46,7 +46,7 @@ export function SchemaFieldRow({
   const showOptions = CHOICE_TYPES.has(field.field_type);
   const showSchemaRef = field.field_type === 'schema_ref';
   const fieldOptions = parseSchemaFieldOptions(field.options);
-  const conceptOptionSourceId = fieldOptions.conceptOptionSourceIds[0] ?? null;
+  const instanceOptionSourceId = fieldOptions.instanceOptionSourceIds[0] ?? null;
   const meaningSlot = getFieldMeaningSlot(field);
   const slotDefinition = meaningSlot ? getMeaningSlotDefinition(meaningSlot) : undefined;
   const allowedTypes = useMemo(() => (
@@ -74,11 +74,11 @@ export function SchemaFieldRow({
     });
   };
 
-  const updateConceptOptionSource = (schemaId: string | null) => {
+  const updateInstanceOptionSource = (schemaId: string | null) => {
     const patch: SchemaFieldUpdate = {
       options: stringifySchemaFieldOptions({
         ...fieldOptions,
-        conceptOptionSourceIds: schemaId ? [schemaId] : [],
+        instanceOptionSourceIds: schemaId ? [schemaId] : [],
       }),
     };
 
@@ -190,13 +190,13 @@ export function SchemaFieldRow({
           />
           <div>
             <div className="mb-1 text-[11px] font-medium text-secondary">
-              {t('schema.conceptOptions' as never)}
+              {t('schema.instanceOptions' as never)}
             </div>
             <SchemaRefPicker
               mode="schema"
-              value={conceptOptionSourceId}
+              value={instanceOptionSourceId}
               excludeSchemaId={field.schema_id}
-              onChange={updateConceptOptionSource}
+              onChange={updateInstanceOptionSource}
             />
           </div>
         </div>

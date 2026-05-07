@@ -1,11 +1,11 @@
-/* Concepts */
-@import './concepts/forest.css';
-@import './concepts/alloy.css';
-@import './concepts/hearth.css';
-@import './concepts/tide.css';
-@import './concepts/dune.css';
-@import './concepts/ember.css';
-@import './concepts/pastel.css';
+/* Instances */
+@import './instances/forest.css';
+@import './instances/alloy.css';
+@import './instances/hearth.css';
+@import './instances/tide.css';
+@import './instances/dune.css';
+@import './instances/ember.css';
+@import './instances/pastel.css';
 
 /* Modes */
 @import './modes/dark.css';

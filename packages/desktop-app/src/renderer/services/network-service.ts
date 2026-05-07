@@ -2,7 +2,7 @@
   Network, NetworkCreate, NetworkUpdate,
   NetworkNode, NetworkNodeCreate, NetworkNodeUpdate,
   Edge, EdgeCreate, EdgeUpdate,
-  ObjectRecord, Concept, FileEntity, Model, NetworkBreadcrumbItem,
+  ObjectRecord, Instance, FileEntity, Model, NetworkBreadcrumbItem,
   NetworkTreeNode, Layout,
 } from '@netior/shared/types';
 
@@ -21,7 +21,7 @@ export interface NetworkFullData {
   layout: Layout | undefined;
   nodes: (NetworkNode & {
     object?: ObjectRecord;
-    concept?: Concept;
+    instance?: Instance;
     file?: FileEntity;
   })[];
   edges: (Edge & { model?: Model })[];

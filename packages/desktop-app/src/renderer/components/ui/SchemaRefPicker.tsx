@@ -4,13 +4,13 @@ import { Boxes, Link2, X } from 'lucide-react';
 import type { TranslationKey } from '@netior/shared/i18n';
 import { useI18n } from '../../hooks/useI18n';
 import { useSchemaStore } from '../../stores/schema-store';
-import { useConceptStore } from '../../stores/concept-store';
+import { useInstanceStore } from '../../stores/instance-store';
 import { useProjectStore } from '../../stores/project-store';
 import { useAnchoredDropdown } from '../../hooks/useAnchoredDropdown';
 import { NodeVisual } from '../workspace/node-components/NodeVisual';
 
 interface SchemaRefPickerProps {
-  mode: 'schema' | 'concept';
+  mode: 'schema' | 'instance';
   value?: string | null;
   onChange?: (value: string | null) => void;
   refSchemaId?: string | null;
@@ -29,8 +29,8 @@ export function SchemaRefPicker({
   const { t } = useI18n();
   const tk = (key: string) => t(key as TranslationKey);
   const currentProjectId = useProjectStore((state) => state.currentProject?.id ?? null);
-  const loadConcepts = useConceptStore((state) => state.loadByProject);
-  const concepts = useConceptStore((state) => state.concepts);
+  const loadInstances = useInstanceStore((state) => state.loadByProject);
+  const instances = useInstanceStore((state) => state.instances);
   const schemas = useSchemaStore((state) => state.schemas);
 
   const [open, setOpen] = useState(false);
@@ -43,9 +43,9 @@ export function SchemaRefPicker({
   }, dropdownRef);
 
   useEffect(() => {
-    if (mode !== 'concept' || !currentProjectId || concepts.length > 0) return;
-    loadConcepts(currentProjectId);
-  }, [mode, currentProjectId, concepts.length, loadConcepts]);
+    if (mode !== 'instance' || !currentProjectId || instances.length > 0) return;
+    loadInstances(currentProjectId);
+  }, [mode, currentProjectId, instances.length, loadInstances]);
 
   useEffect(() => {
     if (!open) return;
@@ -72,19 +72,19 @@ export function SchemaRefPicker({
         }));
     }
 
-    return concepts
-      .filter((concept) => concept.schema_id === refSchemaId)
-      .map((concept) => {
-        const schema = schemas.find((item) => item.id === concept.schema_id);
+    return instances
+      .filter((instance) => instance.schema_id === refSchemaId)
+      .map((instance) => {
+        const schema = schemas.find((item) => item.id === instance.schema_id);
         return {
-          id: concept.id,
-          label: concept.title,
-          icon: concept.icon,
-          color: concept.color,
-          detail: schema?.name ?? t('concept.properties'),
+          id: instance.id,
+          label: instance.title,
+          icon: instance.icon,
+          color: instance.color,
+          detail: schema?.name ?? t('instance.properties'),
         };
       });
-  }, [mode, schemas, concepts, excludeSchemaId, refSchemaId, t]);
+  }, [mode, schemas, instances, excludeSchemaId, refSchemaId, t]);
 
   const selected = items.find((item) => item.id === value);
 
@@ -99,11 +99,11 @@ export function SchemaRefPicker({
 
   const placeholder = mode === 'schema'
     ? tk('schema.selectReferenceSchema')
-    : tk('schema.selectReferenceConcept');
+    : tk('schema.selectReferenceInstance');
 
   const emptyMessage = mode === 'schema'
     ? tk('schema.noReferenceSchemas')
-    : tk('schema.noReferenceConcepts');
+    : tk('schema.noReferenceInstances');
 
   const Icon = mode === 'schema' ? Boxes : Link2;
 

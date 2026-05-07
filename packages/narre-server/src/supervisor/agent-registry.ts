@@ -18,7 +18,7 @@ const SYSTEM_AGENTS: readonly NarreSystemAgentDefinition[] = [
   {
     id: 'network-builder',
     name: 'Network Builder',
-    description: 'Builds and expands Netior concept networks.',
+    description: 'Builds and expands Netior instance networks.',
     kind: 'narre',
     narreAgentType: 'system',
     systemAgentType: 'network-builder',
@@ -34,7 +34,7 @@ const SYSTEM_AGENTS: readonly NarreSystemAgentDefinition[] = [
   {
     id: 'network-finder',
     name: 'Network Finder',
-    description: 'Finds relevant networks, concepts, and paths.',
+    description: 'Finds relevant networks, instances, and paths.',
     kind: 'narre',
     narreAgentType: 'system',
     systemAgentType: 'network-finder',

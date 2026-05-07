@@ -19,7 +19,7 @@
 
 import { useEditorStore } from '../stores/editor-store';
 import { useProjectStore } from '../stores/project-store';
-import { useConceptStore } from '../stores/concept-store';
+import { useInstanceStore } from '../stores/instance-store';
 import { useSchemaStore as useModelStore } from '../stores/schema-store';
 import { useModelStore } from '../stores/model-store';
 import { useNetworkStore } from '../stores/network-store';
@@ -85,7 +85,7 @@ function bootstrapWorkspaceStores(project: Project): void {
   useProjectStore.setState({ currentProject: project });
 
   const pid = project.id;
-  useConceptStore.getState().loadByProject(pid);
+  useInstanceStore.getState().loadByProject(pid);
   useModelStore.getState().loadByProject(pid);
   useModelStore.getState().loadByProject(pid);
   useNetworkStore.getState().loadNetworks(pid);
@@ -99,7 +99,6 @@ function schedulePush(): void {
     _syncScheduled = false;
     if (!_isSyncing) {
       const state = getSyncState();
-      console.log(`[Bridge] pushState ??hosts=${JSON.stringify(Object.keys(state.hosts))}, tabs=${state.tabs.length}`);
       window.electron.editor.pushState(state);
     }
   });

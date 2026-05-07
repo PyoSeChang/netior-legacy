@@ -1,21 +1,21 @@
 ﻿import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import {
-  deleteConceptProperty,
-  getConceptProperties,
-  upsertConceptProperty,
+  deleteInstanceProperty,
+  getInstanceProperties,
+  upsertInstanceProperty,
 } from '../netior-service-client.js';
 import { emitChange } from '../events.js';
 import { registerNetiorTool } from './shared-tool-registry.js';
 
-export function registerConceptPropertyTools(server: McpServer): void {
+export function registerInstancePropertyTools(server: McpServer): void {
   registerNetiorTool(
     server,
-    'get_concept_properties',
-    { concept_id: z.string().describe('The concept ID') },
-    async ({ concept_id }) => {
+    'get_instance_properties',
+    { instance_id: z.string().describe('The instance ID') },
+    async ({ instance_id }) => {
       try {
-        const result = await getConceptProperties(concept_id);
+        const result = await getInstanceProperties(instance_id);
         return {
           content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
         };
@@ -30,20 +30,20 @@ export function registerConceptPropertyTools(server: McpServer): void {
 
   registerNetiorTool(
     server,
-    'upsert_concept_property',
+    'upsert_instance_property',
     {
-      concept_id: z.string().describe('The concept ID'),
+      instance_id: z.string().describe('The instance ID'),
       field_id: z.string().describe('The field ID'),
       value: z.string().nullable().describe('Serialized value for the field, or null'),
     },
-    async ({ concept_id, field_id, value }) => {
+    async ({ instance_id, field_id, value }) => {
       try {
-        const result = await upsertConceptProperty({
-          concept_id,
+        const result = await upsertInstanceProperty({
+          instance_id,
           field_id,
           value,
         });
-        emitChange({ type: 'conceptProperty', action: 'upsert', id: result.id });
+        emitChange({ type: 'instanceProperty', action: 'upsert', id: result.id });
         return {
           content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
         };
@@ -58,20 +58,20 @@ export function registerConceptPropertyTools(server: McpServer): void {
 
   registerNetiorTool(
     server,
-    'delete_concept_property',
-    { concept_property_id: z.string().describe('The concept property ID to delete') },
-    async ({ concept_property_id }) => {
+    'delete_instance_property',
+    { instance_property_id: z.string().describe('The instance property ID to delete') },
+    async ({ instance_property_id }) => {
       try {
-        const deleted = await deleteConceptProperty(concept_property_id);
+        const deleted = await deleteInstanceProperty(instance_property_id);
         if (!deleted) {
           return {
-            content: [{ type: 'text' as const, text: `Error: Concept property not found: ${concept_property_id}` }],
+            content: [{ type: 'text' as const, text: `Error: Instance property not found: ${instance_property_id}` }],
             isError: true,
           };
         }
-        emitChange({ type: 'conceptProperty', action: 'delete', id: concept_property_id });
+        emitChange({ type: 'instanceProperty', action: 'delete', id: instance_property_id });
         return {
-          content: [{ type: 'text' as const, text: JSON.stringify({ success: true, id: concept_property_id }) }],
+          content: [{ type: 'text' as const, text: JSON.stringify({ success: true, id: instance_property_id }) }],
         };
       } catch (error) {
         return {

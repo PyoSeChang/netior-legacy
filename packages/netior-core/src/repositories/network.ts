@@ -13,7 +13,7 @@ import type {
   NetworkNode, NetworkNodeCreate, NetworkNodeUpdate,
   Edge, EdgeCreate, EdgeUpdate,
   ObjectRecord,
-  Concept,
+  Instance,
   FileEntity,
   Model,
   EdgeLineStyle,
@@ -235,9 +235,9 @@ function toModel(row: ModelRow): Model {
   return {
     ...row,
     key: row.key as ModelRefKey,
-    category_concept_id: row.category_concept_id ?? null,
-    category_concept_title: row.category_concept_title ?? null,
-    category_concept_source_ref: row.category_concept_source_ref ?? null,
+    category_instance_id: row.category_instance_id ?? null,
+    category_instance_title: row.category_instance_title ?? null,
+    category_instance_source_ref: row.category_instance_source_ref ?? null,
     target_kind: (row.target_kind ?? 'object') as ModelTargetKind,
     meaning_keys: parseStringArray<SemanticMeaningKey>(row.meaning_keys),
     core_slots: parseStringArray<MeaningSlotKey>(row.core_slots),
@@ -263,20 +263,24 @@ export function getNetworkFull(networkId: string): NetworkFullData | undefined {
     `SELECT nn.*,
             o.id as o_id, o.object_type as o_object_type, o.scope as o_scope,
             o.project_id as o_project_id, o.ref_id as o_ref_id, o.created_at as o_created_at,
-            c.title, c.color, c.icon, c.schema_id, c.project_id as concept_project_id,
-            c.created_at as concept_created_at, c.updated_at as concept_updated_at,
+            c.title, c.color, c.icon, c.schema_id, c.project_id as instance_project_id,
+            c.source_kind as instance_source_kind,
+            c.source_id as instance_source_id,
+            c.source_ref as instance_source_ref,
+            c.source_version as instance_source_version,
+            c.created_at as instance_created_at, c.updated_at as instance_updated_at,
             f.id as f_id, f.project_id as f_project_id, f.path as f_path, f.type as f_type,
             f.metadata as f_metadata, f.created_at as f_created_at, f.updated_at as f_updated_at
      FROM network_nodes nn
      JOIN objects o ON nn.object_id = o.id
-     LEFT JOIN concepts c ON o.object_type = 'concept' AND o.ref_id = c.id
+     LEFT JOIN instances c ON o.object_type = 'instance' AND o.ref_id = c.id
      LEFT JOIN files f ON o.object_type = 'file' AND o.ref_id = f.id
      WHERE nn.network_id = ?`,
   ).all(network.id) as (Record<string, unknown>)[];
 
   const parsedNodes = nodes.map((row) => {
     const objectType = row.o_object_type as string;
-    const hasConcept = objectType === 'concept' && row.title != null;
+    const hasInstance = objectType === 'instance' && row.title != null;
     const hasFile = objectType === 'file' && row.f_id != null;
 
     return {
@@ -296,18 +300,22 @@ export function getNetworkFull(networkId: string): NetworkFullData | undefined {
         ref_id: row.o_ref_id as string,
         created_at: row.o_created_at as string,
       },
-      ...(hasConcept ? {
-        concept: {
+      ...(hasInstance ? {
+        instance: {
           id: row.o_ref_id as string,
-          project_id: row.concept_project_id as string,
+          project_id: row.instance_project_id as string,
           schema_id: (row.schema_id as string | null) ?? null,
           title: row.title as string,
           color: row.color as string | null,
           icon: row.icon as string | null,
           content: null,
           agent_content: null,
-          created_at: row.concept_created_at as string,
-          updated_at: row.concept_updated_at as string,
+          source_kind: ((row.instance_source_kind as string | null) ?? 'project') as OntologySourceKind,
+          source_id: (row.instance_source_id as string | null) ?? null,
+          source_ref: (row.instance_source_ref as string | null) ?? null,
+          source_version: (row.instance_source_version as string | null) ?? null,
+          created_at: row.instance_created_at as string,
+          updated_at: row.instance_updated_at as string,
         },
       } : {}),
       ...(hasFile ? {
@@ -329,9 +337,9 @@ export function getNetworkFull(networkId: string): NetworkFullData | undefined {
             m.id as m_id, m.project_id as m_project_id,
             m.key as m_key, m.name as m_name,
             m.description as m_description,
-            m.category_concept_id as m_category_concept_id,
-            mc.title as m_category_concept_title,
-            mc.source_ref as m_category_concept_source_ref,
+            m.category_instance_id as m_category_instance_id,
+            mc.title as m_category_instance_title,
+            mc.source_ref as m_category_instance_source_ref,
             m.target_kind as m_target_kind,
             m.meaning_keys as m_meaning_keys, m.core_slots as m_core_slots,
             m.optional_slots as m_optional_slots, m.recipe_json as m_recipe_json,
@@ -345,7 +353,7 @@ export function getNetworkFull(networkId: string): NetworkFullData | undefined {
             m.created_at as m_created_at, m.updated_at as m_updated_at
      FROM edges e
      LEFT JOIN models m ON e.model_id = m.id
-     LEFT JOIN concepts mc ON mc.id = m.category_concept_id
+     LEFT JOIN instances mc ON mc.id = m.category_instance_id
      WHERE e.network_id = ?`,
   ).all(network.id) as (Record<string, unknown>)[];
 
@@ -366,9 +374,9 @@ export function getNetworkFull(networkId: string): NetworkFullData | undefined {
           key: row.m_key as string,
           name: row.m_name as string,
           description: (row.m_description as string | null) ?? null,
-          category_concept_id: (row.m_category_concept_id as string | null) ?? null,
-          category_concept_title: (row.m_category_concept_title as string | null) ?? null,
-          category_concept_source_ref: (row.m_category_concept_source_ref as string | null) ?? null,
+          category_instance_id: (row.m_category_instance_id as string | null) ?? null,
+          category_instance_title: (row.m_category_instance_title as string | null) ?? null,
+          category_instance_source_ref: (row.m_category_instance_source_ref as string | null) ?? null,
           target_kind: ((row.m_target_kind as string | null) ?? 'object') as ModelTargetKind,
           meaning_keys: (row.m_meaning_keys as string | null) ?? null,
           core_slots: (row.m_core_slots as string | null) ?? null,

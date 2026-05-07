@@ -5,7 +5,7 @@ import { useNetworkStore, type NetworkNodeWithObject, type NetworkEdgeWithModel 
 import { Input } from '../ui/Input';
 import { Badge } from '../ui/Badge';
 import { useI18n } from '../../hooks/useI18n';
-import { getModelDisplayName } from '../../lib/model-i18n';
+import { createOntologyDisplayResolver } from '@netior/shared';
 
 interface ContextMemberPickerProps {
   existingMembers: ContextMember[];
@@ -14,7 +14,7 @@ interface ContextMemberPickerProps {
 }
 
 function getNodeLabel(node: NetworkNodeWithObject): string {
-  if (node.concept) return node.concept.title;
+  if (node.instance) return node.instance.title;
   if (node.file?.path) return node.file.path.replace(/\\/g, '/').split('/').pop() ?? node.file.path;
   return node.object?.object_type ?? 'Object';
 }
@@ -22,14 +22,14 @@ function getNodeLabel(node: NetworkNodeWithObject): string {
 function getEdgeLabel(
   edge: NetworkEdgeWithModel,
   nodes: NetworkNodeWithObject[],
-  t: ReturnType<typeof useI18n>['t'],
+  display: ReturnType<typeof createOntologyDisplayResolver>,
 ): string {
   const sourceNode = nodes.find((node) => node.id === edge.source_node_id);
   const targetNode = nodes.find((node) => node.id === edge.target_node_id);
   const sourceLabel = sourceNode ? getNodeLabel(sourceNode) : '?';
   const targetLabel = targetNode ? getNodeLabel(targetNode) : '?';
   return edge.model
-    ? `${sourceLabel} -[${getModelDisplayName(edge.model, t)}]-> ${targetLabel}`
+    ? `${sourceLabel} -[${display.modelName(edge.model)}]-> ${targetLabel}`
     : `${sourceLabel} -> ${targetLabel}`;
 }
 
@@ -41,6 +41,7 @@ export function ContextMemberPicker({
   const { t } = useI18n();
   const nodes = useNetworkStore((state) => state.nodes);
   const edges = useNetworkStore((state) => state.edges);
+  const display = useMemo(() => createOntologyDisplayResolver(t), [t]);
   const [search, setSearch] = useState('');
 
   const existingObjectIds = useMemo(
@@ -67,9 +68,9 @@ export function ContextMemberPicker({
     () =>
       edges.filter((edge) => !existingEdgeIds.has(edge.id)).filter((edge) => {
         if (!query) return true;
-        return getEdgeLabel(edge, nodes, t).toLowerCase().includes(query);
+        return getEdgeLabel(edge, nodes, display).toLowerCase().includes(query);
       }),
-    [edges, existingEdgeIds, nodes, query, t],
+    [display, edges, existingEdgeIds, nodes, query],
   );
 
   return (
@@ -138,7 +139,7 @@ export function ContextMemberPicker({
                       onClick={() => onSelect('edge', edge.id)}
                     >
                       <Badge>edge</Badge>
-                      <span className="truncate text-sm text-default">{getEdgeLabel(edge, nodes, t)}</span>
+                      <span className="truncate text-sm text-default">{getEdgeLabel(edge, nodes, display)}</span>
                     </button>
                   ))
                 ) : (

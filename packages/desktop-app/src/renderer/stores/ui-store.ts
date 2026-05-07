@@ -5,7 +5,7 @@ export type SidebarView =
   | 'projects'
   | 'ontology'
   | 'networks'
-  | 'concepts'
+  | 'instances'
   | 'models'
   | 'contexts'
   | 'objects'

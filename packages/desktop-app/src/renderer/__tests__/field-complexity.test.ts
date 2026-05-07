@@ -9,7 +9,7 @@ describe('field complexity visibility', () => {
     expect(isFieldTypeVisibleAtLevel('relation', 'basic')).toBe(false);
   });
 
-  it('shows concept-backed selection at standard level but keeps relation hidden', () => {
+  it('shows instance-backed selection at standard level but keeps relation hidden', () => {
     expect(isFieldTypeVisibleAtLevel('model_ref', 'standard')).toBe(true);
     expect(isFieldTypeVisibleAtLevel('file', 'standard')).toBe(true);
     expect(isFieldTypeVisibleAtLevel('relation', 'standard')).toBe(false);

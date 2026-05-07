@@ -3,17 +3,14 @@ import type { NetworkObjectType } from '@netior/shared/types';
 import { Modal } from '../ui/Modal';
 import { Input } from '../ui/Input';
 import { Button } from '../ui/Button';
-import { useConceptStore } from '../../stores/concept-store';
+import { useInstanceStore } from '../../stores/instance-store';
 import { useNetworkStore } from '../../stores/network-store';
 import { useModelStore } from '../../stores/model-store';
 import { useSchemaStore } from '../../stores/schema-store';
 import { useContextStore } from '../../stores/context-store';
 import { useProjectStore } from '../../stores/project-store';
 import { useI18n } from '../../hooks/useI18n';
-import {
-  getModelDisplayDescription,
-  getModelDisplayName,
-} from '../../lib/model-i18n';
+import { createOntologyDisplayResolver } from '@netior/shared';
 import { NodeVisual } from './node-components/NodeVisual';
 
 interface ObjectPickerModalProps {
@@ -24,18 +21,19 @@ interface ObjectPickerModalProps {
   allowedTabs?: PickerTab[];
 }
 
-type PickerTab = 'concept' | 'network' | 'project' | 'schema' | 'model' | 'context';
+type PickerTab = 'instance' | 'network' | 'project' | 'schema' | 'model' | 'context';
 
-const TABS: PickerTab[] = ['concept', 'network', 'project', 'schema', 'model', 'context'];
+const TABS: PickerTab[] = ['instance', 'network', 'project', 'schema', 'model', 'context'];
 
 export function ObjectPickerModal({
   open,
   onClose,
   onSelect,
-  initialTab = 'concept',
+  initialTab = 'instance',
   allowedTabs,
 }: ObjectPickerModalProps): JSX.Element {
   const { t } = useI18n();
+  const display = useMemo(() => createOntologyDisplayResolver(t), [t]);
   const [activeTab, setActiveTab] = useState<PickerTab>(initialTab);
   const [search, setSearch] = useState('');
   const tabs = useMemo<PickerTab[]>(
@@ -44,7 +42,7 @@ export function ObjectPickerModal({
   );
   const tabsKey = tabs.join('|');
 
-  const concepts = useConceptStore((s) => s.concepts);
+  const instances = useInstanceStore((s) => s.instances);
   const networks = useNetworkStore((s) => s.networks);
   const currentNetwork = useNetworkStore((s) => s.currentNetwork);
   const projects = useProjectStore((s) => s.projects);
@@ -53,7 +51,7 @@ export function ObjectPickerModal({
   const contexts = useContextStore((s) => s.contexts);
 
   const tabLabels: Record<PickerTab, string> = {
-    concept: t('concept.title'),
+    instance: t('instance.title'),
     network: t('sidebar.networks' as never),
     project: t('project.title' as never) ?? 'Projects',
     schema: t('schema.title' as never),
@@ -64,7 +62,7 @@ export function ObjectPickerModal({
   useEffect(() => {
     if (!open) return;
     setSearch('');
-    setActiveTab(tabs.includes(initialTab) ? initialTab : tabs[0] ?? 'concept');
+    setActiveTab(tabs.includes(initialTab) ? initialTab : tabs[0] ?? 'instance');
   }, [initialTab, open, tabsKey]);
 
   const items = useMemo(() => {
@@ -72,10 +70,10 @@ export function ObjectPickerModal({
     const matches = (value: string) => value.toLowerCase().includes(query);
 
     switch (activeTab) {
-      case 'concept':
-        return concepts
-          .filter((concept) => !query || matches(concept.title))
-          .map((concept) => ({ id: concept.id, title: concept.title, subtitle: t('concept.model'), icon: concept.icon }));
+      case 'instance':
+        return instances
+          .filter((instance) => !query || matches(instance.title))
+          .map((instance) => ({ id: instance.id, title: instance.title, subtitle: t('instance.model'), icon: instance.icon }));
       case 'network':
         return networks
           .filter((network) => network.id !== currentNetwork?.id)
@@ -97,14 +95,14 @@ export function ObjectPickerModal({
       case 'model':
         return models
           .filter((model) => {
-            const title = getModelDisplayName(model, t);
-            const description = getModelDisplayDescription(model, t);
+            const title = display.modelName(model);
+            const description = display.modelDescription(model);
             return !query || matches(title) || matches(model.key) || (description ? matches(description) : false);
           })
           .map((model) => ({
             id: model.id,
-            title: getModelDisplayName(model, t),
-            subtitle: getModelDisplayDescription(model, t) ?? t('model.title' as never),
+            title: display.modelName(model),
+            subtitle: display.modelDescription(model) ?? t('model.title' as never),
             icon: model.icon,
           }));
       case 'context':
@@ -114,7 +112,7 @@ export function ObjectPickerModal({
       default:
         return [];
     }
-  }, [activeTab, concepts, contexts, currentNetwork?.id, models, networks, projects, schemas, search, t]);
+  }, [activeTab, display, instances, contexts, currentNetwork?.id, models, networks, projects, schemas, search, t]);
 
   const handleSelect = (refId: string) => {
     onSelect(activeTab, refId);

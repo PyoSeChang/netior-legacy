@@ -30,14 +30,14 @@ export interface ProjectUpdate {
 }
 
 // ============================================
-// Concept
+// Instance
 // ============================================
 
-export interface Concept {
+export interface Instance {
   id: string;
   project_id: string;
   schema_id: string | null;
-  recurrence_source_concept_id: string | null;
+  recurrence_source_instance_id: string | null;
   recurrence_occurrence_key: string | null;
   title: string;
   color: string | null;
@@ -52,11 +52,11 @@ export interface Concept {
   updated_at: string;
 }
 
-export interface ConceptCreate {
+export interface InstanceCreate {
   project_id: string;
   title: string;
   schema_id?: string;
-  recurrence_source_concept_id?: string | null;
+  recurrence_source_instance_id?: string | null;
   recurrence_occurrence_key?: string | null;
   color?: string;
   icon?: string;
@@ -68,10 +68,10 @@ export interface ConceptCreate {
   source_version?: string | null;
 }
 
-export interface ConceptUpdate {
+export interface InstanceUpdate {
   title?: string;
   schema_id?: string | null;
-  recurrence_source_concept_id?: string | null;
+  recurrence_source_instance_id?: string | null;
   recurrence_occurrence_key?: string | null;
   color?: string | null;
   icon?: string | null;
@@ -194,7 +194,7 @@ export interface ContextMember {
 // ============================================
 
 export type NetworkObjectType =
-  | 'concept' | 'network' | 'project' | 'schema' | 'model'
+  | 'instance' | 'network' | 'project' | 'schema' | 'model'
   | 'agent' | 'context'
   | 'file' | 'module' | 'folder';
 
@@ -516,9 +516,9 @@ export interface Model {
   key: ModelRefKey;
   name: string;
   description: string | null;
-  category_concept_id: string | null;
-  category_concept_title?: string | null;
-  category_concept_source_ref?: string | null;
+  category_instance_id: string | null;
+  category_instance_title?: string | null;
+  category_instance_source_ref?: string | null;
   target_kind: ModelTargetKind;
   meaning_keys: SemanticMeaningKey[];
   core_slots: MeaningSlotKey[];
@@ -542,7 +542,7 @@ export interface ModelCreate {
   key?: ModelRefKey;
   name: string;
   description?: string | null;
-  category_concept_id?: string | null;
+  category_instance_id?: string | null;
   target_kind?: ModelTargetKind;
   meaning_keys?: SemanticMeaningKey[];
   core_slots?: MeaningSlotKey[];
@@ -563,7 +563,7 @@ export interface ModelUpdate {
   key?: ModelRefKey;
   name?: string;
   description?: string | null;
-  category_concept_id?: string | null;
+  category_instance_id?: string | null;
   target_kind?: ModelTargetKind;
   meaning_keys?: SemanticMeaningKey[];
   core_slots?: MeaningSlotKey[];
@@ -634,7 +634,7 @@ export interface NetworkFullData {
   layout: Layout | undefined;
   nodes: (NetworkNode & {
     object?: ObjectRecord;
-    concept?: Concept;
+    instance?: Instance;
     file?: FileEntity;
   })[];
   edges: (Edge & { model?: Model })[];
@@ -901,18 +901,18 @@ export type SchemaSlotCreate = SchemaFieldCreate;
 export type SchemaSlotUpdate = SchemaFieldUpdate;
 
 // ============================================
-// Concept Property
+// Instance Property
 // ============================================
 
-export interface ConceptProperty {
+export interface InstanceProperty {
   id: string;
-  concept_id: string;
+  instance_id: string;
   field_id: string;
   value: string | null;
 }
 
-export interface ConceptPropertyUpsert {
-  concept_id: string;
+export interface InstancePropertyUpsert {
+  instance_id: string;
   field_id: string;
   value: string | null;
 }
@@ -940,7 +940,7 @@ export interface NetworkBreadcrumbItem {
 // ============================================
 
 export type EditorViewMode = 'float' | 'full' | 'side' | 'detached';
-export type EditorTabType = 'concept' | 'file' | 'schema' | 'model' | 'terminal' | 'edge' | 'network' | 'networkViewer' | 'ontology' | 'project' | 'narre' | 'agent' | 'fileMetadata' | 'context' | 'browser';
+export type EditorTabType = 'instance' | 'file' | 'schema' | 'model' | 'terminal' | 'edge' | 'network' | 'networkViewer' | 'ontology' | 'project' | 'narre' | 'agent' | 'fileMetadata' | 'context' | 'browser';
 
 /** Identifies a window that hosts editor tabs (main window or detached window) */
 export interface EditorHostState {
@@ -980,7 +980,7 @@ export interface EditorTab {
   type: EditorTabType;
   /** Display name for tab bar */
   title: string;
-  /** Target entity identifier: conceptId for concept tabs, absolutePath for file tabs */
+  /** Target entity identifier: instanceId for instance tabs, absolutePath for file tabs */
   targetId: string;
   /** Owning project id for project-scoped tabs */
   projectId?: string;
@@ -992,7 +992,7 @@ export interface EditorTab {
   sideSplitRatio: number;
   isDirty: boolean;
   isStale?: boolean;
-  /** Active sub-file within a concept editor */
+  /** Active sub-file within a instance editor */
   activeFilePath: string | null;
   /** Override editor type for file tabs (when user switches via context menu) */
   editorType?: string;
@@ -1006,7 +1006,7 @@ export interface EditorTab {
   terminalLaunchConfig?: Pick<TerminalLaunchConfig, 'shell' | 'args' | 'agent'>;
   /** Favicon URL for embedded browser tabs */
   browserFaviconUrl?: string;
-  /** Draft data for unsaved new entities (concept creation flow) */
+  /** Draft data for unsaved new entities (instance creation flow) */
   draftData?: {
     networkId?: string;
     parentGroupNodeId?: string;
@@ -1019,9 +1019,9 @@ export interface EditorTab {
   isManuallyRenamed?: boolean;
 }
 
-export interface ConceptEditorPrefs {
+export interface InstanceEditorPrefs {
   id: string;
-  concept_id: string;
+  instance_id: string;
   view_mode: EditorViewMode;
   float_x: number | null;
   float_y: number | null;
@@ -1031,7 +1031,7 @@ export interface ConceptEditorPrefs {
   updated_at: string;
 }
 
-export interface ConceptEditorPrefsUpdate {
+export interface InstanceEditorPrefsUpdate {
   view_mode?: EditorViewMode;
   float_x?: number;
   float_y?: number;
@@ -1061,7 +1061,7 @@ export interface NarreMessage {
 }
 
 export interface NarreMention {
-  type: 'concept' | 'network' | 'edge' | 'schema' | 'model' | 'module' | 'file' | 'agent';
+  type: 'instance' | 'network' | 'edge' | 'schema' | 'model' | 'module' | 'file' | 'agent';
   id?: string;
   path?: string;
   display: string;
@@ -1079,7 +1079,7 @@ export interface NarreToolCall {
 export type NarreToolCategory =
   | 'project'
   | 'types'
-  | 'concepts'
+  | 'instances'
   | 'graph'
   | 'files'
   | 'modules'
@@ -1402,7 +1402,7 @@ export type NarreCard =
   | NarreSummaryCard;
 
 export interface NetiorChangeEvent {
-  type: 'schemas' | 'models' | 'concepts' | 'relationTypes' | 'networks' | 'edges' | 'layouts' | 'contexts';
+  type: 'schemas' | 'models' | 'instances' | 'relationTypes' | 'networks' | 'edges' | 'layouts' | 'contexts';
   action: 'created' | 'updated' | 'deleted';
   id: string;
 }

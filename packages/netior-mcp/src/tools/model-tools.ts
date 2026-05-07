@@ -196,7 +196,7 @@ export function registerModelTools(server: McpServer): void {
       key: modelKeyModel.optional().describe('Optional stable model key. Omit to derive from name.'),
       name: z.string().describe('Model name'),
       description: z.string().nullable().optional().describe('What this model means and when to use it'),
-      category_concept_id: z.string().nullable().optional().describe('Model Category concept ID. Use list_model_categories before assigning.'),
+      category_instance_id: z.string().nullable().optional().describe('Model Category instance ID. Use list_model_categories before assigning.'),
       target_kind: targetKindModel.optional().describe('Whether this model describes objects, edges, or both'),
       meaning_keys: z.array(builtInMeaningKeyModel).optional().describe('Built-in meanings this model includes'),
       recipe: modelRecipeModel.optional().describe('Custom meaning and field recipe for this model'),
@@ -205,14 +205,14 @@ export function registerModelTools(server: McpServer): void {
       line_style: lineStyleModel.nullable().optional().describe('Default edge line style when target_kind includes edge'),
       directed: z.boolean().nullable().optional().describe('Default edge direction when target_kind includes edge'),
     },
-    async ({ project_id, key, name, description, category_concept_id, target_kind, meaning_keys, recipe, color, icon, line_style, directed }) => {
+    async ({ project_id, key, name, description, category_instance_id, target_kind, meaning_keys, recipe, color, icon, line_style, directed }) => {
       try {
         const result = await createModel({
           project_id: resolveProjectId(project_id),
           key: key as ModelRefKey | undefined,
           name,
           description,
-          category_concept_id,
+          category_instance_id,
           target_kind,
           meaning_keys: meaning_keys as never,
           recipe: normalizeRecipe(recipe),
@@ -240,7 +240,7 @@ export function registerModelTools(server: McpServer): void {
       key: modelKeyModel.optional().describe('New stable model key'),
       name: z.string().optional().describe('New model name'),
       description: z.string().nullable().optional().describe('New model description'),
-      category_concept_id: z.string().nullable().optional().describe('New Model Category concept ID. Use list_model_categories before assigning.'),
+      category_instance_id: z.string().nullable().optional().describe('New Model Category instance ID. Use list_model_categories before assigning.'),
       target_kind: targetKindModel.optional().describe('Whether this model describes objects, edges, or both'),
       meaning_keys: z.array(builtInMeaningKeyModel).optional().describe('Built-in meanings this model includes'),
       recipe: modelRecipeModel.optional().describe('Custom meaning and field recipe for this model'),
@@ -249,13 +249,13 @@ export function registerModelTools(server: McpServer): void {
       line_style: lineStyleModel.nullable().optional().describe('Default edge line style when target_kind includes edge'),
       directed: z.boolean().nullable().optional().describe('Default edge direction when target_kind includes edge'),
     },
-    async ({ model_id, key, name, description, category_concept_id, target_kind, meaning_keys, recipe, color, icon, line_style, directed }) => {
+    async ({ model_id, key, name, description, category_instance_id, target_kind, meaning_keys, recipe, color, icon, line_style, directed }) => {
       try {
         const result = await updateModel(model_id, {
           key: key as ModelRefKey | undefined,
           name,
           description,
-          category_concept_id,
+          category_instance_id,
           target_kind,
           meaning_keys: meaning_keys as never,
           recipe: normalizeRecipe(recipe),

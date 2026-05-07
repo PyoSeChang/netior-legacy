@@ -29,10 +29,10 @@ interface NodeLayerProps {
 }
 
 function buildNarreMentionForNode(node: RenderNode): MentionResult | null {
-  if (node.nodeType === 'concept') {
+  if (node.nodeType === 'instance') {
     return {
-      type: 'concept',
-      id: node.conceptId ?? node.objectTargetId ?? node.id,
+      type: 'instance',
+      id: node.instanceId ?? node.objectTargetId ?? node.id,
       display: node.label,
       icon: node.icon,
       description: node.semanticTypeLabel,
@@ -181,20 +181,8 @@ export const NodeLayer: React.FC<NodeLayerProps> = ({
 
   const handleNodeDragStart = React.useCallback(
     (nodeId: string, startX: number, startY: number, narreMention?: MentionResult | null) => {
-      console.log('[NarreMentionDrag][NodeLayer] forwarding nodeDragStart', {
-        nodeId,
-        mode,
-        hasMention: !!narreMention,
-        mentionType: narreMention?.type,
-        mentionId: narreMention?.id,
-        x: startX,
-        y: startY,
-        hasHandler: typeof onNodeDragStart === 'function',
-      });
-
       try {
         onNodeDragStart(nodeId, startX, startY, narreMention);
-        console.log('[NarreMentionDrag][NodeLayer] forwarded nodeDragStart', { nodeId });
       } catch (error) {
         console.error('[NarreMentionDrag][NodeLayer] nodeDragStart handler threw', {
           nodeId,
@@ -202,7 +190,7 @@ export const NodeLayer: React.FC<NodeLayerProps> = ({
         });
       }
     },
-    [mode, onNodeDragStart],
+    [onNodeDragStart],
   );
 
   // Screen-based layouts manage their own framing and render in absolute coordinates.

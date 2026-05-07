@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
@@ -9,9 +9,9 @@ import { IconSelector } from '../ui/IconSelector';
 import { useI18n } from '../../hooks/useI18n';
 import { useSchemaStore } from '../../stores/schema-store';
 import { isImageSourceValue } from './node-components/node-visual-utils';
-import { getModelDisplayName } from '../../lib/model-i18n';
+import { createOntologyDisplayResolver } from '@netior/shared';
 
-const CONCEPT_COLORS = [
+const INSTANCE_COLORS = [
   '#ef4444', '#f97316', '#eab308', '#22c55e', '#06b6d4',
   '#3b82f6', '#8b5cf6', '#ec4899', '#6b7280', '#78716c',
 ];
@@ -22,14 +22,15 @@ const IMAGE_FILE_FILTERS = [
 
 type VisualMode = 'icon' | 'image';
 
-interface ConceptCreateModalProps {
+interface InstanceCreateModalProps {
   open: boolean;
   onClose: () => void;
   onCreate: (data: { title: string; color?: string; icon?: string; schema_id?: string }) => void;
 }
 
-export function ConceptCreateModal({ open, onClose, onCreate }: ConceptCreateModalProps): JSX.Element {
+export function InstanceCreateModal({ open, onClose, onCreate }: InstanceCreateModalProps): JSX.Element {
   const { t } = useI18n();
+  const display = useMemo(() => createOntologyDisplayResolver(t), [t]);
   const [title, setTitle] = useState('');
   const [color, setColor] = useState<string | undefined>(undefined);
   const [icon, setIcon] = useState('');
@@ -80,7 +81,7 @@ export function ConceptCreateModal({ open, onClose, onCreate }: ConceptCreateMod
     <Modal
       open={open}
       onClose={handleClose}
-      title={t('network.createConcept')}
+      title={t('network.createInstance')}
       width="400px"
       footer={
         <>
@@ -96,11 +97,11 @@ export function ConceptCreateModal({ open, onClose, onCreate }: ConceptCreateMod
       <div className="flex flex-col gap-4">
         {models.length > 0 && (
           <div>
-            <label className="mb-1 block text-xs font-medium text-secondary">{t('concept.model')}</label>
+            <label className="mb-1 block text-xs font-medium text-secondary">{t('instance.model')}</label>
             <Select
               options={[
                 { value: '', label: t('common.none') },
-                ...models.map((a) => ({ value: a.id, label: getModelDisplayName(a, t) })),
+                ...models.map((a) => ({ value: a.id, label: display.modelName(a) })),
               ]}
               value={modelId ?? ''}
               onChange={(e) => setModelId(e.target.value || undefined)}
@@ -110,11 +111,11 @@ export function ConceptCreateModal({ open, onClose, onCreate }: ConceptCreateMod
         )}
 
         <div>
-          <label className="mb-1 block text-xs font-medium text-secondary">{t('concept.title')}</label>
+          <label className="mb-1 block text-xs font-medium text-secondary">{t('instance.title')}</label>
           <Input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder={t('concept.titlePlaceholder')}
+            placeholder={t('instance.titlePlaceholder')}
             onKeyDown={(e) => {
               if (e.key === 'Enter') handleSubmit();
             }}
@@ -123,12 +124,12 @@ export function ConceptCreateModal({ open, onClose, onCreate }: ConceptCreateMod
         </div>
 
         <div>
-          <label className="mb-1 block text-xs font-medium text-secondary">{t('concept.visual' as never)}</label>
+          <label className="mb-1 block text-xs font-medium text-secondary">{t('instance.visual' as never)}</label>
           <div className="flex flex-col gap-2">
             <RadioGroup
               options={[
-                { value: 'icon', label: t('concept.visualModeOptions.icon' as never) },
-                { value: 'image', label: t('concept.visualModeOptions.image' as never) },
+                { value: 'icon', label: t('instance.visualModeOptions.icon' as never) },
+                { value: 'image', label: t('instance.visualModeOptions.image' as never) },
               ]}
               value={visualMode}
               onChange={(value) => {
@@ -147,7 +148,7 @@ export function ConceptCreateModal({ open, onClose, onCreate }: ConceptCreateMod
               <FilePicker
                 value={isImageSourceValue(icon) ? icon : ''}
                 onChange={(path) => setIcon(path)}
-                placeholder={t('concept.selectProfileImage' as never)}
+                placeholder={t('instance.selectProfileImage' as never)}
                 filters={[...IMAGE_FILE_FILTERS]}
               />
             )}
@@ -155,9 +156,9 @@ export function ConceptCreateModal({ open, onClose, onCreate }: ConceptCreateMod
         </div>
 
         <div>
-          <label className="mb-2 block text-xs font-medium text-secondary">{t('concept.color')}</label>
+          <label className="mb-2 block text-xs font-medium text-secondary">{t('instance.color')}</label>
           <div className="flex flex-wrap gap-2">
-            {CONCEPT_COLORS.map((c) => (
+            {INSTANCE_COLORS.map((c) => (
               <button
                 key={c}
                 className={`h-6 w-6 rounded-full border-2 transition-transform hover:scale-110 ${

@@ -5,7 +5,7 @@ import {
   addNetworkNode,
   closeDatabase,
   createSchema,
-  createConcept,
+  createInstance,
   createContext,
   createEdge,
   createField,
@@ -17,7 +17,7 @@ import {
   createModel,
   deleteProject,
   deleteSchema,
-  deleteConcept,
+  deleteInstance,
   deleteContext,
   deleteEdge,
   deleteField,
@@ -29,8 +29,8 @@ import {
   getContext,
   getContextMembers,
   getSchema,
-  getByConceptId,
-  getConceptsByProject,
+  getByInstanceId,
+  getInstancesByProject,
   getEditorPrefs,
   getEdge,
   getEdgeVisuals,
@@ -69,7 +69,7 @@ import {
   removeNetworkNode,
   removeNodePosition,
   reorderFields,
-  searchConcepts,
+  searchInstances,
   serializeToAgent,
   setEdgeVisual,
   setNodePosition,
@@ -77,7 +77,7 @@ import {
   upsertEditorPrefs,
   upsertProperty,
   updateSchema,
-  updateConcept,
+  updateInstance,
   updateContext,
   updateEdge,
   updateField,
@@ -104,12 +104,12 @@ import type {
   SchemaMeaningSlotBindingUpdate,
   SchemaMeaningUpdate,
   SchemaUpdate,
-  Concept,
-  ConceptEditorPrefsUpdate,
-  ConceptCreate,
-  ConceptProperty,
-  ConceptPropertyUpsert,
-  ConceptUpdate,
+  Instance,
+  InstanceEditorPrefsUpdate,
+  InstanceCreate,
+  InstanceProperty,
+  InstancePropertyUpsert,
+  InstanceUpdate,
   ContextCreate,
   ContextUpdate,
   EdgeCreate,
@@ -243,7 +243,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
     return;
   }
 
-  if (pathname === '/concepts/search') {
+  if (pathname === '/instances/search') {
     if (method !== 'GET') {
       sendJson(res, 405, { ok: false, error: `Method ${method} not allowed for ${pathname}` });
       return;
@@ -251,20 +251,20 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
 
     const projectId = getRequiredSearchParam(url, 'projectId');
     const query = url.searchParams.get('query') ?? '';
-    sendJson(res, 200, { ok: true, data: searchConcepts(projectId, query) });
+    sendJson(res, 200, { ok: true, data: searchInstances(projectId, query) });
     return;
   }
 
-  if (pathname === '/concepts') {
+  if (pathname === '/instances') {
     if (method === 'GET') {
       const projectId = getRequiredSearchParam(url, 'projectId');
-      sendJson(res, 200, { ok: true, data: getConceptsByProject(projectId) });
+      sendJson(res, 200, { ok: true, data: getInstancesByProject(projectId) });
       return;
     }
 
     if (method === 'POST') {
-      const body = await readJsonBody<ConceptCreate>(req);
-      sendJson(res, 200, { ok: true, data: createConcept(body) });
+      const body = await readJsonBody<InstanceCreate>(req);
+      sendJson(res, 200, { ok: true, data: createInstance(body) });
       return;
     }
 
@@ -272,44 +272,44 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
     return;
   }
 
-  const conceptSyncToAgentMatch = pathname.match(/^\/concepts\/([^/]+)\/sync-to-agent$/);
-  if (conceptSyncToAgentMatch) {
+  const instanceSyncToAgentMatch = pathname.match(/^\/instances\/([^/]+)\/sync-to-agent$/);
+  if (instanceSyncToAgentMatch) {
     if (method !== 'POST') {
       sendJson(res, 405, { ok: false, error: `Method ${method} not allowed for ${pathname}` });
       return;
     }
 
-    const conceptId = decodeURIComponent(conceptSyncToAgentMatch[1]);
-    const data = loadConceptContentData(conceptId);
+    const instanceId = decodeURIComponent(instanceSyncToAgentMatch[1]);
+    const data = loadInstanceContentData(instanceId);
     if (!data) {
-      sendJson(res, 404, { ok: false, error: 'Concept not found' });
+      sendJson(res, 404, { ok: false, error: 'Instance not found' });
       return;
     }
 
     const agentContent = serializeToAgent(data);
-    sendJson(res, 200, { ok: true, data: updateConcept(conceptId, { agent_content: agentContent }) });
+    sendJson(res, 200, { ok: true, data: updateInstance(instanceId, { agent_content: agentContent }) });
     return;
   }
 
-  const conceptSyncFromAgentMatch = pathname.match(/^\/concepts\/([^/]+)\/sync-from-agent$/);
-  if (conceptSyncFromAgentMatch) {
+  const instanceSyncFromAgentMatch = pathname.match(/^\/instances\/([^/]+)\/sync-from-agent$/);
+  if (instanceSyncFromAgentMatch) {
     if (method !== 'POST') {
       sendJson(res, 405, { ok: false, error: `Method ${method} not allowed for ${pathname}` });
       return;
     }
 
-    const conceptId = decodeURIComponent(conceptSyncFromAgentMatch[1]);
+    const instanceId = decodeURIComponent(instanceSyncFromAgentMatch[1]);
     const body = await readJsonBody<{ agentContent: string }>(req);
-    const data = loadConceptContentData(conceptId);
+    const data = loadInstanceContentData(instanceId);
     if (!data) {
-      sendJson(res, 404, { ok: false, error: 'Concept not found' });
+      sendJson(res, 404, { ok: false, error: 'Instance not found' });
       return;
     }
 
     const parsed = parseFromAgent(body.agentContent, data.fields);
 
     for (const [fieldId, value] of Object.entries(parsed.properties)) {
-      upsertProperty({ concept_id: conceptId, field_id: fieldId, value });
+      upsertProperty({ instance_id: instanceId, field_id: fieldId, value });
     }
 
     const updateData: Record<string, string | null | undefined> = { content: parsed.content };
@@ -317,33 +317,33 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
       updateData.title = parsed.title;
     }
 
-    updateConcept(conceptId, updateData);
+    updateInstance(instanceId, updateData);
 
-    const refreshed = loadConceptContentData(conceptId);
+    const refreshed = loadInstanceContentData(instanceId);
     if (refreshed) {
       const normalized = serializeToAgent(refreshed);
-      updateConcept(conceptId, { agent_content: normalized });
+      updateInstance(instanceId, { agent_content: normalized });
     }
 
     const db = getDatabase();
     sendJson(res, 200, {
       ok: true,
-      data: db.prepare('SELECT * FROM concepts WHERE id = ?').get(conceptId),
+      data: db.prepare('SELECT * FROM instances WHERE id = ?').get(instanceId),
     });
     return;
   }
 
-  if (pathname.startsWith('/concepts/')) {
-    const id = decodeURIComponent(pathname.slice('/concepts/'.length));
+  if (pathname.startsWith('/instances/')) {
+    const id = decodeURIComponent(pathname.slice('/instances/'.length));
 
     if (method === 'PATCH') {
-      const body = await readJsonBody<ConceptUpdate>(req);
-      sendJson(res, 200, { ok: true, data: updateConcept(id, body) });
+      const body = await readJsonBody<InstanceUpdate>(req);
+      sendJson(res, 200, { ok: true, data: updateInstance(id, body) });
       return;
     }
 
     if (method === 'DELETE') {
-      sendJson(res, 200, { ok: true, data: deleteConcept(id) });
+      sendJson(res, 200, { ok: true, data: deleteInstance(id) });
       return;
     }
 
@@ -540,15 +540,15 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
     return;
   }
 
-  if (pathname === '/concept-properties') {
+  if (pathname === '/instance-properties') {
     if (method === 'GET') {
-      const conceptId = getRequiredSearchParam(url, 'conceptId');
-      sendJson(res, 200, { ok: true, data: getByConceptId(conceptId) });
+      const instanceId = getRequiredSearchParam(url, 'instanceId');
+      sendJson(res, 200, { ok: true, data: getByInstanceId(instanceId) });
       return;
     }
 
     if (method === 'POST') {
-      const body = await readJsonBody<ConceptPropertyUpsert>(req);
+      const body = await readJsonBody<InstancePropertyUpsert>(req);
       sendJson(res, 200, { ok: true, data: upsertProperty(body) });
       return;
     }
@@ -557,8 +557,8 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
     return;
   }
 
-  if (pathname.startsWith('/concept-properties/')) {
-    const id = decodeURIComponent(pathname.slice('/concept-properties/'.length));
+  if (pathname.startsWith('/instance-properties/')) {
+    const id = decodeURIComponent(pathname.slice('/instance-properties/'.length));
 
     if (method === 'DELETE') {
       sendJson(res, 200, { ok: true, data: deleteProperty(id) });
@@ -570,16 +570,16 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
   }
 
   if (pathname.startsWith('/editor-prefs/')) {
-    const conceptId = decodeURIComponent(pathname.slice('/editor-prefs/'.length));
+    const instanceId = decodeURIComponent(pathname.slice('/editor-prefs/'.length));
 
     if (method === 'GET') {
-      sendJson(res, 200, { ok: true, data: getEditorPrefs(conceptId) });
+      sendJson(res, 200, { ok: true, data: getEditorPrefs(instanceId) });
       return;
     }
 
     if (method === 'PUT') {
-      const body = await readJsonBody<ConceptEditorPrefsUpdate>(req);
-      sendJson(res, 200, { ok: true, data: upsertEditorPrefs(conceptId, body) });
+      const body = await readJsonBody<InstanceEditorPrefsUpdate>(req);
+      sendJson(res, 200, { ok: true, data: upsertEditorPrefs(instanceId, body) });
       return;
     }
 
@@ -1217,15 +1217,15 @@ function toSchemaField(row: SchemaFieldRow, meaningBindings?: readonly FieldMean
   };
 }
 
-function loadConceptContentData(conceptId: string): {
-  concept: Concept;
+function loadInstanceContentData(instanceId: string): {
+  instance: Instance;
   schema: Schema | null;
   fields: SchemaField[];
   properties: Record<string, string | null>;
 } | null {
   const db = getDatabase();
-  const concept = db.prepare('SELECT * FROM concepts WHERE id = ?').get(conceptId) as Concept | undefined;
-  if (!concept) {
+  const instance = db.prepare('SELECT * FROM instances WHERE id = ?').get(instanceId) as Instance | undefined;
+  if (!instance) {
     return null;
   }
 
@@ -1233,8 +1233,8 @@ function loadConceptContentData(conceptId: string): {
   let fields: SchemaField[] = [];
   const properties: Record<string, string | null> = {};
 
-  if (concept.schema_id) {
-    const schemaRow = db.prepare('SELECT * FROM schemas WHERE id = ?').get(concept.schema_id) as SchemaRow | null;
+  if (instance.schema_id) {
+    const schemaRow = db.prepare('SELECT * FROM schemas WHERE id = ?').get(instance.schema_id) as SchemaRow | null;
     schema = schemaRow ? toSchema(schemaRow) : null;
     if (schema) {
       const rows = db.prepare('SELECT * FROM schema_fields WHERE schema_id = ? ORDER BY sort_order')
@@ -1243,8 +1243,8 @@ function loadConceptContentData(conceptId: string): {
       fields = rows.map((row) => toSchemaField(row, bindingsByFieldId.get(row.id)));
     }
 
-    const props = db.prepare('SELECT * FROM concept_properties WHERE concept_id = ?')
-      .all(conceptId) as ConceptProperty[];
+    const props = db.prepare('SELECT * FROM instance_properties WHERE instance_id = ?')
+      .all(instanceId) as InstanceProperty[];
 
     for (const field of fields) {
       const prop = props.find((entry) => entry.field_id === field.id);
@@ -1252,7 +1252,7 @@ function loadConceptContentData(conceptId: string): {
     }
   }
 
-  return { concept, schema, fields, properties };
+  return { instance, schema, fields, properties };
 }
 
 async function readJsonBody<T>(req: IncomingMessage): Promise<T> {

@@ -13,7 +13,7 @@ import { Toggle } from '../ui/Toggle';
 import { Button } from '../ui/Button';
 import { ScrollArea } from '../ui/ScrollArea';
 import { isHierarchyParentEdge } from '../../lib/edge-models';
-import { getModelDisplayName } from '../../lib/model-i18n';
+import { createOntologyDisplayResolver } from '@netior/shared';
 
 interface EdgeEditorProps {
   tab: EditorTab;
@@ -33,6 +33,7 @@ interface EdgeState {
 
 export function EdgeEditor({ tab }: EdgeEditorProps): JSX.Element {
   const { t } = useI18n();
+  const display = useMemo(() => createOntologyDisplayResolver(t), [t]);
   const edgeId = tab.targetId;
   const edges = useNetworkStore((s) => s.edges);
   const nodes = useNetworkStore((s) => s.nodes);
@@ -72,15 +73,15 @@ export function EdgeEditor({ tab }: EdgeEditorProps): JSX.Element {
   const targetNode = edge ? nodes.find((n) => n.id === edge.target_node_id) : undefined;
   const sessionState = session.state;
 
-  const sourceLabel = sourceNode?.concept?.title ?? sourceNode?.file?.path?.replace(/\\/g, '/').split('/').pop() ?? '?';
-  const targetLabel = targetNode?.concept?.title ?? targetNode?.file?.path?.replace(/\\/g, '/').split('/').pop() ?? '?';
+  const sourceLabel = sourceNode?.instance?.title ?? sourceNode?.file?.path?.replace(/\\/g, '/').split('/').pop() ?? '?';
+  const targetLabel = targetNode?.instance?.title ?? targetNode?.file?.path?.replace(/\\/g, '/').split('/').pop() ?? '?';
   const isHierarchyMeaning = edge ? isHierarchyParentEdge(edge) : false;
 
   const modelOptions = useMemo(() => [
     { value: '', label: t('edge.noModel' as never) ?? 'No model' },
     ...models
       .filter((model) => model.target_kind === 'edge' || model.target_kind === 'both')
-      .map((model) => ({ value: model.id, label: getModelDisplayName(model, t) })),
+      .map((model) => ({ value: model.id, label: display.modelName(model) })),
   ], [models, t]);
 
   const lineStyleOptions = [

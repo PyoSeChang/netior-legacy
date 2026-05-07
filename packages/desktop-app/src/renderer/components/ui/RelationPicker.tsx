@@ -1,12 +1,12 @@
 ﻿import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Link2, X } from 'lucide-react';
-import { useConceptStore } from '../../stores/concept-store';
+import { useInstanceStore } from '../../stores/instance-store';
 import { NodeVisual } from '../workspace/node-components/NodeVisual';
 
 export interface RelationPickerProps {
   value?: string;
-  onChange?: (conceptId: string | null) => void;
+  onChange?: (instanceId: string | null) => void;
   disabled?: boolean;
 }
 
@@ -17,14 +17,14 @@ export const RelationPicker: React.FC<RelationPickerProps> = ({ value, onChange,
   const triggerRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const concepts = useConceptStore((s) => s.concepts);
-  const selected = concepts.find((c) => c.id === value);
+  const instances = useInstanceStore((s) => s.instances);
+  const selected = instances.find((c) => c.id === value);
 
   const filtered = useMemo(() => {
-    if (!search) return concepts;
+    if (!search) return instances;
     const q = search.toLowerCase();
-    return concepts.filter((c) => c.title.toLowerCase().includes(q));
-  }, [concepts, search]);
+    return instances.filter((c) => c.title.toLowerCase().includes(q));
+  }, [instances, search]);
 
   useEffect(() => {
     if (!open) return;
@@ -61,7 +61,7 @@ export const RelationPicker: React.FC<RelationPickerProps> = ({ value, onChange,
           <Link2 size={14} className="shrink-0 text-muted" />
         )}
         <span className={`flex-1 ${selected ? 'text-default' : 'text-muted'}`}>
-          {selected?.title || 'Select concept...'}
+          {selected?.title || 'Select instance...'}
         </span>
         {value && !disabled && (
           <button
@@ -92,7 +92,7 @@ export const RelationPicker: React.FC<RelationPickerProps> = ({ value, onChange,
           <div className="p-2">
             <input
               className="w-full px-2 py-1 text-sm bg-surface-input border border-subtle rounded text-default outline-none focus:border-accent"
-              placeholder="Search concepts..."
+              placeholder="Search instances..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               autoFocus
@@ -116,7 +116,7 @@ export const RelationPicker: React.FC<RelationPickerProps> = ({ value, onChange,
               </button>
             ))}
             {filtered.length === 0 && (
-              <div className="px-3 py-2 text-xs text-muted">No concepts found</div>
+              <div className="px-3 py-2 text-xs text-muted">No instances found</div>
             )}
           </div>
         </div>,

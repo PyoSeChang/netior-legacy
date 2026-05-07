@@ -7,9 +7,9 @@ import type {
   NodeType,
 } from '@netior/shared/types';
 import { MEANING_SLOT_DEFINITIONS, getMeaningSlotLabelKey, fieldMeaningToMeaningBindings } from '@netior/shared/constants';
-import { conceptPropertyService, networkService, objectService } from '../../services';
+import { instancePropertyService, networkService, objectService } from '../../services';
 import type { NetworkFullData } from '../../services/network-service';
-import { useConceptStore } from '../../stores/concept-store';
+import { useInstanceStore } from '../../stores/instance-store';
 import { useSchemaStore } from '../../stores/schema-store';
 import { useEditorStore } from '../../stores/editor-store';
 import { useProjectStore } from '../../stores/project-store';
@@ -24,9 +24,9 @@ import { TextArea } from '../ui/TextArea';
 import { Button } from '../ui/Button';
 import { FilePicker } from '../ui/FilePicker';
 import { IconSelector } from '../ui/IconSelector';
-import { ConceptPropertiesPanel, ConceptPropertyInputs } from './ConceptPropertiesPanel';
-import { ConceptBodyEditor } from './ConceptBodyEditor';
-import { ConceptAgentView } from './ConceptAgentView';
+import { InstancePropertiesPanel, InstancePropertyInputs } from './InstancePropertiesPanel';
+import { InstanceBodyEditor } from './InstanceBodyEditor';
+import { InstanceAgentView } from './InstanceAgentView';
 import { useI18n } from '../../hooks/useI18n';
 import {
   CONTAINS_MODEL_KEY,
@@ -50,21 +50,21 @@ import {
 } from './NetworkObjectEditorShell';
 import { getFieldMeaningSlot } from '../../lib/field-meaning-bindings';
 
-interface ConceptEditorProps {
+interface InstanceEditorProps {
   tab: EditorTab;
 }
 
-interface ConceptEditorState {
+interface InstanceEditorState {
   title: string;
   modelId: string | null;
   icon: string | null;
   color: string | null;
   content: string | null;
   properties: Record<string, string | null>;
-  nodeOccurrences: ConceptNodeOccurrenceDraft[];
+  nodeOccurrences: InstanceNodeOccurrenceDraft[];
 }
 
-interface ConceptNodeOccurrenceDraft {
+interface InstanceNodeOccurrenceDraft {
   nodeId: string;
   networkId: string;
   networkName: string;
@@ -134,7 +134,7 @@ function isSortableNodeConfig(nodeConfig: NodeConfig | null | undefined): nodeCo
 }
 
 function resolvePreferredNodeId(
-  occurrences: ConceptNodeOccurrenceDraft[],
+  occurrences: InstanceNodeOccurrenceDraft[],
   preferredNodeId?: string,
   preferredNetworkId?: string,
 ): string {
@@ -150,10 +150,10 @@ function resolvePreferredNodeId(
   return occurrences[0]?.nodeId ?? '';
 }
 
-async function loadConceptNodeOccurrences(
+async function loadInstanceNodeOccurrences(
   projectId: string,
-  conceptId: string,
-): Promise<Pick<ConceptEditorState, 'nodeOccurrences'>> {
+  instanceId: string,
+): Promise<Pick<InstanceEditorState, 'nodeOccurrences'>> {
   const networks = await networkService.list(projectId);
   const items = await Promise.all(networks.map(async (network) => ({
     network,
@@ -162,7 +162,7 @@ async function loadConceptNodeOccurrences(
 
   const nodeOccurrences = items.flatMap(({ network, full }) => (
     full?.nodes
-      .filter((node) => node.object?.object_type === 'concept' && node.object.ref_id === conceptId)
+      .filter((node) => node.object?.object_type === 'instance' && node.object.ref_id === instanceId)
       .map((node) => {
         const parsedMetadata = parseNodeMetadataObject(node.metadata);
         const sanitizedMetadata = parsedMetadata ? stripLegacyNodeImageMetadata(parsedMetadata) : null;
@@ -172,7 +172,7 @@ async function loadConceptNodeOccurrences(
           networkName: network.name,
           nodeType: node.node_type,
           metadata: sanitizedMetadata ? stringifyNodeMetadataObject(sanitizedMetadata) : (node.metadata ?? ''),
-        } satisfies ConceptNodeOccurrenceDraft;
+        } satisfies InstanceNodeOccurrenceDraft;
       }) ?? []
   ));
 
@@ -225,18 +225,18 @@ function subtractOccurrenceBoundary(value: string, isAllDay: boolean): string | 
   return formatLocalDateTime(parsed);
 }
 
-export function ConceptEditor({ tab }: ConceptEditorProps): JSX.Element {
+export function InstanceEditor({ tab }: InstanceEditorProps): JSX.Element {
   const { t } = useI18n();
   const isDraft = isDraftTab(tab);
   const currentProject = useProjectStore((s) => s.currentProject);
-  const concepts = useConceptStore((s) => s.concepts);
+  const instances = useInstanceStore((s) => s.instances);
   const {
-    createConcept,
-    updateConcept,
-    loadByProject: loadConceptsByProject,
+    createInstance,
+    updateInstance,
+    loadByProject: loadInstancesByProject,
     upsertProperty,
-    deleteProperty: deleteConceptProperty,
-  } = useConceptStore();
+    deleteProperty: deleteInstanceProperty,
+  } = useInstanceStore();
   const models = useSchemaStore((s) => Array.isArray(s.schemas) ? s.schemas : []);
   const fields = useSchemaStore((s) => s.fields);
   const loadSchemasByProject = useSchemaStore((s) => s.loadByProject);
@@ -248,26 +248,26 @@ export function ConceptEditor({ tab }: ConceptEditorProps): JSX.Element {
   const { addNode, openNetwork, setNodePosition } = useNetworkStore();
   const [selectedNodeId, setSelectedNodeId] = useState('');
   const [selectedOccurrenceNetworkData, setSelectedOccurrenceNetworkData] = useState<OccurrenceNetworkData | null>(null);
-  const [conceptVisualMode, setConceptVisualMode] = useState<VisualMode>('icon');
+  const [instanceVisualMode, setInstanceVisualMode] = useState<VisualMode>('icon');
 
-  const concept = isDraft ? undefined : concepts.find((c) => c.id === tab.targetId);
+  const instance = isDraft ? undefined : instances.find((c) => c.id === tab.targetId);
   const nodeTypeOptions = useMemo<Array<{ value: NodeType; label: string }>>(() => ([
-    { value: 'basic', label: t('concept.nodeRoleOptions.basic' as never) },
-    { value: 'portal', label: t('concept.nodeRoleOptions.portal' as never) },
-    { value: 'group', label: t('concept.nodeRoleOptions.group' as never) },
-    { value: 'hierarchy', label: t('concept.nodeRoleOptions.hierarchy' as never) },
+    { value: 'basic', label: t('instance.nodeRoleOptions.basic' as never) },
+    { value: 'portal', label: t('instance.nodeRoleOptions.portal' as never) },
+    { value: 'group', label: t('instance.nodeRoleOptions.group' as never) },
+    { value: 'hierarchy', label: t('instance.nodeRoleOptions.hierarchy' as never) },
   ]), [t]);
-  const conceptVisualModeOptions = useMemo(() => ([
-    { value: 'icon', label: t('concept.visualModeOptions.icon' as never) },
-    { value: 'image', label: t('concept.visualModeOptions.image' as never) },
+  const instanceVisualModeOptions = useMemo(() => ([
+    { value: 'icon', label: t('instance.visualModeOptions.icon' as never) },
+    { value: 'image', label: t('instance.visualModeOptions.image' as never) },
   ]), [t]);
 
-  const syncConceptProperties = useCallback(async (
-    conceptId: string,
+  const syncInstanceProperties = useCallback(async (
+    instanceId: string,
     schemaId: string | null,
     nextProperties: Record<string, string | null>,
   ) => {
-    const existingProperties = await conceptPropertyService.getByConcept(conceptId);
+    const existingProperties = await instancePropertyService.getByInstance(instanceId);
     let validFieldIds = new Set<string>();
     if (schemaId) {
       let schemaFields = useSchemaStore.getState().fields[schemaId] ?? [];
@@ -286,22 +286,22 @@ export function ConceptEditor({ tab }: ConceptEditorProps): JSX.Element {
           || !nextPropertyMap.has(property.field_id)
           || nextPropertyMap.get(property.field_id) == null
         ))
-        .map((property) => deleteConceptProperty(property.id, conceptId)),
+        .map((property) => deleteInstanceProperty(property.id, instanceId)),
     );
 
     await Promise.all(
       Object.entries(nextProperties)
         .filter(([fieldId, value]) => value != null && validFieldIds.has(fieldId))
-        .map(([fieldId, value]) => upsertProperty({ concept_id: conceptId, field_id: fieldId, value })),
+        .map(([fieldId, value]) => upsertProperty({ instance_id: instanceId, field_id: fieldId, value })),
     );
-  }, [deleteConceptProperty, upsertProperty]);
+  }, [deleteInstanceProperty, upsertProperty]);
 
   const maybePromoteOccurrenceToSeries = useCallback(async (
-    conceptId: string,
-    state: ConceptEditorState,
+    instanceId: string,
+    state: InstanceEditorState,
   ) => {
-    const liveConcept = useConceptStore.getState().concepts.find((item) => item.id === conceptId);
-    if (!liveConcept?.recurrence_source_concept_id || !state.modelId) return;
+    const liveInstance = useInstanceStore.getState().instances.find((item) => item.id === instanceId);
+    if (!liveInstance?.recurrence_source_instance_id || !state.modelId) return;
 
     const activeFields = useSchemaStore.getState().fields[state.modelId] ?? [];
     const recurrenceFrequencyField = activeFields.find((field) => getFieldMeaningSlot(field) === 'recurrence_frequency');
@@ -336,22 +336,22 @@ export function ConceptEditor({ tab }: ConceptEditorProps): JSX.Element {
     if (!previousBoundary) return;
 
     await upsertProperty({
-      concept_id: liveConcept.recurrence_source_concept_id,
+      instance_id: liveInstance.recurrence_source_instance_id,
       field_id: recurrenceUntilField.id,
       value: previousBoundary,
     });
 
-    await updateConcept(conceptId, {
-      recurrence_source_concept_id: null,
+    await updateInstance(instanceId, {
+      recurrence_source_instance_id: null,
       recurrence_occurrence_key: null,
     });
-  }, [createField, t, updateConcept, upsertProperty]);
+  }, [createField, t, updateInstance, upsertProperty]);
 
   useEffect(() => {
-    if (!isDraft && !concept && currentProject) {
-      loadConceptsByProject(currentProject.id);
+    if (!isDraft && !instance && currentProject) {
+      loadInstancesByProject(currentProject.id);
     }
-  }, [isDraft, concept, currentProject, loadConceptsByProject]);
+  }, [isDraft, instance, currentProject, loadInstancesByProject]);
 
   useEffect(() => {
     if (currentProject) {
@@ -359,7 +359,7 @@ export function ConceptEditor({ tab }: ConceptEditorProps): JSX.Element {
     }
   }, [currentProject, loadSchemasByProject]);
 
-  const session = useEditorSession<ConceptEditorState>({
+  const session = useEditorSession<InstanceEditorState>({
     tabId: tab.id,
     load: isDraft
       ? () => ({
@@ -372,14 +372,14 @@ export function ConceptEditor({ tab }: ConceptEditorProps): JSX.Element {
           nodeOccurrences: [],
         })
       : async () => {
-          const c = useConceptStore.getState().concepts.find((cc) => cc.id === tab.targetId);
-          const props = await conceptPropertyService.getByConcept(tab.targetId);
+          const c = useInstanceStore.getState().instances.find((cc) => cc.id === tab.targetId);
+          const props = await instancePropertyService.getByInstance(tab.targetId);
           const propsMap: Record<string, string | null> = {};
           for (const p of props) {
             propsMap[p.field_id] = p.value;
           }
           const occurrenceState = currentProject
-            ? await loadConceptNodeOccurrences(currentProject.id, tab.targetId)
+            ? await loadInstanceNodeOccurrences(currentProject.id, tab.targetId)
             : { nodeOccurrences: [] };
           return {
             title: c?.title ?? '',
@@ -395,7 +395,7 @@ export function ConceptEditor({ tab }: ConceptEditorProps): JSX.Element {
       ? async (state) => {
           if (!currentProject || !state.title.trim()) return;
           const draft = tab.draftData;
-          const newConcept = await createConcept({
+          const newInstance = await createInstance({
             project_id: currentProject.id,
             title: state.title.trim(),
             schema_id: state.modelId || undefined,
@@ -403,13 +403,13 @@ export function ConceptEditor({ tab }: ConceptEditorProps): JSX.Element {
             color: state.color || undefined,
             content: state.content || undefined,
           });
-          await syncConceptProperties(newConcept.id, state.modelId, state.properties);
+          await syncInstanceProperties(newInstance.id, state.modelId, state.properties);
           if (draft?.networkId) {
-            const conceptObj = await objectService.getByRef('concept', newConcept.id);
-            if (conceptObj) {
+            const instanceObj = await objectService.getByRef('instance', newInstance.id);
+            if (instanceObj) {
               const node = await addNode({
                 network_id: draft.networkId,
-                object_id: conceptObj.id,
+                object_id: instanceObj.id,
               });
               const parentGroupNode = draft.parentGroupNodeId
                 ? useNetworkStore.getState().nodes.find((item) => item.id === draft.parentGroupNodeId)
@@ -447,22 +447,22 @@ export function ConceptEditor({ tab }: ConceptEditorProps): JSX.Element {
           const editorStore = useEditorStore.getState();
           editorStore.closeTab(tab.id);
           editorStore.openTab({
-            type: 'concept',
-            targetId: newConcept.id,
-            title: newConcept.title,
+            type: 'instance',
+            targetId: newInstance.id,
+            title: newInstance.title,
           });
         }
       : async (state) => {
-          const conceptId = tab.targetId;
-          await updateConcept(conceptId, {
+          const instanceId = tab.targetId;
+          await updateInstance(instanceId, {
             title: state.title,
             schema_id: state.modelId,
             icon: state.icon,
             color: state.color,
             content: state.content,
           });
-          await syncConceptProperties(conceptId, state.modelId, state.properties);
-          await maybePromoteOccurrenceToSeries(conceptId, state);
+          await syncInstanceProperties(instanceId, state.modelId, state.properties);
+          await maybePromoteOccurrenceToSeries(instanceId, state);
           await Promise.all(state.nodeOccurrences.map(async (occurrence) => {
             const nextMetadata = occurrence.metadata.trim() ? occurrence.metadata : null;
             if (currentNetwork?.id === occurrence.networkId) {
@@ -480,12 +480,12 @@ export function ConceptEditor({ tab }: ConceptEditorProps): JSX.Element {
           }));
           useEditorStore.getState().updateTitle(tab.id, state.title);
         },
-    deps: isDraft ? [] : [tab.targetId, concept?.schema_id, currentProject?.id],
+    deps: isDraft ? [] : [tab.targetId, instance?.schema_id, currentProject?.id],
   });
 
   useEffect(() => {
     if (session.isLoading) return;
-    setConceptVisualMode(resolveVisualMode(session.state?.icon));
+    setInstanceVisualMode(resolveVisualMode(session.state?.icon));
   }, [session.isLoading, session.state?.icon]);
 
   const currentModelId = session.state?.modelId;
@@ -584,32 +584,32 @@ export function ConceptEditor({ tab }: ConceptEditorProps): JSX.Element {
     );
   }, [selectedOccurrenceNetworkData, selectedNodeOccurrence]);
 
-  const sortableConceptNodes = useMemo(() => {
+  const sortableInstanceNodes = useMemo(() => {
     if (!selectedOccurrenceNetworkData) return [];
 
-    const directConceptNodes = selectedOccurrenceNetworkData.nodes.filter((node) => (
+    const directInstanceNodes = selectedOccurrenceNetworkData.nodes.filter((node) => (
       directChildIds.has(node.id)
-      && node.object?.object_type === 'concept'
-      && !!node.concept?.schema_id
+      && node.object?.object_type === 'instance'
+      && !!node.instance?.schema_id
     ));
 
-    if (directConceptNodes.length > 0) {
-      return directConceptNodes;
+    if (directInstanceNodes.length > 0) {
+      return directInstanceNodes;
     }
 
     return selectedOccurrenceNetworkData.nodes.filter((node) => (
-      node.object?.object_type === 'concept'
-      && !!node.concept?.schema_id
+      node.object?.object_type === 'instance'
+      && !!node.instance?.schema_id
     ));
   }, [directChildIds, selectedOccurrenceNetworkData]);
 
   const sortableModelIds = useMemo(() => (
     Array.from(new Set(
-      sortableConceptNodes
-        .map((node) => node.concept?.schema_id)
+      sortableInstanceNodes
+        .map((node) => node.instance?.schema_id)
         .filter((value): value is string => !!value),
     ))
-  ), [sortableConceptNodes]);
+  ), [sortableInstanceNodes]);
 
   useEffect(() => {
     for (const modelId of sortableModelIds) {
@@ -645,7 +645,7 @@ export function ConceptEditor({ tab }: ConceptEditorProps): JSX.Element {
   const canEditNodeConfig = !!selectedNodeOccurrence && parsedNodeMetadataDraft !== null;
 
   const updateSelectedOccurrenceDraft = useCallback((
-    updater: (occurrence: ConceptNodeOccurrenceDraft) => ConceptNodeOccurrenceDraft,
+    updater: (occurrence: InstanceNodeOccurrenceDraft) => InstanceNodeOccurrenceDraft,
   ) => {
     if (!selectedNodeOccurrence) return;
     session.setState((prev) => ({
@@ -685,32 +685,32 @@ export function ConceptEditor({ tab }: ConceptEditorProps): JSX.Element {
 
   const nodeLayoutOptions = useMemo(() => ([
     { value: '', label: t('common.none') ?? 'None' },
-    { value: 'freeform', label: t('concept.nodeLayoutKindOptions.freeform' as never) },
-    { value: 'grid', label: t('concept.nodeLayoutKindOptions.grid' as never) },
-    { value: 'list', label: t('concept.nodeLayoutKindOptions.list' as never) },
+    { value: 'freeform', label: t('instance.nodeLayoutKindOptions.freeform' as never) },
+    { value: 'grid', label: t('instance.nodeLayoutKindOptions.grid' as never) },
+    { value: 'list', label: t('instance.nodeLayoutKindOptions.list' as never) },
   ]), [t]);
 
   const sortKindOptions = useMemo(() => ([
     { value: '', label: t('common.none') ?? 'None' },
-    { value: 'meaning_binding', label: t('concept.nodeSortKindOptions.meaning_slot' as never) },
-    { value: 'property', label: t('concept.nodeSortKindOptions.property' as never) },
+    { value: 'meaning_binding', label: t('instance.nodeSortKindOptions.meaning_slot' as never) },
+    { value: 'property', label: t('instance.nodeSortKindOptions.property' as never) },
   ]), [t]);
 
   const sortDirectionOptions = useMemo(() => ([
-    { value: 'asc', label: t('concept.nodeSortDirectionOptions.asc' as never) },
-    { value: 'desc', label: t('concept.nodeSortDirectionOptions.desc' as never) },
+    { value: 'asc', label: t('instance.nodeSortDirectionOptions.asc' as never) },
+    { value: 'desc', label: t('instance.nodeSortDirectionOptions.desc' as never) },
   ]), [t]);
 
   const emptyPlacementOptions = useMemo(() => ([
-    { value: 'last', label: t('concept.nodeSortEmptyOptions.last' as never) },
-    { value: 'first', label: t('concept.nodeSortEmptyOptions.first' as never) },
+    { value: 'last', label: t('instance.nodeSortEmptyOptions.last' as never) },
+    { value: 'first', label: t('instance.nodeSortEmptyOptions.first' as never) },
   ]), [t]);
 
   const sortableNodeConfig = isSortableNodeConfig(selectedNodeConfig) ? selectedNodeConfig : null;
   const sortableNodeSortConfig = sortableNodeConfig?.sort ?? null;
 
-  const handleConceptVisualModeChange = useCallback((mode: VisualMode) => {
-    setConceptVisualMode(mode);
+  const handleInstanceVisualModeChange = useCallback((mode: VisualMode) => {
+    setInstanceVisualMode(mode);
     session.setState((prev) => {
       const currentIcon = prev.icon ?? '';
       const currentMode = resolveVisualMode(currentIcon);
@@ -718,7 +718,7 @@ export function ConceptEditor({ tab }: ConceptEditorProps): JSX.Element {
     });
   }, [session]);
 
-  if (!isDraft && !concept) {
+  if (!isDraft && !instance) {
     return (
       <div className="flex h-full items-center justify-center text-xs text-muted">
         Loading...
@@ -728,45 +728,47 @@ export function ConceptEditor({ tab }: ConceptEditorProps): JSX.Element {
 
   if (session.isLoading) return <></>;
 
-  const update = (patch: Partial<ConceptEditorState>) => {
+  const update = (patch: Partial<InstanceEditorState>) => {
     session.setState((prev) => ({ ...prev, ...patch }));
   };
 
+  const selectedModelName = session.state.modelId ? (() => {
+    const model = models.find((a) => a.id === session.state.modelId);
+    return model ? model.name : null;
+  })() : null;
+
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      <ScrollArea className="flex-1 min-h-0">
+      <ScrollArea className="min-h-0 flex-1">
         <NetworkObjectEditorShell
-          badge={t('objectPanel.concept' as never)}
-          title={session.state.title || tab.title || t('concept.defaultTitle')}
-          subtitle={isDraft ? t('concept.create') : t('editorShell.networkObject' as never)}
-          description={session.state.modelId ? (() => {
-            const model = models.find((a) => a.id === session.state.modelId);
-            return model ? model.name : null;
-          })() : null}
+          badge={t('objectPanel.instance' as never)}
+          title={session.state.title || tab.title || t('instance.defaultTitle')}
+          subtitle={isDraft ? t('instance.create') : t('editorShell.networkObject' as never)}
+          description={selectedModelName}
           leadingVisual={<NodeVisual icon={session.state.icon ?? 'box'} size={24} imageSize={56} className="shrink-0" />}
         >
-          <NetworkObjectEditorSection title={t('editorShell.overview' as never)}>
+          <NetworkObjectEditorSection title={t('editorShell.overview' as never)} viewMode="details">
               <Input
                 value={session.state.title}
                 onChange={(e) => {
                   update({ title: e.target.value });
                   useEditorStore.getState().updateTitle(tab.id, e.target.value);
                 }}
-                placeholder={t('concept.title') ?? 'Title'}
+                placeholder={t('instance.title') ?? 'Title'}
                 inputSize={isDraft ? undefined : 'sm'}
                 autoFocus={isDraft}
               />
 
               <div>
-                <label className="mb-1 block text-xs font-medium text-secondary">{t('concept.visual' as never)}</label>
+                <label className="mb-1 block text-xs font-medium text-secondary">{t('instance.visual' as never)}</label>
                 <div className="flex flex-col gap-2">
                   <RadioGroup
-                    options={conceptVisualModeOptions}
-                    value={conceptVisualMode}
-                    onChange={(value) => handleConceptVisualModeChange(value as VisualMode)}
+                    options={instanceVisualModeOptions}
+                    value={instanceVisualMode}
+                    onChange={(value) => handleInstanceVisualModeChange(value as VisualMode)}
                     orientation="horizontal"
                   />
-                  {conceptVisualMode === 'icon' ? (
+                  {instanceVisualMode === 'icon' ? (
                     <IconSelector
                       value={!isImageSourceValue(session.state.icon) ? (session.state.icon ?? undefined) : undefined}
                       onChange={(name) => update({ icon: name || null })}
@@ -776,17 +778,17 @@ export function ConceptEditor({ tab }: ConceptEditorProps): JSX.Element {
                     <FilePicker
                       value={isImageSourceValue(session.state.icon) ? session.state.icon ?? '' : ''}
                       onChange={(path) => update({ icon: path || null })}
-                      placeholder={t('concept.selectProfileImage' as never)}
+                      placeholder={t('instance.selectProfileImage' as never)}
                       filters={[...IMAGE_FILE_FILTERS]}
                     />
                   )}
                 </div>
-                <div className="mt-1 text-[11px] text-muted">{t('concept.visualHint' as never)}</div>
+                <div className="mt-1 text-[11px] text-muted">{t('instance.visualHint' as never)}</div>
               </div>
 
               {models.length > 0 && (
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-secondary">{t('concept.model') ?? 'Model'}</label>
+                  <label className="mb-1 block text-xs font-medium text-secondary">{t('instance.model') ?? 'Model'}</label>
                   <Select
                     options={modelOptions}
                     value={session.state.modelId ?? ''}
@@ -800,10 +802,10 @@ export function ConceptEditor({ tab }: ConceptEditorProps): JSX.Element {
             </NetworkObjectEditorSection>
 
             {session.state.modelId && (
-              <NetworkObjectEditorSection title={t('concept.properties')}>
+              <NetworkObjectEditorSection title={t('instance.properties')} viewMode="body">
                 {isDraft ? (
                   modelFields.length > 0 ? (
-                    <ConceptPropertyInputs
+                    <InstancePropertyInputs
                       fields={modelFields}
                       properties={session.state.properties}
                       onChange={(fieldId, value) => update({
@@ -812,7 +814,7 @@ export function ConceptEditor({ tab }: ConceptEditorProps): JSX.Element {
                     />
                   ) : null
                 ) : (
-                  <ConceptPropertiesPanel
+                  <InstancePropertiesPanel
                     modelId={session.state.modelId}
                     properties={session.state.properties}
                     onChange={(fieldId, value) => update({
@@ -823,16 +825,24 @@ export function ConceptEditor({ tab }: ConceptEditorProps): JSX.Element {
               </NetworkObjectEditorSection>
             )}
 
+            <NetworkObjectEditorSection title={t('editorShell.content' as never)} viewMode="body" fullBleed>
+              <InstanceBodyEditor
+                tabId={tab.id}
+                content={session.state.content ?? ''}
+                onChange={(content) => update({ content: content || null })}
+              />
+            </NetworkObjectEditorSection>
+
             {!isDraft && (
-              <NetworkObjectEditorSection title={t('concept.networkPlacement' as never)}>
+              <NetworkObjectEditorSection title={t('instance.networkPlacement' as never)} viewMode="details">
                 {nodeOccurrences.length === 0 ? (
                   <div className="rounded-lg border border-subtle bg-surface-editor px-3 py-2 text-xs text-muted">
-                    {t('concept.noNetworkPlacement' as never)}
+                    {t('instance.noNetworkPlacement' as never)}
                   </div>
                 ) : (
                   <div className="flex flex-col gap-3">
                     <div className="flex flex-col gap-1">
-                      <label className="text-xs font-medium text-secondary">{t('concept.networkPlacement' as never)}</label>
+                      <label className="text-xs font-medium text-secondary">{t('instance.networkPlacement' as never)}</label>
                       <Select
                         options={nodeOccurrenceOptions}
                         value={selectedNodeId}
@@ -858,7 +868,7 @@ export function ConceptEditor({ tab }: ConceptEditorProps): JSX.Element {
                         </div>
 
                         <div className="flex flex-col gap-1">
-                          <label className="text-xs font-medium text-secondary">{t('concept.nodeRole' as never)}</label>
+                          <label className="text-xs font-medium text-secondary">{t('instance.nodeRole' as never)}</label>
                           <Select
                             options={nodeTypeOptions}
                             value={selectedNodeOccurrence.nodeType}
@@ -868,13 +878,13 @@ export function ConceptEditor({ tab }: ConceptEditorProps): JSX.Element {
                             }))}
                             selectSize="sm"
                           />
-                          <div className="text-[11px] text-muted">{t('concept.nodeRoleHint' as never)}</div>
+                          <div className="text-[11px] text-muted">{t('instance.nodeRoleHint' as never)}</div>
                         </div>
 
                         {isGroupNodeOccurrence && (
                           <div className="flex flex-col gap-2 rounded-lg border border-subtle bg-surface-editor px-3 py-3">
                             <div className="flex flex-col gap-1">
-                              <label className="text-xs font-medium text-secondary">{t('concept.nodeLayoutKind' as never)}</label>
+                              <label className="text-xs font-medium text-secondary">{t('instance.nodeLayoutKind' as never)}</label>
                               <Select
                                 options={nodeLayoutOptions}
                                 value={selectedNodeConfig?.kind ?? ''}
@@ -895,14 +905,14 @@ export function ConceptEditor({ tab }: ConceptEditorProps): JSX.Element {
                                 selectSize="sm"
                                 disabled={!canEditNodeConfig}
                               />
-                              <div className="text-[11px] text-muted">{t('concept.nodeConfigHint' as never)}</div>
+                              <div className="text-[11px] text-muted">{t('instance.nodeConfigHint' as never)}</div>
                             </div>
 
                             {selectedNodeConfig?.kind === 'grid' && (
                               <>
                                 <div className="grid grid-cols-2 gap-2">
                                   <div className="flex flex-col gap-1">
-                                    <label className="text-xs font-medium text-secondary">{t('concept.nodeConfigColumns' as never)}</label>
+                                    <label className="text-xs font-medium text-secondary">{t('instance.nodeConfigColumns' as never)}</label>
                                     <NumberInput
                                       value={selectedNodeConfig.columns ?? 2}
                                       onChange={(value) => updateStructuredNodeConfigDraft((config) => (
@@ -917,7 +927,7 @@ export function ConceptEditor({ tab }: ConceptEditorProps): JSX.Element {
                                   </div>
 
                                   <div className="flex flex-col gap-1">
-                                    <label className="text-xs font-medium text-secondary">{t('concept.nodeConfigPadding' as never)}</label>
+                                    <label className="text-xs font-medium text-secondary">{t('instance.nodeConfigPadding' as never)}</label>
                                     <NumberInput
                                       value={selectedNodeConfig.padding ?? 24}
                                       onChange={(value) => updateStructuredNodeConfigDraft((config) => (
@@ -932,7 +942,7 @@ export function ConceptEditor({ tab }: ConceptEditorProps): JSX.Element {
                                   </div>
 
                                   <div className="flex flex-col gap-1">
-                                    <label className="text-xs font-medium text-secondary">{t('concept.nodeConfigGapX' as never)}</label>
+                                    <label className="text-xs font-medium text-secondary">{t('instance.nodeConfigGapX' as never)}</label>
                                     <NumberInput
                                       value={selectedNodeConfig.gapX ?? 16}
                                       onChange={(value) => updateStructuredNodeConfigDraft((config) => (
@@ -947,7 +957,7 @@ export function ConceptEditor({ tab }: ConceptEditorProps): JSX.Element {
                                   </div>
 
                                   <div className="flex flex-col gap-1">
-                                    <label className="text-xs font-medium text-secondary">{t('concept.nodeConfigGapY' as never)}</label>
+                                    <label className="text-xs font-medium text-secondary">{t('instance.nodeConfigGapY' as never)}</label>
                                     <NumberInput
                                       value={selectedNodeConfig.gapY ?? 16}
                                       onChange={(value) => updateStructuredNodeConfigDraft((config) => (
@@ -962,7 +972,7 @@ export function ConceptEditor({ tab }: ConceptEditorProps): JSX.Element {
                                   </div>
 
                                   <div className="flex flex-col gap-1">
-                                    <label className="text-xs font-medium text-secondary">{t('concept.nodeConfigItemWidth' as never)}</label>
+                                    <label className="text-xs font-medium text-secondary">{t('instance.nodeConfigItemWidth' as never)}</label>
                                     <NumberInput
                                       value={selectedNodeConfig.itemWidth ?? 160}
                                       onChange={(value) => updateStructuredNodeConfigDraft((config) => (
@@ -977,7 +987,7 @@ export function ConceptEditor({ tab }: ConceptEditorProps): JSX.Element {
                                   </div>
 
                                   <div className="flex flex-col gap-1">
-                                    <label className="text-xs font-medium text-secondary">{t('concept.nodeConfigItemHeight' as never)}</label>
+                                    <label className="text-xs font-medium text-secondary">{t('instance.nodeConfigItemHeight' as never)}</label>
                                     <NumberInput
                                       value={selectedNodeConfig.itemHeight ?? 60}
                                       onChange={(value) => updateStructuredNodeConfigDraft((config) => (
@@ -998,7 +1008,7 @@ export function ConceptEditor({ tab }: ConceptEditorProps): JSX.Element {
                               <>
                                 <div className="grid grid-cols-2 gap-2">
                                   <div className="flex flex-col gap-1">
-                                    <label className="text-xs font-medium text-secondary">{t('concept.nodeConfigPadding' as never)}</label>
+                                    <label className="text-xs font-medium text-secondary">{t('instance.nodeConfigPadding' as never)}</label>
                                     <NumberInput
                                       value={selectedNodeConfig.padding ?? 24}
                                       onChange={(value) => updateStructuredNodeConfigDraft((config) => (
@@ -1013,7 +1023,7 @@ export function ConceptEditor({ tab }: ConceptEditorProps): JSX.Element {
                                   </div>
 
                                   <div className="flex flex-col gap-1">
-                                    <label className="text-xs font-medium text-secondary">{t('concept.nodeConfigGap' as never)}</label>
+                                    <label className="text-xs font-medium text-secondary">{t('instance.nodeConfigGap' as never)}</label>
                                     <NumberInput
                                       value={selectedNodeConfig.gap ?? 12}
                                       onChange={(value) => updateStructuredNodeConfigDraft((config) => (
@@ -1028,7 +1038,7 @@ export function ConceptEditor({ tab }: ConceptEditorProps): JSX.Element {
                                   </div>
 
                                   <div className="flex flex-col gap-1">
-                                    <label className="text-xs font-medium text-secondary">{t('concept.nodeConfigItemHeight' as never)}</label>
+                                    <label className="text-xs font-medium text-secondary">{t('instance.nodeConfigItemHeight' as never)}</label>
                                     <NumberInput
                                       value={selectedNodeConfig.itemHeight ?? 60}
                                       onChange={(value) => updateStructuredNodeConfigDraft((config) => (
@@ -1048,7 +1058,7 @@ export function ConceptEditor({ tab }: ConceptEditorProps): JSX.Element {
                             {sortableNodeConfig && (
                               <div className="grid grid-cols-2 gap-2">
                                 <div className="flex flex-col gap-1">
-                                  <label className="text-xs font-medium text-secondary">{t('concept.nodeSortKind' as never)}</label>
+                                  <label className="text-xs font-medium text-secondary">{t('instance.nodeSortKind' as never)}</label>
                                   <Select
                                     options={sortKindOptions}
                                     value={sortableNodeSortConfig?.kind ?? ''}
@@ -1078,7 +1088,7 @@ export function ConceptEditor({ tab }: ConceptEditorProps): JSX.Element {
                                 </div>
 
                                 <div className="flex flex-col gap-1">
-                                  <label className="text-xs font-medium text-secondary">{t('concept.nodeSortValue' as never)}</label>
+                                  <label className="text-xs font-medium text-secondary">{t('instance.nodeSortValue' as never)}</label>
                                   {sortableNodeSortConfig?.kind === 'meaning_binding' ? (
                                     <Select
                                       options={meaningSortOptions}
@@ -1103,7 +1113,7 @@ export function ConceptEditor({ tab }: ConceptEditorProps): JSX.Element {
                                       ))}
                                       selectSize="sm"
                                       searchable
-                                      emptyMessage={t('concept.nodeSortNoPropertyOptions' as never)}
+                                      emptyMessage={t('instance.nodeSortNoPropertyOptions' as never)}
                                       disabled={!canEditNodeConfig || propertySortOptions.length === 0}
                                     />
                                   ) : (
@@ -1111,13 +1121,13 @@ export function ConceptEditor({ tab }: ConceptEditorProps): JSX.Element {
                                       value=""
                                       readOnly
                                       inputSize="sm"
-                                      placeholder={t('concept.nodeSortValueDisabled' as never)}
+                                      placeholder={t('instance.nodeSortValueDisabled' as never)}
                                     />
                                   )}
                                 </div>
 
                                 <div className="flex flex-col gap-1">
-                                  <label className="text-xs font-medium text-secondary">{t('concept.nodeSortDirection' as never)}</label>
+                                  <label className="text-xs font-medium text-secondary">{t('instance.nodeSortDirection' as never)}</label>
                                   <Select
                                     options={sortDirectionOptions}
                                     value={sortableNodeSortConfig?.direction ?? 'asc'}
@@ -1132,7 +1142,7 @@ export function ConceptEditor({ tab }: ConceptEditorProps): JSX.Element {
                                 </div>
 
                                 <div className="flex flex-col gap-1">
-                                  <label className="text-xs font-medium text-secondary">{t('concept.nodeSortEmptyPlacement' as never)}</label>
+                                  <label className="text-xs font-medium text-secondary">{t('instance.nodeSortEmptyPlacement' as never)}</label>
                                   <Select
                                     options={emptyPlacementOptions}
                                     value={sortableNodeSortConfig?.emptyPlacement ?? 'last'}
@@ -1150,14 +1160,14 @@ export function ConceptEditor({ tab }: ConceptEditorProps): JSX.Element {
 
                             {!canEditNodeConfig && (
                               <div className="text-[11px] text-muted">
-                                {t('concept.nodeConfigInvalidMetadataHint' as never)}
+                                {t('instance.nodeConfigInvalidMetadataHint' as never)}
                               </div>
                             )}
                           </div>
                         )}
 
                         <div className="flex flex-col gap-1">
-                          <label className="text-xs font-medium text-secondary">{t('concept.nodeMetadata' as never)}</label>
+                          <label className="text-xs font-medium text-secondary">{t('instance.nodeMetadata' as never)}</label>
                           <TextArea
                             value={selectedNodeMetadataDraft}
                             onChange={(e) => updateSelectedOccurrenceMetadata(e.target.value)}
@@ -1173,30 +1183,20 @@ export function ConceptEditor({ tab }: ConceptEditorProps): JSX.Element {
               </NetworkObjectEditorSection>
             )}
 
-            <NetworkObjectEditorSection title={t('editorShell.content' as never)}>
-              <ConceptBodyEditor
-                content={session.state.content ?? ''}
-                onChange={(content) => update({ content: content || null })}
-              />
-          </NetworkObjectEditorSection>
-
             {!isDraft && (
-              <NetworkObjectEditorSection title="Agent" defaultOpen={false}>
+              <NetworkObjectEditorSection title="Agent" defaultOpen={false} viewMode="details">
                 <div className="h-[min(60vh,560px)] min-h-[320px] overflow-hidden rounded-lg border border-subtle bg-surface-editor">
-                  <ConceptAgentView conceptId={tab.targetId} agentContent={concept?.agent_content ?? null} />
+                  <InstanceAgentView instanceId={tab.targetId} agentContent={instance?.agent_content ?? null} />
                 </div>
               </NetworkObjectEditorSection>
             )}
 
-            {!isDraft && concept && (
-              <NetworkObjectEditorSection title={t('editorShell.metadata' as never)} defaultOpen={false}>
+            {!isDraft && instance && (
+              <NetworkObjectEditorSection title={t('editorShell.metadata' as never)} defaultOpen={false} viewMode="details">
                 <NetworkObjectMetadataList
                   items={[
-                    { label: t('editorShell.objectId' as never), value: <code className="font-mono text-xs">{concept.id}</code> },
-                    { label: t('concept.model'), value: session.state.modelId ? (() => {
-                      const model = models.find((a) => a.id === session.state.modelId);
-                      return model ? model.name : t('common.none');
-                    })() : t('common.none') },
+                    { label: t('editorShell.objectId' as never), value: <code className="font-mono text-xs">{instance.id}</code> },
+                    { label: t('instance.model'), value: selectedModelName ?? t('common.none') },
                   ]}
                 />
               </NetworkObjectEditorSection>

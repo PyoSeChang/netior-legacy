@@ -1,27 +1,27 @@
 import { randomUUID } from 'crypto';
 import { getDatabase } from '../connection';
-import type { ConceptEditorPrefs, ConceptEditorPrefsUpdate } from '@netior/shared/types';
+import type { InstanceEditorPrefs, InstanceEditorPrefsUpdate } from '@netior/shared/types';
 
-export function getEditorPrefs(conceptId: string): ConceptEditorPrefs | undefined {
+export function getEditorPrefs(instanceId: string): InstanceEditorPrefs | undefined {
   const db = getDatabase();
   return db
-    .prepare('SELECT * FROM concept_editor_prefs WHERE concept_id = ?')
-    .get(conceptId) as ConceptEditorPrefs | undefined;
+    .prepare('SELECT * FROM instance_editor_prefs WHERE instance_id = ?')
+    .get(instanceId) as InstanceEditorPrefs | undefined;
 }
 
-export function upsertEditorPrefs(conceptId: string, data: ConceptEditorPrefsUpdate): ConceptEditorPrefs {
+export function upsertEditorPrefs(instanceId: string, data: InstanceEditorPrefsUpdate): InstanceEditorPrefs {
   const db = getDatabase();
   const existing = db
-    .prepare('SELECT * FROM concept_editor_prefs WHERE concept_id = ?')
-    .get(conceptId) as ConceptEditorPrefs | undefined;
+    .prepare('SELECT * FROM instance_editor_prefs WHERE instance_id = ?')
+    .get(instanceId) as InstanceEditorPrefs | undefined;
 
   const now = new Date().toISOString();
 
   if (existing) {
     db.prepare(
-      `UPDATE concept_editor_prefs
+      `UPDATE instance_editor_prefs
        SET view_mode = ?, float_x = ?, float_y = ?, float_width = ?, float_height = ?, side_split_ratio = ?, updated_at = ?
-       WHERE concept_id = ?`,
+       WHERE instance_id = ?`,
     ).run(
       data.view_mode !== undefined ? data.view_mode : existing.view_mode,
       data.float_x !== undefined ? data.float_x : existing.float_x,
@@ -30,16 +30,16 @@ export function upsertEditorPrefs(conceptId: string, data: ConceptEditorPrefsUpd
       data.float_height !== undefined ? data.float_height : existing.float_height,
       data.side_split_ratio !== undefined ? data.side_split_ratio : existing.side_split_ratio,
       now,
-      conceptId,
+      instanceId,
     );
   } else {
     const id = randomUUID();
     db.prepare(
-      `INSERT INTO concept_editor_prefs (id, concept_id, view_mode, float_x, float_y, float_width, float_height, side_split_ratio, updated_at)
+      `INSERT INTO instance_editor_prefs (id, instance_id, view_mode, float_x, float_y, float_width, float_height, side_split_ratio, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ).run(
       id,
-      conceptId,
+      instanceId,
       data.view_mode ?? 'float',
       data.float_x ?? null,
       data.float_y ?? null,
@@ -51,6 +51,6 @@ export function upsertEditorPrefs(conceptId: string, data: ConceptEditorPrefsUpd
   }
 
   return db
-    .prepare('SELECT * FROM concept_editor_prefs WHERE concept_id = ?')
-    .get(conceptId) as ConceptEditorPrefs;
+    .prepare('SELECT * FROM instance_editor_prefs WHERE instance_id = ?')
+    .get(instanceId) as InstanceEditorPrefs;
 }

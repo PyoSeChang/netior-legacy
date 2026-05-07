@@ -14,6 +14,7 @@
     "clean": "turbo run clean && rimraf node_modules",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
+    "audit:i18n": "node scripts/audit-i18n-text.mjs",
     "eval": "pnpm --filter @netior/narre-eval eval:dev",
     "worktree:list": "node scripts/worktree-debug.mjs list",
     "worktree:new": "node scripts/worktree-debug.mjs create",

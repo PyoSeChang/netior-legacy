@@ -17,7 +17,7 @@ import {
 import { useI18n } from '../../hooks/useI18n';
 import { useAnchoredDropdown } from '../../hooks/useAnchoredDropdown';
 import { useProjectStore } from '../../stores/project-store';
-import { useConceptStore } from '../../stores/concept-store';
+import { useInstanceStore } from '../../stores/instance-store';
 import { useNetworkStore } from '../../stores/network-store';
 import { useModelStore } from '../../stores/model-store';
 import { useContextStore } from '../../stores/context-store';
@@ -29,12 +29,9 @@ import { Input } from '../ui/Input';
 import { getIconComponent } from '../ui/lucide-utils';
 import { NodeVisual } from '../workspace/node-components/NodeVisual';
 import { openNetworkViewerTab } from '../../lib/open-network-viewer-tab';
-import {
-  getModelDisplayDescription,
-  getModelDisplayName,
-} from '../../lib/model-i18n';
+import { createOntologyDisplayResolver } from '@netior/shared';
 
-type PanelObjectType = 'concept' | 'network' | 'model' | 'context';
+type PanelObjectType = 'instance' | 'network' | 'model' | 'context';
 
 interface ObjectPanelProps {
   types?: PanelObjectType[];
@@ -73,7 +70,7 @@ type ContextMenuState = {
 };
 
 const FILTERS: Array<{ key: PanelObjectType; icon: React.ElementType; labelKey: TranslationKey | string }> = [
-  { key: 'concept', icon: CircleDot, labelKey: 'objectPanel.concept' },
+  { key: 'instance', icon: CircleDot, labelKey: 'objectPanel.instance' },
   { key: 'network', icon: Waypoints, labelKey: 'sidebar.networks' },
   { key: 'model', icon: Boxes, labelKey: 'model.title' },
   { key: 'context', icon: Layers3, labelKey: 'context.title' },
@@ -216,11 +213,12 @@ function ObjectTypeFilterSelect({
 
 export function ObjectPanel({ types }: ObjectPanelProps = {}): JSX.Element {
   const { t } = useI18n();
+  const display = useMemo(() => createOntologyDisplayResolver(t), [t]);
   const tk = (key: string) => t(key as TranslationKey);
   const currentProject = useProjectStore((state) => state.currentProject);
   const currentNetwork = useNetworkStore((state) => state.currentNetwork);
   const networks = useNetworkStore((state) => state.networks);
-  const concepts = useConceptStore((state) => state.concepts);
+  const instances = useInstanceStore((state) => state.instances);
   const models = useModelStore((state) => state.models);
   const contexts = useContextStore((state) => state.contexts);
   const activeContextId = useContextStore((state) => state.activeContextId);
@@ -230,7 +228,7 @@ export function ObjectPanel({ types }: ObjectPanelProps = {}): JSX.Element {
   const setActiveContext = useContextStore((state) => state.setActiveContext);
   const createModel = useModelStore((state) => state.createModel);
   const deleteModel = useModelStore((state) => state.deleteModel);
-  const deleteConcept = useConceptStore((state) => state.deleteConcept);
+  const deleteInstance = useInstanceStore((state) => state.deleteInstance);
   const createNetwork = useNetworkStore((state) => state.createNetwork);
   const deleteNetwork = useNetworkStore((state) => state.deleteNetwork);
   const openNetwork = useNetworkStore((state) => state.openNetwork);
@@ -260,26 +258,26 @@ export function ObjectPanel({ types }: ObjectPanelProps = {}): JSX.Element {
     return match ? t(match.labelKey as TranslationKey) : type;
   };
 
-  const conceptRows = useMemo<PanelRow[]>(() => (
-    [...concepts].sort((a, b) => a.title.localeCompare(b.title)).map((concept) => ({
-      key: `object:concept:${concept.id}`,
+  const instanceRows = useMemo<PanelRow[]>(() => (
+    [...instances].sort((a, b) => a.title.localeCompare(b.title)).map((instance) => ({
+      key: `object:instance:${instance.id}`,
       depth: 0,
       item: {
-        id: concept.id,
+        id: instance.id,
         kind: 'object',
-        objectType: 'concept',
-        title: concept.title,
-        subtitle: concept.schema_id
+        objectType: 'instance',
+        title: instance.title,
+        subtitle: instance.schema_id
           ? (() => {
-            const model = models.find((item) => item.id === concept.schema_id);
-            return model ? getModelDisplayName(model, t) : t('objectPanel.concept' as TranslationKey);
+            const model = models.find((item) => item.id === instance.schema_id);
+            return model ? display.modelName(model) : t('objectPanel.instance' as TranslationKey);
           })()
-          : t('objectPanel.concept' as TranslationKey),
-        color: concept.color,
-        iconName: concept.icon,
+          : t('objectPanel.instance' as TranslationKey),
+        color: instance.color,
+        iconName: instance.icon,
       },
     }))
-  ), [concepts, models]);
+  ), [instances, models]);
 
   const networkRows = useMemo<PanelRow[]>(() => (
     [...networks].sort((a, b) => a.name.localeCompare(b.name)).map((network) => ({
@@ -300,15 +298,23 @@ export function ObjectPanel({ types }: ObjectPanelProps = {}): JSX.Element {
   const modelRows = useMemo<PanelRow[]>(() => (
     buildObjectRows(
       'model',
-      [...models].sort((a, b) => getModelDisplayName(a, t).localeCompare(getModelDisplayName(b, t))),
+      [...models].sort((a, b) => display.modelName(a).localeCompare(display.modelName(b))),
       (model) => ({
-        title: getModelDisplayName(model, t),
-        subtitle: getModelDisplayDescription(model, t) ?? model.category_concept_title ?? t('model.title' as TranslationKey),
+        title: display.modelName(model),
+        subtitle: display.modelDescription(model)
+          ?? (model.category_instance_source_ref
+            ? display.name({
+              kind: 'instance',
+              title: model.category_instance_title ?? model.category_instance_source_ref,
+              source_ref: model.category_instance_source_ref,
+            })
+            : model.category_instance_title)
+          ?? t('model.title' as TranslationKey),
         color: model.color,
         iconName: model.icon,
       }),
     )
-  ), [models, t]);
+  ), [display, models, t]);
 
   const contextRows = useMemo<PanelRow[]>(() => (
     [...contexts].sort((a, b) => a.name.localeCompare(b.name)).map((context) => ({
@@ -328,7 +334,7 @@ export function ObjectPanel({ types }: ObjectPanelProps = {}): JSX.Element {
   const sections = useMemo<PanelSection[]>(() => {
     const normalizedSearch = search.trim().toLowerCase();
     const rowsByType: Record<PanelObjectType, PanelRow[]> = {
-      concept: conceptRows,
+      instance: instanceRows,
       network: networkRows,
       model: modelRows,
       context: contextRows,
@@ -344,7 +350,7 @@ export function ObjectPanel({ types }: ObjectPanelProps = {}): JSX.Element {
           || row.item.subtitle.toLowerCase().includes(normalizedSearch);
       }),
     }));
-  }, [activeTypes, search, conceptRows, networkRows, modelRows, contextRows]);
+  }, [activeTypes, search, instanceRows, networkRows, modelRows, contextRows]);
 
   const hasSearch = search.trim().length > 0;
   const visibleRows = useMemo(() => sections.flatMap((section) => {
@@ -428,8 +434,8 @@ export function ObjectPanel({ types }: ObjectPanelProps = {}): JSX.Element {
 
   const openItem = async (item: Extract<PanelItem, { kind: 'object' }>) => {
     switch (item.objectType) {
-      case 'concept':
-        await useEditorStore.getState().openTab({ type: 'concept', targetId: item.id, title: item.title });
+      case 'instance':
+        await useEditorStore.getState().openTab({ type: 'instance', targetId: item.id, title: item.title });
         break;
       case 'network':
         await openNetwork(item.id);
@@ -466,12 +472,12 @@ export function ObjectPanel({ types }: ObjectPanelProps = {}): JSX.Element {
     if (!currentProject || !objectType || !canCreateObjectType(objectType)) return;
     expandSection(objectType);
     switch (objectType) {
-      case 'concept': {
+      case 'instance': {
         const draftId = `draft-${Date.now()}`;
         await useEditorStore.getState().openTab({
-          type: 'concept',
+          type: 'instance',
           targetId: draftId,
-          title: t('concept.defaultTitle'),
+          title: t('instance.defaultTitle'),
           draftData: currentNetwork ? { networkId: currentNetwork.id } : undefined,
         });
         break;
@@ -506,8 +512,8 @@ export function ObjectPanel({ types }: ObjectPanelProps = {}): JSX.Element {
   };
   const handleDeleteItem = async (item: PanelItem) => {
     switch (item.objectType) {
-      case 'concept':
-        await deleteConcept(item.id);
+      case 'instance':
+        await deleteInstance(item.id);
         break;
       case 'network':
         await deleteNetwork(item.id);
@@ -630,7 +636,7 @@ export function ObjectPanel({ types }: ObjectPanelProps = {}): JSX.Element {
   ]);
 
   const renderLeadingVisual = (row: PanelRow) => {
-    if (row.item.objectType === 'concept' && row.item.iconName) {
+    if (row.item.objectType === 'instance' && row.item.iconName) {
       return <NodeVisual icon={row.item.iconName} size={14} imageSize={18} className="shrink-0" />;
     }
     if (row.item.objectType === 'model' && row.item.iconName) {
@@ -640,7 +646,7 @@ export function ObjectPanel({ types }: ObjectPanelProps = {}): JSX.Element {
       return <div className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: row.item.color }} />;
     }
     switch (row.item.objectType) {
-      case 'concept':
+      case 'instance':
         return <CircleDot size={14} className="shrink-0 text-secondary" />;
       case 'network':
         if (row.item.networkKind === 'ontology') {

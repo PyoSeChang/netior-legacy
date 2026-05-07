@@ -39,8 +39,8 @@ type ModelRow = Omit<
   recipe_json?: string | null;
   built_in: number;
   directed: number | null;
-  category_concept_title?: string | null;
-  category_concept_source_ref?: string | null;
+  category_instance_title?: string | null;
+  category_instance_source_ref?: string | null;
 };
 
 const EMPTY_MODEL_RECIPE: ModelRecipe = {
@@ -287,9 +287,9 @@ function toModel(row: ModelRow): Model {
   return {
     ...row,
     key: row.key as ModelRefKey,
-    category_concept_id: row.category_concept_id ?? null,
-    category_concept_title: row.category_concept_title ?? null,
-    category_concept_source_ref: row.category_concept_source_ref ?? null,
+    category_instance_id: row.category_instance_id ?? null,
+    category_instance_title: row.category_instance_title ?? null,
+    category_instance_source_ref: row.category_instance_source_ref ?? null,
     target_kind: (row.target_kind ?? 'object') as ModelTargetKind,
     meaning_keys: parseStringArray<SemanticMeaningKey>(row.meaning_keys),
     core_slots: parseStringArray<MeaningSlotKey>(row.core_slots),
@@ -307,23 +307,23 @@ function ensureObjectForModel(db: Db, model: Pick<ModelRow, 'id' | 'project_id' 
   createObject('model', 'project', model.project_id, model.id);
 }
 
-function assertModelCategoryConcept(db: Db, projectId: string, categoryConceptId: string | null | undefined): void {
-  if (!categoryConceptId) return;
+function assertModelCategoryInstance(db: Db, projectId: string, categoryInstanceId: string | null | undefined): void {
+  if (!categoryInstanceId) return;
   const { schemaId } = ensureModelCategoryTaxonomyForProjectDb(db, projectId);
   const row = db.prepare(
-    'SELECT id FROM concepts WHERE id = ? AND project_id = ? AND schema_id = ?',
-  ).get(categoryConceptId, projectId, schemaId);
+    'SELECT id FROM instances WHERE id = ? AND project_id = ? AND schema_id = ?',
+  ).get(categoryInstanceId, projectId, schemaId);
   if (!row) {
-    throw new Error(`Model category concept not found in project model category schema: ${categoryConceptId}`);
+    throw new Error(`Model category instance not found in project model category schema: ${categoryInstanceId}`);
   }
 }
 
 export function seedBuiltInModelsForProjectDb(db: Db, projectId: string): void {
   const now = new Date().toISOString();
-  const { conceptsByKey } = ensureModelCategoryTaxonomyForProjectDb(db, projectId);
+  const { instancesByKey } = ensureModelCategoryTaxonomyForProjectDb(db, projectId);
   const insertModel = db.prepare(`
     INSERT OR IGNORE INTO models (
-      id, project_id, key, name, description, category_concept_id,
+      id, project_id, key, name, description, category_instance_id,
       target_kind, meaning_keys, core_slots, optional_slots, recipe_json,
       color, icon, line_style, directed, built_in,
       source_kind, source_id, source_ref, source_version, created_at, updated_at
@@ -365,7 +365,7 @@ export function seedBuiltInModelsForProjectDb(db: Db, projectId: string): void {
       definition.key,
       definition.label,
       description,
-      conceptsByKey.get(definition.category)?.id ?? null,
+      instancesByKey.get(definition.category)?.id ?? null,
       definition.targetKind ?? 'object',
       serializeStringArray(definition.meanings),
       serializeStringArray(definition.coreSlots),
@@ -401,11 +401,11 @@ export function createModel(data: ModelCreate): Model {
   const derivedSlots = deriveSlotsForMeanings(meaningKeys);
   const key = getUniqueModelKey(db, data.project_id, data.key ?? normalizeModelKey(data.name));
   const sourceKind = data.source_kind ?? (data.built_in ? 'system' : 'project');
-  assertModelCategoryConcept(db, data.project_id, data.category_concept_id);
+  assertModelCategoryInstance(db, data.project_id, data.category_instance_id);
 
   db.prepare(
     `INSERT INTO models (
-      id, project_id, key, name, description, category_concept_id,
+      id, project_id, key, name, description, category_instance_id,
       target_kind, meaning_keys, core_slots, optional_slots, recipe_json,
       color, icon, line_style, directed, built_in,
       source_kind, source_id, source_ref, source_version, created_at, updated_at
@@ -417,7 +417,7 @@ export function createModel(data: ModelCreate): Model {
     key,
     data.name,
     data.description ?? null,
-    data.category_concept_id ?? null,
+    data.category_instance_id ?? null,
     data.target_kind ?? 'object',
     serializeStringArray(meaningKeys),
     serializeStringArray(data.core_slots ?? derivedSlots.coreSlots),
@@ -449,9 +449,9 @@ export function listModels(projectId: string): Model[] {
   })();
   const rows = db
     .prepare(`
-      SELECT m.*, c.title AS category_concept_title, c.source_ref AS category_concept_source_ref
+      SELECT m.*, c.title AS category_instance_title, c.source_ref AS category_instance_source_ref
         FROM models m
-        LEFT JOIN concepts c ON c.id = m.category_concept_id
+        LEFT JOIN instances c ON c.id = m.category_instance_id
        WHERE m.project_id = ?
        ORDER BY m.built_in DESC, COALESCE(c.title, ''), m.name
     `)
@@ -473,9 +473,9 @@ export function listModels(projectId: string): Model[] {
 export function getModel(id: string): Model | undefined {
   const db = getDatabase();
   const row = db.prepare(`
-    SELECT m.*, c.title AS category_concept_title, c.source_ref AS category_concept_source_ref
+    SELECT m.*, c.title AS category_instance_title, c.source_ref AS category_instance_source_ref
       FROM models m
-      LEFT JOIN concepts c ON c.id = m.category_concept_id
+      LEFT JOIN instances c ON c.id = m.category_instance_id
      WHERE m.id = ?
   `).get(id) as ModelRow | undefined;
   if (row?.built_in && isEmptyRecipe(row.recipe_json)) {
@@ -501,11 +501,11 @@ export function updateModel(id: string, data: ModelUpdate): Model | undefined {
     ? getUniqueModelKey(db, existing.project_id, data.key, id)
     : existing.key as ModelRefKey;
   const now = new Date().toISOString();
-  assertModelCategoryConcept(db, existing.project_id, data.category_concept_id);
+  assertModelCategoryInstance(db, existing.project_id, data.category_instance_id);
 
   db.prepare(
     `UPDATE models
-        SET key = ?, name = ?, description = ?, category_concept_id = ?, target_kind = ?, meaning_keys = ?,
+        SET key = ?, name = ?, description = ?, category_instance_id = ?, target_kind = ?, meaning_keys = ?,
             core_slots = ?, optional_slots = ?, recipe_json = ?, color = ?, icon = ?,
             line_style = ?, directed = ?, built_in = ?,
             source_kind = ?, source_id = ?, source_ref = ?, source_version = ?, updated_at = ?
@@ -514,7 +514,7 @@ export function updateModel(id: string, data: ModelUpdate): Model | undefined {
     nextKey,
     data.name !== undefined ? data.name : existing.name,
     data.description !== undefined ? data.description : existing.description,
-    data.category_concept_id !== undefined ? data.category_concept_id : existing.category_concept_id,
+    data.category_instance_id !== undefined ? data.category_instance_id : existing.category_instance_id,
     data.target_kind !== undefined ? data.target_kind : existing.target_kind,
     serializeStringArray(nextMeaningKeys),
     serializeStringArray(data.core_slots ?? (meaningKeysChanged ? derivedSlots.coreSlots : parseStringArray<MeaningSlotKey>(existing.core_slots))),

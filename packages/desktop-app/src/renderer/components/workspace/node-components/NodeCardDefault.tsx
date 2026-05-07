@@ -96,19 +96,8 @@ export const NodeCardDefault: React.FC<NodeComponentProps> = ({
     (e: React.MouseEvent) => {
       if (e.button !== 0 || !onDragStart) return;
       e.stopPropagation();
-      console.log('[NarreMentionDrag][NodeCard] mouseDown', {
-        id,
-        mode,
-        hasMention: !!narreMention,
-        mentionType: narreMention?.type,
-        mentionId: narreMention?.id,
-        display: narreMention?.display,
-        x: e.clientX,
-        y: e.clientY,
-      });
       try {
         onDragStart(id, e.clientX, e.clientY, narreMention);
-        console.log('[NarreMentionDrag][NodeCard] onDragStart returned', { id });
       } catch (error) {
         console.error('[NarreMentionDrag][NodeCard] onDragStart threw', { id, error });
       }

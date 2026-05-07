@@ -112,18 +112,18 @@ export const horizontalTimelinePlugin: WorkspaceLayoutPlugin = {
 
     const startFieldId = getSemanticSlotFieldId(node, 'time.start');
     const allDayFieldId = getSemanticSlotFieldId(node, 'time.all_day');
-    const propertyUpdates: Array<{ conceptId: string; fieldId: string; value: string }> = [];
+    const propertyUpdates: Array<{ instanceId: string; fieldId: string; value: string }> = [];
 
-    if (startFieldId && node.conceptId) {
+    if (startFieldId && node.instanceId) {
       propertyUpdates.push({
-        conceptId: node.conceptId,
+        instanceId: node.instanceId,
         fieldId: startFieldId,
         value: formatTemporalSlotValue(node, 'start_at', epochDay),
       });
     }
-    if (allDayFieldId && node.conceptId) {
+    if (allDayFieldId && node.instanceId) {
       propertyUpdates.push({
-        conceptId: node.conceptId,
+        instanceId: node.instanceId,
         fieldId: allDayFieldId,
         value: String(getSemanticBoolean(node, 'time.all_day') === true),
       });
@@ -139,8 +139,8 @@ export const horizontalTimelinePlugin: WorkspaceLayoutPlugin = {
     const { dx, edge, node, zoom } = context;
     const startFieldId = getSemanticSlotFieldId(node, 'time.start');
     const endFieldId = getSemanticSlotFieldId(node, 'time.end');
-    const propertyUpdates: Array<{ conceptId: string; fieldId: string; value: string }> = [];
-    if (!node.conceptId || (!startFieldId && !endFieldId)) return {};
+    const propertyUpdates: Array<{ instanceId: string; fieldId: string; value: string }> = [];
+    if (!node.instanceId || (!startFieldId && !endFieldId)) return {};
 
     const pxPerDay = PIXELS_PER_DAY * zoom;
     if (pxPerDay === 0) return {};
@@ -153,7 +153,7 @@ export const horizontalTimelinePlugin: WorkspaceLayoutPlugin = {
     if (edge === 'start' && startFieldId) {
       const nextStartDay = Math.min(startDay + deltaDays, endDay);
       propertyUpdates.push({
-        conceptId: node.conceptId,
+        instanceId: node.instanceId,
         fieldId: startFieldId,
         value: formatTemporalSlotValue(node, 'start_at', nextStartDay),
       });
@@ -162,7 +162,7 @@ export const horizontalTimelinePlugin: WorkspaceLayoutPlugin = {
     if (edge === 'end' && endFieldId) {
       const nextEndDay = Math.max(endDay + deltaDays, startDay);
       propertyUpdates.push({
-        conceptId: node.conceptId,
+        instanceId: node.instanceId,
         fieldId: endFieldId,
         value: formatTemporalSlotValue(node, 'end_at', nextEndDay),
       });

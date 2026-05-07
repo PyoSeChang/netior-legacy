@@ -91,14 +91,14 @@ export const IPC_CHANNELS = {
   PROJECT_DELETE: 'project:delete',
   PROJECT_UPDATE_ROOT_DIR: 'project:updateRootDir',
 
-  // Concept
-  CONCEPT_CREATE: 'concept:create',
-  CONCEPT_GET_BY_PROJECT: 'concept:getByProject',
-  CONCEPT_UPDATE: 'concept:update',
-  CONCEPT_DELETE: 'concept:delete',
-  CONCEPT_SEARCH: 'concept:search',
-  CONCEPT_SYNC_TO_AGENT: 'concept:syncToAgent',
-  CONCEPT_SYNC_FROM_AGENT: 'concept:syncFromAgent',
+  // Instance
+  INSTANCE_CREATE: 'instance:create',
+  INSTANCE_GET_BY_PROJECT: 'instance:getByProject',
+  INSTANCE_UPDATE: 'instance:update',
+  INSTANCE_DELETE: 'instance:delete',
+  INSTANCE_SEARCH: 'instance:search',
+  INSTANCE_SYNC_TO_AGENT: 'instance:syncToAgent',
+  INSTANCE_SYNC_FROM_AGENT: 'instance:syncFromAgent',
 
   // Network
   NETWORK_CREATE: 'network:create',
@@ -186,10 +186,10 @@ export const IPC_CHANNELS = {
   RELATION_TYPE_UPDATE: 'relationType:update',
   RELATION_TYPE_DELETE: 'relationType:delete',
 
-  // Concept Property
-  CONCEPT_PROP_UPSERT: 'conceptProp:upsert',
-  CONCEPT_PROP_GET_BY_CONCEPT: 'conceptProp:getByConcept',
-  CONCEPT_PROP_DELETE: 'conceptProp:delete',
+  // Instance Property
+  INSTANCE_PROP_UPSERT: 'instanceProp:upsert',
+  INSTANCE_PROP_GET_BY_INSTANCE: 'instanceProp:getByInstance',
+  INSTANCE_PROP_DELETE: 'instanceProp:delete',
 
   // Editor Prefs
   EDITOR_PREFS_GET: 'editorPrefs:get',
@@ -347,7 +347,7 @@ export const SYSTEM_ONTOLOGY_SOURCE_ID = 'netior.system' as const;
 export const SYSTEM_ONTOLOGY_SOURCE_VERSION = '1' as const;
 export const MODEL_CATEGORY_SCHEMA_SOURCE_REF = 'schema.model_category' as const;
 
-export const MODEL_CATEGORY_CONCEPT_DEFINITIONS = Object.entries(SEMANTIC_CATEGORY_LABELS).map(([key, label], index) => ({
+export const MODEL_CATEGORY_INSTANCE_DEFINITIONS = Object.entries(SEMANTIC_CATEGORY_LABELS).map(([key, label], index) => ({
   key: key as SemanticCategoryKey,
   title: label,
   sourceRef: `model-category.${key}`,

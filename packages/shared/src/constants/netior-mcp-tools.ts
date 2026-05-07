@@ -98,7 +98,7 @@ export const NETIOR_MCP_TOOL_SPECS = {
     defaultProjectBinding: true,
   },
   list_model_categories: {
-    description: 'List Model Category concepts for a project. Model categories are schema-backed concepts, not model string fields.',
+    description: 'List Model Category instances for a project. Model categories are schema-backed instances, not model string fields.',
     category: 'types',
     kind: 'query',
     profiles: ['discovery', 'bootstrap-execution'],
@@ -127,43 +127,43 @@ export const NETIOR_MCP_TOOL_SPECS = {
     category: 'types',
     kind: 'mutation',
   },
-  list_concepts: {
-    description: 'List or search concepts in a project. Supports title query, schema narrowing, and property-based filters.',
-    category: 'concepts',
+  list_instances: {
+    description: 'List or search instances in a project. Supports title query, schema narrowing, and property-based filters.',
+    category: 'instances',
     kind: 'query',
     scope: 'project',
     defaultProjectBinding: true,
   },
-  create_concept: {
-    description: 'Create a new concept in a project, including either an icon or a profile image source',
-    category: 'concepts',
+  create_instance: {
+    description: 'Create a new instance in a project, including either an icon or a profile image source',
+    category: 'instances',
     kind: 'mutation',
     scope: 'project',
     defaultProjectBinding: true,
   },
-  update_concept: {
-    description: 'Update an existing concept, including either an icon or a profile image source',
-    category: 'concepts',
+  update_instance: {
+    description: 'Update an existing instance, including either an icon or a profile image source',
+    category: 'instances',
     kind: 'mutation',
   },
-  delete_concept: {
-    description: 'Delete a concept',
-    category: 'concepts',
+  delete_instance: {
+    description: 'Delete a instance',
+    category: 'instances',
     kind: 'mutation',
   },
-  get_concept_properties: {
-    description: 'Get the stored field values for a specific concept',
-    category: 'concepts',
+  get_instance_properties: {
+    description: 'Get the stored field values for a specific instance',
+    category: 'instances',
     kind: 'query',
   },
-  upsert_concept_property: {
-    description: 'Set or replace a concept property value for a specific field',
-    category: 'concepts',
+  upsert_instance_property: {
+    description: 'Set or replace a instance property value for a specific field',
+    category: 'instances',
     kind: 'mutation',
   },
-  delete_concept_property: {
-    description: 'Delete a stored concept property value',
-    category: 'concepts',
+  delete_instance_property: {
+    description: 'Delete a stored instance property value',
+    category: 'instances',
     kind: 'mutation',
   },
   create_edge: {
@@ -232,7 +232,7 @@ export const NETIOR_MCP_TOOL_SPECS = {
   },
   get_field_candidates: {
     displayName: 'Suggest Field Options',
-    description: 'Get candidate values or candidate concepts for a field definition. Use this before assigning relational or choice values.',
+    description: 'Get candidate values or candidate instances for a field definition. Use this before assigning relational or choice values.',
     category: 'types',
     kind: 'analysis',
     scope: 'project',
@@ -361,7 +361,7 @@ export const NETIOR_MCP_TOOL_SPECS = {
   },
   get_project_summary: {
     displayName: 'Project Summary',
-    description: 'Get a summary of a project including schema, model, concept, and network context',
+    description: 'Get a summary of a project including schema, model, instance, and network context',
     category: 'project',
     kind: 'analysis',
     profiles: ['discovery'],
@@ -385,8 +385,8 @@ function inferToolCategory(toolName: string): NarreToolCategory {
   if (toolName.includes('schema') || toolName.includes('model') || toolName.includes('field')) {
     return 'types';
   }
-  if (toolName.includes('concept')) {
-    return 'concepts';
+  if (toolName.includes('instance')) {
+    return 'instances';
   }
   if (toolName.includes('network') || toolName.includes('edge') || toolName.includes('object') || toolName.includes('node')) {
     return 'graph';
@@ -433,7 +433,7 @@ function inferToolScope(toolName: string): NetiorMcpToolScope {
     toolName.includes('project')
     || toolName.includes('schema')
     || toolName.includes('model')
-    || toolName.includes('concept')
+    || toolName.includes('instance')
     || toolName.includes('module')
   ) {
     return 'project';

@@ -466,19 +466,19 @@ export function projectRecurringTemporalNodes(
   rangeStart: number,
   rangeEnd: number,
 ): LayoutRenderNode[] {
-  const materializedKeysBySourceConceptId = new Map<string, Set<string>>();
+  const materializedKeysBySourceInstanceId = new Map<string, Set<string>>();
   for (const node of nodes) {
-    const sourceConceptId = typeof node.metadata.__recurrenceSourceConceptId === 'string'
-      ? node.metadata.__recurrenceSourceConceptId
+    const sourceInstanceId = typeof node.metadata.__recurrenceSourceInstanceId === 'string'
+      ? node.metadata.__recurrenceSourceInstanceId
       : null;
     const occurrenceKey = typeof node.metadata.__occurrenceKey === 'string'
       ? node.metadata.__occurrenceKey
       : null;
-    if (!sourceConceptId || !occurrenceKey) continue;
+    if (!sourceInstanceId || !occurrenceKey) continue;
 
-    const keys = materializedKeysBySourceConceptId.get(sourceConceptId) ?? new Set<string>();
+    const keys = materializedKeysBySourceInstanceId.get(sourceInstanceId) ?? new Set<string>();
     keys.add(occurrenceKey);
-    materializedKeysBySourceConceptId.set(sourceConceptId, keys);
+    materializedKeysBySourceInstanceId.set(sourceInstanceId, keys);
   }
 
   const projected: LayoutRenderNode[] = [];
@@ -494,8 +494,8 @@ export function projectRecurringTemporalNodes(
     const occurrences = recurrence.freq === 'MONTHLY'
       ? projectMonthlyOccurrences(node, recurrence, duration, rangeStart, rangeEnd)
       : projectDailyOrWeeklyOccurrences(node, recurrence, duration, rangeStart, rangeEnd);
-    const materializedKeys = node.conceptId
-      ? materializedKeysBySourceConceptId.get(node.conceptId)
+    const materializedKeys = node.instanceId
+      ? materializedKeysBySourceInstanceId.get(node.instanceId)
       : undefined;
     const visibleOccurrences = materializedKeys
       ? occurrences.filter((occurrence) => {

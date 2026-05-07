@@ -3,8 +3,10 @@ import { useEditorStore, getActiveLeaf, collectLeaves, MAIN_HOST_ID } from '../s
 import { getSession } from '../lib/editor-session-registry';
 import { useProjectStore } from '../stores/project-store';
 import { useUIStore } from '../stores/ui-store';
+import { useSettingsStore } from '../stores/settings-store';
 import { jumpToNextUnacknowledgedAgent } from '../lib/terminal-agent-notifier';
 import { openTerminalTab as openTerminalTabInHost } from '../lib/terminal/open-terminal-tab';
+import { openBrowserTab as openBrowserTabInHost } from '../lib/open-browser-tab';
 import { consumeShortcutEvent, isEditableTarget, isPrimaryModifier, logShortcut } from './shortcut-utils';
 
 export function cycleTab(direction: 1 | -1): void {
@@ -57,6 +59,12 @@ export function cyclePane(direction: 1 | -1): void {
 
 function openTerminalTab(): void {
   openTerminalTabInHost();
+}
+
+function openBrowserTab(): void {
+  const { browser } = useSettingsStore.getState();
+  const { focusedHostId } = useEditorStore.getState();
+  void openBrowserTabInHost(browser.homeUrl, focusedHostId);
 }
 
 function toggleToc(): void {
@@ -170,10 +178,17 @@ export function useGlobalShortcuts(): void {
         return;
       }
 
-      if (key === 'b') {
+      if (!event.shiftKey && !event.altKey && key === 'b') {
         consumeShortcutEvent(event);
         logShortcut('shortcut.global.toggleSidebar');
         useUIStore.getState().toggleSidebar();
+        return;
+      }
+
+      if (event.shiftKey && !event.altKey && key === 'b') {
+        consumeShortcutEvent(event);
+        logShortcut('shortcut.global.openBrowser');
+        openBrowserTab();
         return;
       }
 

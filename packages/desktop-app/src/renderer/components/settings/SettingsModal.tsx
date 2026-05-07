@@ -1,6 +1,6 @@
 ﻿import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Search, Palette, Globe, Bell, Boxes, Sparkles, Pin } from 'lucide-react';
+import { X, Search, Palette, Globe, Bell, Boxes, Sparkles, Pin, Compass } from 'lucide-react';
 import type { NarreBehaviorSettings, NarreCodexSettings } from '@netior/shared/types';
 import {
   buildRoleFontFamily,
@@ -10,6 +10,7 @@ import {
   getThemeColorTokens,
   getThemeTokenPresets,
   getTerminalPresets,
+  type BrowserSettingsConfig,
   type AppFontRole,
   type FontRoleConfig,
   type ResolvedThemeMode,
@@ -862,6 +863,94 @@ function TerminalAppearancePanel({
   );
 }
 
+interface BrowserSettingsPanelProps {
+  browser: BrowserSettingsConfig;
+  onUpdate: (patch: Partial<BrowserSettingsConfig>) => void;
+}
+
+function BrowserSettingsPanel({ browser, onUpdate }: BrowserSettingsPanelProps): JSX.Element {
+  const [homeUrlDraft, setHomeUrlDraft] = useState(browser.homeUrl);
+
+  useEffect(() => {
+    setHomeUrlDraft(browser.homeUrl);
+  }, [browser.homeUrl]);
+
+  const commitHomeUrl = () => {
+    const nextUrl = homeUrlDraft.trim();
+    onUpdate({ homeUrl: nextUrl || browser.homeUrl });
+  };
+
+  return (
+    <div data-section="browser">
+      <section data-section="기본-페이지" className="mb-8">
+        <h3 className="text-base font-semibold text-default">기본 페이지</h3>
+        <p className="mb-4 text-sm text-secondary">
+          액티비티 바의 브라우저 버튼으로 열 기본 URL을 정합니다.
+        </p>
+        <Input
+          value={homeUrlDraft}
+          onChange={(event) => setHomeUrlDraft(event.target.value)}
+          onBlur={commitHomeUrl}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') {
+              event.currentTarget.blur();
+            }
+          }}
+          placeholder="https://www.google.com/"
+          spellCheck={false}
+        />
+      </section>
+
+      <section data-section="열기-동작" className="mb-8">
+        <h3 className="text-base font-semibold text-default">열기 동작</h3>
+        <p className="mb-4 text-sm text-secondary">
+          외부 링크와 사이트가 요청하는 새 창을 Netior 브라우저 탭으로 받을지 선택합니다.
+        </p>
+        <div className="grid gap-3">
+          <div className="flex items-center justify-between rounded-lg border border-subtle px-3 py-2">
+            <div>
+              <div className="text-sm font-medium text-default">웹 링크를 앱 안에서 열기</div>
+              <div className="mt-1 text-xs text-muted">http/https 링크를 가능하면 브라우저 에디터 탭으로 엽니다.</div>
+            </div>
+            <Toggle
+              checked={browser.openLinksInApp}
+              onChange={(checked) => onUpdate({ openLinksInApp: checked })}
+            />
+          </div>
+
+          <div className="flex items-center justify-between rounded-lg border border-subtle px-3 py-2">
+            <div>
+              <div className="text-sm font-medium text-default">새 창 요청을 탭으로 열기</div>
+              <div className="mt-1 text-xs text-muted">사이트의 팝업/새 창 요청을 자체 에디터 탭으로 라우팅합니다.</div>
+            </div>
+            <Toggle
+              checked={browser.openPopupsInTabs}
+              onChange={(checked) => onUpdate({ openPopupsInTabs: checked })}
+            />
+          </div>
+        </div>
+      </section>
+
+      <section data-section="상태-표시" className="mb-8">
+        <h3 className="text-base font-semibold text-default">상태 표시</h3>
+        <p className="mb-4 text-sm text-secondary">
+          브라우저 작업 중 앱 크롬 위에 보여줄 보조 피드백을 조정합니다.
+        </p>
+        <div className="flex items-center justify-between rounded-lg border border-subtle px-3 py-2">
+          <div>
+            <div className="text-sm font-medium text-default">다운로드 상태 표시</div>
+            <div className="mt-1 text-xs text-muted">다운로드 진행률과 완료 후 폴더 열기 버튼을 표시합니다.</div>
+          </div>
+          <Toggle
+            checked={browser.showDownloadToast}
+            onChange={(checked) => onUpdate({ showDownloadToast: checked })}
+          />
+        </div>
+      </section>
+    </div>
+  );
+}
+
 type NarreProviderName = 'claude' | 'openai' | 'codex';
 
 interface NarreSettingsDraft {
@@ -1374,6 +1463,7 @@ export function SettingsModal({ open, onClose }: SettingsModalProps): JSX.Elemen
     typography,
     terminalPresetId,
     terminalAppearance,
+    browser,
     setAppearanceMode,
     setThemePrimaryMode,
     setThemePrimaryPreset,
@@ -1390,6 +1480,7 @@ export function SettingsModal({ open, onClose }: SettingsModalProps): JSX.Elemen
     updateTypography,
     setTerminalPresetId,
     updateTerminalAppearance,
+    updateBrowserSettings,
   } = useSettingsStore();
   const terminalPresets = getTerminalPresets();
 
@@ -1447,6 +1538,12 @@ export function SettingsModal({ open, onClose }: SettingsModalProps): JSX.Elemen
         t('settings.sidebarBookmarkedNetworks' as never),
         t('settings.sidebarBottomItems' as never),
       ],
+    },
+    {
+      key: 'browser',
+      icon: Compass,
+      label: '브라우저',
+      anchors: ['기본 페이지', '열기 동작', '상태 표시'],
     },
     {
       key: 'narre',
@@ -1592,6 +1689,15 @@ export function SettingsModal({ open, onClose }: SettingsModalProps): JSX.Elemen
     t('sidebar.terminal' as never),
     t('sidebar.agents' as never),
     t('sidebar.settings' as never),
+  ].some(matchesSearch);
+  const showBrowser = [
+    '브라우저',
+    '기본 페이지',
+    '열기 동작',
+    '상태 표시',
+    '웹 링크를 앱 안에서 열기',
+    '새 창 요청을 탭으로 열기',
+    '다운로드 상태 표시',
   ].some(matchesSearch);
   const showNarre = [
     t('settings.categoryNarre'),
@@ -1915,11 +2021,18 @@ export function SettingsModal({ open, onClose }: SettingsModalProps): JSX.Elemen
               <SidebarSettingsPanel />
             )}
 
+            {(activeCategory === 'browser' || searchQuery) && showBrowser && (
+              <BrowserSettingsPanel
+                browser={browser}
+                onUpdate={updateBrowserSettings}
+              />
+            )}
+
             {(activeCategory === 'narre' || searchQuery) && showNarre && (
               <NarreSettingsPanel open={open} t={t} />
             )}
 
-            {searchQuery && !showAppearance && !showLanguage && !showDetachedAgentToasts && !showModeling && !showSidebar && !showNarre && (
+            {searchQuery && !showAppearance && !showLanguage && !showDetachedAgentToasts && !showModeling && !showSidebar && !showBrowser && !showNarre && (
               <div className="flex flex-col items-center justify-center py-16 text-muted">
                 <Search size={32} className="mb-3 opacity-40" />
                 <p className="text-sm">{t('common.noResults')}</p>

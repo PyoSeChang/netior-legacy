@@ -11,7 +11,7 @@ import { FileTree } from './FileTree';
 import { ModuleSelector } from './ModuleSelector';
 import { ObjectPanel } from './ObjectPanel';
 import { BookmarkedNetworkSidebar } from './BookmarkedNetworkSidebar';
-import { useConceptStore } from '../../stores/concept-store';
+import { useInstanceStore } from '../../stores/instance-store';
 import { useModelStore } from '../../stores/model-store';
 import { ScrollArea } from '../ui/ScrollArea';
 import { Spinner } from '../ui/Spinner';
@@ -29,7 +29,7 @@ interface SidebarProps {
 }
 
 const OBJECT_PANEL_TYPES = {
-  concepts: ['concept'],
+  instances: ['instance'],
   models: ['model'],
   contexts: ['context'],
 } as const;
@@ -164,7 +164,7 @@ export function Sidebar({ project }: SidebarProps): JSX.Element {
   const { loadFileTree, fileTree, refreshFileTree, loading: fileLoading } = useFileStore();
   const { loadNetworks, loadNetworkTree } = useNetworkStore();
   const { loadModules, directories } = useModuleStore();
-  const { loadByProject: loadConcepts } = useConceptStore();
+  const { loadByProject: loadInstances } = useInstanceStore();
   const { loadByProject: loadModels } = useModelStore();
 
   useEffect(() => {
@@ -172,9 +172,9 @@ export function Sidebar({ project }: SidebarProps): JSX.Element {
     loadNetworks(project.id);
     loadNetworkTree(project.id);
     loadModules(project.id);
-    loadConcepts(project.id);
+    loadInstances(project.id);
     loadModels(project.id);
-  }, [project?.id, loadNetworks, loadNetworkTree, loadModules, loadConcepts, loadModels]);
+  }, [project?.id, loadNetworks, loadNetworkTree, loadModules, loadInstances, loadModels]);
 
   useEffect(() => {
     if (!project) return undefined;
@@ -250,7 +250,7 @@ export function Sidebar({ project }: SidebarProps): JSX.Element {
                 )}
               </>
             )}
-            {sidebarView === 'concepts' && <ObjectPanel types={[...OBJECT_PANEL_TYPES.concepts]} />}
+            {sidebarView === 'instances' && <ObjectPanel types={[...OBJECT_PANEL_TYPES.instances]} />}
             {sidebarView === 'models' && <ObjectPanel types={[...OBJECT_PANEL_TYPES.models]} />}
             {sidebarView === 'contexts' && <ObjectPanel types={[...OBJECT_PANEL_TYPES.contexts]} />}
             {sidebarView === 'objects' && <ObjectPanel />}

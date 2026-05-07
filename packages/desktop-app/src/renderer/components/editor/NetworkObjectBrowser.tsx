@@ -16,7 +16,7 @@ import { Badge } from '../ui/Badge';
 export type NetworkBrowserObjectType =
   | 'network'
   | 'project'
-  | 'concept'
+  | 'instance'
   | 'schema'
   | 'model'
   | 'context'
@@ -53,7 +53,7 @@ interface NetworkObjectBrowserProps {
 const ICONS: Record<NetworkBrowserObjectType, React.ElementType> = {
   network: Waypoints,
   project: FolderOpen,
-  concept: CircleDot,
+  instance: CircleDot,
   schema: Boxes,
   model: Boxes,
   context: Layers3,

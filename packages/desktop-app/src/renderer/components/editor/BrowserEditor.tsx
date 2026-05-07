@@ -5,7 +5,9 @@ import { IconButton } from '../ui/IconButton';
 import { Input } from '../ui/Input';
 import { Button } from '../ui/Button';
 import { ContextMenu, type ContextMenuEntry } from '../ui/ContextMenu';
+import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { useEditorStore } from '../../stores/editor-store';
+import { useSettingsStore } from '../../stores/settings-store';
 import { getBrowserTabTitle, getDefaultFaviconUrl, normalizeBrowserUrl, openBrowserTab } from '../../lib/open-browser-tab';
 import {
   findBrowserBookmark,
@@ -24,6 +26,7 @@ type BrowserWebView = HTMLElement & {
   reload?: () => void;
   stop?: () => void;
   loadURL?: (url: string) => void;
+  getURL?: () => string;
 };
 
 interface BrowserDownloadEvent {
@@ -34,6 +37,13 @@ interface BrowserDownloadEvent {
   receivedBytes: number;
   totalBytes: number;
   url: string;
+}
+
+interface BrowserPermissionRequest {
+  id: string;
+  origin: string;
+  permission: string;
+  requestingUrl: string;
 }
 
 interface BrowserEditorProps {
@@ -66,6 +76,52 @@ function getDownloadProgress(event: BrowserDownloadEvent): number | null {
   return Math.min(100, Math.max(0, Math.round((event.receivedBytes / event.totalBytes) * 100)));
 }
 
+function getPermissionLabel(permission: string): string {
+  const labels: Record<string, string> = {
+    media: 'camera or microphone',
+    geolocation: 'your location',
+    notifications: 'notifications',
+    midi: 'MIDI devices',
+    pointerLock: 'pointer lock',
+    fullscreen: 'fullscreen',
+    openExternal: 'external apps',
+    sensors: 'device sensors',
+  };
+  return labels[permission] ?? permission;
+}
+
+function getBestFaviconUrl(favicons: string[]): string | null {
+  for (const favicon of favicons) {
+    const trimmed = favicon.trim();
+    if (/^(https?:|data:image\/)/i.test(trimmed)) return trimmed;
+  }
+  return null;
+}
+
+function BrowserMenuFavicon({ faviconUrl }: { faviconUrl?: string | null }): JSX.Element {
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    setFailed(false);
+  }, [faviconUrl]);
+
+  if (faviconUrl && !failed) {
+    return (
+      <img
+        src={faviconUrl}
+        alt=""
+        width={14}
+        height={14}
+        draggable={false}
+        className="block h-3.5 w-3.5 object-contain"
+        onError={() => setFailed(true)}
+      />
+    );
+  }
+
+  return <Bookmark size={14} />;
+}
+
 export function BrowserEditor({ tab }: BrowserEditorProps): JSX.Element {
   const webviewRef = useRef<BrowserWebView | null>(null);
   const webviewReadyRef = useRef(false);
@@ -82,9 +138,11 @@ export function BrowserEditor({ tab }: BrowserEditorProps): JSX.Element {
   const [bookmarks, setBookmarks] = useState<BrowserBookmark[]>(() => loadBrowserBookmarks());
   const [bookmarkMenuPosition, setBookmarkMenuPosition] = useState<MenuPosition | null>(null);
   const [moreMenuPosition, setMoreMenuPosition] = useState<MenuPosition | null>(null);
+  const [permissionRequest, setPermissionRequest] = useState<BrowserPermissionRequest | null>(null);
   const navigateTab = useEditorStore((s) => s.navigateTab);
   const updateTitle = useEditorStore((s) => s.updateTitle);
   const updateBrowserFavicon = useEditorStore((s) => s.updateBrowserFavicon);
+  const browserSettings = useSettingsStore((s) => s.browser);
   const securityState = getSecurityState(address);
   const downloadProgress = downloadEvent ? getDownloadProgress(downloadEvent) : null;
   const normalizedAddress = normalizeBrowserUrl(address);
@@ -92,6 +150,18 @@ export function BrowserEditor({ tab }: BrowserEditorProps): JSX.Element {
 
   useEffect(() => {
     setAddress(tab.targetId);
+    const webview = webviewRef.current;
+    if (!webview) return;
+    try {
+      if (webviewReadyRef.current && webview.getURL?.() === tab.targetId) return;
+      if (webviewReadyRef.current && webview.loadURL) {
+        webview.loadURL(tab.targetId);
+      } else {
+        webview.src = tab.targetId;
+      }
+    } catch {
+      webview.src = tab.targetId;
+    }
   }, [tab.targetId]);
 
   useEffect(() => {
@@ -107,6 +177,18 @@ export function BrowserEditor({ tab }: BrowserEditorProps): JSX.Element {
       if (clearTimer) clearTimeout(clearTimer);
       removeListener();
     };
+  }, []);
+
+  useEffect(() => {
+    return window.electron.browser.onPermissionRequest((request) => {
+      setPermissionRequest((current) => {
+        if (current) {
+          window.electron.browser.respondPermission(request.id, false);
+          return current;
+        }
+        return request;
+      });
+    });
   }, []);
 
   const updateNavigationState = useCallback(() => {
@@ -185,7 +267,7 @@ export function BrowserEditor({ tab }: BrowserEditorProps): JSX.Element {
     setBookmarks(upsertBrowserBookmark({
       url: normalized,
       title: tab.title || getBrowserTabTitle(normalized),
-      faviconUrl: tab.browserFaviconUrl ?? getDefaultFaviconUrl(normalized),
+      faviconUrl: tab.browserFaviconUrl ?? getDefaultFaviconUrl(address) ?? getDefaultFaviconUrl(normalized),
       createdAt: Date.now(),
     }));
   }, [address, bookmarks, tab.browserFaviconUrl, tab.title]);
@@ -193,8 +275,8 @@ export function BrowserEditor({ tab }: BrowserEditorProps): JSX.Element {
   const openBookmark = useCallback((url: string) => {
     setBookmarkMenuPosition(null);
     setMoreMenuPosition(null);
-    void openBrowserTab(url);
-  }, []);
+    commitUrl(url);
+  }, [commitUrl]);
 
   const createBookmarkItems = useCallback((): ContextMenuEntry[] => {
     const normalized = normalizeBrowserUrl(address);
@@ -223,7 +305,7 @@ export function BrowserEditor({ tab }: BrowserEditorProps): JSX.Element {
     for (const bookmark of bookmarks.slice(0, 12)) {
       items.push({
         label: bookmark.title || getBrowserTabTitle(bookmark.url),
-        icon: <Bookmark size={14} />,
+        icon: <BrowserMenuFavicon faviconUrl={bookmark.faviconUrl ?? getDefaultFaviconUrl(bookmark.url)} />,
         onClick: () => openBookmark(bookmark.url),
       });
     }
@@ -251,6 +333,12 @@ export function BrowserEditor({ tab }: BrowserEditorProps): JSX.Element {
     },
   ], [address, clearBrowserData, currentBookmark, isClearingData, normalizedAddress, toggleCurrentBookmark]);
 
+  const resolvePermissionRequest = useCallback((allowed: boolean) => {
+    if (!permissionRequest) return;
+    window.electron.browser.respondPermission(permissionRequest.id, allowed);
+    setPermissionRequest(null);
+  }, [permissionRequest]);
+
   useEffect(() => {
     const webview = webviewRef.current;
     if (!webview) return;
@@ -270,8 +358,6 @@ export function BrowserEditor({ tab }: BrowserEditorProps): JSX.Element {
         return;
       }
       setAddress(nextUrl);
-      updateTitle(tab.id, getBrowserTabTitle(nextUrl));
-      updateBrowserFavicon(tab.id, getDefaultFaviconUrl(nextUrl) ?? null);
       updateNavigationState();
     };
     const handleTitle = (event: Event) => {
@@ -280,7 +366,8 @@ export function BrowserEditor({ tab }: BrowserEditorProps): JSX.Element {
     };
     const handleFavicon = (event: Event) => {
       const favicons = (event as Event & { favicons?: string[] }).favicons ?? [];
-      updateBrowserFavicon(tab.id, favicons[0] ?? getDefaultFaviconUrl(address) ?? null);
+      const faviconUrl = getBestFaviconUrl(favicons);
+      if (faviconUrl) updateBrowserFavicon(tab.id, faviconUrl);
     };
     const handleFailLoad = (event: Event) => {
       const details = event as Event & { errorCode?: number; errorDescription?: string; validatedURL?: string };
@@ -292,7 +379,12 @@ export function BrowserEditor({ tab }: BrowserEditorProps): JSX.Element {
     const handleNewWindow = (event: Event) => {
       event.preventDefault();
       const nextUrl = (event as Event & { url?: string }).url;
-      if (nextUrl) void openBrowserTab(nextUrl);
+      if (!nextUrl) return;
+      if (browserSettings.openPopupsInTabs) {
+        void openBrowserTab(nextUrl);
+      } else {
+        void window.electron.shell.openExternal(nextUrl);
+      }
     };
     const handleDomReady = () => {
       webviewReadyRef.current = true;
@@ -327,7 +419,7 @@ export function BrowserEditor({ tab }: BrowserEditorProps): JSX.Element {
       webview.removeEventListener('new-window', handleNewWindow);
       webview.removeEventListener('dom-ready', handleDomReady);
     };
-  }, [address, tab.id, updateBrowserFavicon, updateNavigationState, updateTitle]);
+  }, [address, browserSettings.openPopupsInTabs, tab.id, updateBrowserFavicon, updateNavigationState, updateTitle]);
 
   return (
     <div className="flex h-full min-h-0 w-full min-w-0 flex-col bg-surface-editor text-default">
@@ -416,7 +508,6 @@ export function BrowserEditor({ tab }: BrowserEditorProps): JSX.Element {
           style={{ display: 'flex', height: '100%', width: '100%' }}
           src={initialUrlRef.current}
           partition="persist:netior-browser"
-          allowpopups="true"
         />
         {loadError && (
           <div className="absolute inset-0 flex items-center justify-center bg-surface-editor px-6 text-center">
@@ -455,7 +546,7 @@ export function BrowserEditor({ tab }: BrowserEditorProps): JSX.Element {
             </div>
           </div>
         )}
-        {downloadEvent && (
+        {browserSettings.showDownloadToast && downloadEvent && (
           <div className="absolute bottom-3 right-3 w-80 max-w-[calc(100%-1.5rem)] rounded-md border border-default bg-surface-panel p-3 text-xs shadow-lg">
             <div className="flex items-start gap-3">
               <Download size={16} className="mt-0.5 shrink-0 text-muted" />
@@ -488,6 +579,18 @@ export function BrowserEditor({ tab }: BrowserEditorProps): JSX.Element {
           </div>
         )}
       </div>
+      <ConfirmDialog
+        open={Boolean(permissionRequest)}
+        title="Browser permission"
+        message={permissionRequest
+          ? `${permissionRequest.origin} wants to use ${getPermissionLabel(permissionRequest.permission)}.`
+          : ''}
+        confirmLabel="Allow"
+        cancelLabel="Block"
+        variant="primary"
+        onConfirm={() => resolvePermissionRequest(true)}
+        onClose={() => resolvePermissionRequest(false)}
+      />
     </div>
   );
 }

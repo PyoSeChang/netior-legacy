@@ -191,7 +191,7 @@ function ensureTerminalAppearanceObservers(): void {
 
     themeObserver.observe(document.documentElement, {
       attributes: true,
-      attributeFilter: ['data-mode', 'data-concept', 'data-theme-variant', 'style'],
+      attributeFilter: ['data-mode', 'data-instance', 'data-theme-variant', 'style'],
     });
   }
 

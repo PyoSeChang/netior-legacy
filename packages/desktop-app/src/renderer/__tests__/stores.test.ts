@@ -11,7 +11,7 @@ const mockElectron = {
     getByProject: vi.fn(),
     delete: vi.fn(),
   },
-  concept: {
+  instance: {
     create: vi.fn(),
     getByProject: vi.fn(),
     update: vi.fn(),
@@ -69,7 +69,7 @@ Object.defineProperty(globalThis, 'window', {
 
 // Import stores after mock
 const { useProjectStore } = await import('../stores/project-store');
-const { useConceptStore } = await import('../stores/concept-store');
+const { useInstanceStore } = await import('../stores/instance-store');
 const { useUIStore } = await import('../stores/ui-store');
 
 describe('ProjectStore', () => {
@@ -154,25 +154,25 @@ describe('ProjectStore', () => {
   });
 });
 
-describe('ConceptStore', () => {
+describe('InstanceStore', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    useConceptStore.setState({ concepts: [], loading: false });
+    useInstanceStore.setState({ instances: [], loading: false });
   });
 
   it('should have correct initial state', () => {
-    const state = useConceptStore.getState();
-    expect(state.concepts).toEqual([]);
+    const state = useInstanceStore.getState();
+    expect(state.instances).toEqual([]);
   });
 
-  it('should load concepts by project', async () => {
-    const mockConcepts = [
+  it('should load instances by project', async () => {
+    const mockInstances = [
       { id: '1', project_id: 'p1', title: 'C1', color: null, icon: null, created_at: '', updated_at: '' },
     ];
-    mockElectron.concept.getByProject.mockResolvedValue({ success: true, data: mockConcepts });
+    mockElectron.instance.getByProject.mockResolvedValue({ success: true, data: mockInstances });
 
-    await useConceptStore.getState().loadByProject('p1');
-    expect(useConceptStore.getState().concepts).toEqual(mockConcepts);
+    await useInstanceStore.getState().loadByProject('p1');
+    expect(useInstanceStore.getState().instances).toEqual(mockInstances);
   });
 });
 

@@ -83,7 +83,7 @@ export interface NodeDropContext {
 
 export interface NodeDropResult {
   position: { x: number; y: number };
-  propertyUpdates?: Array<{ conceptId: string; fieldId: string; value: string }>;
+  propertyUpdates?: Array<{ instanceId: string; fieldId: string; value: string }>;
 }
 
 export interface SpanResizeContext {
@@ -96,7 +96,7 @@ export interface SpanResizeContext {
 }
 
 export interface SpanResizeResult {
-  propertyUpdates?: Array<{ conceptId: string; fieldId: string; value: string }>;
+  propertyUpdates?: Array<{ instanceId: string; fieldId: string; value: string }>;
 }
 
 // ?? Rendering ??

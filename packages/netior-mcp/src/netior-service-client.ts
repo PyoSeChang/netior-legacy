@@ -10,11 +10,11 @@ import type {
   SchemaMeaningUpdate,
   SchemaCreate,
   SchemaUpdate,
-  Concept,
-  ConceptCreate,
-  ConceptProperty,
-  ConceptPropertyUpsert,
-  ConceptUpdate,
+  Instance,
+  InstanceCreate,
+  InstanceProperty,
+  InstancePropertyUpsert,
+  InstanceUpdate,
   Edge,
   EdgeCreate,
   EdgeUpdate,
@@ -208,8 +208,8 @@ export async function listModels(projectId: string): Promise<Model[]> {
   return requestJson<Model[]>(`/models${toQueryString({ projectId })}`);
 }
 
-export async function listModelCategories(projectId: string): Promise<Concept[]> {
-  return requestJson<Concept[]>(`/model-categories${toQueryString({ projectId })}`);
+export async function listModelCategories(projectId: string): Promise<Instance[]> {
+  return requestJson<Instance[]>(`/model-categories${toQueryString({ projectId })}`);
 }
 
 export async function createModel(data: ModelCreate): Promise<Model> {
@@ -236,30 +236,30 @@ export async function deleteModel(id: string): Promise<boolean> {
   });
 }
 
-export async function getConceptsByProject(projectId: string): Promise<Concept[]> {
-  return requestJson<Concept[]>(`/concepts${toQueryString({ projectId })}`);
+export async function getInstancesByProject(projectId: string): Promise<Instance[]> {
+  return requestJson<Instance[]>(`/instances${toQueryString({ projectId })}`);
 }
 
-export async function searchConcepts(projectId: string, query: string): Promise<Concept[]> {
-  return requestJson<Concept[]>(`/concepts/search${toQueryString({ projectId, query })}`);
+export async function searchInstances(projectId: string, query: string): Promise<Instance[]> {
+  return requestJson<Instance[]>(`/instances/search${toQueryString({ projectId, query })}`);
 }
 
-export async function createConcept(data: ConceptCreate): Promise<Concept> {
-  return requestJson<Concept>('/concepts', {
+export async function createInstance(data: InstanceCreate): Promise<Instance> {
+  return requestJson<Instance>('/instances', {
     method: 'POST',
     body: JSON.stringify(data),
   });
 }
 
-export async function updateConcept(id: string, data: ConceptUpdate): Promise<Concept | null> {
-  return requestJson<Concept | null>(`/concepts/${encodeURIComponent(id)}`, {
+export async function updateInstance(id: string, data: InstanceUpdate): Promise<Instance | null> {
+  return requestJson<Instance | null>(`/instances/${encodeURIComponent(id)}`, {
     method: 'PATCH',
     body: JSON.stringify(data),
   });
 }
 
-export async function deleteConcept(id: string): Promise<boolean> {
-  return requestJson<boolean>(`/concepts/${encodeURIComponent(id)}`, {
+export async function deleteInstance(id: string): Promise<boolean> {
+  return requestJson<boolean>(`/instances/${encodeURIComponent(id)}`, {
     method: 'DELETE',
   });
 }
@@ -348,19 +348,19 @@ export async function getFileEntity(fileId: string): Promise<FileEntity | null> 
   return requestJson<FileEntity | null>(`/files/${encodeURIComponent(fileId)}`);
 }
 
-export async function getConceptProperties(conceptId: string): Promise<ConceptProperty[]> {
-  return requestJson<ConceptProperty[]>(`/concept-properties${toQueryString({ conceptId })}`);
+export async function getInstanceProperties(instanceId: string): Promise<InstanceProperty[]> {
+  return requestJson<InstanceProperty[]>(`/instance-properties${toQueryString({ instanceId })}`);
 }
 
-export async function upsertConceptProperty(data: ConceptPropertyUpsert): Promise<ConceptProperty> {
-  return requestJson<ConceptProperty>('/concept-properties', {
+export async function upsertInstanceProperty(data: InstancePropertyUpsert): Promise<InstanceProperty> {
+  return requestJson<InstanceProperty>('/instance-properties', {
     method: 'POST',
     body: JSON.stringify(data),
   });
 }
 
-export async function deleteConceptProperty(id: string): Promise<boolean> {
-  return requestJson<boolean>(`/concept-properties/${encodeURIComponent(id)}`, {
+export async function deleteInstanceProperty(id: string): Promise<boolean> {
+  return requestJson<boolean>(`/instance-properties/${encodeURIComponent(id)}`, {
     method: 'DELETE',
   });
 }

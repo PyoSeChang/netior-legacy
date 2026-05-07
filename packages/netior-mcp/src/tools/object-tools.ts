@@ -5,7 +5,7 @@ import { registerNetiorTool } from './shared-tool-registry.js';
 import { fromAgentObjectType, toAgentObject, type AgentObjectType } from './schema-surface.js';
 
 const objectTypeSchema = z.enum([
-  'concept',
+  'instance',
   'network',
   'project',
   'schema',

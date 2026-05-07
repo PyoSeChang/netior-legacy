@@ -40,7 +40,7 @@ export function getDefaultFaviconUrl(url: string): string | undefined {
   }
 }
 
-export async function openBrowserTab(url: string): Promise<boolean> {
+export async function openBrowserTab(url: string, hostId?: string): Promise<boolean> {
   const normalized = normalizeBrowserUrl(url);
   if (!normalized) return false;
 
@@ -50,6 +50,7 @@ export async function openBrowserTab(url: string): Promise<boolean> {
     title: getBrowserTabTitle(normalized),
     browserFaviconUrl: getDefaultFaviconUrl(normalized),
     viewMode: 'side',
+    hostId,
   });
   return true;
 }

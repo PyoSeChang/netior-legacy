@@ -14,10 +14,10 @@ import { ObjectPickerModal } from './ObjectPickerModal';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { useNetworkStore, type NetworkNodeWithObject, type NetworkEdgeWithModel } from '../../stores/network-store';
 import { networkService, layoutService, fileService, objectService } from '../../services';
-import { conceptPropertyService } from '../../services';
+import { instancePropertyService } from '../../services';
 import type { NodePosition, EdgeVisual } from '../../services/network-service';
 import type { MentionResult } from '../../services/narre-service';
-import { useConceptStore } from '../../stores/concept-store';
+import { useInstanceStore } from '../../stores/instance-store';
 import { useEditorStore } from '../../stores/editor-store';
 import { useUIStore } from '../../stores/ui-store';
 import { useSchemaStore } from '../../stores/schema-store';
@@ -34,10 +34,10 @@ import { getLayout } from './layout-plugins/registry';
 import type { LayoutControlsRendererProps, LayoutRenderNode } from './layout-plugins/types';
 import { dateToEpochDays, isoToEpochDays } from './layout-plugins/time-axis/scale-utils';
 import { formatTemporalSlotValueForWriteback, getOccurrenceKey, getSourceNodeId } from './layout-plugins/temporal-utils';
-import { applyConceptSemanticProjection } from './semantic-projection';
+import { applyInstanceSemanticProjection } from './semantic-projection';
 import { useNetworkShortcuts } from './useNetworkShortcuts';
 import { openNetworkViewerTab } from '../../lib/open-network-viewer-tab';
-import { getModelDisplayName } from '../../lib/model-i18n';
+import { createOntologyDisplayResolver } from '@netior/shared';
 import { getFieldMeaningSlot } from '../../lib/field-meaning-bindings';
 import { resolveIcon } from '../../utils/icon-resolver';
 import {
@@ -75,6 +75,13 @@ interface EntryPortalChipSpec {
   networkId: string;
   targetNodeId: string;
   label: string;
+}
+
+function debugOntologyWorkspace(stage: string, payload: unknown): void {
+  const key = `__netiorOntologyWorkspaceDebug:${stage}`;
+  if (sessionStorage.getItem(key) === '1') return;
+  sessionStorage.setItem(key, '1');
+  console.log(`[OntologyWorkspace] ${stage}`, payload);
 }
 
 interface NodeResizeState {
@@ -386,7 +393,7 @@ function getDefaultNodeDimensions(node: NetworkNodeWithObject): { width: number;
   const isHierarchy = rawNodeType === 'hierarchy';
   const objectType = node.object?.object_type;
 
-  if (objectType === 'concept') {
+  if (objectType === 'instance') {
     return {
       width: isPortal ? 180 : isHierarchy ? 380 : isGroup ? 360 : 160,
       height: isPortal ? 68 : isHierarchy ? 240 : isGroup ? 220 : 60,
@@ -751,6 +758,7 @@ function toRenderNodes(
   modelNames: Map<string, string>,
   modelIcons: Map<string, string | null>,
   contextNames: Map<string, string>,
+  getInstanceDisplayName: (instance: NonNullable<NetworkNodeWithObject['instance']>) => string,
   portalChipsBySource: Map<string, EntryPortalChipSpec[]>,
 ): RenderNode[] {
   const archMap = new Map(models.map((a) => [a.id, a]));
@@ -766,10 +774,10 @@ function toRenderNodes(
     const portalChips = portalChipsBySource.get(n.id) ?? [];
     const portalChipStripHeight = getPortalChipStripHeight(portalChips.length);
     const parsedMetadata = parseNodeMetadataRecord(n.metadata);
-    if (objectType === 'concept' && n.concept) {
-      const arch = n.concept.schema_id ? archMap.get(n.concept.schema_id) : undefined;
-      const label = n.concept.title;
-      const icon = n.concept.icon || arch?.icon || 'pin';
+    if (objectType === 'instance' && n.instance) {
+      const arch = n.instance.schema_id ? archMap.get(n.instance.schema_id) : undefined;
+      const label = getInstanceDisplayName(n.instance);
+      const icon = n.instance.icon || arch?.icon || 'pin';
       const baseWidth = isPortal ? 180 : isHierarchy ? 380 : isGroup ? 360 : 160;
       return {
         id: n.id,
@@ -778,16 +786,16 @@ function toRenderNodes(
         label,
         icon,
         shape: isPortal ? 'dashed' : isHierarchy ? 'hierarchy' : isGroup ? 'group' : arch?.node_shape ?? undefined,
-        semanticType: arch?.name || 'concept',
-        semanticTypeLabel: isPortal ? 'Concept Portal' : isHierarchy ? 'Concept Hierarchy' : isGroup ? 'Concept Group' : arch?.name || 'Concept',
+        semanticType: arch?.name || 'instance',
+        semanticTypeLabel: isPortal ? 'Portal' : isHierarchy ? 'Hierarchy' : isGroup ? 'Group' : arch?.name || 'Instance',
         width: isCollapsed
           ? (isHierarchy ? HIERARCHY_COLLAPSED_SIZE.width : GROUP_COLLAPSED_SIZE.width)
           : pos?.width ?? getAutoNodeWidth({ label, icon, baseWidth, metadata: parsedMetadata, isContainer }),
         height: isCollapsed
           ? (isHierarchy ? HIERARCHY_COLLAPSED_SIZE.height : GROUP_COLLAPSED_SIZE.height)
           : (pos?.height ?? (isPortal ? 68 : isHierarchy ? 240 : isGroup ? 220 : 60)) + portalChipStripHeight,
-        conceptId: n.object?.ref_id ?? undefined,
-        nodeType: 'concept' as const,
+        instanceId: n.object?.ref_id ?? undefined,
+        nodeType: 'instance' as const,
         objectType,
         objectTargetId: n.object?.ref_id ?? undefined,
         isPortal,
@@ -813,11 +821,11 @@ function toRenderNodes(
         icon,
         semanticType: isFile ? 'file' : 'directory',
         semanticTypeLabel: isPortal
-          ? 'File Portal'
+          ? 'Portal'
           : isHierarchy
-            ? (isFile ? 'File Hierarchy' : 'Directory Hierarchy')
+            ? 'Hierarchy'
             : isGroup
-              ? (isFile ? 'File Group' : 'Directory Group')
+              ? 'Group'
               : isFile ? 'File' : 'Directory',
         shape: isHierarchy ? 'hierarchy' : isGroup ? 'group' : undefined,
         width: isCollapsed
@@ -856,7 +864,7 @@ function toRenderNodes(
         icon,
         shape: isPortal ? 'dashed' as string | undefined : isHierarchy ? 'hierarchy' as string | undefined : isGroup ? 'group' as string | undefined : 'rectangle' as string | undefined,
         semanticType: 'network',
-        semanticTypeLabel: isPortal ? `${semanticBaseLabel} Portal` : isHierarchy ? `${semanticBaseLabel} Hierarchy` : isGroup ? `${semanticBaseLabel} Group` : semanticBaseLabel,
+        semanticTypeLabel: isPortal ? 'Portal' : isHierarchy ? 'Hierarchy' : isGroup ? 'Group' : semanticBaseLabel,
         width: isCollapsed
           ? (isHierarchy ? HIERARCHY_COLLAPSED_SIZE.width : GROUP_COLLAPSED_SIZE.width)
           : pos?.width ?? getAutoNodeWidth({ label, icon, baseWidth, metadata: parsedMetadata, isContainer }),
@@ -891,8 +899,8 @@ function toRenderNodes(
 
     const semanticTypeLabel = genericObject.semanticTypeLabel
       ? isHierarchy
-        ? `${genericObject.semanticTypeLabel} Hierarchy`
-        : isGroup ? `${genericObject.semanticTypeLabel} Group` : genericObject.semanticTypeLabel
+        ? 'Hierarchy'
+        : isGroup ? 'Group' : genericObject.semanticTypeLabel
       : '';
 
     return {
@@ -937,7 +945,7 @@ interface ContextMenuState {
   objectType?: NetworkObjectType;
   objectTargetId?: string;
   objectTitle?: string;
-  conceptId?: string;
+  instanceId?: string;
   fileId?: string;
   filePath?: string;
   networkId?: string;
@@ -955,7 +963,7 @@ interface DeleteDialogState {
 
 interface DeleteObjectDialogState {
   nodeId: string;
-  objectType: 'concept' | 'schema' | 'model';
+  objectType: 'instance' | 'schema' | 'model';
   objectTargetId: string;
   objectTitle?: string;
 }
@@ -1325,10 +1333,11 @@ export function NetworkWorkspace({
     addEdge, removeEdge, saveViewport,
     navigateToChild, navigateBack,
   } = useNetworkStore();
-  const concepts = useConceptStore((s) => s.concepts);
-  const { createConcept } = useConceptStore();
+  const instances = useInstanceStore((s) => s.instances);
+  const { createInstance } = useInstanceStore();
   const workspaceMode = useUIStore((state) => state.workspaceMode);
   const { t } = useI18n();
+  const display = useMemo(() => createOntologyDisplayResolver(t), [t]);
   const networkObjectSelection = useNetworkObjectSelectionStore((s) => s.selection);
   const selectedNetworkObjects = useNetworkObjectSelectionStore((s) => s.selectedItems);
   const openProject = useProjectStore((s) => s.openProject);
@@ -1560,7 +1569,7 @@ export function NetworkWorkspace({
   const schemaNames = useMemo(() => new Map(schemas.map((schema) => [schema.id, schema.name])), [schemas]);
   const schemaIcons = useMemo(() => new Map(schemas.map((schema) => [schema.id, schema.icon])), [schemas]);
   const modelNames = useMemo(
-    () => new Map(models.map((model) => [model.id, getModelDisplayName(model, t)])),
+    () => new Map(models.map((model) => [model.id, display.modelName(model)])),
     [models, t],
   );
   const modelIcons = useMemo(() => new Map(models.map((model) => [model.id, model.icon])), [models]);
@@ -1665,10 +1674,10 @@ export function NetworkWorkspace({
     objectTargetId: string,
     objectTitle?: string,
   ) => {
-    if (!['concept', 'schema', 'model'].includes(objectType)) return;
+    if (!['instance', 'schema', 'model'].includes(objectType)) return;
     setDeleteObjectDialogState({
       nodeId,
-      objectType: objectType as 'concept' | 'schema' | 'model',
+      objectType: objectType as 'instance' | 'schema' | 'model',
       objectTargetId,
       objectTitle,
     });
@@ -1715,8 +1724,8 @@ export function NetworkWorkspace({
     setIsDeletingObject(true);
     try {
       const { objectType, objectTargetId } = deleteObjectDialogState;
-      if (objectType === 'concept') {
-        await useConceptStore.getState().deleteConcept(objectTargetId);
+      if (objectType === 'instance') {
+        await useInstanceStore.getState().deleteInstance(objectTargetId);
       } else if (objectType === 'schema') {
         await useSchemaStore.getState().deleteSchema(objectTargetId);
       } else if (objectType === 'model') {
@@ -1771,6 +1780,13 @@ export function NetworkWorkspace({
       modelNames,
       modelIcons,
       contextNames,
+      (instance) => display.name({
+        kind: 'instance',
+        title: instance.title,
+        description: null,
+        source_kind: instance.source_kind,
+        source_ref: instance.source_ref,
+      }),
         entryPortalData.portalChipsBySource,
       ).map((node) => (
         node.isContainer
@@ -1807,6 +1823,7 @@ export function NetworkWorkspace({
     modelNames,
     modelIcons,
     contextNames,
+    display,
     entryPortalData,
     containsParentByChild,
     directChildCountByParent,
@@ -1843,6 +1860,48 @@ export function NetworkWorkspace({
     const baseEdges = toRenderEdges(edges, visualMap, modelNames);
     const visibleNodeIds = new Set(visibleRenderNodes.map((node) => node.id));
     const visibleNodeMap = new Map(visibleRenderNodes.map((node) => [node.id, node] as const));
+    if (currentNetwork?.kind === 'ontology') {
+      debugOntologyWorkspace('render-input', {
+        networkId: currentNetwork.id,
+        rawNodes: nodes.map((node) => ({
+          id: node.id,
+          nodeType: node.node_type,
+          objectType: node.object?.object_type,
+          refId: node.object?.ref_id,
+          instanceTitle: node.instance?.title,
+          instanceSourceRef: node.instance?.source_ref,
+          modelCategoryInstanceId: node.object?.object_type === 'model'
+            ? models.find((model) => model.id === node.object?.ref_id)?.category_instance_id ?? null
+            : null,
+        })),
+        visibleNodes: visibleRenderNodes.map((node) => ({
+          id: node.id,
+          label: node.label,
+          objectType: node.objectType,
+          objectTargetId: node.objectTargetId,
+          isGroup: node.isGroup,
+          managedBy: node.metadata?.managedBy,
+          ontologyRole: node.metadata?.ontologyRole,
+          categoryInstanceId: node.metadata?.__modelCategoryInstanceId,
+        })),
+        rawEdges: edges.map((edge) => ({
+          id: edge.id,
+          sourceNodeId: edge.source_node_id,
+          targetNodeId: edge.target_node_id,
+          modelId: edge.model_id,
+          modelKey: edge.model?.key,
+          modelSourceRef: edge.model?.source_ref,
+        })),
+        baseEdges: baseEdges.map((edge) => ({
+          id: edge.id,
+          sourceId: edge.sourceId,
+          targetId: edge.targetId,
+          label: edge.label,
+          relationMeaning: edge.relationMeaning,
+          visible: visibleNodeIds.has(edge.sourceId) && visibleNodeIds.has(edge.targetId),
+        })),
+      });
+    }
     return baseEdges
       .filter((edge) => visibleNodeIds.has(edge.sourceId) && visibleNodeIds.has(edge.targetId))
       .map((edge) => {
@@ -1867,7 +1926,7 @@ export function NetworkWorkspace({
           dimmed: isContextFiltering ? !activeContextEdgeIds.has(edge.id) : edge.dimmed,
         };
       });
-  }, [edges, modelNames, visualMap, isContextFiltering, activeContextEdgeIds, containsParentByChild, hierarchyContainerIds, visibleRenderNodes]);
+  }, [currentNetwork?.id, currentNetwork?.kind, edges, modelNames, models, nodes, visualMap, isContextFiltering, activeContextEdgeIds, containsParentByChild, hierarchyContainerIds, visibleRenderNodes]);
 
   const updatePluginConfig = useCallback(async (
     patch:
@@ -1895,50 +1954,50 @@ export function NetworkWorkspace({
     useNetworkStore.setState({ currentLayout: nextLayout });
   }, []);
 
-  // Load concept_properties for all concept nodes
-  // Re-fetch when concept store properties change (user edits in concept editor)
-  const conceptStoreProperties = useConceptStore((s) => s.properties);
+  // Load instance_properties for all instance nodes
+  // Re-fetch when instance store properties change (user edits in instance editor)
+  const instanceStoreProperties = useInstanceStore((s) => s.properties);
   const [nodeProperties, setNodeProperties] = useState<Record<string, Array<{ field_id: string; value: string | null }>>>({});
   const [propsVersion, setPropsVersion] = useState(0);
   const nodePropertiesRequestRef = useRef(0);
-  const conceptNodeIdsKey = useMemo(() => {
-    const conceptIds = nodes
-      .filter((node) => node.object?.object_type === 'concept')
+  const instanceNodeIdsKey = useMemo(() => {
+    const instanceIds = nodes
+      .filter((node) => node.object?.object_type === 'instance')
       .map((node) => node.object!.ref_id);
 
-    return Array.from(new Set(conceptIds)).sort().join('\u001f');
+    return Array.from(new Set(instanceIds)).sort().join('\u001f');
   }, [nodes]);
 
   const persistLayoutPropertyUpdates = useCallback(async (
-    propertyUpdates: Array<{ conceptId: string; fieldId: string; value: string }> | undefined,
+    propertyUpdates: Array<{ instanceId: string; fieldId: string; value: string }> | undefined,
   ) => {
     if (!propertyUpdates || propertyUpdates.length === 0) return;
 
     const dedupedUpdates = Array.from(
       propertyUpdates.reduce((map, update) => (
-        map.set(`${update.conceptId}:${update.fieldId}`, update)
-      ), new Map<string, { conceptId: string; fieldId: string; value: string }>())
+        map.set(`${update.instanceId}:${update.fieldId}`, update)
+      ), new Map<string, { instanceId: string; fieldId: string; value: string }>())
         .values(),
     );
 
     await Promise.all(
-      dedupedUpdates.map((update) => useConceptStore.getState().upsertProperty({
-        concept_id: update.conceptId,
+      dedupedUpdates.map((update) => useInstanceStore.getState().upsertProperty({
+        instance_id: update.instanceId,
         field_id: update.fieldId,
         value: update.value,
       })),
     );
   }, []);
 
-  // Trigger reload when concept store properties change
+  // Trigger reload when instance store properties change
   useEffect(() => {
     setPropsVersion((v) => v + 1);
-  }, [conceptStoreProperties]);
+  }, [instanceStoreProperties]);
 
   useEffect(() => {
     if (!currentNetwork) return;
-    const conceptIds = conceptNodeIdsKey ? conceptNodeIdsKey.split('\u001f') : [];
-    if (conceptIds.length === 0) {
+    const instanceIds = instanceNodeIdsKey ? instanceNodeIdsKey.split('\u001f') : [];
+    if (instanceIds.length === 0) {
       setNodeProperties((previous) => (Object.keys(previous).length === 0 ? previous : {}));
       return;
     }
@@ -1947,8 +2006,8 @@ export function NetworkWorkspace({
     let cancelled = false;
 
     Promise.all(
-      conceptIds.map((cid) =>
-        conceptPropertyService.getByConcept(cid).then((props) => [cid, props] as const),
+      instanceIds.map((cid) =>
+        instancePropertyService.getByInstance(cid).then((props) => [cid, props] as const),
       ),
     ).then((results) => {
       if (cancelled || requestId !== nodePropertiesRequestRef.current) return;
@@ -1963,12 +2022,12 @@ export function NetworkWorkspace({
     return () => {
       cancelled = true;
     };
-  }, [conceptNodeIdsKey, layoutType, currentNetwork?.id, propsVersion]);
+  }, [instanceNodeIdsKey, layoutType, currentNetwork?.id, propsVersion]);
 
   useEffect(() => {
     const modelIds = new Set(
       nodes
-        .map((node) => node.concept?.schema_id)
+        .map((node) => node.instance?.schema_id)
         .filter((value): value is string => !!value),
     );
 
@@ -1982,25 +2041,25 @@ export function NetworkWorkspace({
   const layoutRenderNodes = useMemo<LayoutRenderNode[]>(() =>
     visibleRenderNodes.map((n) => {
       const sourceNode = nodes.find((candidate) => candidate.id === n.id);
-      const modelId = n.nodeType === 'concept'
-        ? sourceNode?.concept?.schema_id ?? undefined
+      const modelId = n.nodeType === 'instance'
+        ? sourceNode?.instance?.schema_id ?? undefined
         : undefined;
       const metadata: Record<string, unknown> = { ...(n.metadata ?? {}) };
-      const conceptId = n.conceptId;
-      const props = conceptId ? nodeProperties[conceptId] ?? [] : [];
+      const instanceId = n.instanceId;
+      const props = instanceId ? nodeProperties[instanceId] ?? [] : [];
       const propMap = new Map(props.map((prop) => [prop.field_id, prop.value]));
       const model = modelId ? models.find((item) => item.id === modelId) : undefined;
       let semantic: LayoutRenderNode['semantic'];
 
-      if (sourceNode?.concept?.color) {
-        metadata.display_color = sourceNode.concept.color;
+      if (sourceNode?.instance?.color) {
+        metadata.display_color = sourceNode.instance.color;
       } else if (model) {
         if (model?.color) metadata.display_color = model.color;
       }
 
       if (modelId) {
         const modelFields = modelFieldsById[modelId] ?? [];
-        semantic = applyConceptSemanticProjection({
+        semantic = applyInstanceSemanticProjection({
           metadata,
           modelId: modelId,
           models: model?.models ?? [],
@@ -2008,11 +2067,17 @@ export function NetworkWorkspace({
           propertyValues: propMap,
         });
       }
-      if (sourceNode?.concept?.recurrence_source_concept_id) {
-        metadata.__recurrenceSourceConceptId = sourceNode.concept.recurrence_source_concept_id;
+      if (sourceNode?.instance?.recurrence_source_instance_id) {
+        metadata.__recurrenceSourceInstanceId = sourceNode.instance.recurrence_source_instance_id;
       }
-      if (sourceNode?.concept?.recurrence_occurrence_key) {
-        metadata.__occurrenceKey = sourceNode.concept.recurrence_occurrence_key;
+      if (sourceNode?.instance?.recurrence_occurrence_key) {
+        metadata.__occurrenceKey = sourceNode.instance.recurrence_occurrence_key;
+      }
+      if (sourceNode?.object?.object_type === 'model' && sourceNode.object.ref_id) {
+        const objectModel = models.find((item) => item.id === sourceNode.object?.ref_id);
+        if (objectModel?.category_instance_id) {
+          metadata.__modelCategoryInstanceId = objectModel.category_instance_id;
+        }
       }
 
       return { ...n, metadata, semantic, modelId };
@@ -2114,7 +2179,7 @@ export function NetworkWorkspace({
 
   const findEntryPortalHostAtPosition = useCallback((x: number, y: number): RenderNode | null => {
     const candidates = previewCardRenderNodes
-      .filter((node) => node.objectType === 'concept')
+      .filter((node) => node.objectType === 'instance')
       .filter((node) => !node.isCollapsed)
       .filter((node) => isPointInsideNodeBounds(node, x, y))
       .sort((left, right) => {
@@ -2324,11 +2389,17 @@ export function NetworkWorkspace({
       return;
     }
 
-    if (node.object?.object_type === 'concept' && node.concept) {
+    if (node.object?.object_type === 'instance' && node.instance) {
       useEditorStore.getState().openTab({
-        type: 'concept',
+        type: 'instance',
         targetId: node.object.ref_id,
-        title: node.concept.title,
+        title: display.name({
+          kind: 'instance',
+          title: node.instance.title,
+          description: null,
+          source_kind: node.instance.source_kind,
+          source_ref: node.instance.source_ref,
+        }),
         networkId: node.network_id,
         nodeId: node.id,
       });
@@ -2361,10 +2432,10 @@ export function NetworkWorkspace({
         title: contextNames.get(node.object.ref_id) ?? t('context.title'),
       });
     }
-  }, [contextNames, currentNetwork?.project_id, modelNames, navigateToChild, openProject, projects, t]);
+  }, [contextNames, currentNetwork?.project_id, display, modelNames, navigateToChild, openProject, projects, t]);
 
   const showNodeContextMenu = useCallback((node: NetworkNodeWithObject, x: number, y: number) => {
-    const isConcept = node.object?.object_type === 'concept';
+    const isInstance = node.object?.object_type === 'instance';
     const isFile = node.object?.object_type === 'file';
     const isNetwork = node.object?.object_type === 'network';
     setContextMenu({
@@ -2373,33 +2444,52 @@ export function NetworkWorkspace({
       nodeId: node.id,
       objectType: node.object?.object_type,
       objectTargetId: node.object?.ref_id,
-      objectTitle: node.concept?.title
+      objectTitle: (node.instance
+        ? display.name({
+          kind: 'instance',
+          title: node.instance.title,
+          description: null,
+          source_kind: node.instance.source_kind,
+          source_ref: node.instance.source_ref,
+        })
+        : undefined)
         ?? node.file?.path?.replace(/\\/g, '/').split('/').pop()
         ?? networkNames.get(node.object?.ref_id ?? '')
         ?? projectNames.get(node.object?.ref_id ?? '')
         ?? schemaNames.get(node.object?.ref_id ?? '')
         ?? modelNames.get(node.object?.ref_id ?? '')
         ?? undefined,
-      conceptId: isConcept ? node.object?.ref_id : undefined,
+      instanceId: isInstance ? node.object?.ref_id : undefined,
       fileId: isFile ? node.object?.ref_id : undefined,
       filePath: node.file?.path ?? undefined,
       networkId: isNetwork ? node.object?.ref_id : undefined,
     });
-  }, [modelNames, networkNames, projectNames, schemaNames]);
+  }, [display, modelNames, networkNames, projectNames, schemaNames]);
 
   const openEdgeEditor = useCallback((edgeId: string) => {
     const edge = edges.find((candidate) => candidate.id === edgeId);
     if (!edge) return;
     const srcNode = nodes.find((n) => n.id === edge.source_node_id);
     const tgtNode = nodes.find((n) => n.id === edge.target_node_id);
-    const srcLabel = srcNode?.concept?.title ?? srcNode?.file?.path?.replace(/\\/g, '/').split('/').pop() ?? '?';
-    const tgtLabel = tgtNode?.concept?.title ?? tgtNode?.file?.path?.replace(/\\/g, '/').split('/').pop() ?? '?';
+    const getNodeTitle = (node: NetworkNodeWithObject | undefined): string => (
+      node?.instance
+        ? display.name({
+          kind: 'instance',
+          title: node.instance.title,
+          description: null,
+          source_kind: node.instance.source_kind,
+          source_ref: node.instance.source_ref,
+        })
+        : node?.file?.path?.replace(/\\/g, '/').split('/').pop() ?? '?'
+    );
+    const srcLabel = getNodeTitle(srcNode);
+    const tgtLabel = getNodeTitle(tgtNode);
     useEditorStore.getState().openTab({
       type: 'edge',
       targetId: edgeId,
       title: `${srcLabel} -> ${tgtLabel}`,
     });
-  }, [edges, nodes]);
+  }, [display, edges, nodes]);
 
   const syncNodeSelection = useCallback((node?: NetworkNodeWithObject) => {
     if (!node?.object?.ref_id) {
@@ -2407,19 +2497,19 @@ export function NetworkWorkspace({
       return;
     }
     const objectType = node.object.object_type;
-    if (!['network', 'project', 'concept', 'model', 'context'].includes(objectType)) {
+    if (!['network', 'project', 'instance', 'model', 'context'].includes(objectType)) {
       useNetworkObjectSelectionStore.getState().clearSelection();
       return;
     }
     const title =
-      node.concept?.title ??
+      node.instance?.title ??
       node.file?.path?.replace(/\\/g, '/').split('/').pop() ??
       networkNames.get(node.object.ref_id) ??
       projectNames.get(node.object.ref_id) ??
       modelNames.get(node.object.ref_id) ??
       contextNames.get(node.object.ref_id);
     useNetworkObjectSelectionStore.getState().setSelection({
-      objectType: objectType as 'network' | 'project' | 'concept' | 'model' | 'context',
+      objectType: objectType as 'network' | 'project' | 'instance' | 'model' | 'context',
       id: node.object.ref_id,
       title,
     });
@@ -2429,12 +2519,12 @@ export function NetworkWorkspace({
     const selectedObjects = nodeIds
       .map((id) => nodes.find((node) => node.id === id))
       .filter((node): node is NetworkNodeWithObject =>
-        !!node?.object?.ref_id && ['network', 'project', 'concept', 'model', 'context'].includes(node.object.object_type))
+        !!node?.object?.ref_id && ['network', 'project', 'instance', 'model', 'context'].includes(node.object.object_type))
       .map((node) => ({
-        objectType: node.object!.object_type as 'network' | 'project' | 'concept' | 'model' | 'context',
+        objectType: node.object!.object_type as 'network' | 'project' | 'instance' | 'model' | 'context',
         id: node.object!.ref_id,
         title:
-          node.concept?.title ??
+          node.instance?.title ??
           node.file?.path?.replace(/\\/g, '/').split('/').pop() ??
           networkNames.get(node.object!.ref_id) ??
           projectNames.get(node.object!.ref_id) ??
@@ -2509,7 +2599,7 @@ export function NetworkWorkspace({
     renderNodeId: string,
     options?: {
       position?: { x: number; y: number; slotIndex?: number | null };
-      propertyUpdates?: Array<{ conceptId: string; fieldId: string; value: string }>;
+      propertyUpdates?: Array<{ instanceId: string; fieldId: string; value: string }>;
     },
   ): Promise<NetworkNodeWithObject | null> => {
     const renderNode = positionedNodeById.get(renderNodeId);
@@ -2519,30 +2609,30 @@ export function NetworkWorkspace({
     }
 
     const sourceNode = resolveSourceWorkspaceNode(renderNodeId);
-    const sourceConcept = sourceNode?.concept;
-    if (!currentNetwork || !sourceNode || !sourceConcept || sourceNode.object?.object_type !== 'concept') {
+    const sourceInstance = sourceNode?.instance;
+    if (!currentNetwork || !sourceNode || !sourceInstance || sourceNode.object?.object_type !== 'instance') {
       return sourceNode ?? null;
     }
 
     const occurrenceKey = getOccurrenceKey(renderNode);
     if (!occurrenceKey) return sourceNode;
 
-    const existingConcept = concepts.find((concept) => (
-      concept.recurrence_source_concept_id === sourceConcept.id
-      && concept.recurrence_occurrence_key === occurrenceKey
+    const existingInstance = instances.find((instance) => (
+      instance.recurrence_source_instance_id === sourceInstance.id
+      && instance.recurrence_occurrence_key === occurrenceKey
     ));
 
-    let materializedConcept = existingConcept;
-    if (!materializedConcept) {
-      materializedConcept = await createConcept({
-        project_id: sourceConcept.project_id,
-        title: sourceConcept.title,
-        schema_id: sourceConcept.schema_id ?? undefined,
-        recurrence_source_concept_id: sourceConcept.id,
+    let materializedInstance = existingInstance;
+    if (!materializedInstance) {
+      materializedInstance = await createInstance({
+        project_id: sourceInstance.project_id,
+        title: sourceInstance.title,
+        schema_id: sourceInstance.schema_id ?? undefined,
+        recurrence_source_instance_id: sourceInstance.id,
         recurrence_occurrence_key: occurrenceKey,
-        icon: sourceConcept.icon ?? undefined,
-        color: sourceConcept.color ?? undefined,
-        content: sourceConcept.content ?? undefined,
+        icon: sourceInstance.icon ?? undefined,
+        color: sourceInstance.color ?? undefined,
+        content: sourceInstance.content ?? undefined,
       });
     }
 
@@ -2599,9 +2689,9 @@ export function NetworkWorkspace({
       pushBaseUpdate(slotFieldIds.all_day, renderNode.metadata.all_day);
     }
 
-    const sourceProperties = nodeProperties[sourceConcept.id]
-      ?? conceptStoreProperties[sourceConcept.id]
-      ?? await conceptPropertyService.getByConcept(sourceConcept.id);
+    const sourceProperties = nodeProperties[sourceInstance.id]
+      ?? instanceStoreProperties[sourceInstance.id]
+      ?? await instancePropertyService.getByInstance(sourceInstance.id);
     const recurrenceFieldIds = new Set(
       [
         slotFieldIds.recurrence_frequency,
@@ -2630,26 +2720,26 @@ export function NetworkWorkspace({
 
     await Promise.all(
       Array.from(nextPropertyValues.entries()).map(([fieldId, value]) => (
-        useConceptStore.getState().upsertProperty({
-          concept_id: materializedConcept.id,
+        useInstanceStore.getState().upsertProperty({
+          instance_id: materializedInstance.id,
           field_id: fieldId,
           value,
         })
       )),
     );
 
-    const conceptObject = await objectService.getByRef('concept', materializedConcept.id);
-    if (!conceptObject) return null;
+    const instanceObject = await objectService.getByRef('instance', materializedInstance.id);
+    if (!instanceObject) return null;
 
     let materializedNode = nodes.find((node) => (
-      node.object?.object_type === 'concept'
-      && node.object.ref_id === materializedConcept.id
+      node.object?.object_type === 'instance'
+      && node.object.ref_id === materializedInstance.id
     ));
 
     if (!materializedNode) {
       const createdNode = await networkService.node.add({
         network_id: currentNetwork.id,
-        object_id: conceptObject.id,
+        object_id: instanceObject.id,
       });
 
       const parentGroupId = containsParentByChild.get(sourceNode.id) ?? null;
@@ -2682,8 +2772,8 @@ export function NetworkWorkspace({
 
       materializedNode = {
         ...createdNode,
-        object: conceptObject,
-        concept: materializedConcept,
+        object: instanceObject,
+        instance: materializedInstance,
       };
     }
 
@@ -2714,14 +2804,14 @@ export function NetworkWorkspace({
     await openNetwork(currentNetwork.id);
 
     return useNetworkStore.getState().nodes.find((node) => (
-      node.object?.object_type === 'concept'
-      && node.object.ref_id === materializedConcept.id
+      node.object?.object_type === 'instance'
+      && node.object.ref_id === materializedInstance.id
     )) ?? materializedNode;
   }, [
-    conceptStoreProperties,
-    concepts,
+    instanceStoreProperties,
+    instances,
     containsParentByChild,
-    createConcept,
+    createInstance,
     currentLayout,
     currentNetwork,
     hierarchyParentByChild,
@@ -3547,15 +3637,6 @@ export function NetworkWorkspace({
   const handleWorkspaceNodeDragStart = useCallback(
     (...args: Parameters<typeof handleNodeDragStart>) => {
       const [nodeId, startX, startY, narreMention] = args;
-      console.log('[NarreMentionDrag][NetworkWorkspace] forwarding nodeDragStart to interaction', {
-        nodeId,
-        workspaceMode,
-        hasMention: !!narreMention,
-        mentionType: narreMention?.type,
-        mentionId: narreMention?.id,
-        x: startX,
-        y: startY,
-      });
 
       if (workspaceMode === 'browse' && narreMention) {
         endWorkspaceMentionDrag();
@@ -3607,9 +3688,6 @@ export function NetworkWorkspace({
             window.cancelAnimationFrame(current.raf);
             current.raf = null;
           }
-          console.log(
-            `[NarreMentionDrag][NetworkWorkspace] local hold activated nodeId=${nodeId} source=${source} elapsedMs=${Math.round(performance.now() - current.startedAt)} x=${clientX} y=${clientY}`,
-          );
           showPreview(clientX, clientY, current.mention);
         };
 
@@ -3666,9 +3744,6 @@ export function NetworkWorkspace({
             const earlyDropTarget = document.elementsFromPoint(event.clientX, event.clientY)
               .find((element) => element.matches(NARRE_MENTION_DROP_TARGET_SELECTOR));
             if (earlyDropTarget) {
-              console.log(
-                `[NarreMentionDrag][NetworkWorkspace] local early mouseUp over input, dropping mention nodeId=${nodeId} elapsedMs=${Math.round(elapsedMs)} holdMs=${NARRE_MENTION_HOLD_MS} x=${event.clientX} y=${event.clientY}`,
-              );
               dispatchNarreMentionDrop(earlyDropTarget, {
                 mention: activeSession?.mention ?? current.mention,
                 clientX: event.clientX,
@@ -3677,21 +3752,12 @@ export function NetworkWorkspace({
               endWorkspaceMentionDrag();
               return;
             }
-            console.log(
-              `[NarreMentionDrag][NetworkWorkspace] local mouseUp before hold nodeId=${nodeId} elapsedMs=${Math.round(elapsedMs)} holdMs=${NARRE_MENTION_HOLD_MS} movedDistance=${Math.round(movedDistance)} x=${event.clientX} y=${event.clientY}`,
-            );
             endWorkspaceMentionDrag();
             return;
           }
 
           const dropTarget = document.elementsFromPoint(event.clientX, event.clientY)
             .find((element) => element.matches(NARRE_MENTION_DROP_TARGET_SELECTOR));
-          console.log('[NarreMentionDrag][NetworkWorkspace] local mouseUp after hold', {
-            nodeId,
-            hasDropTarget: !!dropTarget,
-            x: event.clientX,
-            y: event.clientY,
-          });
           if (dropTarget) {
             dispatchNarreMentionDrop(dropTarget, {
               mention: activeSession.mention,
@@ -3730,21 +3796,14 @@ export function NetworkWorkspace({
         session.progressTimer = window.setInterval(() => {
           const current = workspaceMentionDragSessionRef.current;
           if (!current || current.nodeId !== nodeId || current.active) return;
-          console.log(
-            `[NarreMentionDrag][NetworkWorkspace] local hold progress nodeId=${nodeId} elapsedMs=${Math.round(performance.now() - current.startedAt)} holdMs=${NARRE_MENTION_HOLD_MS}`,
-          );
         }, 500);
         workspaceMentionDragSessionRef.current = session;
         window.addEventListener('mousemove', handleMouseMove);
         window.addEventListener('mouseup', handleMouseUp);
-        console.log(
-          `[NarreMentionDrag][NetworkWorkspace] local hold waiting nodeId=${nodeId} holdMs=${NARRE_MENTION_HOLD_MS}`,
-        );
         return;
       }
 
       handleNodeDragStart(...args);
-      console.log('[NarreMentionDrag][NetworkWorkspace] forwarded nodeDragStart to interaction', { nodeId });
     },
     [endWorkspaceMentionDrag, handleNodeDragStart, updateNarreMentionDropTargetFeedback, workspaceMentionDragPreview, workspaceMode],
   );
@@ -4124,15 +4183,6 @@ export function NetworkWorkspace({
       className="relative h-full w-full overflow-hidden bg-surface-canvas"
       style={{ cursor: mentionDragPreview || dragState.type === 'pan' || dragState.type === 'mention-drag' ? 'grabbing' : dragState.type === 'node' ? 'move' : 'default' }}
       onMouseDown={(e) => {
-        const target = e.target instanceof HTMLElement ? e.target : null;
-        console.log('[NarreMentionDrag][NetworkWorkspace] container mouseDown', {
-          button: e.button,
-          targetTag: target?.tagName,
-          targetClass: typeof target?.className === 'string' ? target.className.slice(0, 120) : '',
-          targetText: target?.textContent?.trim().slice(0, 80),
-          x: e.clientX,
-          y: e.clientY,
-        });
         setNetworkContextMenu(null);
         setContextMenu(null);
         setEdgeContextMenu(null);
@@ -4293,11 +4343,11 @@ export function NetworkWorkspace({
                 const srcNode = nodes.find((n) => n.id === edge.source_node_id);
                 const tgtNode = nodes.find((n) => n.id === edge.target_node_id);
                 const srcLabel =
-                  srcNode?.concept?.title ??
+                  srcNode?.instance?.title ??
                   srcNode?.file?.path?.replace(/\\/g, '/').split('/').pop() ??
                   '?';
                 const tgtLabel =
-                  tgtNode?.concept?.title ??
+                  tgtNode?.instance?.title ??
                   tgtNode?.file?.path?.replace(/\\/g, '/').split('/').pop() ??
                   '?';
                 useEditorStore.getState().openTab({
@@ -4365,7 +4415,7 @@ export function NetworkWorkspace({
           objectType={contextMenu.objectType}
           objectTargetId={contextMenu.objectTargetId}
           objectTitle={contextMenu.objectTitle}
-          conceptId={contextMenu.conceptId}
+          instanceId={contextMenu.instanceId}
           fileId={contextMenu.fileId}
           filePath={contextMenu.filePath}
           networkId={contextMenu.networkId}
@@ -4378,10 +4428,10 @@ export function NetworkWorkspace({
             navigateToChild(networkId);
             setContextMenu(null);
           }}
-          onCreateNetwork={async (conceptId) => {
+          onCreateNetwork={async (instanceId) => {
             if (!currentNetwork) return;
-            const node = nodes.find((n) => n.object?.object_type === 'concept' && n.object.ref_id === conceptId);
-            const name = node?.concept ? `${node.concept.title} Network` : 'New Network';
+            const node = nodes.find((n) => n.object?.object_type === 'instance' && n.object.ref_id === instanceId);
+            const name = node?.instance ? `${node.instance.title} Network` : 'New Network';
             const network = await networkService.create({
               project_id: currentNetwork.project_id,
               name,
@@ -4427,7 +4477,7 @@ export function NetworkWorkspace({
         <NetworkContextMenu
           x={networkContextMenu.x}
           y={networkContextMenu.y}
-          onCreateConcept={projectId ? () => {
+          onCreateInstance={projectId ? () => {
             if (!currentNetwork) return;
             const draftId = `draft-${Date.now()}`;
             const worldX = networkContextMenu.worldX;
@@ -4438,9 +4488,9 @@ export function NetworkWorkspace({
               : null;
             setNetworkContextMenu(null);
             useEditorStore.getState().openTab({
-              type: 'concept',
+              type: 'instance',
               targetId: draftId,
-              title: t('concept.defaultTitle'),
+              title: t('instance.defaultTitle'),
               draftData: {
                 networkId: currentNetwork.id,
                 parentGroupNodeId: targetGroup?.id,
@@ -4481,7 +4531,7 @@ export function NetworkWorkspace({
       <ObjectPickerModal
         open={objectPickerOpen}
         onClose={closeObjectPicker}
-        initialTab={portalAttachSourceNodeId ? 'network' : 'concept'}
+        initialTab={portalAttachSourceNodeId ? 'network' : 'instance'}
         allowedTabs={portalAttachSourceNodeId ? ['network'] : undefined}
         onSelect={async (objectType, refId) => {
           if (!currentNetwork) return;

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import type { EditorTab } from '@netior/shared/types';
-import { ConceptEditor } from './ConceptEditor';
+import { InstanceEditor } from './InstanceEditor';
 import { FileEditor } from './FileEditor';
 import { SchemaEditor } from './SchemaEditor';
 import { ModelEditor } from './ModelEditor';
@@ -59,8 +59,8 @@ export function EditorContent({ tab }: EditorContentProps): JSX.Element {
   }, [isActive, tab.targetId, tab.type]);
   let content: JSX.Element;
   switch (tab.type) {
-    case 'concept':
-      content = <ConceptEditor tab={tab} />; break;
+    case 'instance':
+      content = <InstanceEditor tab={tab} />; break;
     case 'file':
       content = <FileEditor tab={tab} />; break;
     case 'schema':

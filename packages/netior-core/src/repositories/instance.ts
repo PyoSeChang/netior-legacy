@@ -8,15 +8,15 @@ import {
 import type {
   Schema,
   SchemaField,
-  Concept,
-  ConceptCreate,
-  ConceptUpdate,
+  Instance,
+  InstanceCreate,
+  InstanceUpdate,
   FieldMeaningBindingKey,
   ModelRefKey,
   FieldMeaningKey,
   MeaningSlotKey,
 } from '@netior/shared/types';
-import { renderTemplate, serializeToAgent } from '../services/concept-content-sync';
+import { renderTemplate, serializeToAgent } from '../services/instance-content-sync';
 
 type SchemaRow = Omit<Schema, 'models'> & {
   models: string | null;
@@ -96,7 +96,7 @@ function toField(row: SchemaFieldRow, meaningBindings?: readonly FieldMeaningBin
   };
 }
 
-export function createConcept(data: ConceptCreate): Concept {
+export function createInstance(data: InstanceCreate): Instance {
   const db = getDatabase();
   const id = randomUUID();
   const now = new Date().toISOString();
@@ -131,11 +131,11 @@ export function createConcept(data: ConceptCreate): Concept {
   }
 
   db.prepare(
-    `INSERT INTO concepts (
+    `INSERT INTO instances (
       id,
       project_id,
       schema_id,
-      recurrence_source_concept_id,
+      recurrence_source_instance_id,
       recurrence_occurrence_key,
       title,
       color,
@@ -154,7 +154,7 @@ export function createConcept(data: ConceptCreate): Concept {
     id,
     data.project_id,
     data.schema_id ?? null,
-    data.recurrence_source_concept_id ?? null,
+    data.recurrence_source_instance_id ?? null,
     data.recurrence_occurrence_key ?? null,
     data.title,
     color,
@@ -170,38 +170,38 @@ export function createConcept(data: ConceptCreate): Concept {
   );
 
   // Register object record
-  createObject('concept', 'project', data.project_id, id);
+  createObject('instance', 'project', data.project_id, id);
 
-  // Generate initial agent_content after insert (needs full concept)
-  const concept = db.prepare('SELECT * FROM concepts WHERE id = ?').get(id) as Concept;
+  // Generate initial agent_content after insert (needs full instance)
+  const instance = db.prepare('SELECT * FROM instances WHERE id = ?').get(id) as Instance;
   if (schema) {
     const defaults: Record<string, string | null> = {};
     for (const f of fields) defaults[f.name] = f.default_value ?? null;
-    agentContent = serializeToAgent({ concept, schema, fields, properties: defaults });
-    db.prepare('UPDATE concepts SET agent_content = ? WHERE id = ?').run(agentContent, id);
-    return db.prepare('SELECT * FROM concepts WHERE id = ?').get(id) as Concept;
+    agentContent = serializeToAgent({ instance, schema, fields, properties: defaults });
+    db.prepare('UPDATE instances SET agent_content = ? WHERE id = ?').run(agentContent, id);
+    return db.prepare('SELECT * FROM instances WHERE id = ?').get(id) as Instance;
   }
 
-  return concept;
+  return instance;
 }
 
-export function getConceptsByProject(projectId: string): Concept[] {
+export function getInstancesByProject(projectId: string): Instance[] {
   const db = getDatabase();
   return db
-    .prepare('SELECT * FROM concepts WHERE project_id = ? ORDER BY created_at')
-    .all(projectId) as Concept[];
+    .prepare('SELECT * FROM instances WHERE project_id = ? ORDER BY created_at')
+    .all(projectId) as Instance[];
 }
 
-export function updateConcept(id: string, data: ConceptUpdate): Concept | undefined {
+export function updateInstance(id: string, data: InstanceUpdate): Instance | undefined {
   const db = getDatabase();
-  const existing = db.prepare('SELECT * FROM concepts WHERE id = ?').get(id) as Concept | undefined;
+  const existing = db.prepare('SELECT * FROM instances WHERE id = ?').get(id) as Instance | undefined;
   if (!existing) return undefined;
 
   const now = new Date().toISOString();
   db.prepare(
-    `UPDATE concepts
+    `UPDATE instances
      SET schema_id = ?,
-         recurrence_source_concept_id = ?,
+         recurrence_source_instance_id = ?,
          recurrence_occurrence_key = ?,
          title = ?,
          color = ?,
@@ -216,9 +216,9 @@ export function updateConcept(id: string, data: ConceptUpdate): Concept | undefi
      WHERE id = ?`,
   ).run(
     data.schema_id !== undefined ? data.schema_id : existing.schema_id,
-    data.recurrence_source_concept_id !== undefined
-      ? data.recurrence_source_concept_id
-      : existing.recurrence_source_concept_id,
+    data.recurrence_source_instance_id !== undefined
+      ? data.recurrence_source_instance_id
+      : existing.recurrence_source_instance_id,
     data.recurrence_occurrence_key !== undefined
       ? data.recurrence_occurrence_key
       : existing.recurrence_occurrence_key,
@@ -235,22 +235,22 @@ export function updateConcept(id: string, data: ConceptUpdate): Concept | undefi
     id,
   );
 
-  return db.prepare('SELECT * FROM concepts WHERE id = ?').get(id) as Concept;
+  return db.prepare('SELECT * FROM instances WHERE id = ?').get(id) as Instance;
 }
 
-export function deleteConcept(id: string): boolean {
+export function deleteInstance(id: string): boolean {
   const db = getDatabase();
-  const result = db.prepare('DELETE FROM concepts WHERE id = ?').run(id);
+  const result = db.prepare('DELETE FROM instances WHERE id = ?').run(id);
   if (result.changes > 0) {
-    deleteObjectByRef('concept', id);
+    deleteObjectByRef('instance', id);
     return true;
   }
   return false;
 }
 
-export function searchConcepts(projectId: string, query: string): Concept[] {
+export function searchInstances(projectId: string, query: string): Instance[] {
   const db = getDatabase();
   return db
-    .prepare('SELECT * FROM concepts WHERE project_id = ? AND title LIKE ? ORDER BY title')
-    .all(projectId, `%${query}%`) as Concept[];
+    .prepare('SELECT * FROM instances WHERE project_id = ? AND title LIKE ? ORDER BY title')
+    .all(projectId, `%${query}%`) as Instance[];
 }

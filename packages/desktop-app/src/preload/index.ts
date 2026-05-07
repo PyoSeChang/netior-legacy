@@ -21,6 +21,13 @@ interface BrowserDownloadEvent {
   url: string;
 }
 
+interface BrowserPermissionRequest {
+  id: string;
+  origin: string;
+  permission: string;
+  requestingUrl: string;
+}
+
 function getWindowsBuildNumber(): number | null {
   if (process.platform !== 'win32') return null;
 
@@ -74,10 +81,16 @@ const electronAPI = {
   browser: {
     clearData: () => ipcRenderer.invoke('browser:clearData') as Promise<boolean>,
     openDownload: (savePath: string) => ipcRenderer.invoke('browser:openDownload', savePath) as Promise<boolean>,
+    respondPermission: (id: string, allowed: boolean) => ipcRenderer.send('browser:permission-response', { id, allowed }),
     onDownloadEvent: (callback: (event: BrowserDownloadEvent) => void) => {
       const handler = (_event: IpcRendererEvent, payload: BrowserDownloadEvent) => callback(payload);
       ipcRenderer.on('browser:download-event', handler);
       return () => { ipcRenderer.removeListener('browser:download-event', handler); };
+    },
+    onPermissionRequest: (callback: (request: BrowserPermissionRequest) => void) => {
+      const handler = (_event: IpcRendererEvent, payload: BrowserPermissionRequest) => callback(payload);
+      ipcRenderer.on('browser:permission-request', handler);
+      return () => { ipcRenderer.removeListener('browser:permission-request', handler); };
     },
   },
   notifications: {
@@ -104,12 +117,12 @@ const electronAPI = {
     update: (id: string, data: Record<string, unknown>) => ipcRenderer.invoke('project:update', id, data),
     updateRootDir: (id: string, rootDir: string) => ipcRenderer.invoke('project:updateRootDir', id, rootDir),
   },
-  concept: {
-    create: (data: Record<string, unknown>) => ipcRenderer.invoke('concept:create', data),
-    getByProject: (projectId: string) => ipcRenderer.invoke('concept:getByProject', projectId),
+  instance: {
+    create: (data: Record<string, unknown>) => ipcRenderer.invoke('instance:create', data),
+    getByProject: (projectId: string) => ipcRenderer.invoke('instance:getByProject', projectId),
     update: (id: string, data: Record<string, unknown>) =>
-      ipcRenderer.invoke('concept:update', id, data),
-    delete: (id: string) => ipcRenderer.invoke('concept:delete', id),
+      ipcRenderer.invoke('instance:update', id, data),
+    delete: (id: string) => ipcRenderer.invoke('instance:delete', id),
   },
   network: {
     create: (data: Record<string, unknown>) => ipcRenderer.invoke('network:create', data),
@@ -222,20 +235,20 @@ const electronAPI = {
       ipcRenderer.invoke('model:update', id, data),
     delete: (id: string) => ipcRenderer.invoke('model:delete', id),
   },
-  conceptProp: {
-    upsert: (data: Record<string, unknown>) => ipcRenderer.invoke('conceptProp:upsert', data),
-    getByConcept: (conceptId: string) => ipcRenderer.invoke('conceptProp:getByConcept', conceptId),
-    delete: (id: string) => ipcRenderer.invoke('conceptProp:delete', id),
+  instanceProp: {
+    upsert: (data: Record<string, unknown>) => ipcRenderer.invoke('instanceProp:upsert', data),
+    getByInstance: (instanceId: string) => ipcRenderer.invoke('instanceProp:getByInstance', instanceId),
+    delete: (id: string) => ipcRenderer.invoke('instanceProp:delete', id),
   },
-  conceptContent: {
-    syncToAgent: (conceptId: string) => ipcRenderer.invoke('concept:syncToAgent', conceptId),
-    syncFromAgent: (conceptId: string, agentContent: string) =>
-      ipcRenderer.invoke('concept:syncFromAgent', conceptId, agentContent),
+  instanceContent: {
+    syncToAgent: (instanceId: string) => ipcRenderer.invoke('instance:syncToAgent', instanceId),
+    syncFromAgent: (instanceId: string, agentContent: string) =>
+      ipcRenderer.invoke('instance:syncFromAgent', instanceId, agentContent),
   },
   editorPrefs: {
-    get: (conceptId: string) => ipcRenderer.invoke('editorPrefs:get', conceptId),
-    upsert: (conceptId: string, data: Record<string, unknown>) =>
-      ipcRenderer.invoke('editorPrefs:upsert', conceptId, data),
+    get: (instanceId: string) => ipcRenderer.invoke('editorPrefs:get', instanceId),
+    upsert: (instanceId: string, data: Record<string, unknown>) =>
+      ipcRenderer.invoke('editorPrefs:upsert', instanceId, data),
   },
   fs: {
     readDir: (dirPath: string) => ipcRenderer.invoke('fs:readDir', dirPath),

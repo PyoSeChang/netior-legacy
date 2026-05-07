@@ -2,9 +2,9 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { SchemaField } from '@netior/shared/types';
 import { z } from 'zod';
 import {
-  getConceptsByProject,
+  getInstancesByProject,
   listSchemaFields,
-  searchConcepts,
+  searchInstances,
 } from '../netior-service-client.js';
 import { projectIdSchema, registerNetiorTool, resolveProjectId } from './shared-tool-registry.js';
 import { toAgentFieldType } from './schema-surface.js';
@@ -32,7 +32,7 @@ export function registerCandidateSourceTools(server: McpServer): void {
       project_id: projectIdSchema(),
       schema_id: z.string().describe('The schema that owns the field'),
       field_id: z.string().describe('The field ID'),
-      query: z.string().optional().describe('Optional search query for candidate concepts'),
+      query: z.string().optional().describe('Optional search query for candidate instances'),
       max_results: z.number().optional().describe('Optional maximum number of candidates to return'),
     },
     async ({ project_id, schema_id, field_id, query, max_results }) => {
@@ -51,16 +51,16 @@ export function registerCandidateSourceTools(server: McpServer): void {
         const limit = Math.max(1, max_results ?? 50);
 
         if (field.ref_schema_id) {
-          const concepts = query
-            ? await searchConcepts(targetProjectId, query)
-            : await getConceptsByProject(targetProjectId);
-          const filtered = concepts
-            .filter((concept) => concept.schema_id === field.ref_schema_id)
+          const instances = query
+            ? await searchInstances(targetProjectId, query)
+            : await getInstancesByProject(targetProjectId);
+          const filtered = instances
+            .filter((instance) => instance.schema_id === field.ref_schema_id)
             .slice(0, limit)
-            .map((concept) => ({
-              id: concept.id,
-              title: concept.title,
-              schema_id: concept.schema_id,
+            .map((instance) => ({
+              id: instance.id,
+              title: instance.title,
+              schema_id: instance.schema_id,
             }));
 
           return {
@@ -74,7 +74,7 @@ export function registerCandidateSourceTools(server: McpServer): void {
                   required: field.required,
                   ref_schema_id: field.ref_schema_id,
                 },
-                candidate_mode: 'concepts_by_schema',
+                candidate_mode: 'instances_by_schema',
                 candidates: filtered,
               }, null, 2),
             }],

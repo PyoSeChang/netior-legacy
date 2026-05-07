@@ -172,7 +172,7 @@ async function appendSchemaFieldContext(
   return preview;
 }
 
-async function appendConceptContext(
+async function appendInstanceContext(
   context: OperationPreviewContext,
   preview: NarreOperationPreview,
   input: Record<string, unknown>,
@@ -247,8 +247,8 @@ async function withContext(
         return await appendSchemaContext(context, preview, input);
       case 'create_schema_field':
         return await appendSchemaFieldContext(context, preview, input);
-      case 'create_concept':
-        return await appendConceptContext(context, preview, input);
+      case 'create_instance':
+        return await appendInstanceContext(context, preview, input);
       case 'create_network':
         return await appendNetworkContext(context, preview, input);
       default:
@@ -340,7 +340,7 @@ export async function buildNarreOperationPreview(
         summary: 'createModel',
         items: [
           ...(asString(input.key) ? [{ label: 'Key', value: asString(input.key)! }] : []),
-          ...(asString(input.category_concept_id) ? [{ label: 'Category concept ID', value: asString(input.category_concept_id)! }] : []),
+          ...(asString(input.category_instance_id) ? [{ label: 'Category instance ID', value: asString(input.category_instance_id)! }] : []),
           ...(asString(input.target_kind) ? [{ label: 'Target', value: asString(input.target_kind)! }] : []),
           ...(meanings.length > 0 ? [{ label: 'Meanings', value: meanings.join(', ') }] : []),
           ...(input.recipe ? [{ label: 'Recipe', value: 'Custom recipe included' }] : []),
@@ -348,11 +348,11 @@ export async function buildNarreOperationPreview(
       }));
     }
 
-    case 'create_concept': {
-      const title = asString(input.title) ?? 'Untitled concept';
+    case 'create_instance': {
+      const title = asString(input.title) ?? 'Untitled instance';
       return withContext(context, normalizedToolName, input, createPreview(normalizedToolName, {
-        title: `Create concept: ${title}`,
-        summary: 'createConcept',
+        title: `Create instance: ${title}`,
+        summary: 'createInstance',
         items: [
           ...(asString(input.schema_id) ? [{ label: 'Schema ID', value: asString(input.schema_id)! }] : []),
           ...(asString(input.icon) ? [{ label: 'Icon', value: asString(input.icon)!, kind: 'icon' as const }] : []),

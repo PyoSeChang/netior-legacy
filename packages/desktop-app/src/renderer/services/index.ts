@@ -1,5 +1,5 @@
 export { projectService } from './project-service';
-export { conceptService } from './concept-service';
+export { instanceService } from './instance-service';
 export { networkService } from './network-service';
 export { layoutService } from './layout-service';
 export { fileService } from './file-service';
@@ -9,8 +9,8 @@ export { moduleService } from './module-service';
 export { editorPrefsService } from './editor-prefs-service';
 export { schemaService } from './schema-service';
 export { modelService } from './model-service';
-export { conceptPropertyService } from './concept-property-service';
-export { conceptContentService } from './concept-content-service';
+export { instancePropertyService } from './instance-property-service';
+export { instanceContentService } from './instance-content-service';
 export { objectService } from './object-service';
 export { narreService } from './narre-service';
 export { agentService } from './agent-service';

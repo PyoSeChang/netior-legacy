@@ -102,18 +102,18 @@ export const ganttPlugin: WorkspaceLayoutPlugin = {
     const slotFieldIds = node.metadata.__slotFieldIds as Record<string, string> | undefined;
     const startFieldId = slotFieldIds?.start_at;
     const allDayFieldId = slotFieldIds?.all_day;
-    const propertyUpdates: Array<{ conceptId: string; fieldId: string; value: string }> = [];
+    const propertyUpdates: Array<{ instanceId: string; fieldId: string; value: string }> = [];
 
-    if (startFieldId && node.conceptId) {
+    if (startFieldId && node.instanceId) {
       propertyUpdates.push({
-        conceptId: node.conceptId,
+        instanceId: node.instanceId,
         fieldId: startFieldId,
         value: formatTemporalSlotValue(node, 'start_at', epochDay),
       });
     }
-    if (allDayFieldId && node.conceptId) {
+    if (allDayFieldId && node.instanceId) {
       propertyUpdates.push({
-        conceptId: node.conceptId,
+        instanceId: node.instanceId,
         fieldId: allDayFieldId,
         value: String(node.metadata.all_day === true),
       });
@@ -128,8 +128,8 @@ export const ganttPlugin: WorkspaceLayoutPlugin = {
   onSpanResize(context: SpanResizeContext): SpanResizeResult {
     const { dx, edge, node, zoom } = context;
     const slotFieldIds = node.metadata.__slotFieldIds as Record<string, string> | undefined;
-    const propertyUpdates: Array<{ conceptId: string; fieldId: string; value: string }> = [];
-    if (!node.conceptId || !slotFieldIds) return {};
+    const propertyUpdates: Array<{ instanceId: string; fieldId: string; value: string }> = [];
+    if (!node.instanceId || !slotFieldIds) return {};
 
     const pxPerDay = PIXELS_PER_DAY * zoom;
     if (pxPerDay === 0) return {};
@@ -142,7 +142,7 @@ export const ganttPlugin: WorkspaceLayoutPlugin = {
     if (edge === 'start' && slotFieldIds.start_at) {
       const nextStartDay = Math.min(startDay + deltaDays, endDay);
       propertyUpdates.push({
-        conceptId: node.conceptId,
+        instanceId: node.instanceId,
         fieldId: slotFieldIds.start_at,
         value: formatTemporalSlotValue(node, 'start_at', nextStartDay),
       });
@@ -151,7 +151,7 @@ export const ganttPlugin: WorkspaceLayoutPlugin = {
     if (edge === 'end' && slotFieldIds.end_at) {
       const nextEndDay = Math.max(endDay + deltaDays, startDay);
       propertyUpdates.push({
-        conceptId: node.conceptId,
+        instanceId: node.instanceId,
         fieldId: slotFieldIds.end_at,
         value: formatTemporalSlotValue(node, 'end_at', nextEndDay),
       });

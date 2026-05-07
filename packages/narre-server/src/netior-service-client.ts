@@ -3,7 +3,7 @@
   Network,
   NetworkTreeNode,
   Project,
-  Concept,
+  Instance,
   Model,
   Schema,
   SchemaField,
@@ -77,8 +77,8 @@ export async function listModels(projectId: string): Promise<Model[]> {
   return requestJson<Model[]>(`/models${toQueryString({ projectId })}`);
 }
 
-export async function listModelCategories(projectId: string): Promise<Concept[]> {
-  return requestJson<Concept[]>(`/model-categories${toQueryString({ projectId })}`);
+export async function listModelCategories(projectId: string): Promise<Instance[]> {
+  return requestJson<Instance[]>(`/model-categories${toQueryString({ projectId })}`);
 }
 
 export async function getUniverseNetwork(): Promise<Network | null> {

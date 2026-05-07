@@ -8,7 +8,7 @@ import { WorkspaceContextMenuSurface } from './WorkspaceContextMenuSurface';
 interface NetworkContextMenuProps {
   x: number;
   y: number;
-  onCreateConcept?: () => void;
+  onCreateInstance?: () => void;
   onAddObject?: () => void;
   onAddFileNode?: () => void;
   onClose: () => void;
@@ -17,7 +17,7 @@ interface NetworkContextMenuProps {
 export function NetworkContextMenu({
   x,
   y,
-  onCreateConcept,
+  onCreateInstance,
   onAddObject,
   onAddFileNode,
   onClose,
@@ -41,16 +41,16 @@ export function NetworkContextMenu({
 
   return (
     <WorkspaceContextMenuSurface x={x} y={y} onClose={onClose}>
-      {onCreateConcept && (
+      {onCreateInstance && (
         <button
           className="flex w-full items-center gap-2 px-3 py-1 text-xs text-default hover:bg-state-hover cursor-pointer"
           onClick={() => {
-            onCreateConcept();
+            onCreateInstance();
             onClose();
           }}
         >
           <Plus size={14} />
-          {t('network.createConcept')}
+          {t('network.createInstance')}
         </button>
       )}
 
