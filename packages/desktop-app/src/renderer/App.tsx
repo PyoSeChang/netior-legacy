@@ -2,6 +2,7 @@
 import { useProjectStore } from './stores/project-store';
 import { useUIStore } from './stores/ui-store';
 import { useI18n } from './hooks/useI18n';
+import { EditorLayoutLab } from './components/dev/EditorLayoutLab';
 import { WorkspaceShell } from './components/workspace/WorkspaceShell';
 import { SettingsModal } from './components/settings/SettingsModal';
 import { ShortcutOverlay } from './components/shortcuts/ShortcutOverlay';
@@ -26,6 +27,7 @@ function TitleBar(): JSX.Element {
 export default function App(): JSX.Element {
   useGlobalShortcuts();
   const { t } = useI18n();
+  const [showEditorLayoutLab, setShowEditorLayoutLab] = React.useState(false);
 
   const {
     currentProject,
@@ -62,6 +64,20 @@ export default function App(): JSX.Element {
       <ShortcutOverlay open={showShortcutOverlay} onClose={() => setShowShortcutOverlay(false)} />
       <ToastContainer />
       <MissingFilesDialog />
+      {import.meta.env.DEV && (
+        <button
+          type="button"
+          onClick={() => setShowEditorLayoutLab(true)}
+          className="fixed bottom-4 right-4 z-[1100] rounded-lg border border-default bg-surface-panel px-3 py-2 text-xs font-medium text-secondary shadow-lg hover:bg-state-hover hover:text-default"
+        >
+          Editor Lab
+        </button>
+      )}
+      {import.meta.env.DEV && showEditorLayoutLab && (
+        <div className="fixed inset-0 z-[1200] bg-surface-editor">
+          <EditorLayoutLab onClose={() => setShowEditorLayoutLab(false)} />
+        </div>
+      )}
     </div>
   );
 }

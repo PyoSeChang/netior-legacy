@@ -2,10 +2,10 @@ import { randomUUID } from 'crypto';
 import { getDatabase } from '../connection';
 import { createObject, deleteObjectByRef, getObjectByRef } from './objects';
 import { syncProjectOntologyForDb } from './system-networks';
+import { ensureModelCategoryTaxonomyForProjectDb } from './model-category';
 import {
   SEMANTIC_MEANING_DEFINITIONS,
   MODEL_DEFINITIONS,
-  SEMANTIC_CATEGORY_LABELS,
   getMeaningSlotDefinition,
 } from '@netior/shared/constants';
 import type {
@@ -24,6 +24,7 @@ import type {
   ModelTargetKind,
   ModelUpdate,
   MeaningSlotKey,
+  OntologySourceKind,
 } from '@netior/shared/types';
 
 type Db = ReturnType<typeof getDatabase>;
@@ -38,6 +39,8 @@ type ModelRow = Omit<
   recipe_json?: string | null;
   built_in: number;
   directed: number | null;
+  category_concept_title?: string | null;
+  category_concept_source_ref?: string | null;
 };
 
 const EMPTY_MODEL_RECIPE: ModelRecipe = {
@@ -284,7 +287,9 @@ function toModel(row: ModelRow): Model {
   return {
     ...row,
     key: row.key as ModelRefKey,
-    category: row.category as SemanticCategoryRefKey,
+    category_concept_id: row.category_concept_id ?? null,
+    category_concept_title: row.category_concept_title ?? null,
+    category_concept_source_ref: row.category_concept_source_ref ?? null,
     target_kind: (row.target_kind ?? 'object') as ModelTargetKind,
     meaning_keys: parseStringArray<SemanticMeaningKey>(row.meaning_keys),
     core_slots: parseStringArray<MeaningSlotKey>(row.core_slots),
@@ -302,53 +307,28 @@ function ensureObjectForModel(db: Db, model: Pick<ModelRow, 'id' | 'project_id' 
   createObject('model', 'project', model.project_id, model.id);
 }
 
-function ensureBuiltInModelGroup(db: Db, projectId: string, category: string, sortOrder: number, now: string): string | null {
-  const hasGroupId = (db.pragma('table_info(models)') as { name: string }[])
-    .some((column) => column.name === 'group_id');
-  if (!hasGroupId) return null;
-
-  const rootId = `type-group-${projectId}-models`;
-  const id = `type-group-${projectId}-model-${category}`;
-  const fallbackName = SEMANTIC_CATEGORY_LABELS[category as keyof typeof SEMANTIC_CATEGORY_LABELS] ?? category;
-  db.prepare(`
-    INSERT OR IGNORE INTO type_groups (
-      id, scope, project_id, kind, name, parent_group_id, sort_order, created_at, updated_at
-    )
-    VALUES (?, 'project', ?, 'model', 'Models', NULL, 0, ?, ?)
-  `).run(rootId, projectId, now, now);
-  db.prepare(`
-    INSERT OR IGNORE INTO objects (id, object_type, scope, project_id, ref_id, created_at)
-    VALUES (?, 'type_group', 'project', ?, ?, ?)
-  `).run(`object-type-group-${rootId}`, projectId, rootId, now);
-  db.prepare(`
-    INSERT OR IGNORE INTO type_groups (
-      id, scope, project_id, kind, name, parent_group_id, sort_order, created_at, updated_at
-    )
-    VALUES (?, 'project', ?, 'model', ?, ?, ?, ?, ?)
-  `).run(id, projectId, fallbackName, rootId, sortOrder + 1, now, now);
-  db.prepare(`
-    UPDATE type_groups
-       SET parent_group_id = ?, sort_order = ?, updated_at = ?
-     WHERE id = ?
-  `).run(rootId, sortOrder + 1, now, id);
-  db.prepare(`
-    INSERT OR IGNORE INTO objects (id, object_type, scope, project_id, ref_id, created_at)
-    VALUES (?, 'type_group', 'project', ?, ?, ?)
-  `).run(`object-type-group-${id}`, projectId, id, now);
-
-  return id;
+function assertModelCategoryConcept(db: Db, projectId: string, categoryConceptId: string | null | undefined): void {
+  if (!categoryConceptId) return;
+  const { schemaId } = ensureModelCategoryTaxonomyForProjectDb(db, projectId);
+  const row = db.prepare(
+    'SELECT id FROM concepts WHERE id = ? AND project_id = ? AND schema_id = ?',
+  ).get(categoryConceptId, projectId, schemaId);
+  if (!row) {
+    throw new Error(`Model category concept not found in project model category schema: ${categoryConceptId}`);
+  }
 }
 
 export function seedBuiltInModelsForProjectDb(db: Db, projectId: string): void {
   const now = new Date().toISOString();
-  const categoryOrder = new Map(Object.keys(SEMANTIC_CATEGORY_LABELS).map((category, index) => [category, index]));
+  const { conceptsByKey } = ensureModelCategoryTaxonomyForProjectDb(db, projectId);
   const insertModel = db.prepare(`
     INSERT OR IGNORE INTO models (
-      id, project_id, group_id, key, name, description, category,
+      id, project_id, key, name, description, category_concept_id,
       target_kind, meaning_keys, core_slots, optional_slots, recipe_json,
-      color, icon, line_style, directed, built_in, created_at, updated_at
+      color, icon, line_style, directed, built_in,
+      source_kind, source_id, source_ref, source_version, created_at, updated_at
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, 1, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, 1, 'system', 'netior.system', ?, '1', ?, ?)
   `);
   const updateMissingDescription = db.prepare(`
     UPDATE models
@@ -374,35 +354,18 @@ export function seedBuiltInModelsForProjectDb(db: Db, projectId: string): void {
        AND built_in = 1
        AND (icon IS NULL OR trim(icon) = '' OR icon IN ('box', 'boxes'))
   `);
-  const updateMissingGroup = db.prepare(`
-    UPDATE models
-       SET group_id = ?, updated_at = ?
-     WHERE project_id = ?
-       AND key = ?
-       AND built_in = 1
-       AND (group_id IS NULL OR trim(group_id) = '')
-  `);
-
   for (const definition of MODEL_DEFINITIONS) {
     const id = `model-${projectId}-${definition.key}`;
     const description = definition.description ?? null;
     const recipeJson = serializeModelRecipe(buildRecipeForBuiltInModel(definition));
     const icon = (definition as { icon?: string }).icon ?? null;
-    const groupId = ensureBuiltInModelGroup(
-      db,
-      projectId,
-      definition.category,
-      categoryOrder.get(definition.category) ?? categoryOrder.size,
-      now,
-    );
     insertModel.run(
       id,
       projectId,
-      groupId,
       definition.key,
       definition.label,
       description,
-      definition.category,
+      conceptsByKey.get(definition.category)?.id ?? null,
       definition.targetKind ?? 'object',
       serializeStringArray(definition.meanings),
       serializeStringArray(definition.coreSlots),
@@ -411,6 +374,7 @@ export function seedBuiltInModelsForProjectDb(db: Db, projectId: string): void {
       icon,
       definition.lineStyle ?? null,
       definition.directed == null ? null : (definition.directed ? 1 : 0),
+      `model.${definition.key}`,
       now,
       now,
     );
@@ -419,9 +383,6 @@ export function seedBuiltInModelsForProjectDb(db: Db, projectId: string): void {
     }
     if (icon) {
       updateMissingIcon.run(icon, now, projectId, definition.key);
-    }
-    if (groupId) {
-      updateMissingGroup.run(groupId, now, projectId, definition.key);
     }
     updateMissingRecipe.run(recipeJson, now, projectId, definition.key);
     ensureObjectForModel(db, { id, project_id: projectId, created_at: now });
@@ -439,22 +400,24 @@ export function createModel(data: ModelCreate): Model {
   const meaningKeys = data.meaning_keys ?? [];
   const derivedSlots = deriveSlotsForMeanings(meaningKeys);
   const key = getUniqueModelKey(db, data.project_id, data.key ?? normalizeModelKey(data.name));
+  const sourceKind = data.source_kind ?? (data.built_in ? 'system' : 'project');
+  assertModelCategoryConcept(db, data.project_id, data.category_concept_id);
 
   db.prepare(
     `INSERT INTO models (
-      id, project_id, group_id, key, name, description, category,
+      id, project_id, key, name, description, category_concept_id,
       target_kind, meaning_keys, core_slots, optional_slots, recipe_json,
-      color, icon, line_style, directed, built_in, created_at, updated_at
+      color, icon, line_style, directed, built_in,
+      source_kind, source_id, source_ref, source_version, created_at, updated_at
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     id,
     data.project_id,
-    data.group_id ?? null,
     key,
     data.name,
     data.description ?? null,
-    data.category ?? 'knowledge',
+    data.category_concept_id ?? null,
     data.target_kind ?? 'object',
     serializeStringArray(meaningKeys),
     serializeStringArray(data.core_slots ?? derivedSlots.coreSlots),
@@ -465,6 +428,10 @@ export function createModel(data: ModelCreate): Model {
     data.line_style ?? null,
     data.directed == null ? null : (data.directed ? 1 : 0),
     data.built_in ? 1 : 0,
+    sourceKind,
+    data.source_id ?? null,
+    data.source_ref ?? null,
+    data.source_version ?? null,
     now,
     now,
   );
@@ -472,8 +439,7 @@ export function createModel(data: ModelCreate): Model {
   createObject('model', 'project', data.project_id, id);
   syncProjectOntologyForDb(db, data.project_id);
 
-  const row = db.prepare('SELECT * FROM models WHERE id = ?').get(id) as ModelRow;
-  return toModel(row);
+  return getModel(id)!;
 }
 
 export function listModels(projectId: string): Model[] {
@@ -482,7 +448,13 @@ export function listModels(projectId: string): Model[] {
     syncProjectOntologyForDb(db, projectId);
   })();
   const rows = db
-    .prepare('SELECT * FROM models WHERE project_id = ? ORDER BY built_in DESC, category, name')
+    .prepare(`
+      SELECT m.*, c.title AS category_concept_title, c.source_ref AS category_concept_source_ref
+        FROM models m
+        LEFT JOIN concepts c ON c.id = m.category_concept_id
+       WHERE m.project_id = ?
+       ORDER BY m.built_in DESC, COALESCE(c.title, ''), m.name
+    `)
     .all(projectId) as ModelRow[];
   const updateRecipe = db.prepare('UPDATE models SET recipe_json = ?, updated_at = ? WHERE id = ?');
   for (const row of rows) {
@@ -500,7 +472,12 @@ export function listModels(projectId: string): Model[] {
 
 export function getModel(id: string): Model | undefined {
   const db = getDatabase();
-  const row = db.prepare('SELECT * FROM models WHERE id = ?').get(id) as ModelRow | undefined;
+  const row = db.prepare(`
+    SELECT m.*, c.title AS category_concept_title, c.source_ref AS category_concept_source_ref
+      FROM models m
+      LEFT JOIN concepts c ON c.id = m.category_concept_id
+     WHERE m.id = ?
+  `).get(id) as ModelRow | undefined;
   if (row?.built_in && isEmptyRecipe(row.recipe_json)) {
     const builtInRecipe = getBuiltInModelRecipe(row.key);
     if (builtInRecipe) {
@@ -524,19 +501,20 @@ export function updateModel(id: string, data: ModelUpdate): Model | undefined {
     ? getUniqueModelKey(db, existing.project_id, data.key, id)
     : existing.key as ModelRefKey;
   const now = new Date().toISOString();
+  assertModelCategoryConcept(db, existing.project_id, data.category_concept_id);
 
   db.prepare(
     `UPDATE models
-        SET group_id = ?, key = ?, name = ?, description = ?, category = ?, target_kind = ?, meaning_keys = ?,
+        SET key = ?, name = ?, description = ?, category_concept_id = ?, target_kind = ?, meaning_keys = ?,
             core_slots = ?, optional_slots = ?, recipe_json = ?, color = ?, icon = ?,
-            line_style = ?, directed = ?, built_in = ?, updated_at = ?
+            line_style = ?, directed = ?, built_in = ?,
+            source_kind = ?, source_id = ?, source_ref = ?, source_version = ?, updated_at = ?
       WHERE id = ?`,
   ).run(
-    data.group_id !== undefined ? data.group_id : existing.group_id,
     nextKey,
     data.name !== undefined ? data.name : existing.name,
     data.description !== undefined ? data.description : existing.description,
-    data.category !== undefined ? data.category : existing.category,
+    data.category_concept_id !== undefined ? data.category_concept_id : existing.category_concept_id,
     data.target_kind !== undefined ? data.target_kind : existing.target_kind,
     serializeStringArray(nextMeaningKeys),
     serializeStringArray(data.core_slots ?? (meaningKeysChanged ? derivedSlots.coreSlots : parseStringArray<MeaningSlotKey>(existing.core_slots))),
@@ -547,12 +525,15 @@ export function updateModel(id: string, data: ModelUpdate): Model | undefined {
     data.line_style !== undefined ? data.line_style : existing.line_style,
     data.directed !== undefined ? (data.directed == null ? null : (data.directed ? 1 : 0)) : existing.directed,
     data.built_in !== undefined ? (data.built_in ? 1 : 0) : existing.built_in,
+    data.source_kind !== undefined ? data.source_kind : existing.source_kind,
+    data.source_id !== undefined ? data.source_id : existing.source_id,
+    data.source_ref !== undefined ? data.source_ref : existing.source_ref,
+    data.source_version !== undefined ? data.source_version : existing.source_version,
     now,
     id,
   );
 
-  const row = db.prepare('SELECT * FROM models WHERE id = ?').get(id) as ModelRow;
-  return toModel(row);
+  return getModel(id);
 }
 
 export function deleteModel(id: string): boolean {

@@ -706,16 +706,6 @@
       "fileTemplatePlaceholder": "이 모델로 파일을 만들 때 사용할 기본 내용을 입력하세요.",
       "propertyModel": "속성 모델"
     },
-  "typeGroup": {
-    "create": "그룹 생성",
-    "createSubgroup": "하위 그룹 생성",
-    "rename": "그룹 이름 변경",
-    "delete": "그룹 삭제",
-    "name": "그룹 이름",
-    "namePlaceholder": "그룹 이름",
-    "group": "그룹",
-    "ungrouped": "미분류"
-  },
   "context": {
     "title": "컨텍스트",
     "name": "이름",
@@ -1669,21 +1659,16 @@
       "updateRelationType": "관계 유형 수정",
       "deleteRelationType": "관계 유형 삭제",
       "getProjectSummary": "프로젝트 정보 가져오기",
-      "listTypeGroups": "타입 그룹 목록 가져오기",
-      "createTypeGroup": "타입 그룹 생성",
-      "updateTypeGroup": "타입 그룹 수정",
-      "deleteTypeGroup": "타입 그룹 삭제",
       "listMcpResources": "MCP 리소스 목록 가져오기",
       "listMcpResourceTemplates": "MCP 리소스 템플릿 목록 가져오기"
     },
     "toolDescription": {
-      "createSchema": "프로젝트에 새 스키마를 만듭니다. 선택적으로 그룹, 파일 템플릿, 연결 모델을 포함할 수 있습니다.",
-      "updateSchema": "기존 스키마의 이름, 설명, 그룹, 파일 템플릿, 연결 모델을 수정합니다.",
+      "createSchema": "프로젝트에 새 스키마를 만듭니다. 선택적으로 파일 템플릿과 연결 모델을 포함할 수 있습니다.",
+      "updateSchema": "기존 스키마의 이름, 설명, 파일 템플릿, 연결 모델을 수정합니다.",
       "createSchemaField": "스키마에 새 필드를 추가합니다.",
       "createModel": "의미와 필드 레시피를 가진 모델을 만듭니다.",
       "createConcept": "프로젝트에 새 개념을 만듭니다.",
-      "createNetwork": "프로젝트 또는 앱 범위에 새 네트워크를 만듭니다.",
-      "createTypeGroup": "스키마를 정리하는 폴더형 그룹을 만듭니다."
+      "createNetwork": "프로젝트 또는 앱 범위에 새 네트워크를 만듭니다."
     },
     "previewLabel": {
       "name": "이름",
@@ -1708,11 +1693,9 @@
       "profileImage": "프로필 이미지",
       "scope": "범위",
       "parentNetwork": "상위 네트워크",
-      "group": "그룹",
       "kind": "종류",
       "sortOrder": "정렬 순서",
-      "projectId": "프로젝트 ID",
-      "groupId": "그룹 ID"
+      "projectId": "프로젝트 ID"
     },
     "previewSummary": {
       "createSchema": "프로젝트 스키마를 생성합니다.",
@@ -1722,9 +1705,7 @@
       "createModel": "재사용 가능한 모델을 생성합니다.",
       "createConcept": "현재 프로젝트에 개념을 생성합니다.",
       "createProjectNetwork": "프로젝트 네트워크를 생성합니다.",
-      "createAppNetwork": "앱 범위 네트워크를 생성합니다.",
-      "createTypeGroup": "스키마를 정리할 타입 그룹을 생성합니다.",
-      "updateTypeGroup": "타입 그룹 설정 {count}개를 수정합니다."
+      "createAppNetwork": "앱 범위 네트워크를 생성합니다."
     },
     "card": {
       "proposalConfirm": "수정 완료",

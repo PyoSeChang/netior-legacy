@@ -23,14 +23,14 @@ export const NETIOR_MCP_TOOL_SPECS = {
     defaultProjectBinding: true,
   },
   create_schema: {
-    description: 'Create a new schema for a project, including optional group, file template, and attached models',
+    description: 'Create a new schema for a project, including file template and attached models',
     category: 'types',
     kind: 'mutation',
     scope: 'project',
     defaultProjectBinding: true,
   },
   update_schema: {
-    description: 'Update an existing schema, including optional group, file template, and attached models',
+    description: 'Update an existing schema, including file template and attached models',
     category: 'types',
     kind: 'mutation',
   },
@@ -91,6 +91,14 @@ export const NETIOR_MCP_TOOL_SPECS = {
   },
   list_models: {
     description: 'List models for a project',
+    category: 'types',
+    kind: 'query',
+    profiles: ['discovery', 'bootstrap-execution'],
+    scope: 'project',
+    defaultProjectBinding: true,
+  },
+  list_model_categories: {
+    description: 'List Model Category concepts for a project. Model categories are schema-backed concepts, not model string fields.',
     category: 'types',
     kind: 'query',
     profiles: ['discovery', 'bootstrap-execution'],
@@ -353,37 +361,12 @@ export const NETIOR_MCP_TOOL_SPECS = {
   },
   get_project_summary: {
     displayName: 'Project Summary',
-    description: 'Get a summary of a project including schema, model, type-group, concept, and network context',
+    description: 'Get a summary of a project including schema, model, concept, and network context',
     category: 'project',
     kind: 'analysis',
     profiles: ['discovery'],
     scope: 'project',
     defaultProjectBinding: true,
-  },
-  list_type_groups: {
-    description: 'List schema type groups in a project',
-    category: 'types',
-    kind: 'query',
-    profiles: ['discovery'],
-    scope: 'project',
-    defaultProjectBinding: true,
-  },
-  create_type_group: {
-    description: 'Create a folder-like organization group for schemas',
-    category: 'types',
-    kind: 'mutation',
-    scope: 'project',
-    defaultProjectBinding: true,
-  },
-  update_type_group: {
-    description: 'Update a type group name, parent, or ordering',
-    category: 'types',
-    kind: 'mutation',
-  },
-  delete_type_group: {
-    description: 'Delete a type group',
-    category: 'types',
-    kind: 'mutation',
   },
 } as const satisfies Record<string, NetiorMcpToolSpecEntry>;
 
@@ -399,7 +382,7 @@ function humanizeToolName(toolName: string): string {
 }
 
 function inferToolCategory(toolName: string): NarreToolCategory {
-  if (toolName.includes('schema') || toolName.includes('model') || toolName.includes('type_group') || toolName.includes('field')) {
+  if (toolName.includes('schema') || toolName.includes('model') || toolName.includes('field')) {
     return 'types';
   }
   if (toolName.includes('concept')) {
@@ -450,7 +433,6 @@ function inferToolScope(toolName: string): NetiorMcpToolScope {
     toolName.includes('project')
     || toolName.includes('schema')
     || toolName.includes('model')
-    || toolName.includes('type_group')
     || toolName.includes('concept')
     || toolName.includes('module')
   ) {

@@ -22,15 +22,10 @@ import { useEditorStore } from '../../stores/editor-store';
 import { useUIStore } from '../../stores/ui-store';
 import { useSchemaStore } from '../../stores/schema-store';
 import { useModelStore } from '../../stores/model-store';
-import { useTypeGroupStore } from '../../stores/type-group-store';
 import { useContextStore } from '../../stores/context-store';
 import { useProjectStore } from '../../stores/project-store';
 import { useNetworkObjectSelectionStore } from '../../stores/network-object-selection-store';
-import type { Model, NetworkObjectType, SchemaField, SemanticCategoryKey } from '@netior/shared/types';
-import {
-  SEMANTIC_CATEGORY_LABELS,
-  getSemanticCategoryLabelKey,
-} from '@netior/shared/constants';
+import type { Model, NetworkObjectType, SchemaField } from '@netior/shared/types';
 import { useI18n } from '../../hooks/useI18n';
 import type { RenderNode, RenderEdge, RenderPoint, RenderEdgeAnchor } from './types';
 import type { NodeResizeDirection } from './node-components/types';
@@ -700,7 +695,6 @@ function getGenericObjectPresentation(
   schemaIcons?: Map<string, string | null>,
   modelNames?: Map<string, string>,
   modelIcons?: Map<string, string | null>,
-  typeGroupNames?: Map<string, string>,
   contextNames?: Map<string, string>,
 ): { label: string; icon: string; semanticTypeLabel: string } {
   switch (objectType) {
@@ -727,12 +721,6 @@ function getGenericObjectPresentation(
         label: (objectRefId ? modelNames?.get(objectRefId) : undefined) ?? 'Model',
         icon: (objectRefId ? modelIcons?.get(objectRefId) : undefined) || 'boxes',
         semanticTypeLabel: 'Model',
-      };
-    case 'type_group':
-      return {
-        label: (objectRefId ? typeGroupNames?.get(objectRefId) : undefined) ?? 'Type Group',
-        icon: 'folder-tree',
-        semanticTypeLabel: '',
       };
     case 'context':
       return {
@@ -762,7 +750,6 @@ function toRenderNodes(
   schemaIcons: Map<string, string | null>,
   modelNames: Map<string, string>,
   modelIcons: Map<string, string | null>,
-  typeGroupNames: Map<string, string>,
   contextNames: Map<string, string>,
   portalChipsBySource: Map<string, EntryPortalChipSpec[]>,
 ): RenderNode[] {
@@ -898,7 +885,6 @@ function toRenderNodes(
       schemaIcons,
       modelNames,
       modelIcons,
-      typeGroupNames,
       contextNames,
     );
     const baseWidth = isHierarchy ? 340 : isGroup ? 320 : objectType === 'project' ? 180 : 140;
@@ -1561,7 +1547,6 @@ export function NetworkWorkspace({
   const loadSchemas = useSchemaStore((s) => s.loadByProject);
   const modelFieldsById = useSchemaStore((s) => s.fields);
   const loadModelFields = useSchemaStore((s) => s.loadFields);
-  const typeGroupsByKind = useTypeGroupStore((s) => s.groupsByKind);
   const contexts = useContextStore((s) => s.contexts);
   const membersByContext = useContextStore((s) => s.membersByContext);
   const activeContextId = useContextStore((s) => s.activeContextId);
@@ -1586,22 +1571,6 @@ export function NetworkWorkspace({
       void loadSchemas(projectId);
     }
   }, [loadModels, loadSchemas, projectId]);
-  const typeGroupNames = useMemo(() => {
-    const categoryKeys = new Set(Object.keys(SEMANTIC_CATEGORY_LABELS));
-    return new Map(Object.values(typeGroupsByKind).flat().map((group) => {
-      const category = group.id.match(/-model-([a-z_]+)$/)?.[1];
-      if (category && categoryKeys.has(category)) {
-        return [
-          group.id,
-          t(getSemanticCategoryLabelKey(category as SemanticCategoryKey) as never),
-        ] as const;
-      }
-      if (group.id.endsWith('-models')) {
-        return [group.id, t('model.title' as never)] as const;
-      }
-      return [group.id, group.name] as const;
-    }));
-  }, [typeGroupsByKind, t]);
   const isTemporalLayout =
     layoutPlugin.key === 'timeline'
     || layoutPlugin.key === 'gantt'
@@ -1801,8 +1770,7 @@ export function NetworkWorkspace({
       schemaIcons,
       modelNames,
       modelIcons,
-      typeGroupNames,
-        contextNames,
+      contextNames,
         entryPortalData.portalChipsBySource,
       ).map((node) => (
         node.isContainer
@@ -1838,7 +1806,6 @@ export function NetworkWorkspace({
     schemaIcons,
     modelNames,
     modelIcons,
-    typeGroupNames,
     contextNames,
     entryPortalData,
     containsParentByChild,

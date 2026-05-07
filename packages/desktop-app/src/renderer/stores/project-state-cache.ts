@@ -4,7 +4,6 @@ import { useModuleStore } from './module-store';
 import { useConceptStore } from './concept-store';
 import { useSchemaStore } from './schema-store';
 import { useModelStore } from './model-store';
-import { useTypeGroupStore } from './type-group-store';
 import { useFileStore, type OpenFile, type ClipboardAction, type ClipboardState } from './file-store';
 import type {
   Network, NetworkNode, Edge, Concept,
@@ -13,7 +12,6 @@ import type {
   Module, ModuleDirectory,
   ConceptProperty,
   Model, SchemaField,
-  TypeGroup,
   FileTreeNode,
 } from '@netior/shared/types';
 
@@ -59,12 +57,6 @@ interface ModelSnapshot {
   loading: boolean;
 }
 
-interface TypeGroupSnapshot {
-  groupsByKind: {
-    schema: TypeGroup[];
-  };
-}
-
 interface FileSnapshot {
   fileTree: FileTreeNode[];
   openFiles: OpenFile[];
@@ -80,7 +72,6 @@ interface WorkspaceSnapshot {
   concept: ConceptSnapshot;
   schemaStructure: SchemaStructureSnapshot;
   model: ModelSnapshot;
-  typeGroup: TypeGroupSnapshot;
   file: FileSnapshot;
 }
 
@@ -122,7 +113,6 @@ function capture(): WorkspaceSnapshot {
   const concept = useConceptStore.getState();
   const schemaStructure = useSchemaStore.getState();
   const model = useModelStore.getState();
-  const typeGroup = useTypeGroupStore.getState();
   const file = useFileStore.getState();
 
   return {
@@ -162,9 +152,6 @@ function capture(): WorkspaceSnapshot {
       models: model.models,
       loading: model.loading,
     },
-    typeGroup: {
-      groupsByKind: typeGroup.groupsByKind,
-    },
     file: {
       fileTree: file.fileTree,
       openFiles: file.openFiles,
@@ -182,7 +169,6 @@ function restore(snapshot: WorkspaceSnapshot): void {
   useConceptStore.setState(snapshot.concept);
   useSchemaStore.setState(snapshot.schemaStructure);
   useModelStore.setState(snapshot.model);
-  useTypeGroupStore.setState(snapshot.typeGroup);
   useFileStore.setState(snapshot.file);
 }
 
@@ -193,7 +179,6 @@ export function clearAllProjectStores(): void {
   useConceptStore.getState().clear();
   useSchemaStore.getState().clear();
   useModelStore.getState().clear();
-  useTypeGroupStore.getState().clear();
   useFileStore.getState().clear();
 }
 

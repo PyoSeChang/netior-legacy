@@ -24,7 +24,6 @@ import {
 import { useSchemaStore } from '../../stores/schema-store';
 import { useEditorStore } from '../../stores/editor-store';
 import { useModelStore } from '../../stores/model-store';
-import { useTypeGroupStore } from '../../stores/type-group-store';
 import { useEditorSession } from '../../hooks/useEditorSession';
 import { useI18n } from '../../hooks/useI18n';
 import { Input } from '../ui/Input';
@@ -95,19 +94,16 @@ function normalizeModelRefs(value: unknown): ModelRefKey[] {
   return [];
 }
 
-function normalizeCategoryKey(value: string, fallback: string): string {
-  const normalized = value
-    .trim()
-    .toLowerCase()
-    .replace(/[\s-]+/g, '_')
-    .replace(/[^a-z0-9_]/g, '')
-    .replace(/_+/g, '_')
-    .replace(/^_+|_+$/g, '');
-  return normalized || fallback;
-}
-
 function isBuiltInSemanticCategory(value: SemanticCategoryRefKey): value is SemanticCategoryKey {
   return Object.prototype.hasOwnProperty.call(SEMANTIC_CATEGORY_LABELS, value);
+}
+
+function getCategoryKeyFromModelSource(sourceRef?: string | null): SemanticCategoryRefKey {
+  const prefix = 'model-category.';
+  if (sourceRef?.startsWith(prefix)) {
+    return sourceRef.slice(prefix.length) as SemanticCategoryRefKey;
+  }
+  return 'knowledge';
 }
 
 function getDefaultFieldOptionsForSlot(slot: MeaningSlotKey): string | null {
@@ -135,8 +131,6 @@ export function SchemaEditor({ tab }: SchemaEditorProps): JSX.Element {
   const rawMeanings = useSchemaStore((s) => s.meanings[schemaId]);
   const rawProjectModels = useModelStore((s) => s.models);
   const loadModels = useModelStore((s) => s.loadByProject);
-  const rawModelGroups = useTypeGroupStore((s) => s.groupsByKind.model);
-  const loadModelGroups = useTypeGroupStore((s) => s.loadKind);
   const {
     loadFields,
     loadMeanings,
@@ -156,7 +150,6 @@ export function SchemaEditor({ tab }: SchemaEditorProps): JSX.Element {
   const fields = Array.isArray(rawFields) ? rawFields : EMPTY_LIST;
   const meanings = Array.isArray(rawMeanings) ? rawMeanings : EMPTY_LIST;
   const projectModels = Array.isArray(rawProjectModels) ? rawProjectModels : EMPTY_LIST;
-  const modelGroups = Array.isArray(rawModelGroups) ? rawModelGroups : EMPTY_LIST;
 
   const schema = schemas.find((a) => a.id === schemaId);
 
@@ -168,9 +161,8 @@ export function SchemaEditor({ tab }: SchemaEditorProps): JSX.Element {
   useEffect(() => {
     if (schema?.project_id) {
       void loadModels(schema.project_id);
-      void loadModelGroups(schema.project_id, 'model');
     }
-  }, [schema?.project_id, loadModels, loadModelGroups]);
+  }, [schema?.project_id, loadModels]);
 
   const session = useEditorSession<SchemaState>({
     tabId: tab.id,
@@ -216,7 +208,7 @@ export function SchemaEditor({ tab }: SchemaEditorProps): JSX.Element {
     if (schemaModels.length > 0) {
       return schemaModels.map((model) => ({
         key: model.key,
-        category: model.category,
+        category: getCategoryKeyFromModelSource(model.category_concept_source_ref),
         label: model.built_in ? t(getModelLabelKey(model.key as ModelKey) as never) : model.name,
         description: model.built_in ? t(getModelDescriptionKey(model.key as ModelKey) as never) : model.description,
         meanings: model.meaning_keys,
@@ -255,32 +247,21 @@ export function SchemaEditor({ tab }: SchemaEditorProps): JSX.Element {
       };
     };
 
-    const schemaModelsByGroupId = new Map(
-      projectModels
-        .filter((model) => model.target_kind === 'object' || model.target_kind === 'both')
-        .filter((model) => Boolean(model.group_id))
-        .map((model) => [model.group_id, model]),
-    );
-
-    for (const group of modelGroups) {
-      const normalizedGroupKey = normalizeCategoryKey(group.name, 'general') as SemanticCategoryRefKey;
-      if (normalizedGroupKey === 'models') continue;
-
-      const modelInGroup = schemaModelsByGroupId.get(group.id);
-      const categoryKey = modelInGroup?.category ?? normalizedGroupKey;
-      if (!categoryByKey.has(categoryKey)) {
-        categoryByKey.set(categoryKey, getCategoryOption(categoryKey, group.name));
-      }
-    }
-
     for (const definition of modelDefinitions) {
       if (!categoryByKey.has(definition.category)) {
         categoryByKey.set(definition.category, getCategoryOption(definition.category, definition.category));
       }
     }
 
+    for (const model of projectModels) {
+      const categoryKey = getCategoryKeyFromModelSource(model.category_concept_source_ref);
+      if ((model.target_kind === 'object' || model.target_kind === 'both') && !categoryByKey.has(categoryKey)) {
+        categoryByKey.set(categoryKey, getCategoryOption(categoryKey, model.category_concept_title ?? categoryKey));
+      }
+    }
+
     return [...categoryByKey.values()];
-  }, [modelDefinitions, modelGroups, projectModels, t]);
+  }, [modelDefinitions, projectModels, t]);
   const modelDefinitionByKey = useMemo(
     () => new Map(modelDefinitions.map((definition) => [definition.key, definition])),
     [modelDefinitions],

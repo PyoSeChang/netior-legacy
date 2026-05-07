@@ -11,7 +11,6 @@ const COUNT_NOUNS: Record<string, { ko: string; en: string }> = {
   list_models: { ko: 'model', en: 'model' },
   list_networks: { ko: 'network', en: 'network' },
   list_modules: { ko: 'module', en: 'module' },
-  list_type_groups: { ko: 'type group', en: 'type group' },
   list_model_fields: { ko: 'field', en: 'field' },
   glob_files: { ko: 'file', en: 'file' },
   grep_files: { ko: 'match', en: 'match' },

@@ -15,7 +15,6 @@ import {
   createNetwork,
   createProject,
   createModel,
-  createTypeGroup,
   deleteProject,
   deleteSchema,
   deleteConcept,
@@ -27,7 +26,6 @@ import {
   deleteNetwork,
   deleteProperty,
   deleteModel,
-  deleteTypeGroup,
   getContext,
   getContextMembers,
   getSchema,
@@ -63,7 +61,7 @@ import {
   listNetworks,
   listProjects,
   listModels,
-  listTypeGroups,
+  listModelCategories,
   parseFromAgent,
   removeEdgeVisual,
   removeContextMember,
@@ -95,7 +93,6 @@ import {
   updateProject,
   updateProjectRootDir,
   updateModel,
-  updateTypeGroup,
 } from '@netior/core';
 import type {
   Schema,
@@ -132,9 +129,6 @@ import type {
   ProjectUpdate,
   ModelCreate,
   ModelUpdate,
-  TypeGroupCreate,
-  TypeGroupKind,
-  TypeGroupUpdate,
   NetiorServiceResponse,
   FieldMeaningBindingKey,
   ModelKey,
@@ -509,6 +503,17 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
     return;
   }
 
+  if (pathname === '/model-categories') {
+    if (method === 'GET') {
+      const projectId = getRequiredSearchParam(url, 'projectId');
+      sendJson(res, 200, { ok: true, data: listModelCategories(projectId) });
+      return;
+    }
+
+    sendJson(res, 405, { ok: false, error: `Method ${method} not allowed for ${pathname}` });
+    return;
+  }
+
   if (pathname.startsWith('/models/')) {
     const id = decodeURIComponent(pathname.slice('/models/'.length));
 
@@ -528,42 +533,6 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
       const deleted = deleteModel(id);
       console.info('[ModelDelete][service-route] result', { id, deleted });
       sendJson(res, 200, { ok: true, data: deleted });
-      return;
-    }
-
-    sendJson(res, 405, { ok: false, error: `Method ${method} not allowed for ${pathname}` });
-    return;
-  }
-
-  if (pathname === '/type-groups') {
-    if (method === 'GET') {
-      const projectId = getRequiredSearchParam(url, 'projectId');
-      const kind = getRequiredSearchParam(url, 'kind') as TypeGroupKind;
-      sendJson(res, 200, { ok: true, data: listTypeGroups(projectId, kind) });
-      return;
-    }
-
-    if (method === 'POST') {
-      const body = await readJsonBody<TypeGroupCreate>(req);
-      sendJson(res, 200, { ok: true, data: createTypeGroup(body) });
-      return;
-    }
-
-    sendJson(res, 405, { ok: false, error: `Method ${method} not allowed for ${pathname}` });
-    return;
-  }
-
-  if (pathname.startsWith('/type-groups/')) {
-    const id = decodeURIComponent(pathname.slice('/type-groups/'.length));
-
-    if (method === 'PATCH') {
-      const body = await readJsonBody<TypeGroupUpdate>(req);
-      sendJson(res, 200, { ok: true, data: updateTypeGroup(id, body) });
-      return;
-    }
-
-    if (method === 'DELETE') {
-      sendJson(res, 200, { ok: true, data: deleteTypeGroup(id) });
       return;
     }
 

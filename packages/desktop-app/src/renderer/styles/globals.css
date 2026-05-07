@@ -166,7 +166,7 @@ body,
 
 .pane-surface {
   position: relative;
-  z-index: 1;
+  z-index: 6;
   min-height: 0;
   flex: 1 1 0%;
   overflow: hidden;
@@ -341,7 +341,7 @@ body,
   width: var(--tab-curve-size);
   height: var(--tab-curve-size);
   pointer-events: none;
-  z-index: 5;
+  z-index: 0;
 }
 
 .tab-active::before {

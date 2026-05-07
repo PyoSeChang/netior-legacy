@@ -3,12 +3,25 @@ import { getDatabase } from '../connection';
 import { createObject, deleteObjectByRef } from './objects';
 import { ensureProjectNodeInUniverseForDb, ensureProjectOntologyNetworkForDb } from './system-networks';
 import { seedBuiltInModelsForProjectDb } from './model';
+import { ensureModelCategoryTaxonomyForProjectDb } from './model-category';
 import type { Project, ProjectCreate, ProjectUpdate } from '@netior/shared/types';
+
+export const PROJECT_ROOT_DIR_DUPLICATE_ERROR = 'PROJECT_ROOT_DIR_DUPLICATE';
+
+function assertUniqueRootDir(rootDir: string, exceptProjectId?: string): void {
+  const db = getDatabase();
+  const existing = db.prepare('SELECT id FROM projects WHERE root_dir = ?').get(rootDir) as { id: string } | undefined;
+  if (existing && existing.id !== exceptProjectId) {
+    throw new Error(`${PROJECT_ROOT_DIR_DUPLICATE_ERROR}:${rootDir}`);
+  }
+}
 
 export function createProject(data: ProjectCreate): Project {
   const db = getDatabase();
   const id = randomUUID();
   const now = new Date().toISOString();
+
+  assertUniqueRootDir(data.root_dir);
 
   db.transaction(() => {
     db.prepare(
@@ -16,6 +29,7 @@ export function createProject(data: ProjectCreate): Project {
     ).run(id, data.name, data.root_dir, now, now);
 
     createObject('project', 'app', null, id);
+    ensureModelCategoryTaxonomyForProjectDb(db, id);
     seedBuiltInModelsForProjectDb(db, id);
     ensureProjectOntologyNetworkForDb(db, id);
     ensureProjectNodeInUniverseForDb(db, id);
@@ -38,6 +52,10 @@ export function updateProject(id: string, data: ProjectUpdate): Project | undefi
   const db = getDatabase();
   const existing = getProjectById(id);
   if (!existing) return undefined;
+
+  if (data.root_dir !== undefined) {
+    assertUniqueRootDir(data.root_dir, id);
+  }
 
   const now = new Date().toISOString();
   db.prepare(

@@ -20,10 +20,10 @@ import type {
   NetworkBreadcrumbItem,
   NetworkFullData,
   ModelRefKey,
-  SemanticCategoryRefKey,
   SemanticMeaningKey,
   MeaningSlotKey,
   ModelTargetKind,
+  OntologySourceKind,
 } from '@netior/shared/types';
 
 // ── Network ──
@@ -235,7 +235,9 @@ function toModel(row: ModelRow): Model {
   return {
     ...row,
     key: row.key as ModelRefKey,
-    category: row.category as SemanticCategoryRefKey,
+    category_concept_id: row.category_concept_id ?? null,
+    category_concept_title: row.category_concept_title ?? null,
+    category_concept_source_ref: row.category_concept_source_ref ?? null,
     target_kind: (row.target_kind ?? 'object') as ModelTargetKind,
     meaning_keys: parseStringArray<SemanticMeaningKey>(row.meaning_keys),
     core_slots: parseStringArray<MeaningSlotKey>(row.core_slots),
@@ -324,17 +326,26 @@ export function getNetworkFull(networkId: string): NetworkFullData | undefined {
 
   const edgeRows = db.prepare(
     `SELECT e.*,
-            m.id as m_id, m.project_id as m_project_id, m.group_id as m_group_id,
+            m.id as m_id, m.project_id as m_project_id,
             m.key as m_key, m.name as m_name,
-            m.description as m_description, m.category as m_category, m.target_kind as m_target_kind,
+            m.description as m_description,
+            m.category_concept_id as m_category_concept_id,
+            mc.title as m_category_concept_title,
+            mc.source_ref as m_category_concept_source_ref,
+            m.target_kind as m_target_kind,
             m.meaning_keys as m_meaning_keys, m.core_slots as m_core_slots,
             m.optional_slots as m_optional_slots, m.recipe_json as m_recipe_json,
             m.color as m_color, m.icon as m_icon,
             m.line_style as m_line_style,
             m.directed as m_directed, m.built_in as m_built_in,
+            m.source_kind as m_source_kind,
+            m.source_id as m_source_id,
+            m.source_ref as m_source_ref,
+            m.source_version as m_source_version,
             m.created_at as m_created_at, m.updated_at as m_updated_at
      FROM edges e
      LEFT JOIN models m ON e.model_id = m.id
+     LEFT JOIN concepts mc ON mc.id = m.category_concept_id
      WHERE e.network_id = ?`,
   ).all(network.id) as (Record<string, unknown>)[];
 
@@ -352,11 +363,12 @@ export function getNetworkFull(networkId: string): NetworkFullData | undefined {
         model: toModel({
           id: row.m_id as string,
           project_id: row.m_project_id as string,
-          group_id: (row.m_group_id as string | null) ?? null,
           key: row.m_key as string,
           name: row.m_name as string,
           description: (row.m_description as string | null) ?? null,
-          category: row.m_category as string,
+          category_concept_id: (row.m_category_concept_id as string | null) ?? null,
+          category_concept_title: (row.m_category_concept_title as string | null) ?? null,
+          category_concept_source_ref: (row.m_category_concept_source_ref as string | null) ?? null,
           target_kind: ((row.m_target_kind as string | null) ?? 'object') as ModelTargetKind,
           meaning_keys: (row.m_meaning_keys as string | null) ?? null,
           core_slots: (row.m_core_slots as string | null) ?? null,
@@ -367,6 +379,10 @@ export function getNetworkFull(networkId: string): NetworkFullData | undefined {
           line_style: ((row.m_line_style as string | null) ?? null) as EdgeLineStyle | null,
           directed: (row.m_directed as number | null) ?? null,
           built_in: (row.m_built_in as number | null) ?? 0,
+          source_kind: ((row.m_source_kind as string | null) ?? 'project') as OntologySourceKind,
+          source_id: (row.m_source_id as string | null) ?? null,
+          source_ref: (row.m_source_ref as string | null) ?? null,
+          source_version: (row.m_source_version as string | null) ?? null,
           created_at: row.m_created_at as string,
           updated_at: row.m_updated_at as string,
         }),

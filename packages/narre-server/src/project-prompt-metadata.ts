@@ -1,48 +1,16 @@
-import type { NetworkTreeNode, Model, Schema, SchemaField, SchemaMeaning, TypeGroup } from '@netior/shared/types';
-import type { SystemPromptParams, SystemPromptTypeGroupSummary } from './system-prompt.js';
+import type { NetworkTreeNode, Model, Schema, SchemaField, SchemaMeaning } from '@netior/shared/types';
+import type { SystemPromptParams } from './system-prompt.js';
 import {
   getProjectOntologyNetwork,
   getNetworkTree,
   getProjectById,
   getUniverseNetwork,
+  listModelCategories,
   listModels,
   listSchemaFields,
   listSchemaMeanings,
   listSchemas,
-  listTypeGroups,
 } from './netior-service-client.js';
-
-function buildTypeGroupPathMap(groups: TypeGroup[]): Map<string, string> {
-  const byId = new Map(groups.map((group) => [group.id, group]));
-  const cache = new Map<string, string>();
-
-  const resolvePath = (group: TypeGroup): string => {
-    const cached = cache.get(group.id);
-    if (cached) {
-      return cached;
-    }
-
-    const parent = group.parent_group_id ? byId.get(group.parent_group_id) : null;
-    const path = parent ? `${resolvePath(parent)}/${group.name}` : group.name;
-    cache.set(group.id, path);
-    return path;
-  };
-
-  for (const group of groups) {
-    resolvePath(group);
-  }
-
-  return cache;
-}
-
-function mapTypeGroups(groups: TypeGroup[]): SystemPromptTypeGroupSummary[] {
-  const pathMap = buildTypeGroupPathMap(groups);
-  return groups.map((group) => ({
-    id: group.id,
-    kind: group.kind,
-    path: pathMap.get(group.id) ?? group.name,
-  }));
-}
 
 function mapNetworkTree(nodes: NetworkTreeNode[]): NonNullable<SystemPromptParams['networkTree']> {
   return nodes.map((node) => ({
@@ -134,12 +102,18 @@ function mapModels(models: Model[]): SystemPromptParams['models'] {
     key: model.key,
     name: model.name,
     description: model.description,
-    category: model.category,
+    category_concept_id: model.category_concept_id,
+    category_concept_title: model.category_concept_title,
+    category_concept_source_ref: model.category_concept_source_ref,
     target_kind: model.target_kind,
     meaning_keys: model.meaning_keys,
     line_style: model.line_style,
     directed: model.directed,
     built_in: model.built_in,
+    source_kind: model.source_kind,
+    source_id: model.source_id,
+    source_ref: model.source_ref,
+    source_version: model.source_version,
     recipe_meanings: model.recipe.meanings.map((meaning) => ({
       key: meaning.key,
       name: meaning.name,
@@ -154,6 +128,17 @@ function mapModels(models: Model[]): SystemPromptParams['models'] {
   }));
 }
 
+function mapModelCategories(categories: Awaited<ReturnType<typeof listModelCategories>>): SystemPromptParams['modelCategories'] {
+  return categories.map((category) => ({
+    id: category.id,
+    title: category.title,
+    source_kind: category.source_kind,
+    source_id: category.source_id,
+    source_ref: category.source_ref,
+    source_version: category.source_version,
+  }));
+}
+
 export async function buildProjectPromptMetadata(projectId: string): Promise<SystemPromptParams> {
   const project = await getProjectById(projectId);
   if (!project) {
@@ -162,15 +147,15 @@ export async function buildProjectPromptMetadata(projectId: string): Promise<Sys
 
   const [
     models,
+    modelCategories,
     schemas,
-    schemaGroups,
     universeNetwork,
     ontologyNetwork,
     networkTree,
   ] = await Promise.all([
     listModels(projectId),
+    listModelCategories(projectId),
     listSchemas(projectId),
-    listTypeGroups(projectId, 'schema'),
     getUniverseNetwork(),
     getProjectOntologyNetwork(projectId),
     getNetworkTree(projectId),
@@ -187,15 +172,13 @@ export async function buildProjectPromptMetadata(projectId: string): Promise<Sys
       schemas.map(async (schema) => [schema.id, await listSchemaMeanings(schema.id)] as const),
     ),
   );
-  const typeGroups = mapTypeGroups(schemaGroups);
-
   return {
     projectId,
     projectName: project.name,
     projectRootDir: project.root_dir,
     schemas: mapSchemas(schemas, schemaFieldsById, schemaMeaningsById, schemaNameMap),
     models: mapModels(models),
-    typeGroups,
+    modelCategories: mapModelCategories(modelCategories),
     universeNetwork: universeNetwork
       ? { id: universeNetwork.id, name: universeNetwork.name }
       : null,

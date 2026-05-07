@@ -7,12 +7,9 @@ import type {
   FieldType,
   ObjectRecord,
   Model,
-  TypeGroup,
-  TypeGroupKind,
 } from '@netior/shared/types';
 
 export type AgentFieldType = Exclude<FieldType, 'schema_ref'> | 'schema_ref';
-export type AgentTypeGroupKind = 'schema';
 export type AgentObjectType = Exclude<ObjectRecord['object_type'], 'schema'> | 'schema';
 
 export function toAgentFieldType(fieldType: FieldType): AgentFieldType {
@@ -21,14 +18,6 @@ export function toAgentFieldType(fieldType: FieldType): AgentFieldType {
 
 export function fromAgentFieldType(fieldType: AgentFieldType): FieldType {
   return fieldType === 'schema_ref' ? 'schema_ref' : fieldType;
-}
-
-export function toAgentTypeGroupKind(kind: TypeGroupKind): AgentTypeGroupKind {
-  return kind;
-}
-
-export function fromAgentTypeGroupKind(kind: AgentTypeGroupKind): TypeGroupKind {
-  return kind;
 }
 
 export function toAgentObjectType(objectType: ObjectRecord['object_type']): AgentObjectType {
@@ -102,13 +91,6 @@ export function toAgentConcept(concept: Concept) {
   return {
     ...rest,
     schema_id: schema_id,
-  };
-}
-
-export function toAgentTypeGroup(group: TypeGroup) {
-  return {
-    ...group,
-    kind: toAgentTypeGroupKind(group.kind),
   };
 }
 

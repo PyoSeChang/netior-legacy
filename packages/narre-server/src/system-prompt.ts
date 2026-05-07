@@ -42,12 +42,18 @@ export interface SystemPromptModelSummary {
   icon?: string | null;
   color?: string | null;
   description?: string | null;
-  category?: string | null;
+  category_concept_id?: string | null;
+  category_concept_title?: string | null;
+  category_concept_source_ref?: string | null;
   target_kind?: 'object' | 'edge' | 'both' | string;
   meaning_keys?: string[];
   line_style?: string | null;
   directed?: boolean | null;
   built_in?: boolean;
+  source_kind?: string | null;
+  source_id?: string | null;
+  source_ref?: string | null;
+  source_version?: string | null;
   recipe_meanings?: Array<{
     key: string;
     name: string;
@@ -61,10 +67,13 @@ export interface SystemPromptModelSummary {
   }>;
 }
 
-export interface SystemPromptTypeGroupSummary {
+export interface SystemPromptModelCategorySummary {
   id: string;
-  kind: 'schema';
-  path: string;
+  title: string;
+  source_kind?: string | null;
+  source_id?: string | null;
+  source_ref?: string | null;
+  source_version?: string | null;
 }
 
 export interface SystemPromptNetworkSummary {
@@ -85,7 +94,7 @@ export interface SystemPromptParams {
   projectRootDir?: string | null;
   schemas: SystemPromptSchemaSummary[];
   models: SystemPromptModelSummary[];
-  typeGroups?: SystemPromptTypeGroupSummary[];
+  modelCategories?: SystemPromptModelCategorySummary[];
   universeNetwork?: SystemPromptNetworkSummary | null;
   ontologyNetwork?: SystemPromptNetworkSummary | null;
   networkTree?: SystemPromptNetworkTreeSummary[];
@@ -245,12 +254,22 @@ function buildModelList(models: SystemPromptModelSummary[]): string {
         : '(none)';
     const details = [
       `key=${model.key}`,
-      `category=${model.category ?? 'none'}`,
+      `category=${model.category_concept_title ?? model.category_concept_source_ref ?? 'none'}`,
       `target=${model.target_kind ?? 'object'}`,
-      model.built_in ? 'built_in=true' : 'built_in=false',
+      `source=${model.source_kind ?? (model.built_in ? 'system' : 'project')}${model.source_ref ? `:${model.source_ref}` : ''}`,
       ...(model.description ? [`description=${model.description}`] : []),
     ];
     return `- ${model.name} [id=${model.id}]: ${details.join(', ')}; meanings=${meaningLabels}`;
+  }).join('\n');
+}
+
+function buildModelCategoryList(categories: SystemPromptModelCategorySummary[] | undefined): string {
+  if (!categories || categories.length === 0) {
+    return '- (none defined yet)';
+  }
+  return categories.map((category) => {
+    const source = `${category.source_kind ?? 'project'}${category.source_ref ? `:${category.source_ref}` : ''}`;
+    return `- ${category.title} [id=${category.id}, source=${source}]`;
   }).join('\n');
 }
 
@@ -299,16 +318,6 @@ function buildRelationalSchemaSection(schemas: SystemPromptSchemaSummary[]): str
   return lines.join('\n');
 }
 
-function buildTypeGroupSection(typeGroups: SystemPromptTypeGroupSummary[] | undefined): string {
-  if (!typeGroups || typeGroups.length === 0) {
-    return '- (none defined yet)';
-  }
-
-  return typeGroups
-    .map((group) => `- ${group.kind} [id=${group.id}]: ${group.path}`)
-    .join('\n');
-}
-
 function collectNetworkTreeLines(
   nodes: SystemPromptNetworkTreeSummary[] | undefined,
   depth: number,
@@ -338,7 +347,7 @@ function buildNetworkContextSection(
     `- universe=${universeNetwork ? `${universeNetwork.name} [id=${universeNetwork.id}]` : 'none'}`,
     `- ontology=${ontologyNetwork ? `${ontologyNetwork.name} [id=${ontologyNetwork.id}]` : 'none'}`,
     '- universe_role=app-wide project portal network; do not edit it like a normal network',
-    '- ontology_role=project ontology network for schemas, semantic models, type groups, and their relations',
+    '- ontology_role=project ontology network for schemas, semantic models, and their relations',
   ];
 
   const treeLines: string[] = [];
@@ -365,17 +374,17 @@ export function buildSystemPrompt(
     projectRootDir,
     schemas,
     models,
-    typeGroups,
+    modelCategories,
     networkTree,
   } = params;
   const universeNetwork = params.universeNetwork;
   const ontologyNetwork = params.ontologyNetwork;
 
   const modelList = buildModelList(models);
+  const modelCategoryList = buildModelCategoryList(modelCategories);
   const schemaSurfaceList = buildSchemaSurfaceList(schemas);
   const relationalSchema = buildRelationalSchemaSection(schemas);
   const edgeModelList = buildEdgeModelList(models);
-  const typeGroupList = buildTypeGroupSection(typeGroups);
   const networkContext = buildNetworkContextSection(universeNetwork, ontologyNetwork, networkTree);
 
   return `You are Narre, the AI assistant for Netior (Map of Concepts).
@@ -394,6 +403,9 @@ Use this digest as the primary search surface before calling tools.
 ## Semantic Models (${models.length})
 ${modelList}
 
+## Model Category Concepts (${modelCategories?.length ?? 0})
+${modelCategoryList}
+
 ## Schema Search Surfaces (${schemas.length})
 ${schemaSurfaceList}
 
@@ -402,9 +414,6 @@ ${relationalSchema}
 
 ## Edge Models (${models.filter((model) => model.target_kind === 'edge' || model.target_kind === 'both').length})
 ${edgeModelList}
-
-## Type Groups
-${typeGroupList}
 
 ## Network Context
 ${networkContext}
@@ -425,7 +434,9 @@ ${networkContext}
   - concept instance search or mutation
   - node placement or network structure change
   - layout/view change
-  - type organization change
+- Model categories are concepts under the built-in Model Category schema. Do not store or invent model category strings.
+- To classify a model, use a Model Category concept ID. If missing, inspect or create the category concept first.
+- Network group nodes are projections from object fields or relations, not standalone taxonomy/type-group objects.
 - Use edge-target models for graph-edge meaning.
 - Use schema fields for concept property filtering, typed references, and type-level relations.
 - Ask a short confirmation only when the structural meaning can materially diverge:
@@ -443,7 +454,7 @@ ${networkContext}
   3. targeted lookup
   4. broad discovery
 - Use tools for live state, IDs that are still missing, membership, current values, ambiguity resolution, candidate sets, and destructive-change verification.
-- Do not re-fetch model lists, model lists, type groups, or network hierarchy just because those tools exist.
+- Do not re-fetch model lists or network hierarchy just because those tools exist.
 - The active project is already bound for this run. Do not search for project identity or pass raw 'project_id' values unless the user explicitly asks for cross-project work.
 - When a tool supports default project binding, omit 'project_id' and use the current project by default.
 - Prefer one precise inspection over multiple exploratory searches.

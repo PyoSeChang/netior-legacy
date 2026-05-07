@@ -37,10 +37,6 @@ import type {
   ModelCreate,
   ModelUpdate,
   NetiorServiceResponse,
-  TypeGroup,
-  TypeGroupCreate,
-  TypeGroupKind,
-  TypeGroupUpdate,
 } from '@netior/shared/types';
 
 function getNetiorServiceBaseUrl(): string {
@@ -212,6 +208,10 @@ export async function listModels(projectId: string): Promise<Model[]> {
   return requestJson<Model[]>(`/models${toQueryString({ projectId })}`);
 }
 
+export async function listModelCategories(projectId: string): Promise<Concept[]> {
+  return requestJson<Concept[]>(`/model-categories${toQueryString({ projectId })}`);
+}
+
 export async function createModel(data: ModelCreate): Promise<Model> {
   return requestJson<Model>('/models', {
     method: 'POST',
@@ -260,30 +260,6 @@ export async function updateConcept(id: string, data: ConceptUpdate): Promise<Co
 
 export async function deleteConcept(id: string): Promise<boolean> {
   return requestJson<boolean>(`/concepts/${encodeURIComponent(id)}`, {
-    method: 'DELETE',
-  });
-}
-
-export async function listTypeGroups(projectId: string, kind: TypeGroupKind): Promise<TypeGroup[]> {
-  return requestJson<TypeGroup[]>(`/type-groups${toQueryString({ projectId, kind })}`);
-}
-
-export async function createTypeGroup(data: TypeGroupCreate): Promise<TypeGroup> {
-  return requestJson<TypeGroup>('/type-groups', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
-}
-
-export async function updateTypeGroup(id: string, data: TypeGroupUpdate): Promise<TypeGroup | null> {
-  return requestJson<TypeGroup | null>(`/type-groups/${encodeURIComponent(id)}`, {
-    method: 'PATCH',
-    body: JSON.stringify(data),
-  });
-}
-
-export async function deleteTypeGroup(id: string): Promise<boolean> {
-  return requestJson<boolean>(`/type-groups/${encodeURIComponent(id)}`, {
     method: 'DELETE',
   });
 }

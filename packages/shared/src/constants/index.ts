@@ -186,12 +186,6 @@ export const IPC_CHANNELS = {
   RELATION_TYPE_UPDATE: 'relationType:update',
   RELATION_TYPE_DELETE: 'relationType:delete',
 
-  // Type Group
-  TYPE_GROUP_CREATE: 'typeGroup:create',
-  TYPE_GROUP_LIST: 'typeGroup:list',
-  TYPE_GROUP_UPDATE: 'typeGroup:update',
-  TYPE_GROUP_DELETE: 'typeGroup:delete',
-
   // Concept Property
   CONCEPT_PROP_UPSERT: 'conceptProp:upsert',
   CONCEPT_PROP_GET_BY_CONCEPT: 'conceptProp:getByConcept',
@@ -348,6 +342,22 @@ export const SEMANTIC_CATEGORY_LABELS: Readonly<Record<SemanticCategoryKey, stri
   quant: 'Quant',
   governance: 'Governance',
 } as const;
+
+export const SYSTEM_ONTOLOGY_SOURCE_ID = 'netior.system' as const;
+export const SYSTEM_ONTOLOGY_SOURCE_VERSION = '1' as const;
+export const MODEL_CATEGORY_SCHEMA_SOURCE_REF = 'schema.model_category' as const;
+
+export const MODEL_CATEGORY_CONCEPT_DEFINITIONS = Object.entries(SEMANTIC_CATEGORY_LABELS).map(([key, label], index) => ({
+  key: key as SemanticCategoryKey,
+  title: label,
+  sourceRef: `model-category.${key}`,
+  sortOrder: index,
+})) as readonly {
+  key: SemanticCategoryKey;
+  title: string;
+  sourceRef: string;
+  sortOrder: number;
+}[];
 
 export const MEANING_SLOT_DEFINITIONS: readonly MeaningSlotDefinition[] = [
   { key: 'start_at', fieldMeaning: 'time.start', category: 'time', label: 'Start At', allowedFieldTypes: ['date', 'datetime'], constraintLevel: 'strict' },

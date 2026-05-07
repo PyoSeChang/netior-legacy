@@ -11,6 +11,16 @@ import type {
   TerminalSessionState,
 } from '@netior/shared/types';
 
+interface BrowserDownloadEvent {
+  id: string;
+  state: 'started' | 'progress' | 'completed' | 'cancelled' | 'interrupted';
+  filename: string;
+  savePath: string;
+  receivedBytes: number;
+  totalBytes: number;
+  url: string;
+}
+
 function getWindowsBuildNumber(): number | null {
   if (process.platform !== 'win32') return null;
 
@@ -60,6 +70,15 @@ const electronAPI = {
   },
   shell: {
     openExternal: (url: string) => ipcRenderer.invoke('shell:openExternal', url) as Promise<boolean>,
+  },
+  browser: {
+    clearData: () => ipcRenderer.invoke('browser:clearData') as Promise<boolean>,
+    openDownload: (savePath: string) => ipcRenderer.invoke('browser:openDownload', savePath) as Promise<boolean>,
+    onDownloadEvent: (callback: (event: BrowserDownloadEvent) => void) => {
+      const handler = (_event: IpcRendererEvent, payload: BrowserDownloadEvent) => callback(payload);
+      ipcRenderer.on('browser:download-event', handler);
+      return () => { ipcRenderer.removeListener('browser:download-event', handler); };
+    },
   },
   notifications: {
     notifyAgent: (payload: {
@@ -151,13 +170,6 @@ const electronAPI = {
       ipcRenderer.invoke('context:addMember', contextId, memberType, memberId),
     removeMember: (id: string) => ipcRenderer.invoke('context:removeMember', id),
     getMembers: (contextId: string) => ipcRenderer.invoke('context:getMembers', contextId),
-  },
-  typeGroup: {
-    create: (data: Record<string, unknown>) => ipcRenderer.invoke('typeGroup:create', data),
-    list: (projectId: string, kind: string) => ipcRenderer.invoke('typeGroup:list', projectId, kind),
-    update: (id: string, data: Record<string, unknown>) =>
-      ipcRenderer.invoke('typeGroup:update', id, data),
-    delete: (id: string) => ipcRenderer.invoke('typeGroup:delete', id),
   },
   fileEntity: {
     create: (data: Record<string, unknown>) => ipcRenderer.invoke('file:create', data),

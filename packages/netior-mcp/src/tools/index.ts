@@ -10,7 +10,6 @@ import { registerNetworkNodeTools } from './network-node-tools.js';
 import { registerNetworkTools } from './network-tools.js';
 import { registerObjectTools } from './object-tools.js';
 import { registerProjectTools } from './project-tools.js';
-import { registerTypeGroupTools } from './type-group-tools.js';
 import { registerFilesystemTools } from './filesystem-tools.js';
 import { registerPdfTools } from './pdf-tools.js';
 import { registerModuleTools } from './module-tools.js';
@@ -22,7 +21,6 @@ export function registerAllTools(server: McpServer): void {
   registerSchemaMeaningTools(server);
   registerModelTools(server);
   registerCandidateSourceTools(server);
-  registerTypeGroupTools(server);
   registerConceptTools(server);
   registerConceptPropertyTools(server);
   registerObjectTools(server);

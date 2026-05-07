@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import type {
+  Concept,
   Model,
   SchemaField,
   EditorTab,
   FieldType,
-  SemanticCategoryRefKey,
   SemanticMeaningKey,
   ModelKey,
   ModelFieldRecipe,
@@ -15,23 +15,21 @@ import type {
   ModelRuleRecipe,
   ModelTargetKind,
   MeaningSlotKey,
-  SemanticCategoryKey,
 } from '@netior/shared/types';
 import {
-  SEMANTIC_CATEGORY_LABELS,
-  getSemanticCategoryLabelKey,
   getSemanticMeaningDescriptionKey,
   getSemanticMeaningLabelKey,
   getMeaningSlotDescriptionKey,
   getMeaningSlotLabelKey,
   MODEL_DEFINITIONS,
+  MODEL_CATEGORY_SCHEMA_SOURCE_REF,
 } from '@netior/shared/constants';
 import { Plus, Trash2 } from 'lucide-react';
 import { useModelStore } from '../../stores/model-store';
 import { useSchemaStore } from '../../stores/schema-store';
+import { useConceptStore } from '../../stores/concept-store';
 import { useProjectStore } from '../../stores/project-store';
 import { useEditorStore } from '../../stores/editor-store';
-import { useTypeGroupStore } from '../../stores/type-group-store';
 import { useEditorSession } from '../../hooks/useEditorSession';
 import { useI18n } from '../../hooks/useI18n';
 import { Input } from '../ui/Input';
@@ -66,7 +64,7 @@ interface ModelEditorState {
   key: ModelRefKey;
   name: string;
   description: string | null;
-  category: SemanticCategoryRefKey;
+  category_concept_id: string | null;
   target_kind: ModelTargetKind;
   meaning_keys: SemanticMeaningKey[];
   core_slots: MeaningSlotKey[];
@@ -88,7 +86,7 @@ const EMPTY_MODEL_STATE: ModelEditorState = {
   key: 'model',
   name: '',
   description: null,
-  category: 'knowledge',
+  category_concept_id: null,
   target_kind: 'object',
   meaning_keys: [],
   core_slots: [],
@@ -278,6 +276,11 @@ function normalizeModelRefs(value: unknown): ModelRefKey[] {
   return [];
 }
 
+function getModelCategorySourceKey(concept: Concept): string | null {
+  const prefix = 'model-category.';
+  return concept.source_ref?.startsWith(prefix) ? concept.source_ref.slice(prefix.length) : null;
+}
+
 export function ModelEditor({ tab }: ModelEditorProps): JSX.Element {
   const { t } = useI18n();
   const modelId = tab.targetId;
@@ -285,9 +288,11 @@ export function ModelEditor({ tab }: ModelEditorProps): JSX.Element {
   const loadModels = useModelStore((s) => s.loadByProject);
   const updateModel = useModelStore((s) => s.updateModel);
   const currentProject = useProjectStore((s) => s.currentProject);
-  const modelCategoryGroups = useTypeGroupStore((s) => s.groupsByKind.model);
-  const loadModelCategoryGroups = useTypeGroupStore((s) => s.loadKind);
-  const createModelCategoryGroup = useTypeGroupStore((s) => s.createGroup);
+  const concepts = useConceptStore((s) => s.concepts);
+  const loadConcepts = useConceptStore((s) => s.loadByProject);
+  const createConcept = useConceptStore((s) => s.createConcept);
+  const schemas = useSchemaStore((s) => s.schemas);
+  const loadSchemas = useSchemaStore((s) => s.loadByProject);
   const fieldsByModel = useSchemaStore((s) => s.fields);
   const meaningsByModel = useSchemaStore((s) => s.meanings);
   const loadModelFields = useSchemaStore((s) => s.loadFields);
@@ -301,14 +306,10 @@ export function ModelEditor({ tab }: ModelEditorProps): JSX.Element {
   useEffect(() => {
     if (projectId) {
       void loadModels(projectId);
+      void loadSchemas(projectId);
+      void loadConcepts(projectId);
     }
-  }, [loadModels, projectId]);
-
-  useEffect(() => {
-    if (projectId) {
-      void loadModelCategoryGroups(projectId, 'model');
-    }
-  }, [loadModelCategoryGroups, projectId]);
+  }, [loadConcepts, loadModels, loadSchemas, projectId]);
 
   const projectModels = useMemo(
     () => models.filter((model) => !projectId || model.project_id === projectId),
@@ -347,7 +348,7 @@ export function ModelEditor({ tab }: ModelEditorProps): JSX.Element {
         key: current.key,
         name: current.name,
         description: current.description,
-        category: current.category,
+        category_concept_id: current.category_concept_id,
         target_kind: current.target_kind,
         meaning_keys: current.meaning_keys,
         core_slots: current.core_slots,
@@ -369,7 +370,7 @@ export function ModelEditor({ tab }: ModelEditorProps): JSX.Element {
         key: modelKey,
         name: state.name,
         description: state.description,
-        category: normalizeKey(String(state.category), 'general') as SemanticCategoryRefKey,
+        category_concept_id: state.category_concept_id,
         target_kind: state.target_kind,
         meaning_keys: state.meaning_keys,
         core_slots: state.core_slots,
@@ -411,9 +412,7 @@ export function ModelEditor({ tab }: ModelEditorProps): JSX.Element {
     ]);
 
     return projectModels.flatMap((model) => {
-      const modelModelRefs = [
-        ...normalizeModelRefs(model.models),
-      ];
+      const modelModelRefs = normalizeModelRefs((model as unknown as { models?: unknown }).models);
       const linkedToModel = modelModelRefs.includes(modelKey);
       const sourceMeanings = meaningsByModel[model.id] ?? [];
       const modelMeanings = sourceMeanings.filter((meaning) => (
@@ -451,34 +450,47 @@ export function ModelEditor({ tab }: ModelEditorProps): JSX.Element {
     () => new Map(FIELD_TYPE_OPTIONS.map((option) => [option.value, t(option.labelKey as never)])),
     [t],
   );
+  const modelCategorySchema = useMemo(() => (
+    schemas.find((schema) => (
+      schema.project_id === projectId
+      && schema.source_ref === MODEL_CATEGORY_SCHEMA_SOURCE_REF
+    )) ?? null
+  ), [projectId, schemas]);
+  const modelCategoryConcepts = useMemo(() => (
+    concepts
+      .filter((concept) => (
+        concept.project_id === projectId
+        && (
+          concept.schema_id === modelCategorySchema?.id
+          || concept.source_ref?.startsWith('model-category.')
+        )
+      ))
+      .sort((a, b) => {
+        const aKey = getModelCategorySourceKey(a) ?? a.title;
+        const bKey = getModelCategorySourceKey(b) ?? b.title;
+        return aKey.localeCompare(bKey);
+      })
+  ), [concepts, modelCategorySchema?.id, projectId]);
   const modelCategoryOptions = useMemo(() => {
-    const builtInOptions = Object.keys(SEMANTIC_CATEGORY_LABELS).map((category) => {
-      const key = getSemanticCategoryLabelKey(category as SemanticCategoryKey);
-      const label = t(key as never);
-      return {
-        value: category,
-        label: label === key ? SEMANTIC_CATEGORY_LABELS[category as SemanticCategoryKey] : label,
-      };
-    });
-    const customOptions = modelCategoryGroups.map((group) => ({
-      value: normalizeKey(group.name, 'general'),
-      label: group.name,
-    }));
-    const optionByValue = new Map([...builtInOptions, ...customOptions].map((option) => [option.value, option]));
-    if (currentEditorState.category && !optionByValue.has(currentEditorState.category)) {
-      optionByValue.set(currentEditorState.category, {
-        value: currentEditorState.category,
-        label: currentEditorState.category,
+    const optionByValue = new Map(modelCategoryConcepts.map((concept) => [concept.id, {
+      value: concept.id,
+      label: concept.title,
+    }]));
+    if (currentEditorState.category_concept_id && !optionByValue.has(currentEditorState.category_concept_id)) {
+      optionByValue.set(currentEditorState.category_concept_id, {
+        value: currentEditorState.category_concept_id,
+        label: model?.category_concept_title ?? currentEditorState.category_concept_id,
       });
     }
     return [
+      { value: '', label: t('model.categoryPlaceholder' as never) },
       ...optionByValue.values(),
       {
         value: ADD_CATEGORY_OPTION_VALUE,
         label: t('model.addCategory' as never),
       },
     ];
-  }, [currentEditorState.category, modelCategoryGroups, t]);
+  }, [currentEditorState.category_concept_id, model?.category_concept_title, modelCategoryConcepts, t]);
   const visualModeOptions = useMemo(() => [
     { value: 'icon', label: t('concept.visualModeOptions.icon' as never) },
     { value: 'image', label: t('concept.visualModeOptions.image' as never) },
@@ -627,15 +639,17 @@ export function ModelEditor({ tab }: ModelEditorProps): JSX.Element {
     return description === key ? field.description ?? '' : description;
   };
   const handleCreateCategory = async () => {
-    if (!projectId || !newCategoryName.trim()) return;
+    if (!newCategoryName.trim() || !projectId || !modelCategorySchema) return;
     const name = newCategoryName.trim();
-    await createModelCategoryGroup({
+    const sourceKey = normalizeKey(name, 'category');
+    const created = await createConcept({
       project_id: projectId,
-      kind: 'model',
-      name,
-      sort_order: modelCategoryGroups.length,
+      schema_id: modelCategorySchema.id,
+      title: name,
+      source_kind: 'project',
+      source_ref: `model-category.${sourceKey}`,
     });
-    update({ category: normalizeKey(name, 'general') as SemanticCategoryRefKey });
+    update({ category_concept_id: created.id });
     setNewCategoryName('');
     setShowCategoryCreator(false);
   };
@@ -690,7 +704,7 @@ export function ModelEditor({ tab }: ModelEditorProps): JSX.Element {
             <div className="flex flex-col gap-1">
               <label className="text-xs font-medium text-secondary">{t('model.category' as never)}</label>
               <Select
-                value={session.state.category}
+                value={session.state.category_concept_id ?? ''}
                 options={modelCategoryOptions}
                 onChange={(event) => {
                   if (event.target.value === ADD_CATEGORY_OPTION_VALUE) {
@@ -698,7 +712,7 @@ export function ModelEditor({ tab }: ModelEditorProps): JSX.Element {
                     return;
                   }
                   setShowCategoryCreator(false);
-                  update({ category: event.target.value as SemanticCategoryRefKey });
+                  update({ category_concept_id: event.target.value || null });
                 }}
               />
             </div>
@@ -725,7 +739,7 @@ export function ModelEditor({ tab }: ModelEditorProps): JSX.Element {
                 type="button"
                 variant="secondary"
                 onClick={handleCreateCategory}
-                disabled={!newCategoryName.trim()}
+                disabled={!newCategoryName.trim() || !modelCategorySchema}
               >
                 <Plus size={14} />
                 {t('model.addCategory' as never)}

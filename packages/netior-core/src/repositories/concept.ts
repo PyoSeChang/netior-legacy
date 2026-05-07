@@ -142,10 +142,14 @@ export function createConcept(data: ConceptCreate): Concept {
       icon,
       content,
       agent_content,
+      source_kind,
+      source_id,
+      source_ref,
+      source_version,
       created_at,
       updated_at
     )
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     id,
     data.project_id,
@@ -157,6 +161,10 @@ export function createConcept(data: ConceptCreate): Concept {
     icon,
     content,
     null,
+    data.source_kind ?? 'project',
+    data.source_id ?? null,
+    data.source_ref ?? null,
+    data.source_version ?? null,
     now,
     now,
   );
@@ -200,6 +208,10 @@ export function updateConcept(id: string, data: ConceptUpdate): Concept | undefi
          icon = ?,
          content = ?,
          agent_content = ?,
+         source_kind = ?,
+         source_id = ?,
+         source_ref = ?,
+         source_version = ?,
          updated_at = ?
      WHERE id = ?`,
   ).run(
@@ -215,6 +227,10 @@ export function updateConcept(id: string, data: ConceptUpdate): Concept | undefi
     data.icon !== undefined ? data.icon : existing.icon,
     data.content !== undefined ? data.content : existing.content,
     data.agent_content !== undefined ? data.agent_content : existing.agent_content,
+    data.source_kind !== undefined ? data.source_kind : existing.source_kind,
+    data.source_id !== undefined ? data.source_id : existing.source_id,
+    data.source_ref !== undefined ? data.source_ref : existing.source_ref,
+    data.source_version !== undefined ? data.source_version : existing.source_version,
     now,
     id,
   );

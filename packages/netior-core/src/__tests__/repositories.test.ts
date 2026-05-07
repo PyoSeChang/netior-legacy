@@ -35,6 +35,7 @@ import {
 } from '../repositories/module';
 import { getEditorPrefs, upsertEditorPrefs } from '../repositories/editor-prefs';
 import { createModel, deleteModel, getModel, listModels, updateModel } from '../repositories/model';
+import { listModelCategories } from '../repositories/model-category';
 import { createRelationType, listRelationTypes, getRelationType, updateRelationType, deleteRelationType } from '../repositories/relation-type';
 import { createObject, getObject, getObjectByRef, deleteObject, deleteObjectByRef } from '../repositories/objects';
 import { createContext, listContexts, getContext, updateContext, deleteContext, addContextMember, removeContextMember, getContextMembers } from '../repositories/context';
@@ -49,7 +50,6 @@ import {
   updateField,
   updateMeaningSlotBinding,
 } from '../repositories/schema';
-import { createTypeGroup, listTypeGroups, getTypeGroup, updateTypeGroup, deleteTypeGroup } from '../repositories/type-group';
 
 describe('Repositories', () => {
   beforeEach(() => {
@@ -874,10 +874,19 @@ describe('Repositories', () => {
     });
 
     it('should create, update, and delete custom models', () => {
+      const categorySchemaId = listModelCategories(projectId)[0]?.schema_id;
+      expect(categorySchemaId).toBeDefined();
+      const experimentCategory = createConcept({
+        project_id: projectId,
+        schema_id: categorySchemaId!,
+        title: 'Experiment',
+        source_kind: 'project',
+        source_ref: 'model-category.experiment',
+      });
       const model = createModel({
         project_id: projectId,
         name: 'Experiment Rhythm',
-        category: 'experiment',
+        category_concept_id: experimentCategory.id,
         recipe: {
           meanings: [{
             id: 'cadence',
@@ -897,7 +906,8 @@ describe('Repositories', () => {
       });
 
       expect(model.key).toBe('experiment_rhythm');
-      expect(model.category).toBe('experiment');
+      expect(model.category_concept_id).toBe(experimentCategory.id);
+      expect(model.category_concept_title).toBe('Experiment');
       expect(model.recipe.meanings[0]?.fields[0]?.name).toBe('Frequency');
       expect(model.recipe.meanings[0]?.fields[0]?.field_types).toEqual(['select', 'text']);
       expect(getObjectByRef('model', model.id)).toBeDefined();
@@ -920,10 +930,11 @@ describe('Repositories', () => {
     });
 
     it('should keep schema model references aligned when a custom model key changes', () => {
+      const knowledgeCategory = listModelCategories(projectId).find((category) => category.source_ref === 'model-category.knowledge');
       const model = createModel({
         project_id: projectId,
         name: 'Evidence Lifecycle',
-        category: 'knowledge',
+        category_concept_id: knowledgeCategory?.id ?? null,
         meaning_keys: ['versioning'],
       });
       const schema = createSchema({
@@ -1670,83 +1681,4 @@ describe('Repositories', () => {
     });
   });
 
-  // --- Type Group ---
-
-  describe('TypeGroup', () => {
-    let projectId: string;
-
-    beforeEach(() => {
-      projectId = createProject({ name: 'Test', root_dir: '/tg-test' }).id;
-    });
-
-    it('should create and list type groups', () => {
-      const g = createTypeGroup({ project_id: projectId, kind: 'schema', name: 'People' });
-      expect(g.id).toBeDefined();
-      expect(g.name).toBe('People');
-      expect(g.kind).toBe('schema');
-      expect(g.sort_order).toBe(0);
-
-      const list = listTypeGroups(projectId, 'schema');
-      expect(list).toHaveLength(1);
-      expect(list[0].id).toBe(g.id);
-
-      const object = getObjectByRef('type_group', g.id);
-      expect(object?.object_type).toBe('type_group');
-      expect(object?.project_id).toBe(projectId);
-    });
-
-    it('should filter by kind', () => {
-      createTypeGroup({ project_id: projectId, kind: 'schema', name: 'A' });
-      createTypeGroup({ project_id: projectId, kind: 'relation_type', name: 'R' });
-      expect(listTypeGroups(projectId, 'schema')).toHaveLength(1);
-      expect(listTypeGroups(projectId, 'relation_type')).toHaveLength(1);
-    });
-
-    it('should get type group by id', () => {
-      const g = createTypeGroup({ project_id: projectId, kind: 'schema', name: 'G' });
-      expect(getTypeGroup(g.id)?.name).toBe('G');
-      expect(getTypeGroup('nonexistent')).toBeUndefined();
-    });
-
-    it('should update type group', () => {
-      const g = createTypeGroup({ project_id: projectId, kind: 'schema', name: 'Old' });
-      const updated = updateTypeGroup(g.id, { name: 'New', sort_order: 5 });
-      expect(updated?.name).toBe('New');
-      expect(updated?.sort_order).toBe(5);
-    });
-
-    it('should delete type group', () => {
-      const g = createTypeGroup({ project_id: projectId, kind: 'schema', name: 'Del' });
-      expect(deleteTypeGroup(g.id)).toBe(true);
-      expect(listTypeGroups(projectId, 'schema')).toHaveLength(0);
-      expect(getObjectByRef('type_group', g.id)).toBeUndefined();
-    });
-
-    it('should SET NULL schema group_id when type group is deleted', () => {
-      const g = createTypeGroup({ project_id: projectId, kind: 'schema', name: 'Grp' });
-      const a = createSchema({ project_id: projectId, name: 'A' });
-      // Assign group_id via direct SQL since updateSchema doesn't handle group_id yet
-      const db = getTestDb();
-      db.prepare('UPDATE schemas SET group_id = ? WHERE id = ?').run(g.id, a.id);
-      deleteTypeGroup(g.id);
-      const row = db.prepare('SELECT group_id FROM schemas WHERE id = ?').get(a.id) as { group_id: string | null };
-      expect(row.group_id).toBeNull();
-    });
-
-    it('should SET NULL relation_type group_id when type group is deleted', () => {
-      const g = createTypeGroup({ project_id: projectId, kind: 'relation_type', name: 'Grp' });
-      const rt = createRelationType({ project_id: projectId, name: 'RT' });
-      const db = getTestDb();
-      db.prepare('UPDATE relation_types SET group_id = ? WHERE id = ?').run(g.id, rt.id);
-      deleteTypeGroup(g.id);
-      const row = db.prepare('SELECT group_id FROM relation_types WHERE id = ?').get(rt.id) as { group_id: string | null };
-      expect(row.group_id).toBeNull();
-    });
-
-    it('should cascade delete when project is deleted', () => {
-      createTypeGroup({ project_id: projectId, kind: 'schema', name: 'Cascade' });
-      deleteProject(projectId);
-      expect(listTypeGroups(projectId, 'schema')).toHaveLength(0);
-    });
-  });
 });

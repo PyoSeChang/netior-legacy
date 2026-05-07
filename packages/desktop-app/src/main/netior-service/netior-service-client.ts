@@ -51,10 +51,6 @@ import type {
   Model,
   ModelCreate,
   ModelUpdate,
-  TypeGroup,
-  TypeGroupCreate,
-  TypeGroupKind,
-  TypeGroupUpdate,
   Layout,
   NetiorServiceResponse,
 } from '@netior/shared/types';
@@ -393,30 +389,6 @@ export async function updateRemoteModel(id: string, data: ModelUpdate): Promise<
 
 export async function deleteRemoteModel(id: string): Promise<boolean> {
   return requestJson<boolean>(`/models/${encodeURIComponent(id)}`, {
-    method: 'DELETE',
-  });
-}
-
-export async function listRemoteTypeGroups(projectId: string, kind: TypeGroupKind): Promise<TypeGroup[]> {
-  return requestJson<TypeGroup[]>(`/type-groups${toQueryString({ projectId, kind })}`);
-}
-
-export async function createRemoteTypeGroup(data: TypeGroupCreate): Promise<TypeGroup> {
-  return requestJson<TypeGroup>('/type-groups', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
-}
-
-export async function updateRemoteTypeGroup(id: string, data: TypeGroupUpdate): Promise<TypeGroup | null> {
-  return requestJson<TypeGroup | null>(`/type-groups/${encodeURIComponent(id)}`, {
-    method: 'PATCH',
-    body: JSON.stringify(data),
-  });
-}
-
-export async function deleteRemoteTypeGroup(id: string): Promise<boolean> {
-  return requestJson<boolean>(`/type-groups/${encodeURIComponent(id)}`, {
     method: 'DELETE',
   });
 }

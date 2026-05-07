@@ -1,5 +1,5 @@
-﻿import { app, shell, BrowserWindow, ipcMain, Menu, Notification, nativeImage, screen } from 'electron';
-import { join } from 'path';
+import { app, shell, BrowserWindow, ipcMain, Menu, Notification, nativeImage, screen, session, dialog } from 'electron';
+import { basename, join } from 'path';
 import { electronApp, optimizer, is } from '@electron-toolkit/utils';
 import { mkdirSync, existsSync } from 'fs';
 import { registerAllIpc } from './ipc';
@@ -53,6 +53,110 @@ function getNotificationIcon() {
 
 let mainWindow: BrowserWindow | null = null;
 const detachedWindows = new Map<string, BrowserWindow>();
+const browserPartition = 'persist:netior-browser';
+const browserPermissionDecisions = new Map<string, boolean>();
+
+interface BrowserDownloadEvent {
+  id: string;
+  state: 'started' | 'progress' | 'completed' | 'cancelled' | 'interrupted';
+  filename: string;
+  savePath: string;
+  receivedBytes: number;
+  totalBytes: number;
+  url: string;
+}
+
+function sendBrowserDownloadEvent(payload: BrowserDownloadEvent): void {
+  const targets = [mainWindow, ...detachedWindows.values()].filter(
+    (win): win is BrowserWindow => Boolean(win) && !win.isDestroyed(),
+  );
+  for (const win of targets) {
+    win.webContents.send('browser:download-event', payload);
+  }
+}
+
+function getAvailableDownloadPath(filename: string): string {
+  const safeFilename = basename(filename || 'download') || 'download';
+  const dotIndex = safeFilename.lastIndexOf('.');
+  const hasExtension = dotIndex > 0;
+  const stem = hasExtension ? safeFilename.slice(0, dotIndex) : safeFilename;
+  const extension = hasExtension ? safeFilename.slice(dotIndex) : '';
+  let candidate = join(app.getPath('downloads'), safeFilename);
+  let suffix = 1;
+
+  while (existsSync(candidate)) {
+    candidate = join(app.getPath('downloads'), `${stem} (${suffix})${extension}`);
+    suffix += 1;
+  }
+
+  return candidate;
+}
+
+function configureBrowserSession(): void {
+  const browserSession = session.fromPartition(browserPartition);
+
+  browserSession.setPermissionRequestHandler((webContents, permission, callback, details) => {
+    const requestingUrl = details.requestingUrl || webContents.getURL();
+    let origin = 'This site';
+    try {
+      origin = new URL(requestingUrl).origin;
+    } catch { /* keep fallback */ }
+
+    const key = `${origin}:${permission}`;
+    const remembered = browserPermissionDecisions.get(key);
+    if (remembered !== undefined) {
+      callback(remembered);
+      return;
+    }
+
+    const owner = BrowserWindow.fromWebContents(webContents) ?? mainWindow ?? undefined;
+    const options = {
+      type: 'question' as const,
+      buttons: ['Allow', 'Block'],
+      defaultId: 1,
+      cancelId: 1,
+      title: 'Browser permission request',
+      message: `${origin} wants to use ${permission}.`,
+      detail: 'This applies to the embedded Netior browser session.',
+      noLink: true,
+    };
+
+    const result = owner
+      ? dialog.showMessageBox(owner, options)
+      : dialog.showMessageBox(options);
+
+    void result.then(({ response }) => {
+      const allowed = response === 0;
+      browserPermissionDecisions.set(key, allowed);
+      callback(allowed);
+    }).catch(() => callback(false));
+  });
+
+  browserSession.on('will-download', (_event, item) => {
+    const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const filename = basename(item.getFilename() || 'download');
+    const savePath = getAvailableDownloadPath(filename);
+    item.setSavePath(savePath);
+
+    const createPayload = (state: BrowserDownloadEvent['state']): BrowserDownloadEvent => ({
+      id,
+      state,
+      filename,
+      savePath,
+      receivedBytes: item.getReceivedBytes(),
+      totalBytes: item.getTotalBytes(),
+      url: item.getURL(),
+    });
+
+    sendBrowserDownloadEvent(createPayload('started'));
+    item.on('updated', () => {
+      sendBrowserDownloadEvent(createPayload('progress'));
+    });
+    item.once('done', (_doneEvent, state) => {
+      sendBrowserDownloadEvent(createPayload(state === 'completed' ? 'completed' : state));
+    });
+  });
+}
 
 interface StoredWindowBounds {
   width: number;
@@ -193,6 +297,7 @@ async function createWindow(): Promise<void> {
       sandbox: false,
       contextIsolation: true,
       nodeIntegration: false,
+      webviewTag: true,
       devTools: true,
     },
   });
@@ -320,6 +425,7 @@ app.whenReady().then(async () => {
     throw new Error('Netior service failed to start');
   }
   console.log('[netior-service] Startup enabled');
+  configureBrowserSession();
   registerAllIpc();
 
   // Window control IPC
@@ -348,6 +454,17 @@ app.whenReady().then(async () => {
   });
   ipcMain.handle('shell:openExternal', async (_event, url: string) => {
     await shell.openExternal(url);
+    return true;
+  });
+  ipcMain.handle('browser:clearData', async () => {
+    const browserSession = session.fromPartition(browserPartition);
+    browserPermissionDecisions.clear();
+    await browserSession.clearStorageData();
+    await browserSession.clearCache();
+    return true;
+  });
+  ipcMain.handle('browser:openDownload', async (_event, savePath: string) => {
+    shell.showItemInFolder(savePath);
     return true;
   });
   ipcMain.handle('agent:notifyNative', (event, payload: {
@@ -429,6 +546,7 @@ app.whenReady().then(async () => {
         sandbox: false,
         contextIsolation: true,
         nodeIntegration: false,
+        webviewTag: true,
         devTools: true,
       },
     });

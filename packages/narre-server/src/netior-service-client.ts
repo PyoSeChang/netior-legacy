@@ -3,12 +3,11 @@
   Network,
   NetworkTreeNode,
   Project,
+  Concept,
   Model,
   Schema,
   SchemaField,
   SchemaMeaning,
-  TypeGroup,
-  TypeGroupKind,
 } from '@netior/shared/types';
 
 function toQueryString(params: Record<string, string | undefined>): string {
@@ -78,8 +77,8 @@ export async function listModels(projectId: string): Promise<Model[]> {
   return requestJson<Model[]>(`/models${toQueryString({ projectId })}`);
 }
 
-export async function listTypeGroups(projectId: string, kind: TypeGroupKind): Promise<TypeGroup[]> {
-  return requestJson<TypeGroup[]>(`/type-groups${toQueryString({ projectId, kind })}`);
+export async function listModelCategories(projectId: string): Promise<Concept[]> {
+  return requestJson<Concept[]>(`/model-categories${toQueryString({ projectId })}`);
 }
 
 export async function getUniverseNetwork(): Promise<Network | null> {

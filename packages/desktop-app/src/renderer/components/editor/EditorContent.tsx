@@ -14,6 +14,7 @@ import { NarreEditor } from './NarreEditor';
 import { AgentEditor } from './AgentEditor';
 import { FileMetadataEditor } from './FileMetadataEditor';
 import { ContextEditor } from './ContextEditor';
+import { BrowserEditor } from './BrowserEditor';
 import { useEditorStore, MAIN_HOST_ID } from '../../stores/editor-store';
 import { focusHyperTerminalSurface } from '../../lib/terminal/hyper-fork/term-registry';
 
@@ -86,6 +87,8 @@ export function EditorContent({ tab }: EditorContentProps): JSX.Element {
       content = <FileMetadataEditor tab={tab} />; break;
     case 'context':
       content = <ContextEditor tab={tab} />; break;
+    case 'browser':
+      content = <BrowserEditor tab={tab} />; break;
     default:
       content = (
         <div className="flex h-full items-center justify-center text-xs text-muted">

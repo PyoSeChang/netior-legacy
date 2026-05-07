@@ -86,7 +86,7 @@ verify:
       expect:
         count_min: 1
         count_max: 4
-        sequence: [ask, ask, propose, create_type_group]
+        sequence: [ask, ask, propose, create_schema]
 
   - name: "network creation tool usage is bounded"
     tool:

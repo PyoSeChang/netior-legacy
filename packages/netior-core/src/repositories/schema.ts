@@ -244,8 +244,11 @@ function ensureMeaningForDb(
   ).count;
 
   db.prepare(
-    `INSERT OR IGNORE INTO schema_meanings (id, schema_id, meaning_key, label, source, source_model, sort_order, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT OR IGNORE INTO schema_meanings (
+      id, schema_id, meaning_key, label, source, source_model, sort_order,
+      source_kind, source_id, source_ref, source_version, created_at, updated_at
+    )
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     id,
     schemaId,
@@ -254,6 +257,10 @@ function ensureMeaningForDb(
     options.source ?? (options.sourceModel ? 'model' : 'manual'),
     options.sourceModel ?? null,
     sortOrder,
+    'project',
+    null,
+    null,
+    null,
     now,
     now,
   );
@@ -347,12 +354,14 @@ export function createSchema(data: SchemaCreate): Schema {
   const models = data.models ?? [];
 
   db.prepare(
-    `INSERT INTO schemas (id, project_id, group_id, name, description, icon, color, node_shape, file_template, models, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO schemas (
+      id, project_id, name, description, icon, color, node_shape, file_template, models,
+      source_kind, source_id, source_ref, source_version, created_at, updated_at
+    )
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     id,
     data.project_id,
-    data.group_id ?? null,
     data.name,
     data.description ?? null,
     data.icon ?? null,
@@ -360,6 +369,10 @@ export function createSchema(data: SchemaCreate): Schema {
     data.node_shape ?? null,
     data.file_template ?? null,
     serializeModels(models),
+    data.source_kind ?? 'project',
+    data.source_id ?? null,
+    data.source_ref ?? null,
+    data.source_version ?? null,
     now,
     now,
   );
@@ -396,9 +409,11 @@ export function updateSchema(id: string, data: SchemaUpdate): Schema | undefined
     : existing.models;
 
   db.prepare(
-    `UPDATE schemas SET group_id = ?, name = ?, description = ?, icon = ?, color = ?, node_shape = ?, file_template = ?, models = ?, updated_at = ? WHERE id = ?`,
+    `UPDATE schemas
+        SET name = ?, description = ?, icon = ?, color = ?, node_shape = ?, file_template = ?, models = ?,
+            source_kind = ?, source_id = ?, source_ref = ?, source_version = ?, updated_at = ?
+      WHERE id = ?`,
   ).run(
-    data.group_id !== undefined ? data.group_id : existing.group_id,
     data.name !== undefined ? data.name : existing.name,
     data.description !== undefined ? data.description : existing.description,
     data.icon !== undefined ? data.icon : existing.icon,
@@ -406,6 +421,10 @@ export function updateSchema(id: string, data: SchemaUpdate): Schema | undefined
     data.node_shape !== undefined ? data.node_shape : existing.node_shape,
     data.file_template !== undefined ? data.file_template : existing.file_template,
     nextModels,
+    data.source_kind !== undefined ? data.source_kind : existing.source_kind,
+    data.source_id !== undefined ? data.source_id : existing.source_id,
+    data.source_ref !== undefined ? data.source_ref : existing.source_ref,
+    data.source_version !== undefined ? data.source_version : existing.source_version,
     now,
     id,
   );
@@ -539,8 +558,12 @@ export function createField(data: SchemaFieldCreate): SchemaField {
   const generatedByModel = data.generated_by_model ?? false;
 
   db.prepare(
-    `INSERT INTO schema_fields (id, schema_id, name, field_type, options, sort_order, required, default_value, ref_schema_id, meaning_slot, meaning_key, slot_binding_locked, generated_by_model, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO schema_fields (
+      id, schema_id, name, field_type, options, sort_order, required, default_value,
+      ref_schema_id, meaning_slot, meaning_key, slot_binding_locked, generated_by_model,
+      source_kind, source_id, source_ref, source_version, created_at
+    )
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     id,
     data.schema_id,
@@ -555,6 +578,10 @@ export function createField(data: SchemaFieldCreate): SchemaField {
     fieldMeaning ?? null,
     data.slot_binding_locked ? 1 : 0,
     generatedByModel ? 1 : 0,
+    data.source_kind ?? 'project',
+    data.source_id ?? null,
+    data.source_ref ?? null,
+    data.source_version ?? null,
     now,
   );
 
@@ -626,7 +653,11 @@ export function updateField(id: string, data: SchemaFieldUpdate): SchemaField | 
         : existing.meaning_slot ?? fieldMeaningToMeaningSlot(existing.meaning_key));
 
   db.prepare(
-    `UPDATE schema_fields SET name = ?, field_type = ?, options = ?, sort_order = ?, required = ?, default_value = ?, ref_schema_id = ?, meaning_slot = ?, meaning_key = ?, slot_binding_locked = ?, generated_by_model = ? WHERE id = ?`,
+    `UPDATE schema_fields
+        SET name = ?, field_type = ?, options = ?, sort_order = ?, required = ?, default_value = ?,
+            ref_schema_id = ?, meaning_slot = ?, meaning_key = ?, slot_binding_locked = ?, generated_by_model = ?,
+            source_kind = ?, source_id = ?, source_ref = ?, source_version = ?
+      WHERE id = ?`,
   ).run(
     data.name !== undefined ? data.name : existing.name,
     newFieldType,
@@ -641,6 +672,10 @@ export function updateField(id: string, data: SchemaFieldUpdate): SchemaField | 
     data.generated_by_model !== undefined
       ? (data.generated_by_model ? 1 : 0)
       : existing.generated_by_model,
+    data.source_kind !== undefined ? data.source_kind : existing.source_kind,
+    data.source_id !== undefined ? data.source_id : existing.source_id,
+    data.source_ref !== undefined ? data.source_ref : existing.source_ref,
+    data.source_version !== undefined ? data.source_version : existing.source_version,
     id,
   );
 

@@ -42,7 +42,6 @@ export function registerSchemaTools(server: McpServer): void {
     'create_schema',
     {
       project_id: projectIdSchema(),
-      group_id: z.string().nullable().optional().describe('Optional schema group ID or null'),
       name: z.string().describe('Schema name'),
       icon: z.string().optional().describe('Icon identifier'),
       color: z.string().optional().describe('Color value'),
@@ -51,11 +50,10 @@ export function registerSchemaTools(server: McpServer): void {
       file_template: z.string().nullable().optional().describe('Optional file template for new concepts'),
       models: modelKeysSchema.optional().describe('Model keys attached to this schema'),
     },
-    async ({ project_id, group_id, name, icon, color, node_shape, description, file_template, models }) => {
+    async ({ project_id, name, icon, color, node_shape, description, file_template, models }) => {
       try {
         const result = await createSchema({
           project_id: resolveProjectId(project_id),
-          group_id,
           name,
           icon,
           color,
@@ -82,7 +80,6 @@ export function registerSchemaTools(server: McpServer): void {
     'update_schema',
     {
       schema_id: z.string().describe('The schema ID to update'),
-      group_id: z.string().nullable().optional().describe('New group ID or null'),
       name: z.string().optional().describe('New name'),
       icon: z.string().optional().describe('New icon identifier'),
       color: z.string().optional().describe('New color value'),
@@ -91,10 +88,9 @@ export function registerSchemaTools(server: McpServer): void {
       file_template: z.string().nullable().optional().describe('New file template or null'),
       models: modelKeysSchema.optional().describe('New model keys attached to this schema'),
     },
-    async ({ schema_id, group_id, name, icon, color, node_shape, description, file_template, models }) => {
+    async ({ schema_id, name, icon, color, node_shape, description, file_template, models }) => {
       try {
         const result = await updateSchema(schema_id, {
-          group_id,
           name,
           icon,
           color,

@@ -41,8 +41,10 @@ import { migrate038 } from './migrations/038-schema-model-resplit';
 import { migrate039 } from './migrations/039-field-meaning-bindings-schema-fk';
 import { migrate040 } from './migrations/040-model-type-groups';
 import { migrate041 } from './migrations/041-network-node-exclusions';
+import { migrate042 } from './migrations/042-remove-type-groups';
 import { migrate043 } from './migrations/043-remove-concept-model-id';
 import { migrate044 } from './migrations/044-concept-properties-schema-field-fk';
+import { migrate045 } from './migrations/045-source-provenance-and-model-category-concepts';
 import {
   ensureProjectNodeInUniverseForDb,
   ensureProjectOntologyNetworkForDb,
@@ -97,8 +99,10 @@ const migrations: Migration[] = [
   { version: 39, migrate: migrate039 },
   { version: 40, migrate: migrate040 },
   { version: 41, migrate: migrate041 },
+  { version: 42, migrate: migrate042 },
   { version: 43, migrate: migrate043 },
   { version: 44, migrate: migrate044 },
+  { version: 45, migrate: migrate045 },
 ];
 
 export function hasColumn(db: Database.Database, table: string, column: string): boolean {

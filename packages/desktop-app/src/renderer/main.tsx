@@ -2,6 +2,7 @@
 import ReactDOM, { type Root as ReactRoot } from 'react-dom/client';
 import App from './App';
 import { DetachedEditorShell } from './components/editor/DetachedEditorShell';
+import { EditorLayoutLab } from './components/dev/EditorLayoutLab';
 import { ThemeLab } from './components/dev/ThemeLab';
 import { initTerminalTracker } from './lib/terminal-tracker';
 import { initAgentSessionStore } from './lib/agent-session-store';
@@ -14,8 +15,9 @@ import './styles/globals.css';
 const hash = window.location.hash;
 const isDetached = hash.startsWith('#/detached/');
 const isThemeLab = import.meta.env.DEV && hash.startsWith('#/theme-lab');
+const isEditorLayoutLab = import.meta.env.DEV && hash.startsWith('#/editor-layout-lab');
 
-if (!isThemeLab) {
+if (!isThemeLab && !isEditorLayoutLab) {
   initTerminalTracker();
   initAgentSessionStore();
   initTerminalAgentNotifier();
@@ -31,6 +33,10 @@ if (!isDetached) {
 function Root(): JSX.Element {
   if (isThemeLab) {
     return <ThemeLab />;
+  }
+
+  if (isEditorLayoutLab) {
+    return <EditorLayoutLab />;
   }
 
   if (isDetached) {

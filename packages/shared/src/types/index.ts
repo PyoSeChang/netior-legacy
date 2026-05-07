@@ -2,6 +2,15 @@
 // Project
 // ============================================
 
+export type OntologySourceKind = 'system' | 'package' | 'project' | 'imported';
+
+export interface OntologySourceFields {
+  source_kind: OntologySourceKind;
+  source_id: string | null;
+  source_ref: string | null;
+  source_version: string | null;
+}
+
 export interface Project {
   id: string;
   name: string;
@@ -35,6 +44,10 @@ export interface Concept {
   icon: string | null;
   content: string | null;
   agent_content: string | null;
+  source_kind: OntologySourceKind;
+  source_id: string | null;
+  source_ref: string | null;
+  source_version: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -49,6 +62,10 @@ export interface ConceptCreate {
   icon?: string;
   content?: string;
   agent_content?: string;
+  source_kind?: OntologySourceKind;
+  source_id?: string | null;
+  source_ref?: string | null;
+  source_version?: string | null;
 }
 
 export interface ConceptUpdate {
@@ -60,6 +77,10 @@ export interface ConceptUpdate {
   icon?: string | null;
   content?: string | null;
   agent_content?: string | null;
+  source_kind?: OntologySourceKind;
+  source_id?: string | null;
+  source_ref?: string | null;
+  source_version?: string | null;
 }
 
 // ============================================
@@ -174,7 +195,7 @@ export interface ContextMember {
 
 export type NetworkObjectType =
   | 'concept' | 'network' | 'project' | 'schema' | 'model'
-  | 'type_group' | 'agent' | 'context'
+  | 'agent' | 'context'
   | 'file' | 'module' | 'folder';
 
 export type NodeType = 'basic' | 'portal' | 'group' | 'hierarchy';
@@ -492,11 +513,12 @@ export interface ModelRecipe {
 export interface Model {
   id: string;
   project_id: string;
-  group_id: string | null;
   key: ModelRefKey;
   name: string;
   description: string | null;
-  category: SemanticCategoryRefKey;
+  category_concept_id: string | null;
+  category_concept_title?: string | null;
+  category_concept_source_ref?: string | null;
   target_kind: ModelTargetKind;
   meaning_keys: SemanticMeaningKey[];
   core_slots: MeaningSlotKey[];
@@ -507,17 +529,20 @@ export interface Model {
   line_style: EdgeLineStyle | null;
   directed: boolean | null;
   built_in: boolean;
+  source_kind: OntologySourceKind;
+  source_id: string | null;
+  source_ref: string | null;
+  source_version: string | null;
   created_at: string;
   updated_at: string;
 }
 
 export interface ModelCreate {
   project_id: string;
-  group_id?: string | null;
   key?: ModelRefKey;
   name: string;
   description?: string | null;
-  category?: SemanticCategoryRefKey;
+  category_concept_id?: string | null;
   target_kind?: ModelTargetKind;
   meaning_keys?: SemanticMeaningKey[];
   core_slots?: MeaningSlotKey[];
@@ -528,14 +553,17 @@ export interface ModelCreate {
   line_style?: EdgeLineStyle | null;
   directed?: boolean | null;
   built_in?: boolean;
+  source_kind?: OntologySourceKind;
+  source_id?: string | null;
+  source_ref?: string | null;
+  source_version?: string | null;
 }
 
 export interface ModelUpdate {
-  group_id?: string | null;
   key?: ModelRefKey;
   name?: string;
   description?: string | null;
-  category?: SemanticCategoryRefKey;
+  category_concept_id?: string | null;
   target_kind?: ModelTargetKind;
   meaning_keys?: SemanticMeaningKey[];
   core_slots?: MeaningSlotKey[];
@@ -546,6 +574,10 @@ export interface ModelUpdate {
   line_style?: EdgeLineStyle | null;
   directed?: boolean | null;
   built_in?: boolean;
+  source_kind?: OntologySourceKind;
+  source_id?: string | null;
+  source_ref?: string | null;
+  source_version?: string | null;
 }
 
 // ============================================
@@ -687,7 +719,6 @@ export interface ModuleDirectoryCreate {
 export interface Schema {
   id: string;
   project_id: string;
-  group_id: string | null;
   name: string;
   description: string | null;
   icon: string | null;
@@ -695,13 +726,16 @@ export interface Schema {
   node_shape: string | null;
   file_template: string | null;
   models: ModelRefKey[];
+  source_kind: OntologySourceKind;
+  source_id: string | null;
+  source_ref: string | null;
+  source_version: string | null;
   created_at: string;
   updated_at: string;
 }
 
 export interface SchemaCreate {
   project_id: string;
-  group_id?: string | null;
   name: string;
   description?: string;
   icon?: string;
@@ -709,10 +743,13 @@ export interface SchemaCreate {
   node_shape?: string;
   file_template?: string;
   models?: ModelRefKey[];
+  source_kind?: OntologySourceKind;
+  source_id?: string | null;
+  source_ref?: string | null;
+  source_version?: string | null;
 }
 
 export interface SchemaUpdate {
-  group_id?: string | null;
   name?: string;
   description?: string | null;
   icon?: string | null;
@@ -720,6 +757,10 @@ export interface SchemaUpdate {
   node_shape?: string | null;
   file_template?: string | null;
   models?: ModelRefKey[];
+  source_kind?: OntologySourceKind;
+  source_id?: string | null;
+  source_ref?: string | null;
+  source_version?: string | null;
 }
 
 // ============================================
@@ -758,6 +799,10 @@ export interface SchemaField {
   meaning_bindings: FieldMeaningBindingKey[];
   slot_binding_locked: boolean;
   generated_by_model: boolean;
+  source_kind: OntologySourceKind;
+  source_id: string | null;
+  source_ref: string | null;
+  source_version: string | null;
   created_at: string;
 }
 
@@ -775,6 +820,10 @@ export interface SchemaFieldCreate {
   meaning_bindings?: FieldMeaningBindingKey[];
   slot_binding_locked?: boolean;
   generated_by_model?: boolean;
+  source_kind?: OntologySourceKind;
+  source_id?: string | null;
+  source_ref?: string | null;
+  source_version?: string | null;
 }
 
 export interface SchemaFieldUpdate {
@@ -790,6 +839,10 @@ export interface SchemaFieldUpdate {
   meaning_bindings?: FieldMeaningBindingKey[];
   slot_binding_locked?: boolean;
   generated_by_model?: boolean;
+  source_kind?: OntologySourceKind;
+  source_id?: string | null;
+  source_ref?: string | null;
+  source_version?: string | null;
 }
 
 export interface SchemaMeaningSlotBinding {
@@ -812,6 +865,10 @@ export interface SchemaMeaning {
   source_model: ModelRefKey | null;
   sort_order: number;
   slots: SchemaMeaningSlotBinding[];
+  source_kind: OntologySourceKind;
+  source_id: string | null;
+  source_ref: string | null;
+  source_version: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -823,6 +880,10 @@ export interface SchemaMeaningCreate {
   source?: MeaningSourceKind;
   source_model?: ModelRefKey | null;
   sort_order?: number;
+  source_kind?: OntologySourceKind;
+  source_id?: string | null;
+  source_ref?: string | null;
+  source_version?: string | null;
 }
 
 export interface SchemaMeaningUpdate {
@@ -838,39 +899,6 @@ export interface SchemaMeaningSlotBindingUpdate {
 export type SchemaSlot = SchemaField;
 export type SchemaSlotCreate = SchemaFieldCreate;
 export type SchemaSlotUpdate = SchemaFieldUpdate;
-
-// ============================================
-// Type Group
-// ============================================
-
-export type TypeGroupKind = 'schema' | 'model';
-
-export interface TypeGroup {
-  id: string;
-  scope: string;
-  project_id: string | null;
-  kind: TypeGroupKind;
-  name: string;
-  parent_group_id: string | null;
-  sort_order: number;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface TypeGroupCreate {
-  project_id: string | null;
-  kind: TypeGroupKind;
-  name: string;
-  scope?: string;
-  parent_group_id?: string;
-  sort_order?: number;
-}
-
-export interface TypeGroupUpdate {
-  name?: string;
-  parent_group_id?: string | null;
-  sort_order?: number;
-}
 
 // ============================================
 // Concept Property
@@ -1374,7 +1402,7 @@ export type NarreCard =
   | NarreSummaryCard;
 
 export interface NetiorChangeEvent {
-  type: 'schemas' | 'models' | 'concepts' | 'relationTypes' | 'typeGroups' | 'networks' | 'edges' | 'layouts' | 'contexts';
+  type: 'schemas' | 'models' | 'concepts' | 'relationTypes' | 'networks' | 'edges' | 'layouts' | 'contexts';
   action: 'created' | 'updated' | 'deleted';
   id: string;
 }

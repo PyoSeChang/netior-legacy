@@ -12,6 +12,7 @@ import {
   createModel,
   deleteModel,
   getModel,
+  listModelCategories,
   listModels,
   updateModel,
 } from '../netior-service-client.js';
@@ -41,10 +42,6 @@ const fieldTypeModel = z.enum([
 const modelKeyModel = z.string().regex(
   /^[a-z][a-z0-9_]*$/,
   'Model keys must be lowercase snake_case, such as task_flow',
-);
-const categoryModel = z.string().regex(
-  /^[a-z][a-z0-9_]*$/,
-  'Model categories must be lowercase snake_case',
 );
 const meaningKeySet = new Set(SEMANTIC_MEANING_DEFINITIONS.map((definition) => definition.key));
 const builtInMeaningKeyModel = z.string().refine(
@@ -153,6 +150,23 @@ export function registerModelTools(server: McpServer): void {
 
   registerNetiorTool(
     server,
+    'list_model_categories',
+    { project_id: projectIdSchema() },
+    async ({ project_id }) => {
+      try {
+        const result = await listModelCategories(resolveProjectId(project_id));
+        return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] };
+      } catch (error) {
+        return {
+          content: [{ type: 'text' as const, text: `Error: ${(error as Error).message}` }],
+          isError: true,
+        };
+      }
+    },
+  );
+
+  registerNetiorTool(
+    server,
     'get_model',
     { model_id: z.string().describe('The model ID') },
     async ({ model_id }) => {
@@ -182,7 +196,7 @@ export function registerModelTools(server: McpServer): void {
       key: modelKeyModel.optional().describe('Optional stable model key. Omit to derive from name.'),
       name: z.string().describe('Model name'),
       description: z.string().nullable().optional().describe('What this model means and when to use it'),
-      category: categoryModel.optional().describe('Model category'),
+      category_concept_id: z.string().nullable().optional().describe('Model Category concept ID. Use list_model_categories before assigning.'),
       target_kind: targetKindModel.optional().describe('Whether this model describes objects, edges, or both'),
       meaning_keys: z.array(builtInMeaningKeyModel).optional().describe('Built-in meanings this model includes'),
       recipe: modelRecipeModel.optional().describe('Custom meaning and field recipe for this model'),
@@ -191,14 +205,14 @@ export function registerModelTools(server: McpServer): void {
       line_style: lineStyleModel.nullable().optional().describe('Default edge line style when target_kind includes edge'),
       directed: z.boolean().nullable().optional().describe('Default edge direction when target_kind includes edge'),
     },
-    async ({ project_id, key, name, description, category, target_kind, meaning_keys, recipe, color, icon, line_style, directed }) => {
+    async ({ project_id, key, name, description, category_concept_id, target_kind, meaning_keys, recipe, color, icon, line_style, directed }) => {
       try {
         const result = await createModel({
           project_id: resolveProjectId(project_id),
           key: key as ModelRefKey | undefined,
           name,
           description,
-          category,
+          category_concept_id,
           target_kind,
           meaning_keys: meaning_keys as never,
           recipe: normalizeRecipe(recipe),
@@ -226,7 +240,7 @@ export function registerModelTools(server: McpServer): void {
       key: modelKeyModel.optional().describe('New stable model key'),
       name: z.string().optional().describe('New model name'),
       description: z.string().nullable().optional().describe('New model description'),
-      category: categoryModel.optional().describe('New model category'),
+      category_concept_id: z.string().nullable().optional().describe('New Model Category concept ID. Use list_model_categories before assigning.'),
       target_kind: targetKindModel.optional().describe('Whether this model describes objects, edges, or both'),
       meaning_keys: z.array(builtInMeaningKeyModel).optional().describe('Built-in meanings this model includes'),
       recipe: modelRecipeModel.optional().describe('Custom meaning and field recipe for this model'),
@@ -235,13 +249,13 @@ export function registerModelTools(server: McpServer): void {
       line_style: lineStyleModel.nullable().optional().describe('Default edge line style when target_kind includes edge'),
       directed: z.boolean().nullable().optional().describe('Default edge direction when target_kind includes edge'),
     },
-    async ({ model_id, key, name, description, category, target_kind, meaning_keys, recipe, color, icon, line_style, directed }) => {
+    async ({ model_id, key, name, description, category_concept_id, target_kind, meaning_keys, recipe, color, icon, line_style, directed }) => {
       try {
         const result = await updateModel(model_id, {
           key: key as ModelRefKey | undefined,
           name,
           description,
-          category,
+          category_concept_id,
           target_kind,
           meaning_keys: meaning_keys as never,
           recipe: normalizeRecipe(recipe),

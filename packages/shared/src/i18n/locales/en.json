@@ -706,16 +706,6 @@
       "fileTemplatePlaceholder": "Default content to use when creating a file from this model.",
       "propertyModel": "Property Model"
     },
-  "typeGroup": {
-    "create": "Create Group",
-    "createSubgroup": "Create Subgroup",
-    "rename": "Rename Group",
-    "delete": "Delete Group",
-    "name": "Group Name",
-    "namePlaceholder": "Group name",
-    "group": "Group",
-    "ungrouped": "Ungrouped"
-  },
   "context": {
     "title": "Context",
     "name": "Name",
@@ -1669,21 +1659,16 @@
       "updateRelationType": "Update Relation Type",
       "deleteRelationType": "Delete Relation Type",
       "getProjectSummary": "Project Summary",
-      "listTypeGroups": "List Type Groups",
-      "createTypeGroup": "Create Type Group",
-      "updateTypeGroup": "Update Type Group",
-      "deleteTypeGroup": "Delete Type Group",
       "listMcpResources": "List MCP Resources",
       "listMcpResourceTemplates": "List MCP Resource Templates"
     },
     "toolDescription": {
-      "createSchema": "Create a new schema for a project, including optional group, file template, and attached models.",
-      "updateSchema": "Update an existing schema, including name, description, group, file template, and attached models.",
+      "createSchema": "Create a new schema for a project, including optional file template and attached models.",
+      "updateSchema": "Update an existing schema, including name, description, file template, and attached models.",
       "createSchemaField": "Create a field on a schema.",
       "createModel": "Create a model with meanings and field recipes.",
       "createConcept": "Create a new concept in a project.",
-      "createNetwork": "Create a network in project or app scope.",
-      "createTypeGroup": "Create a folder-like organization group for schemas."
+      "createNetwork": "Create a network in project or app scope."
     },
     "previewLabel": {
       "name": "Name",
@@ -1708,11 +1693,9 @@
       "profileImage": "Profile image",
       "scope": "Scope",
       "parentNetwork": "Parent network",
-      "group": "Group",
       "kind": "Kind",
       "sortOrder": "Sort order",
-      "projectId": "Project ID",
-      "groupId": "Group ID"
+      "projectId": "Project ID"
     },
     "previewSummary": {
       "createSchema": "Creates a project schema.",
@@ -1722,9 +1705,7 @@
       "createModel": "Creates a reusable model.",
       "createConcept": "Creates a concept in the current project.",
       "createProjectNetwork": "Creates a project network.",
-      "createAppNetwork": "Creates an app-scope network.",
-      "createTypeGroup": "Creates a type group for organizing schemas.",
-      "updateTypeGroup": "Updates {count} type group settings."
+      "createAppNetwork": "Creates an app-scope network."
     },
     "card": {
       "proposalConfirm": "Confirm",

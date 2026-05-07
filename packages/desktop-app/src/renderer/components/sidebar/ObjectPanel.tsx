@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import type { TypeGroup, TypeGroupKind } from '@netior/shared/types';
 import type { TranslationKey } from '@netior/shared/i18n';
 import {
   Boxes,
@@ -10,9 +9,6 @@ import {
   ExternalLink,
   Eye,
   EyeOff,
-  FolderPlus,
-  FolderTree,
-  GripVertical,
   Layers3,
   Plus,
   Trash2,
@@ -27,12 +23,10 @@ import { useModelStore } from '../../stores/model-store';
 import { useContextStore } from '../../stores/context-store';
 import { useEditorStore } from '../../stores/editor-store';
 import { useNetworkObjectSelectionStore } from '../../stores/network-object-selection-store';
-import { useTypeGroupStore } from '../../stores/type-group-store';
 import { ContextMenu, type ContextMenuEntry } from '../ui/ContextMenu';
 import { Checkbox } from '../ui/Checkbox';
 import { Input } from '../ui/Input';
 import { getIconComponent } from '../ui/lucide-utils';
-import { TypeGroupModal } from './TypeGroupModal';
 import { NodeVisual } from '../workspace/node-components/NodeVisual';
 import { openNetworkViewerTab } from '../../lib/open-network-viewer-tab';
 import {
@@ -41,33 +35,23 @@ import {
 } from '../../lib/model-i18n';
 
 type PanelObjectType = 'concept' | 'network' | 'model' | 'context';
-type GroupablePanelObjectType = Extract<PanelObjectType, 'model'>;
 
 interface ObjectPanelProps {
   types?: PanelObjectType[];
 }
 
 type PanelItem =
-  | {
-      id: string;
-      kind: 'object';
-      objectType: PanelObjectType;
-      title: string;
-      subtitle: string;
-      color?: string | null;
-      isActive?: boolean;
-      iconName?: string | null;
-      networkKind?: string;
-    }
-  | {
-      id: string;
-      kind: 'group';
-      objectType: GroupablePanelObjectType;
-      title: string;
-      subtitle: string;
-      parentGroupId: string | null;
-      groupKind: TypeGroupKind;
-    };
+  {
+    id: string;
+    kind: 'object';
+    objectType: PanelObjectType;
+    title: string;
+    subtitle: string;
+    color?: string | null;
+    isActive?: boolean;
+    iconName?: string | null;
+    networkKind?: string;
+  };
 
 type PanelRow = {
   key: string;
@@ -88,37 +72,12 @@ type ContextMenuState = {
   row: PanelRow | null;
 };
 
-type GroupDialogState =
-  | { mode: 'create'; kind: TypeGroupKind; parentGroupId: string | null }
-  | { mode: 'rename'; group: TypeGroup };
-
-type DragPayload = {
-  keys: string[];
-  objectType: GroupablePanelObjectType;
-};
-
-type InlineGroupCreateState = {
-  kind: GroupablePanelObjectType;
-  parentGroupId: string | null;
-  value: string;
-};
-
-type ActiveDragState = {
-  rows: PanelRow[];
-  objectType: GroupablePanelObjectType;
-} | null;
-
 const FILTERS: Array<{ key: PanelObjectType; icon: React.ElementType; labelKey: TranslationKey | string }> = [
   { key: 'concept', icon: CircleDot, labelKey: 'objectPanel.concept' },
   { key: 'network', icon: Waypoints, labelKey: 'sidebar.networks' },
   { key: 'model', icon: Boxes, labelKey: 'model.title' },
   { key: 'context', icon: Layers3, labelKey: 'context.title' },
 ];
-
-function getGroupName(groups: TypeGroup[], groupId: string | null): string | null {
-  if (!groupId) return null;
-  return groups.find((group) => group.id === groupId)?.name ?? null;
-}
 
 function getSelectionRange(rows: PanelRow[], anchorKey: string | null, targetKey: string): string[] {
   const anchorIndex = anchorKey ? rows.findIndex((row) => row.key === anchorKey) : -1;
@@ -129,103 +88,26 @@ function getSelectionRange(rows: PanelRow[], anchorKey: string | null, targetKey
   return rows.slice(start, end + 1).map((row) => row.key);
 }
 
-function isGroupableType(type: PanelObjectType): type is GroupablePanelObjectType {
-  return type === 'model';
-}
-
-function isDescendantGroup(groupId: string, parentGroupId: string | null, groups: TypeGroup[]): boolean {
-  let current = parentGroupId;
-  while (current) {
-    if (current === groupId) return true;
-    current = groups.find((group) => group.id === current)?.parent_group_id ?? null;
-  }
-  return false;
-}
-
-function buildTreeRows<T extends { id: string; name: string; group_id: string | null }>(
-  objectType: GroupablePanelObjectType,
-  groups: TypeGroup[],
+function buildObjectRows<T extends { id: string; name: string }>(
+  objectType: PanelObjectType,
   items: T[],
-  expandedGroups: Set<string>,
-  baseSubtitle: string,
   mapItem: (item: T) => Omit<Extract<PanelItem, { kind: 'object' }>, 'id' | 'kind' | 'objectType'>,
 ): PanelRow[] {
-  const groupByParent = new Map<string | null, TypeGroup[]>();
-  const itemsByGroup = new Map<string | null, T[]>();
-
-  for (const group of groups) {
-    const key = group.parent_group_id ?? null;
-    const current = groupByParent.get(key) ?? [];
-    groupByParent.set(key, [...current, group]);
-  }
-
-  for (const item of items) {
-    const key = item.group_id ?? null;
-    const current = itemsByGroup.get(key) ?? [];
-    itemsByGroup.set(key, [...current, item]);
-  }
-
-  const sortGroups = (list: TypeGroup[]) => [...list].sort((a, b) => {
-    if (a.sort_order !== b.sort_order) return a.sort_order - b.sort_order;
-    return a.name.localeCompare(b.name);
-  });
-  const sortItems = (list: T[]) => [...list].sort((a, b) => a.name.localeCompare(b.name));
-  const rows: PanelRow[] = [];
-
-  const visit = (parentGroupId: string | null, depth: number) => {
-    for (const group of sortGroups(groupByParent.get(parentGroupId) ?? [])) {
-      rows.push({
-        key: `group:${objectType}:${group.id}`,
-        depth,
-        item: {
-          id: group.id,
-          kind: 'group',
-          objectType,
-          title: group.name,
-          subtitle: `${baseSubtitle} Folder`,
-          parentGroupId: group.parent_group_id,
-          groupKind: group.kind,
-        },
-      });
-
-      if (!expandedGroups.has(group.id)) continue;
-
-      for (const item of sortItems(itemsByGroup.get(group.id) ?? [])) {
-        const mapped = mapItem(item);
-        rows.push({
-          key: `object:${objectType}:${item.id}`,
-          depth: depth + 1,
-          item: {
-            ...mapped,
-            id: item.id,
-            kind: 'object',
-            objectType,
-          },
-        });
-      }
-
-      visit(group.id, depth + 1);
-    }
-
-    if (parentGroupId !== null) return;
-
-    for (const item of sortItems(itemsByGroup.get(null) ?? [])) {
+  return [...items]
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .map((item) => {
       const mapped = mapItem(item);
-      rows.push({
+      return {
         key: `object:${objectType}:${item.id}`,
-        depth,
+        depth: 0,
         item: {
           ...mapped,
           id: item.id,
           kind: 'object',
           objectType,
         },
-      });
-    }
-  };
-
-  visit(null, 0);
-  return rows;
+      };
+    });
 }
 
 function ObjectTypeFilterSelect({
@@ -332,61 +214,6 @@ function ObjectTypeFilterSelect({
   );
 }
 
-function InlineGroupInput({
-  value,
-  onChange,
-  onSubmit,
-  onCancel,
-  placeholder,
-  depth = 0,
-}: {
-  value: string;
-  onChange: (value: string) => void;
-  onSubmit: () => void;
-  onCancel: () => void;
-  placeholder: string;
-  depth?: number;
-}): JSX.Element {
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    inputRef.current?.focus();
-  }, []);
-
-  const handleSubmit = () => {
-    if (value.trim()) {
-      onSubmit();
-    } else {
-      onCancel();
-    }
-  };
-
-  return (
-    <div style={{ paddingLeft: `${8 + depth * 16}px` }}>
-      <Input
-        ref={inputRef}
-        value={value}
-        inputSize="sm"
-        placeholder={placeholder}
-        className="h-7"
-        onChange={(event) => onChange(event.target.value)}
-        onClick={(event) => event.stopPropagation()}
-        onKeyDown={(event) => {
-          if (event.key === 'Enter') {
-            event.preventDefault();
-            handleSubmit();
-          }
-          if (event.key === 'Escape') {
-            event.preventDefault();
-            onCancel();
-          }
-        }}
-        onBlur={handleSubmit}
-      />
-    </div>
-  );
-}
-
 export function ObjectPanel({ types }: ObjectPanelProps = {}): JSX.Element {
   const { t } = useI18n();
   const tk = (key: string) => t(key as TranslationKey);
@@ -402,17 +229,12 @@ export function ObjectPanel({ types }: ObjectPanelProps = {}): JSX.Element {
   const deleteContext = useContextStore((state) => state.deleteContext);
   const setActiveContext = useContextStore((state) => state.setActiveContext);
   const createModel = useModelStore((state) => state.createModel);
-  const updateModel = useModelStore((state) => state.updateModel);
   const deleteModel = useModelStore((state) => state.deleteModel);
   const deleteConcept = useConceptStore((state) => state.deleteConcept);
   const createNetwork = useNetworkStore((state) => state.createNetwork);
   const deleteNetwork = useNetworkStore((state) => state.deleteNetwork);
   const openNetwork = useNetworkStore((state) => state.openNetwork);
   const loadNetworkTree = useNetworkStore((state) => state.loadNetworkTree);
-  const modelGroups = useTypeGroupStore((state) => state.groupsByKind.model);
-  const createGroup = useTypeGroupStore((state) => state.createGroup);
-  const updateGroup = useTypeGroupStore((state) => state.updateGroup);
-  const deleteGroup = useTypeGroupStore((state) => state.deleteGroup);
   const networkObjectSelection = useNetworkObjectSelectionStore((state) => state.selection);
   const selectedNetworkObjects = useNetworkObjectSelectionStore((state) => state.selectedItems);
   const setNetworkObjectSelection = useNetworkObjectSelectionStore((state) => state.setSelection);
@@ -421,16 +243,10 @@ export function ObjectPanel({ types }: ObjectPanelProps = {}): JSX.Element {
   const activeTypes = types ?? selectedTypes;
   const [search, setSearch] = useState('');
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
-  const [groupDialog, setGroupDialog] = useState<GroupDialogState | null>(null);
-  const [inlineGroupCreate, setInlineGroupCreate] = useState<InlineGroupCreateState | null>(null);
   const [collapsedSections, setCollapsedSections] = useState<Set<PanelObjectType>>(() => new Set());
-  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(() => new Set());
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(() => new Set());
   const [selectionAnchorKey, setSelectionAnchorKey] = useState<string | null>(null);
   const [focusedKey, setFocusedKey] = useState<string | null>(null);
-  const [dropTargetKey, setDropTargetKey] = useState<string | null>(null);
-  const [draggingObjectType, setDraggingObjectType] = useState<GroupablePanelObjectType | null>(null);
-  const dragStateRef = useRef<ActiveDragState>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const rowRefs = useRef(new Map<string, HTMLDivElement>());
 
@@ -438,30 +254,6 @@ export function ObjectPanel({ types }: ObjectPanelProps = {}): JSX.Element {
     if (!currentNetwork) return;
     loadContexts(currentNetwork.id);
   }, [currentNetwork?.id, loadContexts]);
-
-  useEffect(() => {
-    setExpandedGroups((prev) => {
-      const next = new Set(prev);
-      modelGroups.forEach((group) => next.add(group.id));
-      return next;
-    });
-  }, [modelGroups]);
-
-  useEffect(() => {
-    const clearDragState = () => {
-      dragStateRef.current = null;
-      setDraggingObjectType(null);
-      setDropTargetKey(null);
-    };
-
-    window.addEventListener('dragend', clearDragState);
-    window.addEventListener('drop', clearDragState);
-
-    return () => {
-      window.removeEventListener('dragend', clearDragState);
-      window.removeEventListener('drop', clearDragState);
-    };
-  }, []);
 
   const labelForType = (type: PanelObjectType): string => {
     const match = FILTERS.find((filter) => filter.key === type);
@@ -506,20 +298,17 @@ export function ObjectPanel({ types }: ObjectPanelProps = {}): JSX.Element {
   ), [networks, currentNetwork?.id]);
 
   const modelRows = useMemo<PanelRow[]>(() => (
-    buildTreeRows(
+    buildObjectRows(
       'model',
-      modelGroups,
       [...models].sort((a, b) => getModelDisplayName(a, t).localeCompare(getModelDisplayName(b, t))),
-      expandedGroups,
-      t('model.title' as TranslationKey),
       (model) => ({
         title: getModelDisplayName(model, t),
-        subtitle: getModelDisplayDescription(model, t) ?? getGroupName(modelGroups, model.group_id) ?? t('model.title' as TranslationKey),
+        subtitle: getModelDisplayDescription(model, t) ?? model.category_concept_title ?? t('model.title' as TranslationKey),
         color: model.color,
         iconName: model.icon,
       }),
     )
-  ), [expandedGroups, modelGroups, models, t]);
+  ), [models, t]);
 
   const contextRows = useMemo<PanelRow[]>(() => (
     [...contexts].sort((a, b) => a.name.localeCompare(b.name)).map((context) => ({
@@ -565,7 +354,6 @@ export function ObjectPanel({ types }: ObjectPanelProps = {}): JSX.Element {
   const rowByKey = useMemo(() => new Map(visibleRows.map((row) => [row.key, row])), [visibleRows]);
   const primaryType = activeTypes.length === 1 ? activeTypes[0] : null;
   const canCreateObject = primaryType !== null && !(primaryType === 'context' && !currentNetwork);
-  const canCreateGroup = primaryType === 'model';
   const canCreateObjectType = (objectType: PanelObjectType): boolean => (
     objectType !== 'context' || currentNetwork !== null
   );
@@ -717,10 +505,6 @@ export function ObjectPanel({ types }: ObjectPanelProps = {}): JSX.Element {
     }
   };
   const handleDeleteItem = async (item: PanelItem) => {
-    if (item.kind === 'group') {
-      await deleteGroup(item.id);
-      return;
-    }
     switch (item.objectType) {
       case 'concept':
         await deleteConcept(item.id);
@@ -738,63 +522,12 @@ export function ObjectPanel({ types }: ObjectPanelProps = {}): JSX.Element {
     }
   };
 
-  const handleCreateGroup = (kind: GroupablePanelObjectType, parentGroupId: string | null = null) => {
-    expandSection(kind);
-    setInlineGroupCreate({ kind, parentGroupId, value: '' });
-  };
-
-  const submitInlineGroupCreate = async () => {
-    if (!currentProject || !inlineGroupCreate || !inlineGroupCreate.value.trim()) return;
-    const siblingGroups = modelGroups.filter((group) => (group.parent_group_id ?? null) === inlineGroupCreate.parentGroupId);
-    await createGroup({
-      project_id: currentProject.id,
-      kind: inlineGroupCreate.kind,
-      name: inlineGroupCreate.value.trim(),
-      parent_group_id: inlineGroupCreate.parentGroupId ?? undefined,
-      sort_order: siblingGroups.length,
-    });
-    if (inlineGroupCreate.parentGroupId) {
-      setExpandedGroups((prev) => new Set(prev).add(inlineGroupCreate.parentGroupId as string));
-    }
-    setInlineGroupCreate(null);
-  };
-
-  const submitGroupDialog = async (name: string) => {
-    if (!groupDialog) return;
-    if (groupDialog.mode === 'create') {
-      if (!currentProject) return;
-      const siblingGroups = modelGroups.filter((group) => (group.parent_group_id ?? null) === groupDialog.parentGroupId);
-      await createGroup({
-        project_id: currentProject.id,
-        kind: groupDialog.kind,
-        name,
-        parent_group_id: groupDialog.parentGroupId ?? undefined,
-        sort_order: siblingGroups.length,
-      });
-      return;
-    }
-    await updateGroup(groupDialog.group.id, { name });
-  };
-
-  const toggleGroup = (groupId: string) => {
-    setExpandedGroups((prev) => {
-      const next = new Set(prev);
-      if (next.has(groupId)) next.delete(groupId);
-      else next.add(groupId);
-      return next;
-    });
-  };
-
   const selectRow = (event: React.MouseEvent, row: PanelRow) => {
-    if (row.item.kind === 'object') {
-      setNetworkObjectSelection({
-        objectType: row.item.objectType,
-        id: row.item.id,
-        title: row.item.title,
-      });
-    } else {
-      setNetworkObjectSelection(null);
-    }
+    setNetworkObjectSelection({
+      objectType: row.item.objectType,
+      id: row.item.id,
+      title: row.item.title,
+    });
     if (event.shiftKey) {
       setSelectedKeys(new Set(getSelectionRange(visibleRows, selectionAnchorKey ?? focusedKey, row.key)));
       setFocusedKey(row.key);
@@ -819,15 +552,11 @@ export function ObjectPanel({ types }: ObjectPanelProps = {}): JSX.Element {
   const focusRowByKey = useCallback((key: string, extend = false) => {
     const row = rowByKey.get(key);
     if (!row) return;
-    if (row.item.kind === 'object') {
-      setNetworkObjectSelection({
-        objectType: row.item.objectType,
-        id: row.item.id,
-        title: row.item.title,
-      });
-    } else {
-      setNetworkObjectSelection(null);
-    }
+    setNetworkObjectSelection({
+      objectType: row.item.objectType,
+      id: row.item.id,
+      title: row.item.title,
+    });
     setFocusedKey(key);
     if (extend) {
       setSelectedKeys(new Set(getSelectionRange(visibleRows, selectionAnchorKey ?? focusedKey, key)));
@@ -839,10 +568,6 @@ export function ObjectPanel({ types }: ObjectPanelProps = {}): JSX.Element {
 
   const openRow = useCallback(async (row: PanelRow | undefined) => {
     if (!row) return;
-    if (row.item.kind === 'group') {
-      toggleGroup(row.item.id);
-      return;
-    }
     await openItem(row.item);
   }, [openItem]);
 
@@ -850,116 +575,8 @@ export function ObjectPanel({ types }: ObjectPanelProps = {}): JSX.Element {
     for (const row of rows) {
       await handleDeleteItem(row.item);
     }
-    if (rows.some((row) => row.item.kind === 'object')) {
-      setNetworkObjectSelection(null);
-    }
+    setNetworkObjectSelection(null);
   }, [handleDeleteItem, setNetworkObjectSelection]);
-
-  const draggableSelectionForRow = (row: PanelRow): PanelRow[] => {
-    if (!isGroupableType(row.item.objectType)) return [];
-    const selectedRows = [...selectedKeys]
-      .map((key) => rowByKey.get(key))
-      .filter((value): value is PanelRow => value !== undefined)
-      .filter((selectedRow) => selectedRow.item.objectType === row.item.objectType);
-    const baseRows = selectedKeys.has(row.key) && selectedRows.length > 0 ? selectedRows : [row];
-    return baseRows.filter((selectedRow) => selectedRow.item.kind === 'group' || selectedRow.item.kind === 'object');
-  };
-
-  const moveRowsToGroup = async (rows: PanelRow[], objectType: GroupablePanelObjectType, targetGroupId: string | null) => {
-    if (objectType !== 'model') return;
-    await Promise.all(rows.map(async (row) => {
-      if (row.item.kind === 'object') {
-        await updateModel(row.item.id, { group_id: targetGroupId });
-        return;
-      }
-      if (row.item.id === targetGroupId) return;
-      if (isDescendantGroup(row.item.id, targetGroupId, modelGroups)) return;
-      await updateGroup(row.item.id, { parent_group_id: targetGroupId });
-    }));
-  };
-
-  const parseDragPayload = (event: React.DragEvent): DragPayload | null => {
-    if (dragStateRef.current) {
-      return {
-        keys: dragStateRef.current.rows.map((row) => row.key),
-        objectType: dragStateRef.current.objectType,
-      };
-    }
-    const rawPayload = event.dataTransfer.getData('application/netior-object-panel');
-    if (!rawPayload) return null;
-    try {
-      return JSON.parse(rawPayload) as DragPayload;
-    } catch {
-      return null;
-    }
-  };
-
-  const handleDragStart = (event: React.DragEvent, row: PanelRow) => {
-    if (!isGroupableType(row.item.objectType)) return;
-    const rows = draggableSelectionForRow(row);
-    if (rows.length === 0) return;
-    dragStateRef.current = {
-      rows,
-      objectType: row.item.objectType,
-    };
-    setDraggingObjectType(row.item.objectType);
-    const payload = JSON.stringify({
-      keys: rows.map((item) => item.key),
-      objectType: row.item.objectType,
-    } satisfies DragPayload);
-    event.dataTransfer.setData('application/netior-object-panel', payload);
-    event.dataTransfer.setData('text/plain', payload);
-    event.dataTransfer.effectAllowed = 'move';
-  };
-
-  const handleRowDragOver = (event: React.DragEvent, row: PanelRow) => {
-    if (row.item.kind !== 'group') return;
-    const payload = parseDragPayload(event);
-    if (!payload || payload.objectType !== row.item.objectType) return;
-    event.preventDefault();
-    event.stopPropagation();
-    event.dataTransfer.dropEffect = 'move';
-    setDropTargetKey(row.key);
-  };
-
-  const handleSectionDragOver = (event: React.DragEvent, objectType: PanelObjectType) => {
-    if (!isGroupableType(objectType)) return;
-    const payload = parseDragPayload(event);
-    if (!payload || payload.objectType !== objectType) return;
-    event.preventDefault();
-    event.dataTransfer.dropEffect = 'move';
-    setDropTargetKey(`section:${objectType}`);
-  };
-
-  const handleDragLeave = (event: React.DragEvent, key: string) => {
-    if (event.currentTarget !== event.target) return;
-    setDropTargetKey((current) => (current === key ? null : current));
-  };
-
-  const handleRowDrop = async (event: React.DragEvent, row: PanelRow) => {
-    if (row.item.kind !== 'group') return;
-    const payload = parseDragPayload(event);
-    if (!payload || payload.objectType !== row.item.objectType) return;
-    event.preventDefault();
-    event.stopPropagation();
-    setDropTargetKey(null);
-    const rows = payload.keys.map((key) => rowByKey.get(key)).filter((value): value is PanelRow => value !== undefined);
-    await moveRowsToGroup(rows, row.item.objectType, row.item.id);
-    dragStateRef.current = null;
-    setDraggingObjectType(null);
-  };
-
-  const handleSectionDrop = async (event: React.DragEvent, objectType: PanelObjectType) => {
-    if (!isGroupableType(objectType)) return;
-    const payload = parseDragPayload(event);
-    if (!payload || payload.objectType !== objectType) return;
-    event.preventDefault();
-    setDropTargetKey(null);
-    const rows = payload.keys.map((key) => rowByKey.get(key)).filter((value): value is PanelRow => value !== undefined);
-    await moveRowsToGroup(rows, objectType, null);
-    dragStateRef.current = null;
-    setDraggingObjectType(null);
-  };
 
   const activeRow = contextMenu?.row;
   const activeSelection = activeRow && selectedKeys.has(activeRow.key)
@@ -973,40 +590,7 @@ export function ObjectPanel({ types }: ObjectPanelProps = {}): JSX.Element {
       if (canCreateObject) {
         items.push({ label: t('common.create'), icon: <Plus size={14} />, onClick: () => { void handleCreateObject(); } });
       }
-      if (canCreateGroup && primaryType) {
-        items.push({
-          label: tk('typeGroup.create'),
-          icon: <FolderPlus size={14} />,
-          onClick: () => handleCreateGroup('model'),
-        });
-      }
       return items;
-    }
-
-    if (activeRow.item.kind === 'group') {
-      const groupItem = activeRow.item;
-      return [
-        {
-          label: tk('model.createInGroup'),
-          icon: <Plus size={14} />,
-          onClick: async () => {
-            if (!currentProject) return;
-            const created = await createModel({ project_id: currentProject.id, group_id: activeRow.item.id, name: tk('model.newDefault') });
-            await useEditorStore.getState().openTab({ type: 'model', targetId: created.id, title: created.name, isDirty: true });
-          },
-        },
-        { label: tk('typeGroup.createSubgroup'), icon: <FolderPlus size={14} />, onClick: () => handleCreateGroup(groupItem.objectType, groupItem.id) },
-        {
-          label: tk('typeGroup.rename'),
-          icon: <FolderTree size={14} />,
-          onClick: () => {
-            const group = modelGroups.find((item) => item.id === groupItem.id);
-            if (group) setGroupDialog({ mode: 'rename', group });
-          },
-        },
-        { type: 'divider' as const },
-        { label: t('common.delete'), icon: <Trash2 size={14} />, danger: true, onClick: () => { void handleDeleteItem(groupItem); } },
-      ];
     }
 
     const objectItem = activeRow.item;
@@ -1039,27 +623,13 @@ export function ObjectPanel({ types }: ObjectPanelProps = {}): JSX.Element {
     activeRow,
     activeSelection,
     canCreateObject,
-    canCreateGroup,
-    primaryType,
     t,
     tk,
-    currentProject,
-    createModel,
-    modelGroups,
     setActiveContext,
     deleteRows,
   ]);
 
   const renderLeadingVisual = (row: PanelRow) => {
-    if (row.item.kind === 'group') {
-      const expanded = expandedGroups.has(row.item.id);
-      return (
-        <>
-          {expanded ? <ChevronDown size={12} className="shrink-0 text-secondary" /> : <ChevronRight size={12} className="shrink-0 text-secondary" />}
-          <FolderTree size={14} className="shrink-0 text-secondary" />
-        </>
-      );
-    }
     if (row.item.objectType === 'concept' && row.item.iconName) {
       return <NodeVisual icon={row.item.iconName} size={14} imageSize={18} className="shrink-0" />;
     }
@@ -1108,24 +678,6 @@ export function ObjectPanel({ types }: ObjectPanelProps = {}): JSX.Element {
           event.preventDefault();
           const nextIndex = Math.max(0, safeIndex - 1);
           focusRowByKey(visibleRows[nextIndex].key, event.shiftKey);
-          return;
-        }
-
-        if (event.key === 'ArrowRight') {
-          const row = focusedKey ? rowByKey.get(focusedKey) : undefined;
-          if (row?.item.kind === 'group' && !expandedGroups.has(row.item.id)) {
-            event.preventDefault();
-            toggleGroup(row.item.id);
-          }
-          return;
-        }
-
-        if (event.key === 'ArrowLeft') {
-          const row = focusedKey ? rowByKey.get(focusedKey) : undefined;
-          if (row?.item.kind === 'group' && expandedGroups.has(row.item.id)) {
-            event.preventDefault();
-            toggleGroup(row.item.id);
-          }
           return;
         }
 
@@ -1196,20 +748,11 @@ export function ObjectPanel({ types }: ObjectPanelProps = {}): JSX.Element {
 
       <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto">
         {sections.map((section) => {
-          const sectionDropKey = `section:${section.objectType}`;
-          const sectionCanCreateGroup = isGroupableType(section.objectType);
           const isSectionCollapsed = !hasSearch && collapsedSections.has(section.objectType);
           return (
             <div
               key={section.objectType}
-              className={`rounded border border-transparent ${
-                dropTargetKey === sectionDropKey ? 'border-accent bg-accent-muted/50' : ''
-              }`}
-              onDragEnter={(event) => handleSectionDragOver(event, section.objectType)}
-              onDragOverCapture={(event) => handleSectionDragOver(event, section.objectType)}
-              onDragOver={(event) => handleSectionDragOver(event, section.objectType)}
-              onDragLeave={(event) => handleDragLeave(event, sectionDropKey)}
-              onDrop={(event) => { void handleSectionDrop(event, section.objectType); }}
+              className="rounded border border-transparent"
             >
               <div className="flex items-center gap-1 px-2 py-1">
                 <button
@@ -1232,36 +775,16 @@ export function ObjectPanel({ types }: ObjectPanelProps = {}): JSX.Element {
                       <Plus size={12} />
                     </button>
                   )}
-                  {sectionCanCreateGroup && (
-                    <button
-                      type="button"
-                      className="rounded p-1 text-muted transition-colors hover:bg-state-hover hover:text-default"
-                      onClick={() => handleCreateGroup('model')}
-                      title={tk('typeGroup.create')}
-                    >
-                      <FolderPlus size={12} />
-                    </button>
-                  )}
                 </div>
               </div>
               {!isSectionCollapsed && (
                 <>
-                  {inlineGroupCreate && inlineGroupCreate.kind === section.objectType && inlineGroupCreate.parentGroupId === null && (
-                    <InlineGroupInput
-                      value={inlineGroupCreate.value}
-                      onChange={(value) => setInlineGroupCreate((prev) => (prev ? { ...prev, value } : prev))}
-                      onSubmit={() => { void submitInlineGroupCreate(); }}
-                      onCancel={() => setInlineGroupCreate(null)}
-                      placeholder={tk('typeGroup.namePlaceholder')}
-                    />
-                  )}
                   <div className="flex flex-col gap-0.5">
                     {section.rows.map((row) => {
                       const isSelected = selectedKeys.has(row.key);
                       const isFocused = focusedKey === row.key;
-                      const isDropTarget = dropTargetKey === row.key;
-                      const rowIsActive = row.item.kind === 'object' ? (row.item.isActive ?? false) : false;
-                      const contextItem = row.item.kind === 'object' && row.item.objectType === 'context' ? row.item : null;
+                      const rowIsActive = row.item.isActive ?? false;
+                      const contextItem = row.item.objectType === 'context' ? row.item : null;
                       return (
                         <React.Fragment key={row.key}>
                           <div
@@ -1275,28 +798,12 @@ export function ObjectPanel({ types }: ObjectPanelProps = {}): JSX.Element {
                                 : rowIsActive
                                   ? 'bg-accent-muted/60 text-accent'
                                   : 'hover:bg-state-hover'
-                            } ${isFocused && !isSelected ? 'ring-1 ring-border-default' : ''} ${
-                              isDropTarget ? 'bg-accent-muted/70 ring-1 ring-accent' : ''
-                            } ${isGroupableType(row.item.objectType) ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                            } ${isFocused && !isSelected ? 'ring-1 ring-border-default' : ''}`}
                             style={{ paddingLeft: `${8 + row.depth * 16}px` }}
-                            draggable={isGroupableType(row.item.objectType)}
-                            onDragStart={(event) => handleDragStart(event, row)}
-                            onDragEnd={() => setDropTargetKey(null)}
-                            onDragEnter={(event) => handleRowDragOver(event, row)}
-                            onDragOver={(event) => handleRowDragOver(event, row)}
-                            onDragLeave={(event) => handleDragLeave(event, row.key)}
-                            onDrop={(event) => { void handleRowDrop(event, row); }}
                             onClick={(event) => {
                               selectRow(event, row);
-                              if (row.item.kind === 'group' && !(event.metaKey || event.ctrlKey || event.shiftKey)) {
-                                toggleGroup(row.item.id);
-                              }
                             }}
                             onDoubleClick={() => {
-                              if (row.item.kind === 'group') {
-                                toggleGroup(row.item.id);
-                                return;
-                              }
                               void openItem(row.item);
                             }}
                             onContextMenu={(event) => {
@@ -1306,21 +813,16 @@ export function ObjectPanel({ types }: ObjectPanelProps = {}): JSX.Element {
                                 setSelectedKeys(new Set([row.key]));
                                 setSelectionAnchorKey(row.key);
                               }
-                              if (row.item.kind === 'object') {
-                                setNetworkObjectSelection({
-                                  objectType: row.item.objectType,
-                                  id: row.item.id,
-                                  title: row.item.title,
-                                });
-                              } else {
-                                setNetworkObjectSelection(null);
-                              }
+                              setNetworkObjectSelection({
+                                objectType: row.item.objectType,
+                                id: row.item.id,
+                                title: row.item.title,
+                              });
                               setFocusedKey(row.key);
                               setContextMenu({ x: event.clientX, y: event.clientY, row });
                             }}
                           >
                             <div className="flex min-w-0 flex-1 items-center gap-2">
-                              {isGroupableType(row.item.objectType) && <GripVertical size={12} className="shrink-0 text-muted opacity-0 group-hover:opacity-100" />}
                               {renderLeadingVisual(row)}
                               <div className="min-w-0 flex-1">
                                 <div className={`truncate text-sm ${rowIsActive || isSelected ? 'text-accent' : 'text-default'}`}>
@@ -1347,19 +849,6 @@ export function ObjectPanel({ types }: ObjectPanelProps = {}): JSX.Element {
                               </button>
                             )}
                           </div>
-                          {inlineGroupCreate
-                            && row.item.kind === 'group'
-                            && inlineGroupCreate.kind === row.item.objectType
-                            && inlineGroupCreate.parentGroupId === row.item.id && (
-                              <InlineGroupInput
-                                value={inlineGroupCreate.value}
-                                onChange={(value) => setInlineGroupCreate((prev) => (prev ? { ...prev, value } : prev))}
-                                onSubmit={() => { void submitInlineGroupCreate(); }}
-                                onCancel={() => setInlineGroupCreate(null)}
-                                placeholder={tk('typeGroup.namePlaceholder')}
-                                depth={row.depth + 1}
-                              />
-                            )}
                         </React.Fragment>
                       );
                     })}
@@ -1371,22 +860,6 @@ export function ObjectPanel({ types }: ObjectPanelProps = {}): JSX.Element {
                       </div>
                     )}
                   </div>
-                  {sectionCanCreateGroup && draggingObjectType === section.objectType && (
-                    <div
-                      className={`mx-2 mt-1 rounded border border-dashed px-2 py-1 text-[11px] transition-colors ${
-                        dropTargetKey === sectionDropKey
-                          ? 'border-accent bg-accent-muted text-accent'
-                          : 'border-subtle text-muted'
-                      }`}
-                      onDragEnter={(event) => handleSectionDragOver(event, section.objectType)}
-                      onDragOverCapture={(event) => handleSectionDragOver(event, section.objectType)}
-                      onDragOver={(event) => handleSectionDragOver(event, section.objectType)}
-                      onDragLeave={(event) => handleDragLeave(event, sectionDropKey)}
-                      onDrop={(event) => { void handleSectionDrop(event, section.objectType); }}
-                    >
-                      {tk('objectPanel.dropToRoot')}
-                    </div>
-                  )}
                 </>
               )}
             </div>
@@ -1403,13 +876,6 @@ export function ObjectPanel({ types }: ObjectPanelProps = {}): JSX.Element {
         />
       )}
 
-      <TypeGroupModal
-        open={groupDialog !== null}
-        onClose={() => setGroupDialog(null)}
-        onSubmit={submitGroupDialog}
-        initialValue={groupDialog?.mode === 'rename' ? groupDialog.group.name : ''}
-        title={groupDialog?.mode === 'rename' ? tk('typeGroup.rename') : tk('typeGroup.create')}
-      />
     </div>
   );
 }

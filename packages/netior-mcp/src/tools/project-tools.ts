@@ -1,6 +1,6 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
-import type { SchemaField, NetworkTreeNode, TypeGroup } from '@netior/shared/types';
+import type { SchemaField, NetworkTreeNode } from '@netior/shared/types';
 import {
   getUniverseNetwork,
   getProjectById,
@@ -9,44 +9,11 @@ import {
   listSchemaFields,
   listSchemas,
   listModels,
-  listTypeGroups,
   getConceptsByProject,
   listNetworks,
 } from '../netior-service-client.js';
 import { projectIdSchema, registerNetiorTool, resolveProjectId } from './shared-tool-registry.js';
-import { toAgentConcept, toAgentFieldType, toAgentTypeGroupKind } from './schema-surface.js';
-
-function buildTypeGroupPathMap(groups: TypeGroup[]): Map<string, string> {
-  const byId = new Map(groups.map((group) => [group.id, group]));
-  const cache = new Map<string, string>();
-
-  const resolvePath = (group: TypeGroup): string => {
-    const cached = cache.get(group.id);
-    if (cached) {
-      return cached;
-    }
-
-    const parent = group.parent_group_id ? byId.get(group.parent_group_id) : null;
-    const path = parent ? `${resolvePath(parent)}/${group.name}` : group.name;
-    cache.set(group.id, path);
-    return path;
-  };
-
-  for (const group of groups) {
-    resolvePath(group);
-  }
-
-  return cache;
-}
-
-function mapTypeGroups(groups: TypeGroup[]): Array<{ id: string; kind: string; path: string }> {
-  const pathMap = buildTypeGroupPathMap(groups);
-  return groups.map((group) => ({
-    id: group.id,
-    kind: toAgentTypeGroupKind(group.kind),
-    path: pathMap.get(group.id) ?? group.name,
-  }));
-}
+import { toAgentConcept, toAgentFieldType } from './schema-surface.js';
 
 function buildOptionsPreview(options: string | null): string[] | undefined {
   if (!options) {
@@ -129,7 +96,6 @@ export function registerProjectTools(server: McpServer): void {
           models,
           concepts,
           networks,
-          schemaGroups,
           universeNetwork,
           ontologyNetwork,
           networkTree,
@@ -138,7 +104,6 @@ export function registerProjectTools(server: McpServer): void {
           listModels(targetProjectId),
           getConceptsByProject(targetProjectId),
           listNetworks(targetProjectId),
-          listTypeGroups(targetProjectId, 'schema'),
           getUniverseNetwork(),
           getProjectOntologyNetwork(targetProjectId),
           getNetworkTree(targetProjectId),
@@ -149,7 +114,6 @@ export function registerProjectTools(server: McpServer): void {
             schemas.map(async (schema) => [schema.id, await listSchemaFields(schema.id)] as const),
           ),
         );
-        const typeGroups = mapTypeGroups(schemaGroups);
         const edgeModels = models.filter((model) => model.target_kind === 'edge' || model.target_kind === 'both');
 
         const summary = {
@@ -181,10 +145,6 @@ export function registerProjectTools(server: McpServer): void {
               color: model.color,
               description: model.description,
             })),
-          },
-          type_groups: {
-            count: typeGroups.length,
-            items: typeGroups,
           },
           concepts: {
             count: concepts.length,

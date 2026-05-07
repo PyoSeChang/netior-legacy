@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect, useSyncExternalStore } from 'react';
-import { X, Terminal, Shapes, Boxes, Link, Layout, Sparkles, FileText, FolderOpen, RefreshCw, Bot, Waypoints } from 'lucide-react';
+import { X, Terminal, Shapes, Boxes, Link, Layout, Sparkles, FileText, FolderOpen, RefreshCw, Bot, Waypoints, Globe } from 'lucide-react';
 import type { EditorTab } from '@netior/shared/types';
 import { setTabDragData, isTabDrag, getTabDragDataAsync, clearTabDragData, flushTabDragData } from '../../hooks/useTabDrag';
 import { getFileOpenDragData, isFileOpenDrag } from '../../hooks/useFileOpenDrag';
@@ -109,6 +109,11 @@ function TabIcon({ tab }: { tab: EditorTab }): JSX.Element {
       return <Bot size={ICON_SIZE} style={{ flexShrink: 0 }} />;
     case 'fileMetadata':
       return <FileText size={ICON_SIZE} style={{ flexShrink: 0 }} />;
+    case 'browser':
+      if (tab.browserFaviconUrl) {
+        return <NodeVisual icon={tab.browserFaviconUrl} size={ICON_SIZE} imageSize={16} className="shrink-0" />;
+      }
+      return <Globe size={ICON_SIZE} style={{ flexShrink: 0 }} />;
     default:
       return <span style={{ width: ICON_SIZE, height: ICON_SIZE, flexShrink: 0 }} />;
   }

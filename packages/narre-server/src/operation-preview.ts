@@ -5,7 +5,6 @@ import {
   listModels,
   listSchemaFields,
   listSchemas,
-  listTypeGroups,
 } from './netior-service-client.js';
 
 interface OperationPreviewContext {
@@ -79,25 +78,13 @@ async function appendSchemaContext(
     ? schemas.find((schema) => schema.name.toLowerCase() === requestedName.toLowerCase())
     : null;
   const modelKeys = asStringList(input.models);
-  const groupId = asString(input.group_id);
 
   preview.items = (preview.items ?? []).filter((item) => {
     const normalizedLabel = item.label.toLowerCase();
     return normalizedLabel !== 'schema id'
       && normalizedLabel !== 'schema_id'
-      && normalizedLabel !== 'group id'
-      && normalizedLabel !== 'group_id'
       && normalizedLabel !== 'models';
   });
-
-  if (groupId) {
-    const groups = await listTypeGroups(context.projectId, 'schema');
-    const group = groups.find((candidate) => candidate.id === groupId);
-    preview.items = [
-      ...(preview.items ?? []),
-      { label: 'Group', value: group?.name ?? 'Unknown group' },
-    ];
-  }
 
   if (modelKeys.length > 0) {
     const models = await listModels(context.projectId);
@@ -302,7 +289,7 @@ export async function buildNarreOperationPreview(
     }
 
     case 'update_schema': {
-      const changes = ['name', 'description', 'icon', 'color', 'node_shape', 'file_template', 'group_id', 'models']
+      const changes = ['name', 'description', 'icon', 'color', 'node_shape', 'file_template', 'models']
         .filter((key) => input[key] !== undefined);
       return withContext(context, normalizedToolName, input, createPreview(normalizedToolName, {
         title: `Update schema${asString(input.name) ? `: ${asString(input.name)}` : ''}`,
@@ -353,7 +340,7 @@ export async function buildNarreOperationPreview(
         summary: 'createModel',
         items: [
           ...(asString(input.key) ? [{ label: 'Key', value: asString(input.key)! }] : []),
-          ...(asString(input.category) ? [{ label: 'Category', value: asString(input.category)! }] : []),
+          ...(asString(input.category_concept_id) ? [{ label: 'Category concept ID', value: asString(input.category_concept_id)! }] : []),
           ...(asString(input.target_kind) ? [{ label: 'Target', value: asString(input.target_kind)! }] : []),
           ...(meanings.length > 0 ? [{ label: 'Meanings', value: meanings.join(', ') }] : []),
           ...(input.recipe ? [{ label: 'Recipe', value: 'Custom recipe included' }] : []),
@@ -385,34 +372,6 @@ export async function buildNarreOperationPreview(
           ...(asString(input.parent_network_id) ? [{ label: 'Parent network', value: asString(input.parent_network_id)! }] : []),
         ],
       }));
-    }
-
-    case 'create_type_group': {
-      const name = asString(input.name) ?? 'Untitled group';
-      return createPreview(normalizedToolName, {
-        title: `Create type group: ${name}`,
-        summary: 'createTypeGroup',
-        items: [
-          ...(asString(input.kind) ? [{ label: 'Kind', value: asString(input.kind)! }] : []),
-          { label: 'Name', value: name },
-          ...(input.sort_order !== undefined ? [{ label: 'Sort order', value: formatOptional(input.sort_order) ?? '0' }] : []),
-        ],
-      });
-    }
-
-    case 'update_type_group': {
-      const changes = ['name', 'sort_order'].filter((key) => input[key] !== undefined);
-      return createPreview(normalizedToolName, {
-        title: `Update type group${asString(input.name) ? `: ${asString(input.name)}` : ''}`,
-        summary: `updateTypeGroup:${changes.length || 1}`,
-        items: [
-          ...(asString(input.group_id) ? [{ label: 'Group ID', value: asString(input.group_id)! }] : []),
-          ...changes.map((key) => ({
-            label: key,
-            value: formatOptional(input[key]) ?? JSON.stringify(input[key]),
-          })),
-        ],
-      });
     }
 
     default:
