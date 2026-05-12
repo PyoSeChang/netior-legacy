@@ -11,6 +11,8 @@ export { schemaService } from './schema-service';
 export { modelService } from './model-service';
 export { instancePropertyService } from './instance-property-service';
 export { instanceContentService } from './instance-content-service';
+export { interactiveViewStateService } from './interactive-view-state-service';
+export { interactiveViewTemplateService } from './interactive-view-template-service';
 export { objectService } from './object-service';
 export { narreService } from './narre-service';
 export { agentService } from './agent-service';

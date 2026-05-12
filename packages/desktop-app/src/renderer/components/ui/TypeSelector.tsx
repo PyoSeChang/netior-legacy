@@ -10,10 +10,10 @@ import {
   FileText,
   Globe,
   Hash,
-  Link2,
   List,
   Palette,
   Search,
+  Shapes,
   Star,
   Tags,
   ToggleLeft,
@@ -76,7 +76,7 @@ const CATEGORIES: TypeCategory[] = [
   {
     key: 'reference',
     types: [
-      { value: 'relation', i18nKey: 'relation', icon: Link2 },
+      { value: 'object', i18nKey: 'object', icon: Shapes },
       { value: 'file', i18nKey: 'file', icon: FileText },
       { value: 'model_ref', i18nKey: 'model_ref', icon: Boxes },
     ],
@@ -191,7 +191,7 @@ export const TypeSelector: React.FC<TypeSelectorProps> = ({
     <>
       <div
         ref={triggerRef}
-        className={`flex min-w-[140px] items-start gap-2 rounded-lg border border-input bg-surface-input px-2.5 py-1.5 text-sm outline-none transition-all duration-fast hover:border-strong focus:border-accent ${open ? 'border-accent' : ''} ${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
+        className={`flex w-full min-w-[140px] items-start gap-2 rounded-lg border border-input bg-surface-input px-2.5 py-1.5 text-sm outline-none transition-all duration-fast hover:border-strong focus:border-accent ${open ? 'border-accent' : ''} ${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
         onClick={handleOpen}
         onKeyDown={handleKeyDown}
         tabIndex={disabled ? -1 : 0}

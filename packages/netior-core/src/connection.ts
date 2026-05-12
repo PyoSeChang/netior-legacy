@@ -46,6 +46,11 @@ import { migrate043 } from './migrations/043-remove-concept-model-id';
 import { migrate044 } from './migrations/044-concept-properties-schema-field-fk';
 import { migrate045 } from './migrations/045-source-provenance-and-model-category-concepts';
 import { migrate046 } from './migrations/046-instance-rename';
+import { migrate047 } from './migrations/047-schema-field-bindings';
+import { migrate048 } from './migrations/048-interactive-view-state';
+import { migrate049 } from './migrations/049-interactive-view-templates';
+import { migrate050 } from './migrations/050-interactive-view-inheritance';
+import { migrate051 } from './migrations/051-interactive-view-user-authored-templates';
 import {
   ensureProjectNodeInUniverseForDb,
   ensureProjectOntologyNetworkForDb,
@@ -105,6 +110,11 @@ const migrations: Migration[] = [
   { version: 44, migrate: migrate044 },
   { version: 45, migrate: migrate045 },
   { version: 46, migrate: migrate046 },
+  { version: 47, migrate: migrate047 },
+  { version: 48, migrate: migrate048 },
+  { version: 49, migrate: migrate049 },
+  { version: 50, migrate: migrate050 },
+  { version: 51, migrate: migrate051 },
 ];
 
 export function hasColumn(db: Database.Database, table: string, column: string): boolean {

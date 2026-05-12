@@ -32,6 +32,10 @@ import {
   getByInstanceId,
   getInstancesByProject,
   getEditorPrefs,
+  getInteractiveViewState,
+  getInteractiveViewPreference,
+  getInteractiveViewSchemaPreference,
+  getInteractiveViewTemplate,
   getEdge,
   getEdgeVisuals,
   getFileEntitiesByProject,
@@ -62,6 +66,7 @@ import {
   listProjects,
   listModels,
   listModelCategories,
+  listInteractiveViewTemplates,
   parseFromAgent,
   removeEdgeVisual,
   removeContextMember,
@@ -75,6 +80,10 @@ import {
   setNodePosition,
   setSetting,
   upsertEditorPrefs,
+  upsertInteractiveViewState,
+  upsertInteractiveViewPreference,
+  upsertInteractiveViewSchemaPreference,
+  createInteractiveViewTemplate,
   upsertProperty,
   updateSchema,
   updateInstance,
@@ -93,6 +102,8 @@ import {
   updateProject,
   updateProjectRootDir,
   updateModel,
+  updateInteractiveViewTemplate,
+  deleteInteractiveViewTemplate,
 } from '@netior/core';
 import type {
   Schema,
@@ -106,6 +117,11 @@ import type {
   SchemaUpdate,
   Instance,
   InstanceEditorPrefsUpdate,
+  InteractiveViewPreferenceUpsert,
+  InteractiveViewSchemaPreferenceUpsert,
+  InteractiveViewStateUpsert,
+  InteractiveViewTemplateCreate,
+  InteractiveViewTemplateUpdate,
   InstanceCreate,
   InstanceProperty,
   InstancePropertyUpsert,
@@ -580,6 +596,104 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
     if (method === 'PUT') {
       const body = await readJsonBody<InstanceEditorPrefsUpdate>(req);
       sendJson(res, 200, { ok: true, data: upsertEditorPrefs(instanceId, body) });
+      return;
+    }
+
+    sendJson(res, 405, { ok: false, error: `Method ${method} not allowed for ${pathname}` });
+    return;
+  }
+
+  if (pathname === '/interactive-view-states') {
+    if (method === 'GET') {
+      const instanceId = getRequiredSearchParam(url, 'instanceId');
+      const viewTemplateId = getRequiredSearchParam(url, 'viewTemplateId');
+      sendJson(res, 200, { ok: true, data: getInteractiveViewState(instanceId, viewTemplateId) ?? null });
+      return;
+    }
+
+    if (method === 'PUT') {
+      const body = await readJsonBody<InteractiveViewStateUpsert>(req);
+      sendJson(res, 200, { ok: true, data: upsertInteractiveViewState(body) });
+      return;
+    }
+
+    sendJson(res, 405, { ok: false, error: `Method ${method} not allowed for ${pathname}` });
+    return;
+  }
+
+  if (pathname === '/interactive-view-templates') {
+    if (method === 'GET') {
+      sendJson(res, 200, {
+        ok: true,
+        data: listInteractiveViewTemplates({
+          projectId: getRequiredSearchParam(url, 'projectId'),
+          schemaId: url.searchParams.get('schemaId'),
+          instanceId: url.searchParams.get('instanceId'),
+        }),
+      });
+      return;
+    }
+
+    if (method === 'POST') {
+      const body = await readJsonBody<InteractiveViewTemplateCreate>(req);
+      sendJson(res, 200, { ok: true, data: createInteractiveViewTemplate(body) });
+      return;
+    }
+
+    sendJson(res, 405, { ok: false, error: `Method ${method} not allowed for ${pathname}` });
+    return;
+  }
+
+  if (pathname.startsWith('/interactive-view-templates/')) {
+    const id = decodeURIComponent(pathname.slice('/interactive-view-templates/'.length));
+
+    if (method === 'GET') {
+      sendJson(res, 200, { ok: true, data: getInteractiveViewTemplate(id) ?? null });
+      return;
+    }
+
+    if (method === 'PATCH') {
+      const body = await readJsonBody<InteractiveViewTemplateUpdate>(req);
+      sendJson(res, 200, { ok: true, data: updateInteractiveViewTemplate(id, body) ?? null });
+      return;
+    }
+
+    if (method === 'DELETE') {
+      sendJson(res, 200, { ok: true, data: deleteInteractiveViewTemplate(id) });
+      return;
+    }
+
+    sendJson(res, 405, { ok: false, error: `Method ${method} not allowed for ${pathname}` });
+    return;
+  }
+
+  if (pathname === '/interactive-view-preferences') {
+    if (method === 'GET') {
+      const instanceId = getRequiredSearchParam(url, 'instanceId');
+      sendJson(res, 200, { ok: true, data: getInteractiveViewPreference(instanceId) ?? null });
+      return;
+    }
+
+    if (method === 'PUT') {
+      const body = await readJsonBody<InteractiveViewPreferenceUpsert>(req);
+      sendJson(res, 200, { ok: true, data: upsertInteractiveViewPreference(body) });
+      return;
+    }
+
+    sendJson(res, 405, { ok: false, error: `Method ${method} not allowed for ${pathname}` });
+    return;
+  }
+
+  if (pathname === '/interactive-view-schema-preferences') {
+    if (method === 'GET') {
+      const schemaId = getRequiredSearchParam(url, 'schemaId');
+      sendJson(res, 200, { ok: true, data: getInteractiveViewSchemaPreference(schemaId) ?? null });
+      return;
+    }
+
+    if (method === 'PUT') {
+      const body = await readJsonBody<InteractiveViewSchemaPreferenceUpsert>(req);
+      sendJson(res, 200, { ok: true, data: upsertInteractiveViewSchemaPreference(body) });
       return;
     }
 
@@ -1141,12 +1255,15 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
 type SchemaRow = Omit<Schema, 'models'> & {
   models: string | null;
 };
-type SchemaFieldRow = Omit<SchemaField, 'required' | 'slot_binding_locked' | 'generated_by_model' | 'meaning_bindings'> & {
+type SchemaFieldRow = Omit<SchemaField, 'required' | 'slot_binding_locked' | 'generated_by_model' | 'meaning_bindings' | 'bindings'> & {
   required: number;
   slot_binding_locked: number;
   generated_by_model?: number;
   meaning_slot?: MeaningSlotKey | null;
   meaning_key?: FieldMeaningKey | null;
+};
+type SchemaFieldBindingRow = Omit<SchemaField['bindings'][number], 'read_only'> & {
+  read_only: number;
 };
 
 function parseModels(raw: string | null | undefined): ModelKey[] {
@@ -1197,7 +1314,32 @@ function getFieldMeaningBindingsByFieldId(fieldIds: string[]): Map<string, Field
   return byField;
 }
 
-function toSchemaField(row: SchemaFieldRow, meaningBindings?: readonly FieldMeaningBindingKey[]): SchemaField {
+function getSchemaFieldBindingsByFieldId(fieldIds: string[]): Map<string, SchemaField['bindings']> {
+  const byField = new Map<string, SchemaField['bindings']>();
+  if (fieldIds.length === 0) return byField;
+
+  const db = getDatabase();
+  const placeholders = fieldIds.map(() => '?').join(',');
+  const rows = db.prepare(
+    `SELECT * FROM schema_field_bindings WHERE field_id IN (${placeholders}) ORDER BY field_id, sort_order, created_at`,
+  ).all(...fieldIds) as SchemaFieldBindingRow[];
+
+  for (const row of rows) {
+    const current = byField.get(row.field_id) ?? [];
+    current.push({
+      ...row,
+      read_only: !!row.read_only,
+    });
+    byField.set(row.field_id, current);
+  }
+  return byField;
+}
+
+function toSchemaField(
+  row: SchemaFieldRow,
+  meaningBindings?: readonly FieldMeaningBindingKey[],
+  fieldBindings: SchemaField['bindings'] = [],
+): SchemaField {
   const fieldMeaning = row.meaning_key ?? meaningSlotToFieldMeaning(row.meaning_slot);
   const bindings = normalizeMeaningBindings(meaningBindings, fieldMeaning);
   const generatedByModel = Boolean(row.generated_by_model);
@@ -1210,6 +1352,7 @@ function toSchemaField(row: SchemaFieldRow, meaningBindings?: readonly FieldMean
 
   return {
     ...field,
+    bindings: fieldBindings,
     meaning_bindings: bindings,
     required: !!row.required,
     slot_binding_locked: !!row.slot_binding_locked,
@@ -1240,7 +1383,8 @@ function loadInstanceContentData(instanceId: string): {
       const rows = db.prepare('SELECT * FROM schema_fields WHERE schema_id = ? ORDER BY sort_order')
         .all(schema.id) as SchemaFieldRow[];
       const bindingsByFieldId = getFieldMeaningBindingsByFieldId(rows.map((row) => row.id));
-      fields = rows.map((row) => toSchemaField(row, bindingsByFieldId.get(row.id)));
+      const fieldBindingsByFieldId = getSchemaFieldBindingsByFieldId(rows.map((row) => row.id));
+      fields = rows.map((row) => toSchemaField(row, bindingsByFieldId.get(row.id), fieldBindingsByFieldId.get(row.id) ?? []));
     }
 
     const props = db.prepare('SELECT * FROM instance_properties WHERE instance_id = ?')

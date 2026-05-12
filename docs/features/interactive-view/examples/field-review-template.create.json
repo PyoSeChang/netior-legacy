@@ -1,0 +1,15 @@
+{
+  "project_id": "f2996a50-52d5-49a8-b3ab-dd0019cc6dab",
+  "target_kind": "project",
+  "target_id": null,
+  "name": "Field Review Demo",
+  "description": "Project-scoped example interactive view template. It renders any instance fields, keeps the selected field in view state, and can save an edited field value through the Interactive SDK.",
+  "source_kind": "manual",
+  "trust_level": "validated",
+  "default_runtime": "host",
+  "enabled": 1,
+  "validation_status": "passed",
+  "validation_errors_json": "[]",
+  "manifest_json": "{\"kind\":\"interactive-view\",\"sdkVersion\":1,\"target\":{},\"permissions\":{\"readFields\":[\"*\"],\"writeFields\":[\"*\"],\"viewState\":true},\"runtime\":\"host\"}",
+  "source_code": "import { Button, Field, FieldEditor, Inline, Panel, Stack, useField, useFields, useUpdateField, useViewState } from '@netior/interactive-sdk';\n\nexport function View() {\n  const fields = useFields();\n  const updateField = useUpdateField();\n  const firstFieldId = fields[0]?.field?.id ?? null;\n  const [selectedFieldId, setSelectedFieldId] = useViewState('selectedFieldId', firstFieldId);\n  const selected = fields.find((item) => item.field?.id === selectedFieldId) ?? fields[0] ?? null;\n  const [draft, setDraft] = useViewState('draft', selected?.value ?? '');\n  const [saveCount, setSaveCount] = useViewState('saveCount', 0);\n\n  if (fields.length === 0) {\n    return (\n      <Panel>\n        <div className=\"text-sm text-muted\">This instance has no schema fields.</div>\n      </Panel>\n    );\n  }\n\n  const selectedKey = selected?.field?.id ?? '';\n\n  return (\n    <Stack>\n      <Panel>\n        <Stack>\n          <div className=\"text-sm font-medium text-default\">Field Review Demo</div>\n          <Inline>\n            {fields.map(({ field }) => field ? (\n              <Button\n                key={field.id}\n                variant={field.id === selectedKey ? 'primary' : 'secondary'}\n                onClick={() => {\n                  setSelectedFieldId(field.id);\n                  const next = fields.find((item) => item.field?.id === field.id);\n                  setDraft(next?.value ?? '');\n                }}\n              >\n                {field.name}\n              </Button>\n            ) : null)}\n          </Inline>\n        </Stack>\n      </Panel>\n\n      {selected?.field ? (\n        <Panel>\n          <Stack>\n            <Field name={selected.field.id} />\n            <FieldEditor\n              fieldKey={selected.field.id}\n              draft={draft ?? ''}\n              onDraftChange={setDraft}\n              onSave={() => {\n                updateField(selected.field.id, draft ?? '');\n                setSaveCount(saveCount + 1);\n              }}\n            />\n            <div className=\"text-xs text-muted\">Saved from this view: {saveCount}</div>\n          </Stack>\n        </Panel>\n      ) : null}\n    </Stack>\n  );\n}\n"
+}

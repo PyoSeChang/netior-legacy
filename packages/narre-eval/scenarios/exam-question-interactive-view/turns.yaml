@@ -1,0 +1,19 @@
+turns:
+  - role: user
+    content: |
+      /interactive-view Create an Interactive View for this Exam Question instance.
+
+      Requirements:
+      - Show the question, choices, correct answer behavior, and explanation.
+      - Let the user select one choice and press a check button.
+      - Compare the selected choice with the answer field inside the view logic.
+      - Show immediate correct/incorrect feedback.
+      - Let the user reveal the explanation after checking.
+      - Persist only view progress such as selected choice, checked state, and explanation visibility in view state.
+      - Do not update real instance fields.
+      - Store the template as the Exam Question schema default.
+      - Do not create an instance override; this instance should inherit the schema template.
+    mentions:
+      - type: instance
+        id: "{{question_instance_id}}"
+        display: "{{question_instance_title}}"

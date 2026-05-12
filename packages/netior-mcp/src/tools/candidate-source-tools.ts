@@ -24,6 +24,12 @@ function findField(fields: SchemaField[], fieldId: string): SchemaField | undefi
   return fields.find((field) => field.id === fieldId);
 }
 
+function getCandidateSourceSchemaId(field: SchemaField): string | null {
+  return field.bindings.find((binding) => (
+    binding.binding_kind === 'instance_select' || binding.binding_kind === 'instance_multi_select'
+  ))?.source_schema_id ?? null;
+}
+
 export function registerCandidateSourceTools(server: McpServer): void {
   registerNetiorTool(
     server,
@@ -50,12 +56,13 @@ export function registerCandidateSourceTools(server: McpServer): void {
 
         const limit = Math.max(1, max_results ?? 50);
 
-        if (field.ref_schema_id) {
+        const sourceSchemaId = getCandidateSourceSchemaId(field);
+        if (sourceSchemaId) {
           const instances = query
             ? await searchInstances(targetProjectId, query)
             : await getInstancesByProject(targetProjectId);
           const filtered = instances
-            .filter((instance) => instance.schema_id === field.ref_schema_id)
+            .filter((instance) => instance.schema_id === sourceSchemaId)
             .slice(0, limit)
             .map((instance) => ({
               id: instance.id,
@@ -72,7 +79,7 @@ export function registerCandidateSourceTools(server: McpServer): void {
                   name: field.name,
                   field_type: toAgentFieldType(field.field_type),
                   required: field.required,
-                  ref_schema_id: field.ref_schema_id,
+                  source_schema_id: sourceSchemaId,
                 },
                 candidate_mode: 'instances_by_schema',
                 candidates: filtered,

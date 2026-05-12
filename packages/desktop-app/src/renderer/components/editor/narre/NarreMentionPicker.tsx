@@ -103,20 +103,15 @@ function stringMeta(meta: Record<string, unknown> | undefined, key: string): str
   return typeof value === 'string' ? value : null;
 }
 
-function booleanMeta(meta: Record<string, unknown> | undefined, key: string): boolean | null {
-  const value = meta?.[key];
-  return typeof value === 'boolean' ? value : null;
-}
-
-function toModelDisplaySource(item: MentionResult): Pick<Model, 'key' | 'name' | 'description' | 'built_in'> | null {
+function toModelDisplaySource(item: MentionResult): Pick<Model, 'key' | 'name' | 'description' | 'source_kind' | 'source_ref'> | null {
   const name = stringMeta(item.meta, 'name') ?? item.display;
   const key = stringMeta(item.meta, 'key') ?? name;
-  const builtIn = booleanMeta(item.meta, 'builtIn') ?? false;
   return {
     key: key as ModelKey,
     name,
     description: item.description ?? null,
-    built_in: builtIn,
+    source_kind: stringMeta(item.meta, 'sourceKind') as Model['source_kind'] ?? 'project',
+    source_ref: stringMeta(item.meta, 'sourceRef'),
   };
 }
 
@@ -139,7 +134,8 @@ function localizeMentionResult(
       key: (stringMeta(item.meta, 'modelKey') ?? stringMeta(item.meta, 'model') ?? '') as ModelKey,
       name: stringMeta(item.meta, 'model') ?? '',
       description: stringMeta(item.meta, 'modelDescription'),
-      built_in: booleanMeta(item.meta, 'modelBuiltIn') ?? false,
+      source_kind: stringMeta(item.meta, 'modelSourceKind') as Model['source_kind'] ?? 'project',
+      source_ref: stringMeta(item.meta, 'modelSourceRef'),
     };
     return {
       ...item,

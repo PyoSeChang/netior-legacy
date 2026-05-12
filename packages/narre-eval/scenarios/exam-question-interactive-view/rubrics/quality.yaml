@@ -1,0 +1,4 @@
+rubrics:
+  - rubric: "The Interactive View template is scoped to the requested instance and selected for that instance."
+  - rubric: "The TSX reads real schema fields, stores UI progress in view state, and avoids writing instance fields unless requested."
+  - rubric: "The view implements exam-question behavior as custom TSX logic rather than relying on a Netior preset."

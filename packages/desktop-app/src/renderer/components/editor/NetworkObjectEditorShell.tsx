@@ -1,6 +1,9 @@
 import React, { useMemo, useState } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { Badge } from '../ui/Badge';
+import { useI18n } from '../../hooks/useI18n';
+
+type NetworkObjectEditorViewMode = 'body' | 'details' | 'interactive';
 
 interface NetworkObjectEditorShellProps {
   badge: string;
@@ -20,7 +23,7 @@ interface NetworkObjectEditorSectionProps {
   description?: string;
   defaultOpen?: boolean;
   actions?: React.ReactNode;
-  viewMode?: 'body' | 'details';
+  viewMode?: NetworkObjectEditorViewMode;
   fullBleed?: boolean;
   children: React.ReactNode;
 }
@@ -41,7 +44,8 @@ export function NetworkObjectEditorShell({
   bodySectionCount = 2,
   children,
 }: NetworkObjectEditorShellProps): JSX.Element {
-  const [viewMode, setViewMode] = useState<'body' | 'details'>('body');
+  const { t } = useI18n();
+  const [viewMode, setViewMode] = useState<NetworkObjectEditorViewMode>('body');
   const sections = useMemo(() => React.Children.toArray(children), [children]);
   const explicitBodySections = sections.filter((section) => (
     React.isValidElement<NetworkObjectEditorSectionProps>(section) && section.props.viewMode === 'body'
@@ -49,10 +53,18 @@ export function NetworkObjectEditorShell({
   const explicitDetailSections = sections.filter((section) => (
     React.isValidElement<NetworkObjectEditorSectionProps>(section) && section.props.viewMode === 'details'
   ));
-  const hasExplicitModes = explicitBodySections.length > 0 || explicitDetailSections.length > 0;
+  const explicitInteractiveSections = sections.filter((section) => (
+    React.isValidElement<NetworkObjectEditorSectionProps>(section) && section.props.viewMode === 'interactive'
+  ));
+  const hasExplicitModes = explicitBodySections.length > 0 || explicitDetailSections.length > 0 || explicitInteractiveSections.length > 0;
   const bodySections = hasExplicitModes ? explicitBodySections : sections.slice(0, bodySectionCount);
   const detailSections = hasExplicitModes ? explicitDetailSections : sections.slice(bodySectionCount);
-  const visibleSections = viewMode === 'body' ? bodySections : detailSections;
+  const interactiveSections = hasExplicitModes ? explicitInteractiveSections : [];
+  const visibleSections = viewMode === 'body'
+    ? bodySections
+    : viewMode === 'interactive'
+      ? interactiveSections
+      : detailSections;
 
   return (
     <div className={`${fillHeight ? 'min-h-full' : 'min-h-0'} bg-surface-editor`}>
@@ -68,8 +80,22 @@ export function NetworkObjectEditorShell({
                   : 'text-secondary hover:bg-state-hover hover:text-default',
               ].join(' ')}
             >
-              Body
+              {t('editorShell.body' as never)}
             </button>
+            {interactiveSections.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setViewMode('interactive')}
+                className={[
+                  'h-8 rounded-md px-3 text-xs font-semibold transition-colors',
+                  viewMode === 'interactive'
+                    ? 'bg-accent text-on-accent shadow-sm'
+                    : 'text-secondary hover:bg-state-hover hover:text-default',
+                ].join(' ')}
+              >
+                {t('editorShell.interactiveView' as never)}
+              </button>
+            )}
             {detailSections.length > 0 && (
               <button
                 type="button"
@@ -81,7 +107,7 @@ export function NetworkObjectEditorShell({
                     : 'text-secondary hover:bg-state-hover hover:text-default',
                 ].join(' ')}
               >
-                Details
+                {t('editorShell.details' as never)}
               </button>
             )}
           </div>

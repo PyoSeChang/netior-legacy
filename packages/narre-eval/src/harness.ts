@@ -4,12 +4,15 @@ import { tmpdir } from 'os';
 import { randomUUID } from 'crypto';
 import type { SeedContext } from './types.js';
 import {
+  createInstance,
   createSchema,
+  createSchemaField,
   createConcept,
   createFileEntity,
   createModule,
   createProject,
   createRelationType,
+  upsertInstanceProperty,
 } from './netior-service-client.js';
 import { startNetiorServiceForEval } from './netior-service-process.js';
 
@@ -77,11 +80,20 @@ export async function setupScenario(
     createSchema(data) {
       return track(createSchema(service.baseUrl, data));
     },
+    createSchemaField(data) {
+      return track(createSchemaField(service.baseUrl, data));
+    },
     createRelationType(data) {
       return track(createRelationType(service.baseUrl, data));
     },
     createConcept(data) {
       return track(createConcept(service.baseUrl, data));
+    },
+    createInstance(data) {
+      return track(createInstance(service.baseUrl, data));
+    },
+    upsertInstanceProperty(data) {
+      return track(upsertInstanceProperty(service.baseUrl, data));
     },
     createFileEntity(data) {
       return track(createFileEntity(service.baseUrl, data));

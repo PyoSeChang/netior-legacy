@@ -16,6 +16,10 @@ import type {
   SchemaCreate,
   SchemaUpdate,
   SchemaField,
+  SchemaFieldBinding,
+  SchemaFieldBindingCardinality,
+  SchemaFieldBindingCreate,
+  SchemaFieldBindingKind,
   SchemaFieldCreate,
   SchemaFieldUpdate,
   SchemaMeaning,
@@ -36,12 +40,15 @@ import type {
 type SchemaRow = Omit<Schema, 'models'> & {
   models: string | null;
 };
-type SchemaFieldRow = Omit<SchemaField, 'required' | 'slot_binding_locked' | 'generated_by_model' | 'meaning_bindings'> & {
+type SchemaFieldRow = Omit<SchemaField, 'required' | 'slot_binding_locked' | 'generated_by_model' | 'meaning_bindings' | 'bindings'> & {
   meaning_slot: MeaningSlotKey | null;
   meaning_key: FieldMeaningKey | null;
   required: number;
   slot_binding_locked: number;
   generated_by_model: number;
+};
+type SchemaFieldBindingRow = Omit<SchemaFieldBinding, 'read_only'> & {
+  read_only: number;
 };
 type SchemaMeaningRow = Omit<SchemaMeaning, 'slots'>;
 type SchemaMeaningSlotBindingRow = Omit<SchemaMeaningSlotBinding, 'required'> & {
@@ -125,6 +132,120 @@ function replaceFieldMeaningBindings(
   );
   normalized.forEach((meaning, index) => {
     insertMeaning.run(randomUUID(), fieldId, meaning, source, index, now);
+  });
+}
+
+const BINDING_KINDS: readonly SchemaFieldBindingKind[] = [
+  'instance_select',
+  'instance_multi_select',
+  'schema_composition',
+  'schema_extension',
+  'conditional_field',
+  'computed_field',
+  'derived_collection',
+];
+
+const BINDING_CARDINALITIES: readonly SchemaFieldBindingCardinality[] = ['none', 'one', 'many', 'object'];
+
+function normalizeBindingKind(value: SchemaFieldBindingKind | string | null | undefined): SchemaFieldBindingKind {
+  return BINDING_KINDS.includes(value as SchemaFieldBindingKind)
+    ? value as SchemaFieldBindingKind
+    : 'schema_composition';
+}
+
+function normalizeBindingCardinality(
+  value: SchemaFieldBindingCardinality | string | null | undefined,
+  fallback: SchemaFieldBindingCardinality,
+): SchemaFieldBindingCardinality {
+  return BINDING_CARDINALITIES.includes(value as SchemaFieldBindingCardinality)
+    ? value as SchemaFieldBindingCardinality
+    : fallback;
+}
+
+function inferBindingKind(fieldType: SchemaField['field_type']): SchemaFieldBindingKind {
+  if (fieldType === 'multi-select' || fieldType === 'tags') return 'instance_multi_select';
+  if (fieldType === 'select' || fieldType === 'radio' || fieldType === 'relation') return 'instance_select';
+  if (fieldType === 'object') return 'schema_composition';
+  return 'schema_composition';
+}
+
+function inferBindingCardinality(fieldType: SchemaField['field_type']): SchemaFieldBindingCardinality {
+  if (fieldType === 'multi-select' || fieldType === 'tags') return 'many';
+  if (fieldType === 'object') return 'object';
+  return 'one';
+}
+
+function toFieldBinding(row: SchemaFieldBindingRow): SchemaFieldBinding {
+  return {
+    ...row,
+    binding_kind: normalizeBindingKind(row.binding_kind),
+    cardinality: normalizeBindingCardinality(row.cardinality, 'one'),
+    read_only: !!row.read_only,
+  };
+}
+
+function getFieldBindingsByFieldId(
+  db: ReturnType<typeof getDatabase>,
+  fieldIds: string[],
+): Map<string, SchemaFieldBinding[]> {
+  const byField = new Map<string, SchemaFieldBinding[]>();
+  if (fieldIds.length === 0) return byField;
+
+  const placeholders = fieldIds.map(() => '?').join(',');
+  const rows = db.prepare(
+    `SELECT * FROM schema_field_bindings WHERE field_id IN (${placeholders}) ORDER BY field_id, sort_order, created_at`,
+  ).all(...fieldIds) as SchemaFieldBindingRow[];
+
+  for (const row of rows) {
+    const current = byField.get(row.field_id) ?? [];
+    current.push(toFieldBinding(row));
+    byField.set(row.field_id, current);
+  }
+  return byField;
+}
+
+function replaceFieldBindings(
+  db: ReturnType<typeof getDatabase>,
+  fieldId: string,
+  bindings: readonly SchemaFieldBindingCreate[],
+  fallback: { fieldType: SchemaField['field_type']; sourceKind?: SchemaField['source_kind']; sourceId?: string | null; sourceRef?: string | null; sourceVersion?: string | null },
+): void {
+  db.prepare('DELETE FROM schema_field_bindings WHERE field_id = ?').run(fieldId);
+
+  const now = new Date().toISOString();
+  const rows = bindings;
+
+  if (rows.length === 0) return;
+
+  const insert = db.prepare(
+    `INSERT INTO schema_field_bindings (
+      id, field_id, model_id, binding_kind, source_schema_id, source_field_id,
+      cardinality, read_only, config, sort_order,
+      source_kind, source_id, source_ref, source_version, created_at, updated_at
+    )
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  );
+
+  rows.forEach((binding, index) => {
+    const bindingKind = normalizeBindingKind(binding.binding_kind);
+    insert.run(
+      randomUUID(),
+      fieldId,
+      binding.model_id ?? null,
+      bindingKind,
+      binding.source_schema_id ?? null,
+      binding.source_field_id ?? null,
+      normalizeBindingCardinality(binding.cardinality, inferBindingCardinality(fallback.fieldType)),
+      binding.read_only ? 1 : 0,
+      binding.config ?? null,
+      binding.sort_order ?? index,
+      binding.source_kind ?? fallback.sourceKind ?? 'project',
+      binding.source_id ?? fallback.sourceId ?? null,
+      binding.source_ref ?? fallback.sourceRef ?? null,
+      binding.source_version ?? fallback.sourceVersion ?? null,
+      now,
+      now,
+    );
   });
 }
 
@@ -293,7 +414,11 @@ function syncFieldMeaningBinding(
   ).run(fieldId, meaning.id, slot);
 }
 
-function toField(row: SchemaFieldRow, meaningBindings?: readonly FieldMeaningBindingKey[]): SchemaField {
+function toField(
+  row: SchemaFieldRow,
+  meaningBindings?: readonly FieldMeaningBindingKey[],
+  fieldBindings: readonly SchemaFieldBinding[] = [],
+): SchemaField {
   const fieldMeaning = row.meaning_key ?? meaningSlotToFieldMeaning(row.meaning_slot);
   const bindings = normalizeMeaningBindings(meaningBindings, fieldMeaning);
   const generatedByModel = Boolean(row.generated_by_model);
@@ -305,6 +430,7 @@ function toField(row: SchemaFieldRow, meaningBindings?: readonly FieldMeaningBin
 
   return {
     ...field,
+    bindings: [...fieldBindings],
     meaning_bindings: bindings,
     required: !!row.required,
     slot_binding_locked: !!row.slot_binding_locked,
@@ -312,11 +438,7 @@ function toField(row: SchemaFieldRow, meaningBindings?: readonly FieldMeaningBin
   };
 }
 
-/**
- * BFS cycle detection for schema_ref chains.
- * Checks if adding a ref from `fromSchemaId` → `toSchemaId` would create a cycle.
- */
-function detectSchemaRefCycle(fromSchemaId: string, toSchemaId: string): boolean {
+function detectSchemaCompositionCycle(fromSchemaId: string, toSchemaId: string): boolean {
   if (fromSchemaId === toSchemaId) return true;
 
   const db = getDatabase();
@@ -328,19 +450,33 @@ function detectSchemaRefCycle(fromSchemaId: string, toSchemaId: string): boolean
     if (visited.has(current)) continue;
     visited.add(current);
 
-    // Find all schemas that `current` references via schema_ref fields
     const refs = db.prepare(
-      `SELECT DISTINCT ref_schema_id FROM schema_fields
-       WHERE schema_id = ? AND field_type = 'schema_ref' AND ref_schema_id IS NOT NULL`,
-    ).all(current) as { ref_schema_id: string }[];
+      `SELECT DISTINCT b.source_schema_id
+         FROM schema_fields f
+         JOIN schema_field_bindings b ON b.field_id = f.id
+        WHERE f.schema_id = ?
+          AND b.binding_kind IN ('schema_composition', 'schema_extension')
+          AND b.source_schema_id IS NOT NULL`,
+    ).all(current) as { source_schema_id: string }[];
 
     for (const ref of refs) {
-      if (ref.ref_schema_id === fromSchemaId) return true;
-      queue.push(ref.ref_schema_id);
+      if (ref.source_schema_id === fromSchemaId) return true;
+      queue.push(ref.source_schema_id);
     }
   }
 
   return false;
+}
+
+function assertNoSchemaCompositionCycle(schemaId: string, bindings: readonly SchemaFieldBindingCreate[]): void {
+  for (const binding of bindings) {
+    const kind = normalizeBindingKind(binding.binding_kind);
+    if ((kind === 'schema_composition' || kind === 'schema_extension') && binding.source_schema_id) {
+      if (detectSchemaCompositionCycle(schemaId, binding.source_schema_id)) {
+        throw new Error('Circular schema composition detected');
+      }
+    }
+  }
 }
 
 // ============================================
@@ -538,12 +674,7 @@ export function createField(data: SchemaFieldCreate): SchemaField {
   const id = randomUUID();
   const now = new Date().toISOString();
 
-  // Cycle detection for schema_ref fields
-  if (data.field_type === 'schema_ref' && data.ref_schema_id) {
-    if (detectSchemaRefCycle(data.schema_id, data.ref_schema_id)) {
-      throw new Error('Circular schema reference detected');
-    }
-  }
+  assertNoSchemaCompositionCycle(data.schema_id, data.bindings ?? []);
   const meaningInput = data as SchemaFieldCreate & FieldMeaningInput;
   const requestedBindings = data.meaning_bindings
     ?? meaningInput.meaning_bindings
@@ -560,10 +691,10 @@ export function createField(data: SchemaFieldCreate): SchemaField {
   db.prepare(
     `INSERT INTO schema_fields (
       id, schema_id, name, field_type, options, sort_order, required, default_value,
-      ref_schema_id, meaning_slot, meaning_key, slot_binding_locked, generated_by_model,
+      meaning_slot, meaning_key, slot_binding_locked, generated_by_model,
       source_kind, source_id, source_ref, source_version, created_at
     )
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     id,
     data.schema_id,
@@ -573,7 +704,6 @@ export function createField(data: SchemaFieldCreate): SchemaField {
     data.sort_order,
     data.required ? 1 : 0,
     data.default_value ?? null,
-    data.ref_schema_id ?? null,
     meaningSlot ?? null,
     fieldMeaning ?? null,
     data.slot_binding_locked ? 1 : 0,
@@ -593,6 +723,13 @@ export function createField(data: SchemaFieldCreate): SchemaField {
       ? 'manual'
       : generatedByModel ? 'model' : 'system',
   );
+  replaceFieldBindings(db, id, data.bindings ?? [], {
+    fieldType: data.field_type,
+    sourceKind: data.source_kind ?? 'project',
+    sourceId: data.source_id ?? null,
+    sourceRef: data.source_ref ?? null,
+    sourceVersion: data.source_version ?? null,
+  });
   syncFieldMeaningBinding(
     db,
     data.schema_id,
@@ -602,7 +739,7 @@ export function createField(data: SchemaFieldCreate): SchemaField {
   );
 
   const row = db.prepare('SELECT * FROM schema_fields WHERE id = ?').get(id) as SchemaFieldRow;
-  return toField(row, getFieldMeaningBindings(db, id));
+  return toField(row, getFieldMeaningBindings(db, id), getFieldBindingsByFieldId(db, [id]).get(id) ?? []);
 }
 
 export function listFields(schemaId: string): SchemaField[] {
@@ -611,7 +748,8 @@ export function listFields(schemaId: string): SchemaField[] {
     .prepare('SELECT * FROM schema_fields WHERE schema_id = ? ORDER BY sort_order')
     .all(schemaId) as SchemaFieldRow[];
   const meaningsByFieldId = getFieldMeaningBindingsByFieldId(db, rows.map((row) => row.id));
-  return rows.map((row) => toField(row, meaningsByFieldId.get(row.id)));
+  const bindingsByFieldId = getFieldBindingsByFieldId(db, rows.map((row) => row.id));
+  return rows.map((row) => toField(row, meaningsByFieldId.get(row.id), bindingsByFieldId.get(row.id) ?? []));
 }
 
 export function updateField(id: string, data: SchemaFieldUpdate): SchemaField | undefined {
@@ -620,13 +758,8 @@ export function updateField(id: string, data: SchemaFieldUpdate): SchemaField | 
   if (!existing) return undefined;
 
   const newFieldType = data.field_type !== undefined ? data.field_type : existing.field_type;
-  const newRefId = data.ref_schema_id !== undefined ? data.ref_schema_id : (existing as unknown as { ref_schema_id: string | null }).ref_schema_id;
-
-  // Cycle detection for schema_ref fields
-  if (newFieldType === 'schema_ref' && newRefId) {
-    if (detectSchemaRefCycle(existing.schema_id, newRefId)) {
-      throw new Error('Circular schema reference detected');
-    }
+  if (data.bindings !== undefined) {
+    assertNoSchemaCompositionCycle(existing.schema_id, data.bindings);
   }
   const meaningInput = data as SchemaFieldUpdate & FieldMeaningInput;
   const existingBindings = getFieldMeaningBindings(db, id);
@@ -655,7 +788,7 @@ export function updateField(id: string, data: SchemaFieldUpdate): SchemaField | 
   db.prepare(
     `UPDATE schema_fields
         SET name = ?, field_type = ?, options = ?, sort_order = ?, required = ?, default_value = ?,
-            ref_schema_id = ?, meaning_slot = ?, meaning_key = ?, slot_binding_locked = ?, generated_by_model = ?,
+            meaning_slot = ?, meaning_key = ?, slot_binding_locked = ?, generated_by_model = ?,
             source_kind = ?, source_id = ?, source_ref = ?, source_version = ?
       WHERE id = ?`,
   ).run(
@@ -665,7 +798,6 @@ export function updateField(id: string, data: SchemaFieldUpdate): SchemaField | 
     data.sort_order !== undefined ? data.sort_order : existing.sort_order,
     data.required !== undefined ? (data.required ? 1 : 0) : existing.required,
     data.default_value !== undefined ? data.default_value : existing.default_value,
-    newRefId ?? null,
     nextMeaningSlot ?? null,
     nextFieldMeaning ?? null,
     data.slot_binding_locked !== undefined ? (data.slot_binding_locked ? 1 : 0) : existing.slot_binding_locked,
@@ -689,8 +821,18 @@ export function updateField(id: string, data: SchemaFieldUpdate): SchemaField | 
     syncFieldMeaningBinding(db, existing.schema_id, nextMeaningSlot, id, 'system');
   }
 
+  if (data.bindings !== undefined) {
+    replaceFieldBindings(db, id, data.bindings ?? [], {
+      fieldType: newFieldType,
+      sourceKind: data.source_kind !== undefined ? data.source_kind : existing.source_kind,
+      sourceId: data.source_id !== undefined ? data.source_id : existing.source_id,
+      sourceRef: data.source_ref !== undefined ? data.source_ref : existing.source_ref,
+      sourceVersion: data.source_version !== undefined ? data.source_version : existing.source_version,
+    });
+  }
+
   const row = db.prepare('SELECT * FROM schema_fields WHERE id = ?').get(id) as SchemaFieldRow;
-  return toField(row, getFieldMeaningBindings(db, id));
+  return toField(row, getFieldMeaningBindings(db, id), getFieldBindingsByFieldId(db, [id]).get(id) ?? []);
 }
 
 export function deleteField(id: string): boolean {

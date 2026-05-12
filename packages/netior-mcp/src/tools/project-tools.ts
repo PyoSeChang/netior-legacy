@@ -40,7 +40,7 @@ function mapSchemaFields(
   name: string;
   field_type: string;
   required: boolean;
-  ref_schema_name?: string;
+  bindings?: Array<{ kind: string; source_schema_name?: string; cardinality: string; read_only: boolean }>;
   options_preview?: string[];
 }> {
   return fields.map((field) => {
@@ -51,8 +51,15 @@ function mapSchemaFields(
       name: field.name,
       field_type: toAgentFieldType(field.field_type),
       required: field.required,
-      ...(field.ref_schema_id
-        ? { ref_schema_name: schemaNames.get(field.ref_schema_id) ?? field.ref_schema_id }
+      ...(field.bindings.length > 0
+        ? {
+          bindings: field.bindings.map((binding) => ({
+            kind: binding.binding_kind,
+            source_schema_name: binding.source_schema_id ? schemaNames.get(binding.source_schema_id) ?? binding.source_schema_id : undefined,
+            cardinality: binding.cardinality,
+            read_only: binding.read_only,
+          })),
+        }
         : {}),
       ...(optionsPreview ? { options_preview: optionsPreview } : {}),
     };

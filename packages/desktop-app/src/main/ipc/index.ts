@@ -8,6 +8,7 @@ import { registerModuleIpc } from './module-ipc';
 import { registerEditorPrefsIpc } from './editor-prefs-ipc';
 import { registerSchemaIpc } from './schema-ipc';
 import { registerInstancePropertyIpc } from './instance-property-ipc';
+import { registerInteractiveViewStateIpc } from './interactive-view-state-ipc';
 import { registerInstanceContentIpc } from './instance-content-ipc';
 import { registerPtyIpc } from './pty-ipc';
 import { registerConfigIpc } from './config-ipc';
@@ -28,6 +29,7 @@ export function registerAllIpc(): void {
   registerEditorPrefsIpc();
   registerSchemaIpc();
   registerInstancePropertyIpc();
+  registerInteractiveViewStateIpc();
   registerInstanceContentIpc();
   registerPtyIpc();
   registerConfigIpc();

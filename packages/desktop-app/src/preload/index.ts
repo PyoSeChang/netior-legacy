@@ -250,6 +250,32 @@ const electronAPI = {
     upsert: (instanceId: string, data: Record<string, unknown>) =>
       ipcRenderer.invoke('editorPrefs:upsert', instanceId, data),
   },
+  interactiveViewState: {
+    get: (instanceId: string, viewTemplateId: string) =>
+      ipcRenderer.invoke('interactiveViewState:get', instanceId, viewTemplateId),
+    upsert: (data: Record<string, unknown>) =>
+      ipcRenderer.invoke('interactiveViewState:upsert', data),
+  },
+  interactiveViewTemplate: {
+    list: (query: Record<string, unknown>) =>
+      ipcRenderer.invoke('interactiveViewTemplate:list', query),
+    get: (id: string) => ipcRenderer.invoke('interactiveViewTemplate:get', id),
+    create: (data: Record<string, unknown>) =>
+      ipcRenderer.invoke('interactiveViewTemplate:create', data),
+    update: (id: string, data: Record<string, unknown>) =>
+      ipcRenderer.invoke('interactiveViewTemplate:update', id, data),
+    delete: (id: string) => ipcRenderer.invoke('interactiveViewTemplate:delete', id),
+  },
+  interactiveViewPreference: {
+    get: (instanceId: string) => ipcRenderer.invoke('interactiveViewPreference:get', instanceId),
+    upsert: (data: Record<string, unknown>) =>
+      ipcRenderer.invoke('interactiveViewPreference:upsert', data),
+  },
+  interactiveViewSchemaPreference: {
+    get: (schemaId: string) => ipcRenderer.invoke('interactiveViewSchemaPreference:get', schemaId),
+    upsert: (data: Record<string, unknown>) =>
+      ipcRenderer.invoke('interactiveViewSchemaPreference:upsert', data),
+  },
   fs: {
     readDir: (dirPath: string) => ipcRenderer.invoke('fs:readDir', dirPath),
     readDirShallow: (dirPath: string, depth?: number) => ipcRenderer.invoke('fs:readDirShallow', dirPath, depth),

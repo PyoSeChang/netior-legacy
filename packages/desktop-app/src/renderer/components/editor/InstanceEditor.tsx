@@ -27,6 +27,7 @@ import { IconSelector } from '../ui/IconSelector';
 import { InstancePropertiesPanel, InstancePropertyInputs } from './InstancePropertiesPanel';
 import { InstanceBodyEditor } from './InstanceBodyEditor';
 import { InstanceAgentView } from './InstanceAgentView';
+import { InteractiveViewPanel } from './interactive/InteractiveViewPanel';
 import { useI18n } from '../../hooks/useI18n';
 import {
   CONTAINS_MODEL_KEY,
@@ -825,6 +826,23 @@ export function InstanceEditor({ tab }: InstanceEditorProps): JSX.Element {
               </NetworkObjectEditorSection>
             )}
 
+            {!isDraft && currentProject && session.state.modelId && (
+              <NetworkObjectEditorSection title={t('editorShell.interactiveView' as never)} viewMode="interactive">
+                <InteractiveViewPanel
+                  projectId={currentProject.id}
+                  schemaId={session.state.modelId}
+                  instanceId={tab.targetId}
+                  fields={modelFields}
+                  properties={session.state.properties}
+                  content={session.state.content}
+                  onFieldChange={(fieldId, value) => update({
+                    properties: { ...session.state.properties, [fieldId]: value },
+                  })}
+                  mode="view"
+                />
+              </NetworkObjectEditorSection>
+            )}
+
             <NetworkObjectEditorSection title={t('editorShell.content' as never)} viewMode="body" fullBleed>
               <InstanceBodyEditor
                 tabId={tab.id}
@@ -1180,6 +1198,23 @@ export function InstanceEditor({ tab }: InstanceEditorProps): JSX.Element {
                     )}
                   </div>
                 )}
+              </NetworkObjectEditorSection>
+            )}
+
+            {!isDraft && currentProject && session.state.modelId && (
+              <NetworkObjectEditorSection title={t('interactiveView.configure' as never)} viewMode="details">
+                <InteractiveViewPanel
+                  projectId={currentProject.id}
+                  schemaId={session.state.modelId}
+                  instanceId={tab.targetId}
+                  fields={modelFields}
+                  properties={session.state.properties}
+                  content={session.state.content}
+                  onFieldChange={(fieldId, value) => update({
+                    properties: { ...session.state.properties, [fieldId]: value },
+                  })}
+                  mode="configure"
+                />
               </NetworkObjectEditorSection>
             )}
 

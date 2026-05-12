@@ -9,23 +9,23 @@ import { useProjectStore } from '../../stores/project-store';
 import { useAnchoredDropdown } from '../../hooks/useAnchoredDropdown';
 import { NodeVisual } from '../workspace/node-components/NodeVisual';
 
-interface SchemaRefPickerProps {
+interface SchemaSourcePickerProps {
   mode: 'schema' | 'instance';
   value?: string | null;
   onChange?: (value: string | null) => void;
-  refSchemaId?: string | null;
+  sourceSchemaId?: string | null;
   excludeSchemaId?: string | null;
   disabled?: boolean;
 }
 
-export function SchemaRefPicker({
+export function SchemaSourcePicker({
   mode,
   value,
   onChange,
-  refSchemaId,
+  sourceSchemaId,
   excludeSchemaId,
   disabled,
-}: SchemaRefPickerProps): JSX.Element {
+}: SchemaSourcePickerProps): JSX.Element {
   const { t } = useI18n();
   const tk = (key: string) => t(key as TranslationKey);
   const currentProjectId = useProjectStore((state) => state.currentProject?.id ?? null);
@@ -73,7 +73,7 @@ export function SchemaRefPicker({
     }
 
     return instances
-      .filter((instance) => instance.schema_id === refSchemaId)
+      .filter((instance) => instance.schema_id === sourceSchemaId)
       .map((instance) => {
         const schema = schemas.find((item) => item.id === instance.schema_id);
         return {
@@ -84,7 +84,7 @@ export function SchemaRefPicker({
           detail: schema?.name ?? t('instance.properties'),
         };
       });
-  }, [mode, schemas, instances, excludeSchemaId, refSchemaId, t]);
+  }, [mode, schemas, instances, excludeSchemaId, sourceSchemaId, t]);
 
   const selected = items.find((item) => item.id === value);
 

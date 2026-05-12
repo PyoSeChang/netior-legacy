@@ -146,20 +146,11 @@ async function appendSchemaFieldContext(
   const existingField = requestedName
     ? fields.find((field) => field.name.toLowerCase() === requestedName.toLowerCase())
     : null;
-  const referenceSchemaId = asString(input.ref_schema_id);
-  const referenceSchema = referenceSchemaId
-    ? schemas.find((candidate) => candidate.id === referenceSchemaId)
-    : null;
 
   preview.items = [
     { label: 'Schema', value: schema ? schema.name : schemaId },
     ...(preview.items ?? [])
       .filter((item) => item.label !== 'Schema ID' && item.label !== 'Schema')
-      .map((item) => (
-        item.label === 'Reference schema' && referenceSchema
-          ? { ...item, value: referenceSchema.name }
-          : item
-      )),
   ];
 
   if (existingField) {
@@ -313,9 +304,10 @@ export async function buildNarreOperationPreview(
     case 'create_schema_field': {
       const name = asString(input.name) ?? 'Untitled field';
       const meanings = asStringList(input.meaning_bindings);
+      const bindings = Array.isArray(input.bindings) ? input.bindings : [];
       const optionalItems: NarreOperationPreview['items'] = [
         ...(asString(input.options) ? [{ label: 'Options', value: asString(input.options)! }] : []),
-        ...(asString(input.ref_schema_id) ? [{ label: 'Reference schema', value: asString(input.ref_schema_id)! }] : []),
+        ...(bindings.length > 0 ? [{ label: 'Bindings', value: `${bindings.length}` }] : []),
         ...(meanings.length > 0 ? [{ label: 'Meaning bindings', value: meanings.join(', ') }] : []),
       ];
       return withContext(context, normalizedToolName, input, createPreview(normalizedToolName, {
@@ -360,6 +352,44 @@ export async function buildNarreOperationPreview(
           ...(asString(input.profile_image) ? [{ label: 'Profile image', value: asString(input.profile_image)! }] : []),
         ],
       }));
+    }
+
+    case 'create_interactive_view_template': {
+      const name = asString(input.name) ?? 'Untitled interactive view';
+      const source = asString(input.source_code) ?? '';
+      const manifest = asString(input.manifest_json) ?? '';
+      return createPreview(normalizedToolName, {
+        title: `Create interactive view: ${name}`,
+        summary: 'createInteractiveViewTemplate',
+        items: [
+          { label: 'Name', value: name },
+          { label: 'Target', value: `${asString(input.target_kind) ?? 'unknown'}:${asString(input.target_id) ?? 'project'}` },
+          { label: 'Runtime', value: asString(input.default_runtime) ?? 'sandbox' },
+          { label: 'Source', value: `${source.length} chars` },
+          { label: 'Manifest', value: manifest.length > 0 ? manifest : '(empty)' },
+        ],
+        details: [
+          'This template will appear in the InstanceEditor Interactive View list after approval.',
+        ],
+      });
+    }
+
+    case 'update_interactive_view_template': {
+      const changes = ['name', 'description', 'source_code', 'manifest_json', 'target_kind', 'target_id', 'default_runtime']
+        .filter((key) => input[key] !== undefined);
+      return createPreview(normalizedToolName, {
+        title: 'Update interactive view',
+        summary: `updateInteractiveViewTemplate:${changes.length || 1}`,
+        items: [
+          { label: 'Template ID', value: asString(input.template_id) ?? 'unknown' },
+          ...changes.map((key) => ({
+            label: key,
+            value: key === 'source_code'
+              ? `${asString(input[key])?.length ?? 0} chars`
+              : formatOptional(input[key]) ?? JSON.stringify(input[key]),
+          })),
+        ],
+      });
     }
 
     case 'create_network': {

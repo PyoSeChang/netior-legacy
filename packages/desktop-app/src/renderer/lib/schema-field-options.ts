@@ -1,11 +1,10 @@
 export interface SchemaFieldOptionsConfig {
   choices: string[];
-  instanceOptionSourceIds: string[];
 }
 
 export function parseSchemaFieldOptions(options: string | null): SchemaFieldOptionsConfig {
   if (!options) {
-    return { choices: [], instanceOptionSourceIds: [] };
+    return { choices: [] };
   }
 
   try {
@@ -13,23 +12,17 @@ export function parseSchemaFieldOptions(options: string | null): SchemaFieldOpti
     const choices = Array.isArray(parsed.choices)
       ? parsed.choices.filter((item): item is string => typeof item === 'string')
       : [];
-    const instanceOptionSourceIds = Array.isArray(parsed.instanceOptionSourceIds)
-      ? parsed.instanceOptionSourceIds.filter((item): item is string => typeof item === 'string')
-      : [];
-
-    return { choices, instanceOptionSourceIds };
+    return { choices };
   } catch {
-    return { choices: [], instanceOptionSourceIds: [] };
+    return { choices: [] };
   }
 }
 
 export function stringifySchemaFieldOptions(config: Partial<SchemaFieldOptionsConfig>): string | null {
   const normalized: Record<string, string[]> = {};
   const choices = config.choices?.filter(Boolean) ?? [];
-  const instanceOptionSourceIds = config.instanceOptionSourceIds?.filter(Boolean) ?? [];
 
   if (choices.length > 0) normalized.choices = choices;
-  if (instanceOptionSourceIds.length > 0) normalized.instanceOptionSourceIds = instanceOptionSourceIds;
 
   return Object.keys(normalized).length > 0 ? JSON.stringify(normalized) : null;
 }

@@ -21,6 +21,7 @@ export async function loadBuiltInSkills(): Promise<NarreSkillDefinition[]> {
   return [
     (await import('./bootstrap-skill.js')).bootstrapSkill,
     (await import('./index-skill.js')).indexSkill,
+    (await import('./interactive-view-skill.js')).interactiveViewSkill,
   ];
 }
 
@@ -32,6 +33,8 @@ export async function loadSkill(
       return (await import('./bootstrap-skill.js')).bootstrapSkill;
     case 'index':
       return (await import('./index-skill.js')).indexSkill;
+    case 'interactive-view':
+      return (await import('./interactive-view-skill.js')).interactiveViewSkill;
     default:
       return null;
   }

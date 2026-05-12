@@ -1,0 +1,37 @@
+id: exam-question-interactive-view
+title: "Exam Question Interactive View"
+description: "Evaluates whether Narre can use the Interactive View skill to create a schema-default exam question view template with deterministic verifier checks."
+scenario_version: "1.0.0"
+schema_version: 1
+type: single-turn
+lifecycle: active
+labels: [product, instance, interactive-view, skill, fixed, deterministic]
+responsibility_surfaces: [NR10, NR11, NR24, NR25]
+
+execution:
+  supported_agents: [narre-server]
+  required_capabilities: [tool_call_trace]
+  target_skill: interactive-view
+  scenario_kind: fixed
+  agent_id: narre-basic
+  provider: codex
+  tester: basic-turn-runner
+  analysis_targets: [tool_use, interactive_view_template]
+
+turn_plan:
+  file: turns.yaml
+
+entrypoints:
+  seed: seed.ts
+
+assets:
+  verify:
+    - verify/checks.yaml
+  rubrics:
+    - rubrics/quality.yaml
+
+provenance:
+  created_by:
+    id: netior-team
+    name: Netior Team
+    source: repo-scenario

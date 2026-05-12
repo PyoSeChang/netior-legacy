@@ -10,7 +10,7 @@
 
 ## What Is Netior
 
-Netior (Map of Concepts) is a canvas-based desktop app for organizing concepts. Concepts are placed as nodes on a canvas and relationships are represented as edges between nodes. Instance data lives in files such as `.md` and `.pdf`.
+Netior is a network-based desktop app for organizing ontology-backed instances. Instances are placed as nodes in networks, and relationships are represented as edges with model-backed meaning. Instance data lives in files such as `.md` and `.pdf`.
 
 It is the successor to Culturium. The structure was redesigned to remove three blockers to open-sourcing: backend coupling, SQLite metadata isolation, and `culture.json` complexity.
 
@@ -68,6 +68,11 @@ process/*.ts                                       components/**/*.tsx
 - i18n is a presentation concern only. Do not use translated labels as identifiers, ordering keys, grouping keys, sync predicates, or layout predicates.
 - Identity and behavior must use stable data such as `id`, `key`, `source_kind`, `source_id`, `source_ref`, `object_type`, `ref_id`, model keys, schema/instance source refs, or explicit metadata.
 - Built-in ontology display names should go through the shared ontology display resolver (`@netior/shared`), not desktop-only helpers or ad hoc `t(...)` calls in consumers.
+- Use the shared ontology display resolver whenever a label or description is derived from a stable built-in identity, including models, model categories, built-in schemas/instances, MCP tools, Narre tools, agents, and future `source_kind`/`source_ref` backed objects. Consumers should pass identity plus fallback metadata to the resolver; they should not compute i18n keys locally.
+- MCP tool presentation must use the resolver namespace `narre.tools.<tool_key>.name` and `narre.tools.<tool_key>.description`. When adding a tool to `NETIOR_MCP_TOOL_SPECS`, add both locale entries in `packages/shared/src/i18n/locales/en.json` and `packages/shared/src/i18n/locales/ko.json`, and add or update tests that fail when a spec key has no resolver-backed display entry.
+- Do not add parallel translation paths such as `narre.toolLabel.*`, `narre.toolDescription.*`, camelCase conversion helpers, desktop-only label maps, or local `t(...)` calls for built-in display names. If an old path exists, delete the old keys and the code that reads them in the same change that introduces the resolver path.
+- Fallback text is only for user-authored/custom data or unknown external objects. It must not be used to hide missing i18n for Netior-owned built-ins, system ontology objects, or Netior MCP tools; missing resolver keys should be treated as a test/build issue.
+- Legacy cleanup rule: replacing usage is not enough. Remove obsolete constants, locale keys, helper functions, and tests that keep the old path discoverable, then verify with `rg` that the legacy key names and helper names no longer exist in source. This prevents later agents from extending the wrong path.
 - Built-in model categories are schema/instance data. Category instances should be displayed from `source_ref` such as `model-category.time`, while network grouping must use category instance ids or contains edges, never the localized category label.
 - When adding a built-in source kind or source ref, update shared i18n/display rules and every consumer path that surfaces it: desktop renderer, Narre prompts/tool previews, MCP metadata, and any service response that must carry source fields.
 
@@ -88,38 +93,46 @@ process/*.ts                                       components/**/*.tsx
 
 | Layer | Location | Contents |
 |---|---|---|
-| Metadata | `%APPDATA%/netior/data/netior.db` | projects, concepts, canvases, nodes, edges, concept_files, relation_types, canvas_types, and related metadata |
+| Metadata | `%APPDATA%/netior/data/netior.db` | projects, instances, schemas, models, networks, network_nodes, edges, files, objects, sources, instance_properties, editor prefs |
 | Instance Data | User project directory | `.md`, `.pdf`, `.png`, and other real files |
 
-The app does not write metadata into the project directory. Canvas and SQLite handle structure; the filesystem is pure instance storage.
+The app does not write metadata into the project directory. Networks and SQLite handle structure; the filesystem is pure instance storage.
 
 ### Data Model
 
-- **Project** — references a user directory (`name`, `root_dir`)
-- **Concept** — belongs to a project; has `title`, `color`, `icon`, `schema_id`
-- **Canvas** — `Concept:Canvas = 1:N`; stores `concept_id` or `canvas_type_id` plus viewport state
-- **CanvasNode** — placed on a canvas; one of `concept_id`, `file_path`, or `dir_path`
-- **Edge** — belongs to a canvas; has `relation_type_id`, `description`, and visual override fields such as `color`, `line_style`, and `directed`
-- **ConceptFile** — links a concept to a file path relative to project `root_dir`
+- Canonical reference: [`docs/architecture/domain-model.md`](docs/architecture/domain-model.md)
+- **Project** — owns a user root directory and project-scoped ontology.
+- **Instance** — concrete object in a project. This replaces the old `Concept` domain name.
+- **Schema** — ontological meta object that describes fields and structure for instances.
+- **Model** — meaning layer. It classifies how objects or edges should be interpreted by Netior, Narre, MCP tools, and layouts.
+- **Network** — spatial/relational object graph surface with nodes, edges, layout state, and viewport state.
+- **NetworkNode** — placement of an object in a network. It references an `objects` row instead of embedding per-kind identity directly.
+- **Edge** — connection between two network nodes. Its `model_id` points to the model that defines the edge meaning.
+- **ObjectRecord** — normalized object reference with `object_type`, `ref_id`, scope, and project id.
+- **FileEntity** — metadata for a project file or directory. File contents stay on disk.
 
 ### Type System
 
-Project-level types:
+Project-level ontology objects:
 
-- **Schema** — a concept class
-- **RelationType** — an edge class
-- **CanvasType** — a canvas class with allowed relation types via a junction table
+- **Schema** — field-bearing ontology object for instances.
+- **Model** — semantic object used by instances, edges, network grouping, Narre, and MCP metadata.
+- **Model category** — built-in schema/instance data, not a model field duplicated elsewhere. The schema uses `source_ref = 'schema.model_category'`; category instances use refs like `model-category.time`.
+- **Source provenance** — built-in and package-provided ontology objects use `source_kind`, `source_id`, `source_ref`, and `source_version`; do not rely on a `built_in` boolean as the policy boundary.
+- **Schema field binding** — `schema_field_bindings` is the canonical relationship/behavior layer for schema fields. `field_type` stays the storage/UI primitive; bindings hold option sources, schema composition/extension, conditional metadata, computed metadata, and derived collection metadata.
 
-When adding a new type, follow the seven-layer pattern:
+Schema field authoring UI must choose behavior before type. Select-like controls (`select`, `multi-select`, `radio`) are normal field types, not behavior modes. Behavior-specific type restrictions belong in the editor. As of this note, `conditional_field`, `computed_field`, and `derived_collection` are persisted definitions only; do not present them as runtime-complete until instance editing, validation, persistence, and query evaluation actually execute those bindings.
+
+When adding a new persisted object or ontology type, follow the seven-layer pattern:
 
 `migration -> types -> constants -> repository -> IPC -> preload -> renderer`
 
-### Canvas Engine
+### Network Canvas Engine
 
-There is no external canvas library. The canvas is implemented directly with CSS transforms and SVG.
+There is no external canvas library. The network surface is implemented directly with CSS transforms and SVG.
 
-- Pan/zoom is handled in `ConceptWorkspace`
-- `Ctrl + wheel` navigates canvas hierarchy
+- Pan/zoom is handled in network workspace components.
+- `Ctrl + wheel` navigates network hierarchy.
 - Nodes are rendered by `NodeCardDefault` plus shape layouts
 - Edges are rendered by `EdgeLayer` and `EdgeLine`
 - Background uses an SVG dot grid
@@ -130,13 +143,13 @@ There is no external canvas library. The canvas is implemented directly with CSS
 - **Create** — edit mode -> right-click a node -> add connection -> click target node -> open `EdgeEditor`
 - **Edit** — double-click an edge -> open `EdgeEditor`
 - **Delete** — edit mode -> right-click an edge -> `EdgeContextMenu` -> delete
-- **Visual override** — per-edge `color`, `line_style`, and `directed`; `null` falls back to the `RelationType` default
+- **Visual override** — per-edge `color`, `line_style`, and `directed`; `null` falls back to the edge model default.
 
 ### Editor System
 
 `EditorTabType`:
 
-`'concept' | 'file' | 'schema' | 'terminal' | 'edge' | 'relationType' | 'canvasType' | 'canvas' | 'narre'`
+Current editor tab types include ontology objects, files, terminals, edges, networks, and Narre. Legacy compatibility names may still exist in runtime types while migrations and UI routes are being carried forward; new domain docs should use `instance`, `schema`, `model`, `network`, and `edge`.
 
 Extension-based editor routing:
 
@@ -178,13 +191,13 @@ Process management:
 - `narre-server-manager.ts` launches the packaged or dev Narre sidecar
 - `desktop-app` forwards SSE output into renderer state
 
-### Canvas Sidebar
+### Network Sidebar
 
-The sidebar displays a hierarchy tree. `getCanvasTree` is computed server-side from `canvas_nodes`.
+The sidebar displays a hierarchy tree for networks. Legacy APIs may still expose `getCanvasTree`/`canvas_nodes` names while the domain model is being migrated.
 
-- Root canvas (`concept_id = null`)
-- Concept group headers
-- Recursive hierarchy support
+- Root network
+- Instance/model category group headers
+- Recursive network hierarchy support
 - Context actions such as open in editor and delete
 
 ### Path Aliases

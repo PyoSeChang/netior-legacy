@@ -7,10 +7,14 @@ import type {
   ProjectCreate,
   Schema,
   SchemaCreate,
-  RelationType,
-  RelationTypeCreate,
-  Concept,
-  ConceptCreate,
+  SchemaField,
+  SchemaFieldCreate,
+  Model,
+  ModelCreate,
+  Instance,
+  InstanceCreate,
+  InstanceProperty,
+  InstancePropertyUpsert,
   FileEntity,
   FileEntityCreate,
   Module,
@@ -278,8 +282,11 @@ export interface SeedContext {
   scenarioDir: string;
   createProject(data: ProjectCreate): Promise<Project>;
   createSchema(data: SchemaCreate): Promise<Schema>;
-  createRelationType(data: RelationTypeCreate): Promise<RelationType>;
-  createConcept(data: ConceptCreate): Promise<Concept>;
+  createSchemaField(data: SchemaFieldCreate): Promise<SchemaField>;
+  createRelationType(data: ModelCreate): Promise<Model>;
+  createConcept(data: InstanceCreate): Promise<Instance>;
+  createInstance(data: InstanceCreate): Promise<Instance>;
+  upsertInstanceProperty(data: InstancePropertyUpsert): Promise<InstanceProperty>;
   createFileEntity(data: FileEntityCreate): Promise<FileEntity>;
   createModule(data: ModuleCreate): Promise<Module>;
   copyFixtures(): Promise<void>;

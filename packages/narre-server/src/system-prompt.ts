@@ -6,7 +6,14 @@ export interface SystemPromptSchemaFieldSummary {
   required?: boolean;
   meaning_bindings?: string[];
   generated_by_model?: boolean;
-  ref_schema_name?: string | null;
+  bindings?: Array<{
+    kind: string;
+    source_schema_name?: string | null;
+    source_field_name?: string | null;
+    cardinality?: string | null;
+    read_only?: boolean;
+    config?: string | null;
+  }>;
   option_source_model_name?: string | null;
   options_preview?: string[] | null;
 }
@@ -156,14 +163,14 @@ const SEARCHABLE_FIELD_TYPES = new Set([
   'multi-select',
   'radio',
   'relation',
+  'object',
   'url',
   'rating',
   'tags',
-  'schema_ref',
 ]);
 
 function isRelationalField(field: SystemPromptSchemaFieldSummary): boolean {
-  return field.field_type === 'relation' || field.field_type === 'schema_ref' || !!field.ref_schema_name;
+  return field.field_type === 'relation' || field.field_type === 'object' || (field.bindings?.length ?? 0) > 0;
 }
 
 function isSearchableField(field: SystemPromptSchemaFieldSummary): boolean {
@@ -171,7 +178,7 @@ function isSearchableField(field: SystemPromptSchemaFieldSummary): boolean {
 }
 
 function formatFieldType(fieldType: string): string {
-  return fieldType === 'schema_ref' ? 'schema_ref' : fieldType;
+  return fieldType;
 }
 
 function formatFieldSummary(field: SystemPromptSchemaFieldSummary): string {
@@ -186,8 +193,13 @@ function formatFieldSummary(field: SystemPromptSchemaFieldSummary): string {
     models.push('model-generated');
   }
 
-  if (field.ref_schema_name) {
-    models.push(`target=${field.ref_schema_name}`);
+  if (field.bindings && field.bindings.length > 0) {
+    models.push(`bindings=${field.bindings.map((binding) => {
+      const source = binding.source_schema_name ? `:${binding.source_schema_name}` : '';
+      const cardinality = binding.cardinality ? `/${binding.cardinality}` : '';
+      const readOnly = binding.read_only ? '/read-only' : '';
+      return `${binding.kind}${source}${cardinality}${readOnly}`;
+    }).join('|')}`);
   }
 
   if (field.option_source_model_name) {
@@ -229,7 +241,7 @@ function buildSchemaSurfaceList(schemas: SystemPromptSchemaSummary[]): string {
       `- profile=${profile}`,
       `- meanings=${schema.meanings && schema.meanings.length > 0 ? schema.meanings.map((meaning) => meaning.label ?? meaning.key).join('|') : '(none)'}`,
       `- properties=${propertyFields.length > 0 ? propertyFields.slice(0, 6).map(formatFieldSummary).join('; ') : '(none yet)'}`,
-      `- field_relations=${relationalFields.length > 0 ? relationalFields.slice(0, 6).map(formatFieldSummary).join('; ') : '(none yet)'}`,
+      `- field_interpretations=${relationalFields.length > 0 ? relationalFields.slice(0, 6).map(formatFieldSummary).join('; ') : '(none yet)'}`,
       `- search_surface=${searchSurface.join(', ')}`,
       overflow,
     ].filter(Boolean).join('\n');
@@ -256,7 +268,7 @@ function buildModelList(models: SystemPromptModelSummary[]): string {
       `key=${model.key}`,
       `category=${model.category_instance_title ?? model.category_instance_source_ref ?? 'none'}`,
       `target=${model.target_kind ?? 'object'}`,
-      `source=${model.source_kind ?? (model.built_in ? 'system' : 'project')}${model.source_ref ? `:${model.source_ref}` : ''}`,
+    `source=${model.source_kind ?? 'project'}${model.source_ref ? `:${model.source_ref}` : ''}`,
       ...(model.description ? [`description=${model.description}`] : []),
     ];
     return `- ${model.name} [id=${model.id}]: ${details.join(', ')}; meanings=${meaningLabels}`;
@@ -304,9 +316,12 @@ function buildRelationalSchemaSection(schemas: SystemPromptSchemaSummary[]): str
         field.required ? 'required' : 'optional',
         ...(field.meaning_bindings && field.meaning_bindings.length > 0 ? [`meanings=${field.meaning_bindings.join('|')}`] : []),
         ...(field.generated_by_model ? ['model-generated'] : []),
+        ...(field.bindings && field.bindings.length > 0
+          ? [`bindings=${field.bindings.map((binding) => `${binding.kind}${binding.source_schema_name ? `:${binding.source_schema_name}` : ''}`).join('|')}`]
+          : []),
       ];
       lines.push(
-        `- ${schema.name}.${field.name} -> ${field.ref_schema_name ?? 'untyped'} [${models.join(', ')}]`,
+        `- ${schema.name}.${field.name} [${models.join(', ')}]`,
       );
     }
   }
@@ -458,6 +473,15 @@ ${networkContext}
 - The active project is already bound for this run. Do not search for project identity or pass raw 'project_id' values unless the user explicitly asks for cross-project work.
 - When a tool supports default project binding, omit 'project_id' and use the current project by default.
 - Prefer one precise inspection over multiple exploratory searches.
+
+## Interactive View Authoring
+- Interactive View is an InstanceEditor-internal view module, not a separate editor or a scenario preset.
+- When asked to create or revise an interactive view, produce Restricted TSX that uses only the Netior Interactive SDK surface and a manifest with target, permissions, and runtime metadata.
+- Do not invent a JSON rendering DSL or choose from fixed Netior scenarios. The TSX source owns the interaction logic.
+- Keep user interaction progress in view state. Use field updates only when the instance data itself should change.
+- Narre-generated views default to sandbox runtime and must declare field read/write permissions in the manifest.
+- Create schema-scoped templates by default so instances inherit the view from their schema. Use instance-level templates only when the user explicitly asks for a one-off override.
+- When a schema-scoped template should become active for instances, set the schema interactive view preference. Set an instance preference only to override inheritance or disable the view for that instance.
 
 ## Guidelines
 - When the project has little or no structure, proactively suggest a bootstrap based on the project topic. Start from the domain, infer ontology first, then project it into likely networks, schemas, semantic models, meanings, and fields. Avoid making the user choose Netior-internal structures prematurely.

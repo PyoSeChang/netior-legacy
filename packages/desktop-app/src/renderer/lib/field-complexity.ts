@@ -24,6 +24,7 @@ export const FIELD_TYPE_MIN_LEVEL: Record<FieldType, FieldComplexityLevel> = {
   tags: 'standard',
   model_ref: 'standard',
   relation: 'advanced',
+  object: 'advanced',
 };
 
 export function isFieldTypeVisibleAtLevel(type: FieldType, level: FieldComplexityLevel): boolean {

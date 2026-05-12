@@ -42,6 +42,7 @@ function mapSchemaFields(
   fields: SchemaField[],
   schemaNames: Map<string, string>,
 ): NonNullable<SystemPromptParams['schemas'][number]['fields']> {
+  const fieldNames = new Map(fields.map((field) => [field.id, field.name]));
   return fields.map((field) => {
     const optionsPreview = buildOptionsPreview(field.options);
 
@@ -51,8 +52,17 @@ function mapSchemaFields(
       required: field.required,
       ...(field.meaning_bindings.length > 0 ? { meaning_bindings: field.meaning_bindings } : {}),
       ...(field.generated_by_model ? { generated_by_model: true } : {}),
-      ...(field.ref_schema_id
-        ? { ref_schema_name: schemaNames.get(field.ref_schema_id) ?? field.ref_schema_id }
+      ...(field.bindings.length > 0
+        ? {
+          bindings: field.bindings.map((binding) => ({
+            kind: binding.binding_kind,
+            source_schema_name: binding.source_schema_id ? schemaNames.get(binding.source_schema_id) ?? binding.source_schema_id : null,
+            source_field_name: binding.source_field_id ? fieldNames.get(binding.source_field_id) ?? binding.source_field_id : null,
+            cardinality: binding.cardinality,
+            read_only: binding.read_only,
+            config: binding.config,
+          })),
+        }
         : {}),
       ...(optionsPreview ? { options_preview: optionsPreview } : {}),
     };

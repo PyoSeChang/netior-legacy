@@ -48,6 +48,10 @@ import { migrate043 } from '../migrations/043-remove-concept-model-id';
 import { migrate044 } from '../migrations/044-concept-properties-schema-field-fk';
 import { migrate045 } from '../migrations/045-source-provenance-and-model-category-concepts';
 import { migrate046 } from '../migrations/046-instance-rename';
+import { migrate048 } from '../migrations/048-interactive-view-state';
+import { migrate049 } from '../migrations/049-interactive-view-templates';
+import { migrate050 } from '../migrations/050-interactive-view-inheritance';
+import { migrate051 } from '../migrations/051-interactive-view-user-authored-templates';
 
 let testDb: Database.Database | null = null;
 
@@ -101,6 +105,10 @@ export function setupTestDb(): Database.Database {
   migrate044(testDb);
   migrate045(testDb);
   migrate046(testDb);
+  migrate048(testDb);
+  migrate049(testDb);
+  migrate050(testDb);
+  migrate051(testDb);
   testDb.pragma('foreign_keys = ON');
   return testDb;
 }

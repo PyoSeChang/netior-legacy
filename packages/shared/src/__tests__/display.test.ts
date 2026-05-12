@@ -11,6 +11,8 @@ const translations: Record<string, string> = {
   'semantic.model.contains.description': 'Shows containment',
   'semantic.category.time.label': 'Time',
   'semantic.category.time.description': 'Temporal category',
+  'narre.tools.create_schema.name': 'Create Schema',
+  'narre.tools.create_schema.description': 'Creates schemas',
 };
 
 const t = (key: string) => translations[key] ?? key;
@@ -64,5 +66,20 @@ describe('ontology display resolver', () => {
 
     expect(display.name(source)).toBe('Custom Model');
     expect(display.description(source)).toBe('Project-owned model');
+  });
+
+  it('resolves MCP tool display text through the shared Narre tool namespace', () => {
+    const display = createOntologyDisplayResolver(t);
+    const source = {
+      kind: 'mcp_tool' as const,
+      key: 'create_schema',
+      name: 'Fallback Create Schema',
+      description: 'Fallback description',
+    };
+
+    expect(getOntologyDisplayLabelKey(source)).toBe('narre.tools.create_schema.name');
+    expect(getOntologyDisplayDescriptionKey(source)).toBe('narre.tools.create_schema.description');
+    expect(display.name(source)).toBe('Create Schema');
+    expect(display.description(source)).toBe('Creates schemas');
   });
 });

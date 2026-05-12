@@ -760,7 +760,13 @@ export function registerNarreIpc(): void {
         results.push({
           type: 'instance', id: c.id, display: c.title, color: c.color, icon: c.icon,
           meta: arch
-            ? { model: arch.name, modelKey: arch.key, modelBuiltIn: arch.built_in, modelDescription: arch.description }
+            ? {
+              model: arch.name,
+              modelKey: arch.key,
+              modelSourceKind: arch.source_kind,
+              modelSourceRef: arch.source_ref,
+              modelDescription: arch.description,
+            }
             : { model: null },
         });
       }
@@ -797,7 +803,8 @@ export function registerNarreIpc(): void {
           meta: {
             key: a.key,
             name: a.name,
-            builtIn: a.built_in,
+            sourceKind: a.source_kind,
+            sourceRef: a.source_ref,
             lineStyle: a.line_style,
             directed: a.directed,
           },

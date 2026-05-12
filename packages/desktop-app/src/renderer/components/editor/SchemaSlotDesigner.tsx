@@ -104,7 +104,7 @@ const FIELD_TYPE_LABEL_KEYS: Record<FieldType, TranslationKey> = {
   'multi-select': 'typeSelector.multi-select',
   radio: 'typeSelector.radio',
   relation: 'typeSelector.relation',
-  schema_ref: 'typeSelector.schema_ref',
+  object: 'typeSelector.object',
   model_ref: 'typeSelector.model_ref',
   file: 'typeSelector.file',
   url: 'typeSelector.url',

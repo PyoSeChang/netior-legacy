@@ -71,7 +71,7 @@ const FIELD_TYPE_LABEL_KEYS: Record<FieldType, TranslationKey> = {
   'multi-select': 'typeSelector.multi-select',
   radio: 'typeSelector.radio',
   relation: 'typeSelector.relation',
-  schema_ref: 'typeSelector.schema_ref',
+  object: 'typeSelector.object',
   model_ref: 'typeSelector.model_ref',
   file: 'typeSelector.file',
   url: 'typeSelector.url',
@@ -464,7 +464,7 @@ export function FieldInput({ field, value, onChange }: FieldInputProps): JSX.Ele
           {fieldMeta}
         </div>
       );
-    case 'schema_ref':
+    case 'object':
       return (
         <EmbeddedModelPropertiesInput
           field={field}
@@ -606,16 +606,19 @@ function EmbeddedModelPropertiesInput({
   emptyMessage,
 }: EmbeddedModelPropertiesInputProps): JSX.Element {
   const { t } = useI18n();
+  const sourceSchemaId = field.bindings.find((binding) => (
+    binding.binding_kind === 'schema_composition' || binding.binding_kind === 'schema_extension'
+  ))?.source_schema_id ?? null;
   const nestedFields = useSchemaStore((state) => (
-    field.ref_schema_id ? state.fields[field.ref_schema_id] ?? [] : []
+    sourceSchemaId ? state.fields[sourceSchemaId] ?? [] : []
   ));
   const loadFields = useSchemaStore((state) => state.loadFields);
   const nestedValues = useMemo(() => parseNestedPropertyValue(value), [value]);
 
   useEffect(() => {
-    if (!field.ref_schema_id) return;
-    loadFields(field.ref_schema_id);
-  }, [field.ref_schema_id, loadFields]);
+    if (!sourceSchemaId) return;
+    loadFields(sourceSchemaId);
+  }, [sourceSchemaId, loadFields]);
 
   const label = (
     <label className="text-xs font-medium text-muted">
@@ -637,7 +640,7 @@ function EmbeddedModelPropertiesInput({
   const meaningSlot = getFieldMeaningSlot(field);
   const slotDefinition = meaningSlot ? getMeaningSlotDefinition(meaningSlot) : undefined;
 
-  if (!field.ref_schema_id) {
+  if (!sourceSchemaId) {
     return (
       <div className="flex flex-col gap-0.5">
         {label}
@@ -683,7 +686,11 @@ function useFieldChoiceOptions(field: SchemaField): { value: string; label: stri
   const instances = useInstanceStore((state) => state.instances);
   const loadInstances = useInstanceStore((state) => state.loadByProject);
   const optionsConfig = useMemo(() => parseSchemaFieldOptions(field.options), [field.options]);
-  const sourceIds = optionsConfig.instanceOptionSourceIds;
+  const bindingSourceIds = field.bindings
+    .filter((binding) => binding.binding_kind === 'instance_select' || binding.binding_kind === 'instance_multi_select')
+    .map((binding) => binding.source_schema_id)
+    .filter((id): id is string => !!id);
+  const sourceIds = bindingSourceIds;
 
   useEffect(() => {
     if (sourceIds.length === 0 || !currentProjectId || instances.length > 0) return;

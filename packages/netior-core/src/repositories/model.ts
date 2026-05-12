@@ -59,12 +59,12 @@ const FIELD_TYPES: readonly FieldType[] = [
   'multi-select',
   'radio',
   'relation',
+  'object',
   'file',
   'url',
   'color',
   'rating',
   'tags',
-  'schema_ref',
   'model_ref',
 ];
 

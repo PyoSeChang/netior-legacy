@@ -12,6 +12,8 @@ export * from './repositories/model';
 export * from './repositories/model-category';
 export * from './repositories/file';
 export * from './repositories/instance-property';
+export * from './repositories/interactive-view-state';
+export * from './repositories/interactive-view-template';
 export * from './repositories/editor-prefs';
 export * from './repositories/module';
 export * from './repositories/objects';

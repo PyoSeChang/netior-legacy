@@ -343,6 +343,13 @@ export type ModelKey =
   | 'budgeted'
   | 'ownable'
   | 'approvable'
+  | 'instance_select'
+  | 'instance_multi_select'
+  | 'schema_composition'
+  | 'schema_extension'
+  | 'conditional_field'
+  | 'computed_field'
+  | 'derived_collection'
   | 'contains_relation'
   | 'entry_portal_relation'
   | 'parent_relation';
@@ -479,6 +486,15 @@ export type SlotConstraintLevel = 'strict' | 'constrained' | 'loose';
 
 export type ModelRepresentationKind = 'single_field' | 'field_group' | 'relation' | 'computed';
 export type ModelTargetKind = 'object' | 'edge' | 'both';
+export type SchemaFieldBindingKind =
+  | 'instance_select'
+  | 'instance_multi_select'
+  | 'schema_composition'
+  | 'schema_extension'
+  | 'conditional_field'
+  | 'computed_field'
+  | 'derived_collection';
+export type SchemaFieldBindingCardinality = 'none' | 'one' | 'many' | 'object';
 export type EdgeLineStyle = 'solid' | 'dashed' | 'dotted';
 
 export interface ModelFieldRecipe {
@@ -778,13 +794,63 @@ export type FieldType =
   | 'multi-select'
   | 'radio'
   | 'relation'
+  | 'object'
   | 'file'
   | 'url'
   | 'color'
   | 'rating'
   | 'tags'
-  | 'schema_ref'
   | 'model_ref';
+
+export interface SchemaFieldBinding {
+  id: string;
+  field_id: string;
+  model_id: string | null;
+  binding_kind: SchemaFieldBindingKind;
+  source_schema_id: string | null;
+  source_field_id: string | null;
+  cardinality: SchemaFieldBindingCardinality;
+  read_only: boolean;
+  config: string | null;
+  sort_order: number;
+  source_kind: OntologySourceKind;
+  source_id: string | null;
+  source_ref: string | null;
+  source_version: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SchemaFieldBindingCreate {
+  field_id?: string;
+  model_id?: string | null;
+  binding_kind: SchemaFieldBindingKind;
+  source_schema_id?: string | null;
+  source_field_id?: string | null;
+  cardinality?: SchemaFieldBindingCardinality;
+  read_only?: boolean;
+  config?: string | null;
+  sort_order?: number;
+  source_kind?: OntologySourceKind;
+  source_id?: string | null;
+  source_ref?: string | null;
+  source_version?: string | null;
+}
+
+export interface SchemaFieldBindingUpdate {
+  model_id?: string | null;
+  binding_kind?: SchemaFieldBindingKind;
+  source_schema_id?: string | null;
+  source_field_id?: string | null;
+  cardinality?: SchemaFieldBindingCardinality;
+  read_only?: boolean;
+  config?: string | null;
+  sort_order?: number;
+  source_kind?: OntologySourceKind;
+  source_id?: string | null;
+  source_ref?: string | null;
+  source_version?: string | null;
+}
 
 export interface SchemaField {
   id: string;
@@ -795,7 +861,7 @@ export interface SchemaField {
   sort_order: number;
   required: boolean;
   default_value: string | null;
-  ref_schema_id: string | null;
+  bindings: SchemaFieldBinding[];
   meaning_bindings: FieldMeaningBindingKey[];
   slot_binding_locked: boolean;
   generated_by_model: boolean;
@@ -814,7 +880,7 @@ export interface SchemaFieldCreate {
   sort_order: number;
   required?: boolean;
   default_value?: string;
-  ref_schema_id?: string;
+  bindings?: SchemaFieldBindingCreate[];
   meaning_slot?: MeaningSlotKey | null;
   meaning_key?: FieldMeaningKey | null;
   meaning_bindings?: FieldMeaningBindingKey[];
@@ -833,7 +899,7 @@ export interface SchemaFieldUpdate {
   sort_order?: number;
   required?: boolean;
   default_value?: string | null;
-  ref_schema_id?: string | null;
+  bindings?: SchemaFieldBindingCreate[];
   meaning_slot?: MeaningSlotKey | null;
   meaning_key?: FieldMeaningKey | null;
   meaning_bindings?: FieldMeaningBindingKey[];
@@ -1038,6 +1104,129 @@ export interface InstanceEditorPrefsUpdate {
   float_width?: number;
   float_height?: number;
   side_split_ratio?: number;
+}
+
+export interface InteractiveViewState {
+  id: string;
+  project_id: string;
+  instance_id: string;
+  view_template_id: string;
+  state_json: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface InteractiveViewStateUpsert {
+  instance_id: string;
+  view_template_id: string;
+  state_json: string;
+}
+
+export type InteractiveViewTemplateTargetKind = 'schema' | 'instance';
+export type InteractiveViewTemplateSourceKind = 'manual' | 'narre';
+export type InteractiveViewTrustLevel = 'untrusted' | 'validated' | 'trusted';
+export type InteractiveViewRuntime = 'host' | 'sandbox';
+export type InteractiveViewValidationStatus = 'unknown' | 'passed' | 'failed';
+
+export interface InteractiveViewManifest {
+  kind: 'interactive-view';
+  sdkVersion: number;
+  target?: {
+    schemaId?: string;
+    instanceId?: string;
+  };
+  permissions?: {
+    readFields?: string[];
+    writeFields?: string[];
+    viewState?: boolean;
+  };
+  runtime?: InteractiveViewRuntime;
+}
+
+export interface InteractiveViewTemplate {
+  id: string;
+  project_id: string;
+  target_kind: InteractiveViewTemplateTargetKind;
+  target_id: string | null;
+  name: string;
+  description: string | null;
+  source_code: string;
+  manifest_json: string;
+  source_kind: InteractiveViewTemplateSourceKind;
+  trust_level: InteractiveViewTrustLevel;
+  default_runtime: InteractiveViewRuntime;
+  enabled: number;
+  validation_status: InteractiveViewValidationStatus;
+  validation_errors_json: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface InteractiveViewTemplateCreate {
+  project_id: string;
+  target_kind: InteractiveViewTemplateTargetKind;
+  target_id?: string | null;
+  name: string;
+  description?: string | null;
+  source_code: string;
+  manifest_json: string;
+  source_kind?: InteractiveViewTemplateSourceKind;
+  trust_level?: InteractiveViewTrustLevel;
+  default_runtime?: InteractiveViewRuntime;
+  enabled?: number;
+  validation_status?: InteractiveViewValidationStatus;
+  validation_errors_json?: string;
+}
+
+export interface InteractiveViewTemplateUpdate {
+  target_kind?: InteractiveViewTemplateTargetKind;
+  target_id?: string | null;
+  name?: string;
+  description?: string | null;
+  source_code?: string;
+  manifest_json?: string;
+  source_kind?: InteractiveViewTemplateSourceKind;
+  trust_level?: InteractiveViewTrustLevel;
+  default_runtime?: InteractiveViewRuntime;
+  enabled?: number;
+  validation_status?: InteractiveViewValidationStatus;
+  validation_errors_json?: string;
+}
+
+export interface InteractiveViewTemplateListQuery {
+  projectId: string;
+  schemaId?: string | null;
+  instanceId?: string | null;
+}
+
+export interface InteractiveViewPreference {
+  id: string;
+  project_id: string;
+  instance_id: string;
+  preference_mode: 'inherit' | 'template' | 'none';
+  selected_view_template_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface InteractiveViewPreferenceUpsert {
+  instance_id: string;
+  preference_mode?: 'inherit' | 'template' | 'none';
+  selected_view_template_id: string | null;
+}
+
+export interface InteractiveViewSchemaPreference {
+  id: string;
+  project_id: string;
+  schema_id: string;
+  selected_view_template_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface InteractiveViewSchemaPreferenceUpsert {
+  schema_id: string;
+  selected_view_template_id: string | null;
 }
 
 // ============================================
@@ -1256,7 +1445,7 @@ export interface NarreStreamEvent {
 // ============================================
 
 export type SkillId = string;
-export type BuiltInSkillId = 'bootstrap' | 'index';
+export type BuiltInSkillId = 'bootstrap' | 'index' | 'interactive-view';
 export type SkillSource = 'builtin' | 'file';
 export type SkillArgType = 'string' | 'enum' | 'number' | 'number_list';
 

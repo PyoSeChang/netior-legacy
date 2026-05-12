@@ -1,17 +1,21 @@
 import type {
   Schema,
   SchemaCreate,
-  Concept,
-  ConceptCreate,
   FileEntity,
   FileEntityCreate,
   Module,
   ModuleCreate,
   Project,
   ProjectCreate,
-  RelationType,
-  RelationTypeCreate,
+  Model,
+  ModelCreate,
   NetiorServiceResponse,
+  Instance,
+  InstanceCreate,
+  InstanceProperty,
+  InstancePropertyUpsert,
+  SchemaField,
+  SchemaFieldCreate,
 } from '@netior/shared/types';
 
 function toQueryString(params: Record<string, string | undefined>): string {
@@ -71,19 +75,40 @@ export async function listSchemas(baseUrl: string, projectId: string): Promise<S
   return requestJson<Schema[]>(baseUrl, `/schemas${toQueryString({ projectId })}`);
 }
 
-export async function createRelationType(baseUrl: string, data: RelationTypeCreate): Promise<RelationType> {
-  return requestJson<RelationType>(baseUrl, '/relation-types', {
+export async function createRelationType(baseUrl: string, data: ModelCreate): Promise<Model> {
+  return requestJson<Model>(baseUrl, '/models', {
     method: 'POST',
     body: JSON.stringify(data),
   });
 }
 
-export async function listRelationTypes(baseUrl: string, projectId: string): Promise<RelationType[]> {
-  return requestJson<RelationType[]>(baseUrl, `/relation-types${toQueryString({ projectId })}`);
+export async function listRelationTypes(baseUrl: string, projectId: string): Promise<Model[]> {
+  return requestJson<Model[]>(baseUrl, `/models${toQueryString({ projectId })}`);
 }
 
-export async function createConcept(baseUrl: string, data: ConceptCreate): Promise<Concept> {
-  return requestJson<Concept>(baseUrl, '/concepts', {
+export async function createConcept(baseUrl: string, data: InstanceCreate): Promise<Instance> {
+  return createInstance(baseUrl, data);
+}
+
+export async function createInstance(baseUrl: string, data: InstanceCreate): Promise<Instance> {
+  return requestJson<Instance>(baseUrl, '/instances', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function createSchemaField(baseUrl: string, data: SchemaFieldCreate): Promise<SchemaField> {
+  return requestJson<SchemaField>(baseUrl, '/schema-fields', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function upsertInstanceProperty(
+  baseUrl: string,
+  data: InstancePropertyUpsert,
+): Promise<InstanceProperty> {
+  return requestJson<InstanceProperty>(baseUrl, '/instance-properties', {
     method: 'POST',
     body: JSON.stringify(data),
   });

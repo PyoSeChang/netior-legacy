@@ -9,15 +9,15 @@ import type {
   Model,
 } from '@netior/shared/types';
 
-export type AgentFieldType = Exclude<FieldType, 'schema_ref'> | 'schema_ref';
+export type AgentFieldType = FieldType;
 export type AgentObjectType = Exclude<ObjectRecord['object_type'], 'schema'> | 'schema';
 
 export function toAgentFieldType(fieldType: FieldType): AgentFieldType {
-  return fieldType === 'schema_ref' ? 'schema_ref' : fieldType;
+  return fieldType;
 }
 
 export function fromAgentFieldType(fieldType: AgentFieldType): FieldType {
-  return fieldType === 'schema_ref' ? 'schema_ref' : fieldType;
+  return fieldType;
 }
 
 export function toAgentObjectType(objectType: ObjectRecord['object_type']): AgentObjectType {
@@ -41,7 +41,6 @@ export function toAgentSchema(schema: Schema) {
 export function toAgentSchemaField(field: SchemaField) {
   const {
     schema_id,
-    ref_schema_id,
     slot_binding_locked: _slotBindingLocked,
     generated_by_model: _generatedByModel,
     ...schemaField
@@ -51,7 +50,6 @@ export function toAgentSchemaField(field: SchemaField) {
     ...schemaField,
     schema_id: schema_id,
     field_type: toAgentFieldType(field.field_type),
-    ref_schema_id: ref_schema_id,
   };
 }
 

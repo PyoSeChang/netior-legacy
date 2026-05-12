@@ -1,8 +1,5 @@
-import {
-  getNetiorMcpToolSpec,
-  getNarreToolMetadata,
-  normalizeNetiorToolName,
-} from '@netior/shared/constants';
+import { createOntologyDisplayResolver } from '@netior/shared';
+import { getNetiorMcpToolSpec, getNarreToolMetadata, normalizeNetiorToolName } from '@netior/shared/constants';
 import { translate, type Locale, type TranslationKey } from '@netior/shared/i18n';
 import type { NarreToolCall, NarreToolCategory } from '@netior/shared/types';
 
@@ -21,10 +18,6 @@ const PERMISSION_TOOL_RE = /tool "([^"]+)"/i;
 
 function resolveLocale(locale: string): Locale {
   return locale.toLowerCase().startsWith('ko') ? 'ko' : 'en';
-}
-
-function snakeToCamel(value: string): string {
-  return value.replace(/_([a-z])/g, (_, char: string) => char.toUpperCase());
 }
 
 function trimErrorPrefix(value: string): string {
@@ -79,13 +72,16 @@ function resolveToolLabel(
   fallbackDisplayName?: string,
 ): string {
   const normalizedToolName = normalizeNetiorToolName(toolName);
-  const translated = translateOrNull(locale, `narre.toolLabel.${snakeToCamel(normalizedToolName)}`);
-  if (translated) return translated;
-
   const spec = getNetiorMcpToolSpec(normalizedToolName);
-  if (spec?.displayName) return spec.displayName;
+  const metadata = getNarreToolMetadata(normalizedToolName);
+  const display = createOntologyDisplayResolver((key, params) => translate(locale, key, params));
 
-  return fallbackDisplayName ?? getNarreToolMetadata(normalizedToolName).displayName;
+  return display.name({
+    kind: 'mcp_tool',
+    key: normalizedToolName,
+    name: fallbackDisplayName ?? spec?.displayName ?? metadata.displayName,
+    description: spec?.description ?? metadata.description,
+  });
 }
 
 function summarizeGenericSuccess(
@@ -194,10 +190,16 @@ export function getLocalizedToolDescription(
 ): string | null {
   const resolvedLocale = resolveLocale(locale);
   const normalizedToolName = normalizeNetiorToolName(toolName);
-  const translated = translateOrNull(resolvedLocale, `narre.toolDescription.${snakeToCamel(normalizedToolName)}`);
-  if (translated) return translated;
+  const spec = getNetiorMcpToolSpec(normalizedToolName);
+  const metadata = getNarreToolMetadata(normalizedToolName);
+  const display = createOntologyDisplayResolver((key, params) => translate(resolvedLocale, key, params));
 
-  return fallbackDescription ?? getNarreToolMetadata(normalizedToolName).description ?? null;
+  return display.description({
+    kind: 'mcp_tool',
+    key: normalizedToolName,
+    name: spec?.displayName ?? metadata.displayName,
+    description: fallbackDescription ?? spec?.description ?? metadata.description,
+  });
 }
 
 export function getLocalizedPermissionMessage(message: string, locale: string): string {

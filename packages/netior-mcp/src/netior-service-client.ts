@@ -15,6 +15,14 @@ import type {
   InstanceProperty,
   InstancePropertyUpsert,
   InstanceUpdate,
+  InteractiveViewPreference,
+  InteractiveViewPreferenceUpsert,
+  InteractiveViewSchemaPreference,
+  InteractiveViewSchemaPreferenceUpsert,
+  InteractiveViewTemplate,
+  InteractiveViewTemplateCreate,
+  InteractiveViewTemplateListQuery,
+  InteractiveViewTemplateUpdate,
   Edge,
   EdgeCreate,
   EdgeUpdate,
@@ -362,6 +370,53 @@ export async function upsertInstanceProperty(data: InstancePropertyUpsert): Prom
 export async function deleteInstanceProperty(id: string): Promise<boolean> {
   return requestJson<boolean>(`/instance-properties/${encodeURIComponent(id)}`, {
     method: 'DELETE',
+  });
+}
+
+export async function listInteractiveViewTemplates(
+  query: InteractiveViewTemplateListQuery,
+): Promise<InteractiveViewTemplate[]> {
+  return requestJson<InteractiveViewTemplate[]>(`/interactive-view-templates${toQueryString({
+    projectId: query.projectId,
+    schemaId: query.schemaId ?? undefined,
+    instanceId: query.instanceId ?? undefined,
+  })}`);
+}
+
+export async function createInteractiveViewTemplate(
+  data: InteractiveViewTemplateCreate,
+): Promise<InteractiveViewTemplate> {
+  return requestJson<InteractiveViewTemplate>('/interactive-view-templates', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateInteractiveViewTemplate(
+  id: string,
+  data: InteractiveViewTemplateUpdate,
+): Promise<InteractiveViewTemplate | null> {
+  return requestJson<InteractiveViewTemplate | null>(`/interactive-view-templates/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function upsertInteractiveViewPreference(
+  data: InteractiveViewPreferenceUpsert,
+): Promise<InteractiveViewPreference> {
+  return requestJson<InteractiveViewPreference>('/interactive-view-preferences', {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function upsertInteractiveViewSchemaPreference(
+  data: InteractiveViewSchemaPreferenceUpsert,
+): Promise<InteractiveViewSchemaPreference> {
+  return requestJson<InteractiveViewSchemaPreference>('/interactive-view-schema-preferences', {
+    method: 'PUT',
+    body: JSON.stringify(data),
   });
 }
 

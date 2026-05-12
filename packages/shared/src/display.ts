@@ -41,7 +41,7 @@ export interface OntologyDisplayOption {
 export type ModelDisplaySource = Pick<
   Model,
   'key' | 'name' | 'description' | 'source_kind' | 'source_ref'
-> & Partial<Pick<Model, 'built_in'>>;
+>;
 
 function sourceRefTail(sourceRef: string, prefix: string): string | null {
   return sourceRef.startsWith(prefix) ? sourceRef.slice(prefix.length) : null;
@@ -57,7 +57,7 @@ export function toModelDisplaySource(model: ModelDisplaySource): OntologyDisplay
     key: model.key,
     name: model.name,
     description: model.description,
-    source_kind: model.source_kind ?? (model.built_in ? 'system' : 'project'),
+    source_kind: model.source_kind,
     source_ref: model.source_ref,
   };
 }

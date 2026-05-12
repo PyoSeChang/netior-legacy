@@ -12,6 +12,16 @@ import type {
   SchemaUpdate,
   InstanceEditorPrefs,
   InstanceEditorPrefsUpdate,
+  InteractiveViewPreference,
+  InteractiveViewPreferenceUpsert,
+  InteractiveViewSchemaPreference,
+  InteractiveViewSchemaPreferenceUpsert,
+  InteractiveViewState,
+  InteractiveViewStateUpsert,
+  InteractiveViewTemplate,
+  InteractiveViewTemplateCreate,
+  InteractiveViewTemplateListQuery,
+  InteractiveViewTemplateUpdate,
   Instance,
   InstanceCreate,
   InstanceProperty,
@@ -419,6 +429,95 @@ export async function upsertRemoteEditorPrefs(
   data: InstanceEditorPrefsUpdate,
 ): Promise<InstanceEditorPrefs> {
   return requestJson<InstanceEditorPrefs>(`/editor-prefs/${encodeURIComponent(instanceId)}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function getRemoteInteractiveViewState(
+  instanceId: string,
+  viewTemplateId: string,
+): Promise<InteractiveViewState | null> {
+  return requestJson<InteractiveViewState | null>(
+    `/interactive-view-states${toQueryString({ instanceId, viewTemplateId })}`,
+  );
+}
+
+export async function upsertRemoteInteractiveViewState(
+  data: InteractiveViewStateUpsert,
+): Promise<InteractiveViewState> {
+  return requestJson<InteractiveViewState>('/interactive-view-states', {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function listRemoteInteractiveViewTemplates(
+  query: InteractiveViewTemplateListQuery,
+): Promise<InteractiveViewTemplate[]> {
+  return requestJson<InteractiveViewTemplate[]>(`/interactive-view-templates${toQueryString({
+    projectId: query.projectId,
+    schemaId: query.schemaId ?? undefined,
+    instanceId: query.instanceId ?? undefined,
+  })}`);
+}
+
+export async function getRemoteInteractiveViewTemplate(id: string): Promise<InteractiveViewTemplate | null> {
+  return requestJson<InteractiveViewTemplate | null>(`/interactive-view-templates/${encodeURIComponent(id)}`);
+}
+
+export async function createRemoteInteractiveViewTemplate(
+  data: InteractiveViewTemplateCreate,
+): Promise<InteractiveViewTemplate> {
+  return requestJson<InteractiveViewTemplate>('/interactive-view-templates', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateRemoteInteractiveViewTemplate(
+  id: string,
+  data: InteractiveViewTemplateUpdate,
+): Promise<InteractiveViewTemplate | null> {
+  return requestJson<InteractiveViewTemplate | null>(`/interactive-view-templates/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteRemoteInteractiveViewTemplate(id: string): Promise<boolean> {
+  return requestJson<boolean>(`/interactive-view-templates/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function getRemoteInteractiveViewPreference(instanceId: string): Promise<InteractiveViewPreference | null> {
+  return requestJson<InteractiveViewPreference | null>(
+    `/interactive-view-preferences${toQueryString({ instanceId })}`,
+  );
+}
+
+export async function upsertRemoteInteractiveViewPreference(
+  data: InteractiveViewPreferenceUpsert,
+): Promise<InteractiveViewPreference> {
+  return requestJson<InteractiveViewPreference>('/interactive-view-preferences', {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function getRemoteInteractiveViewSchemaPreference(
+  schemaId: string,
+): Promise<InteractiveViewSchemaPreference | null> {
+  return requestJson<InteractiveViewSchemaPreference | null>(
+    `/interactive-view-schema-preferences${toQueryString({ schemaId })}`,
+  );
+}
+
+export async function upsertRemoteInteractiveViewSchemaPreference(
+  data: InteractiveViewSchemaPreferenceUpsert,
+): Promise<InteractiveViewSchemaPreference> {
+  return requestJson<InteractiveViewSchemaPreference>('/interactive-view-schema-preferences', {
     method: 'PUT',
     body: JSON.stringify(data),
   });

@@ -1580,27 +1580,32 @@ describe('Repositories', () => {
     });
   });
 
-  // --- Schema Ref Field ---
+  // --- Schema Composition Field ---
 
-  describe('Schema Ref Field', () => {
+  describe('Schema composition field', () => {
     let projectId: string;
 
     beforeEach(() => {
       projectId = createProject({ name: 'Test', root_dir: '/ref-test' }).id;
     });
 
-    it('should create schema_ref field with ref_schema_id', () => {
+    it('should create object field with source schema binding', () => {
       const a = createSchema({ project_id: projectId, name: 'Person' });
       const b = createSchema({ project_id: projectId, name: 'Company' });
       const field = createField({
         schema_id: a.id,
         name: 'employer',
-        field_type: 'schema_ref',
+        field_type: 'object',
         sort_order: 0,
-        ref_schema_id: b.id,
+        bindings: [{
+          binding_kind: 'schema_composition',
+          source_schema_id: b.id,
+          cardinality: 'object',
+        }],
       });
-      expect(field.field_type).toBe('schema_ref');
-      expect(field.ref_schema_id).toBe(b.id);
+      expect(field.field_type).toBe('object');
+      expect(field.bindings).toHaveLength(1);
+      expect(field.bindings[0].source_schema_id).toBe(b.id);
     });
 
     it('should create and delete object record for schema', () => {
@@ -1614,70 +1619,82 @@ describe('Repositories', () => {
       expect(getObjectByRef('schema', a.id)).toBeUndefined();
     });
 
-    it('should reject self-referencing schema_ref', () => {
+    it('should reject self-referencing schema composition', () => {
       const a = createSchema({ project_id: projectId, name: 'Self' });
       expect(() =>
         createField({
           schema_id: a.id,
           name: 'self',
-          field_type: 'schema_ref',
+          field_type: 'object',
           sort_order: 0,
-          ref_schema_id: a.id,
+          bindings: [{
+            binding_kind: 'schema_composition',
+            source_schema_id: a.id,
+            cardinality: 'object',
+          }],
         }),
       ).toThrow('Circular schema reference detected');
     });
 
-    it('should reject circular schema_ref chain A→B→A', () => {
+    it('should reject circular schema composition chain', () => {
       const a = createSchema({ project_id: projectId, name: 'A' });
       const b = createSchema({ project_id: projectId, name: 'B' });
       // A references B
       createField({
         schema_id: a.id,
         name: 'refB',
-        field_type: 'schema_ref',
+        field_type: 'object',
         sort_order: 0,
-        ref_schema_id: b.id,
+        bindings: [{
+          binding_kind: 'schema_composition',
+          source_schema_id: b.id,
+          cardinality: 'object',
+        }],
       });
       // B references A → cycle
       expect(() =>
         createField({
           schema_id: b.id,
           name: 'refA',
-          field_type: 'schema_ref',
+          field_type: 'object',
           sort_order: 0,
-          ref_schema_id: a.id,
+          bindings: [{
+            binding_kind: 'schema_composition',
+            source_schema_id: a.id,
+            cardinality: 'object',
+          }],
         }),
       ).toThrow('Circular schema reference detected');
     });
 
-    it('should reject circular schema_ref chain A→B→C→A', () => {
+    it('should reject longer circular schema composition chain', () => {
       const a = createSchema({ project_id: projectId, name: 'A' });
       const b = createSchema({ project_id: projectId, name: 'B' });
       const c = createSchema({ project_id: projectId, name: 'C' });
-      createField({ schema_id: a.id, name: 'refB', field_type: 'schema_ref', sort_order: 0, ref_schema_id: b.id });
-      createField({ schema_id: b.id, name: 'refC', field_type: 'schema_ref', sort_order: 0, ref_schema_id: c.id });
+      createField({ schema_id: a.id, name: 'refB', field_type: 'object', sort_order: 0, bindings: [{ binding_kind: 'schema_composition', source_schema_id: b.id, cardinality: 'object' }] });
+      createField({ schema_id: b.id, name: 'refC', field_type: 'object', sort_order: 0, bindings: [{ binding_kind: 'schema_composition', source_schema_id: c.id, cardinality: 'object' }] });
       expect(() =>
-        createField({ schema_id: c.id, name: 'refA', field_type: 'schema_ref', sort_order: 0, ref_schema_id: a.id }),
+        createField({ schema_id: c.id, name: 'refA', field_type: 'object', sort_order: 0, bindings: [{ binding_kind: 'schema_composition', source_schema_id: a.id, cardinality: 'object' }] }),
       ).toThrow('Circular schema reference detected');
     });
 
-    it('should allow non-cyclic schema_ref chain A→B, A→C', () => {
+    it('should allow non-cyclic schema composition fan-out', () => {
       const a = createSchema({ project_id: projectId, name: 'A' });
       const b = createSchema({ project_id: projectId, name: 'B' });
       const c = createSchema({ project_id: projectId, name: 'C' });
-      createField({ schema_id: a.id, name: 'refB', field_type: 'schema_ref', sort_order: 0, ref_schema_id: b.id });
-      const field = createField({ schema_id: a.id, name: 'refC', field_type: 'schema_ref', sort_order: 1, ref_schema_id: c.id });
-      expect(field.ref_schema_id).toBe(c.id);
+      createField({ schema_id: a.id, name: 'refB', field_type: 'object', sort_order: 0, bindings: [{ binding_kind: 'schema_composition', source_schema_id: b.id, cardinality: 'object' }] });
+      const field = createField({ schema_id: a.id, name: 'refC', field_type: 'object', sort_order: 1, bindings: [{ binding_kind: 'schema_composition', source_schema_id: c.id, cardinality: 'object' }] });
+      expect(field.bindings[0].source_schema_id).toBe(c.id);
     });
 
-    it('should SET NULL ref_schema_id when referenced schema is deleted', () => {
+    it('should clear binding source schema when referenced schema is deleted', () => {
       const a = createSchema({ project_id: projectId, name: 'A' });
       const b = createSchema({ project_id: projectId, name: 'B' });
-      createField({ schema_id: a.id, name: 'ref', field_type: 'schema_ref', sort_order: 0, ref_schema_id: b.id });
+      createField({ schema_id: a.id, name: 'ref', field_type: 'object', sort_order: 0, bindings: [{ binding_kind: 'schema_composition', source_schema_id: b.id, cardinality: 'object' }] });
       deleteSchema(b.id);
       const fields = listFields(a.id);
       expect(fields).toHaveLength(1);
-      expect(fields[0].ref_schema_id).toBeNull();
+      expect(fields[0].bindings[0].source_schema_id).toBeNull();
     });
   });
 

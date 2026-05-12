@@ -166,6 +166,35 @@ export const NETIOR_MCP_TOOL_SPECS = {
     category: 'instances',
     kind: 'mutation',
   },
+  list_interactive_view_templates: {
+    description: 'List interactive view templates available for a project, schema, or instance',
+    category: 'instances',
+    kind: 'query',
+    scope: 'project',
+    defaultProjectBinding: true,
+  },
+  create_interactive_view_template: {
+    description: 'Create an interactive view template with Restricted TSX source and manifest metadata',
+    category: 'instances',
+    kind: 'mutation',
+    scope: 'project',
+    defaultProjectBinding: true,
+  },
+  update_interactive_view_template: {
+    description: 'Update an existing interactive view template source, manifest, scope, or validation metadata',
+    category: 'instances',
+    kind: 'mutation',
+  },
+  set_interactive_view_preference: {
+    description: 'Set how a specific instance resolves its interactive view: inherit schema default, override with a template, or disable the view',
+    category: 'instances',
+    kind: 'mutation',
+  },
+  set_interactive_view_schema_preference: {
+    description: 'Set the default interactive view template inherited by instances of a schema',
+    category: 'instances',
+    kind: 'mutation',
+  },
   create_edge: {
     description: 'Create an edge between two network nodes',
     category: 'graph',
