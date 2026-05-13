@@ -147,7 +147,7 @@ export function NetworkObjectEditorSection({
   description,
   defaultOpen = true,
   actions,
-  viewMode: _viewMode,
+  viewMode,
   fullBleed = false,
   children,
 }: NetworkObjectEditorSectionProps): JSX.Element {
@@ -155,6 +155,14 @@ export function NetworkObjectEditorSection({
   const sectionClass = fullBleed ? 'w-full' : 'mx-auto w-full max-w-[760px] px-6';
   const headerClass = fullBleed ? 'mx-auto w-full max-w-[760px] px-6' : '';
   const contentClass = fullBleed ? 'flex flex-col gap-4 py-3' : 'flex flex-col gap-4 py-3';
+
+  if (viewMode === 'interactive') {
+    return (
+      <section className={`${sectionClass} pb-5 last:border-b-0`}>
+        <div className={contentClass}>{children}</div>
+      </section>
+    );
+  }
 
   return (
     <section className={`${sectionClass} border-b border-subtle pb-5 last:border-b-0`}>
