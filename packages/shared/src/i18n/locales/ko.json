@@ -1701,6 +1701,18 @@
       },
       "update_model": { "name": "모델 수정" },
       "delete_model": { "name": "모델 삭제" },
+      "list_model_catalog": {
+        "name": "모델 카탈로그 목록 가져오기",
+        "description": "custom 모델을 만들기 전에 재사용할 built-in/curated 모델을 가져옵니다."
+      },
+      "validate_dsl": {
+        "name": "DSL 검증",
+        "description": "Netior DSL JSON AST expression 또는 field behavior config를 검증합니다."
+      },
+      "evaluate_dsl": {
+        "name": "DSL 평가",
+        "description": "프로젝트 context 안에서 read-only Netior DSL JSON AST expression을 평가합니다."
+      },
       "list_instances": { "name": "개념 목록 가져오기" },
       "create_instance": {
         "name": "개념 생성",

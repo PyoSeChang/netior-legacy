@@ -119,6 +119,16 @@ function snapMinutes(minutes: number): number {
 export const calendarPlugin: WorkspaceLayoutPlugin = {
   key: 'calendar',
   displayName: 'Calendar',
+  semanticDiscovery: [
+    {
+      key: 'calendar-time-fields',
+      expression: {
+        op: 'discover.schemas',
+        requires: [{ fieldMeaning: 'time.start' }],
+        optional: [{ fieldMeaning: 'time.end' }, { fieldMeaning: 'time.all_day' }],
+      },
+    },
+  ],
 
   configModel: [
     {

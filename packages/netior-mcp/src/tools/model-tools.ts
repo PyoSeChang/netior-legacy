@@ -199,7 +199,7 @@ export function registerModelTools(server: McpServer): void {
       category_instance_id: z.string().nullable().optional().describe('Model Category instance ID. Use list_model_categories before assigning.'),
       target_kind: targetKindModel.optional().describe('Whether this model describes objects, edges, or both'),
       meaning_keys: z.array(builtInMeaningKeyModel).optional().describe('Built-in meanings this model includes'),
-      recipe: modelRecipeModel.optional().describe('Custom meaning and field recipe for this model'),
+      recipe: modelRecipeModel.optional().describe('Advanced custom meaning and field recipe. Prefer existing built-in/curated models first.'),
       color: z.string().nullable().optional().describe('Optional color value'),
       icon: z.string().nullable().optional().describe('Optional icon identifier'),
       line_style: lineStyleModel.nullable().optional().describe('Default edge line style when target_kind includes edge'),

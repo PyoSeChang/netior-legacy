@@ -15,6 +15,7 @@ import { registerPdfTools } from './pdf-tools.js';
 import { registerModuleTools } from './module-tools.js';
 import { registerModelTools } from './model-tools.js';
 import { registerInteractiveViewTools } from './interactive-view-tools.js';
+import { registerDslTools } from './dsl-tools.js';
 
 export function registerAllTools(server: McpServer): void {
   registerSchemaTools(server);
@@ -25,6 +26,7 @@ export function registerAllTools(server: McpServer): void {
   registerInstanceTools(server);
   registerInstancePropertyTools(server);
   registerInteractiveViewTools(server);
+  registerDslTools(server);
   registerObjectTools(server);
   registerNetworkTools(server);
   registerNetworkNodeTools(server);

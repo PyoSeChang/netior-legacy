@@ -84,11 +84,11 @@ Current behavior-to-type rules:
 | `none` | Normal value/reference field types, including select-like types | Select, multi-select, and radio are regular field types, not behavior choices. |
 | `schema_composition` | `object` | Includes another schema's fields inside this field. |
 | `schema_extension` | `object` | Extends from another schema source. |
-| `conditional_field` | Normal field types | Stores display condition metadata. Runtime evaluation is not implemented yet. |
-| `computed_field` | Value-result field types | Stores formula metadata and marks the binding read-only. Runtime formula evaluation is not implemented yet. |
-| `derived_collection` | `multi-select` | Stores source schema and collection condition metadata. Runtime collection querying is not implemented yet. |
+| `conditional_field` | Normal field types | Stores a DSL behavior config. The instance editor evaluates boolean results as visible/hidden state. |
+| `computed_field` | Value-result field types | Stores a DSL behavior config and displays the evaluated scalar result as read-only. |
+| `derived_collection` | `multi-select` | Stores a DSL behavior config and displays the evaluated object list as read-only. |
 
-Do not describe `conditional_field`, `computed_field`, or `derived_collection` as complete user-facing runtime features until the instance editor and persistence layer evaluate those bindings.
+Field behavior config is stored as JSON in `schema_field_bindings.config`. The canonical behavior language is Netior DSL JSON AST; plain text config should be treated as invalid or unconfigured.
 
 ## Ontology Network
 

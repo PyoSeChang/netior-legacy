@@ -7,8 +7,10 @@ import {
   getMeaningSlotDefinition,
   getMeaningSlotLabelKey,
 } from '@netior/shared/constants';
+import { validateNetiorDslFieldBehaviorConfig } from '@netior/shared/dsl';
 import { Link2, Trash2 } from 'lucide-react';
 import { Input } from '../ui/Input';
+import { TextArea } from '../ui/TextArea';
 import { TypeSelector } from '../ui/TypeSelector';
 import { Toggle } from '../ui/Toggle';
 import { Tooltip } from '../ui/Tooltip';
@@ -208,6 +210,19 @@ export function SchemaFieldRow({
   const [nameText, setNameText] = useState(field.name);
   const [optionsText, setOptionsText] = useState(() => parseChoices(field.options));
   const [configText, setConfigText] = useState(bindingConfig);
+  const configValidationMessage = useMemo(() => {
+    if (!(behavior === 'conditional_field' || behavior === 'computed_field' || behavior === 'derived_collection')) {
+      return null;
+    }
+    if (!configText.trim()) return null;
+    try {
+      const parsed = JSON.parse(configText) as unknown;
+      const validation = validateNetiorDslFieldBehaviorConfig(parsed);
+      return validation.ok ? null : validation.errors.map((error) => `${error.path}: ${error.message}`).join('; ');
+    } catch (error) {
+      return (error as Error).message;
+    }
+  }, [behavior, configText]);
   const markDirty = () => {
     useEditorStore.getState().setDirty(tabId, true);
   };
@@ -410,23 +425,23 @@ export function SchemaFieldRow({
                 ? t('schema.fieldBehaviorConfig.conditional' as never)
                 : t('schema.fieldBehaviorConfig.derived' as never)}
           </div>
-          <Input
-            inputSize="sm"
+          <TextArea
             value={configText}
             placeholder={behavior === 'computed_field'
               ? t('schema.fieldBehaviorConfig.computedPlaceholder' as never)
               : behavior === 'conditional_field'
                 ? t('schema.fieldBehaviorConfig.conditionalPlaceholder' as never)
                 : t('schema.fieldBehaviorConfig.derivedPlaceholder' as never)}
+            rows={5}
             onChange={(event) => {
               markDirty();
               setConfigText(event.target.value);
             }}
             onBlur={commitConfig}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter') commitConfig();
-            }}
           />
+          {configValidationMessage && (
+            <div className="mt-1 text-[11px] text-status-warning">{configValidationMessage}</div>
+          )}
         </div>
       )}
     </div>

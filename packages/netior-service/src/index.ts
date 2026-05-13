@@ -104,6 +104,7 @@ import {
   updateModel,
   updateInteractiveViewTemplate,
   deleteInteractiveViewTemplate,
+  evaluateNetiorDsl,
 } from '@netior/core';
 import type {
   Schema,
@@ -151,6 +152,7 @@ import type {
   FieldMeaningKey,
   MeaningSlotKey,
 } from '@netior/shared/types';
+import type { NetiorDslEvaluateRequest } from '@netior/shared/dsl';
 import {
   fieldMeaningToMeaningBindings,
   meaningSlotToFieldMeaning,
@@ -233,6 +235,22 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
       .all(...(body.params ?? [])) as Record<string, unknown>[];
 
     sendJson(res, 200, { ok: true, data: rows });
+    return;
+  }
+
+  if (pathname === '/dsl/evaluate') {
+    if (method !== 'POST') {
+      sendJson(res, 405, { ok: false, error: `Method ${method} not allowed for ${pathname}` });
+      return;
+    }
+
+    const body = await readJsonBody<NetiorDslEvaluateRequest>(req);
+    if (!body.context?.projectId || !body.expression) {
+      sendJson(res, 400, { ok: false, error: 'context.projectId and expression are required' });
+      return;
+    }
+
+    sendJson(res, 200, { ok: true, data: evaluateNetiorDsl(body.expression, body.context) });
     return;
   }
 

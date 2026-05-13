@@ -17,4 +17,5 @@ export { objectService } from './object-service';
 export { narreService } from './narre-service';
 export { agentService } from './agent-service';
 export { contextService } from './context-service';
+export { dslService } from './dsl-service';
 export { unwrapIpc } from './ipc';

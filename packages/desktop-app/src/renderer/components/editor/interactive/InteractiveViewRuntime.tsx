@@ -1,10 +1,15 @@
-import React, { createContext, useCallback, useContext, useMemo } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { SchemaField } from '@netior/shared/types';
+import type { NetiorDslExpression, NetiorDslObjectRef, NetiorDslValue } from '@netior/shared/dsl';
 import { Button as UiButton } from '../../ui/Button';
 import { TextArea } from '../../ui/TextArea';
 import { Badge } from '../../ui/Badge';
+import { dslService } from '../../../services/dsl-service';
 
 interface InteractiveViewContextValue {
+  projectId: string;
+  schemaId: string;
+  instanceId: string;
   fields: SchemaField[];
   properties: Record<string, string | null>;
   content: string | null;
@@ -14,6 +19,9 @@ interface InteractiveViewContextValue {
 }
 
 interface InteractiveViewProviderProps {
+  projectId: string;
+  schemaId: string;
+  instanceId: string;
   fields: SchemaField[];
   properties: Record<string, string | null>;
   content: string | null;
@@ -47,6 +55,9 @@ function useInteractiveViewContext(): InteractiveViewContextValue {
 }
 
 export function InteractiveViewProvider({
+  projectId,
+  schemaId,
+  instanceId,
   fields,
   properties,
   content,
@@ -66,13 +77,16 @@ export function InteractiveViewProvider({
   }, [fields, onFieldChange]);
 
   const value = useMemo<InteractiveViewContextValue>(() => ({
+    projectId,
+    schemaId,
+    instanceId,
     fields,
     properties,
     content,
     viewState,
     setViewStateValue,
     updateFieldValue,
-  }), [content, fields, properties, setViewStateValue, updateFieldValue, viewState]);
+  }), [content, fields, instanceId, projectId, properties, schemaId, setViewStateValue, updateFieldValue, viewState]);
 
   return (
     <InteractiveViewContext.Provider value={value}>
@@ -117,6 +131,76 @@ export function useViewState<T>(key: string, initialValue: T): [T, (value: T) =>
   }, [key, setViewStateValue]);
 
   return [value, setValue];
+}
+
+export interface InteractiveDslResult<T> {
+  value: T | null;
+  loading: boolean;
+  error: string | null;
+}
+
+export function useDslValue<T extends NetiorDslValue = NetiorDslValue>(
+  expression: NetiorDslExpression,
+): InteractiveDslResult<T> {
+  const { projectId, schemaId, instanceId, properties, viewState } = useInteractiveViewContext();
+  const [state, setState] = useState<InteractiveDslResult<T>>({
+    value: null,
+    loading: true,
+    error: null,
+  });
+
+  useEffect(() => {
+    let cancelled = false;
+    setState((current) => ({ ...current, loading: true, error: null }));
+    dslService.evaluate({
+      context: {
+        projectId,
+        currentSchemaId: schemaId,
+        currentInstanceId: instanceId,
+        currentObject: { objectType: 'instance', refId: instanceId },
+        viewState,
+        overrides: { properties },
+      },
+      expression,
+    })
+      .then((result) => {
+        if (cancelled) return;
+        if (result.ok) {
+          setState({ value: result.value as T, loading: false, error: null });
+        } else {
+          setState({ value: null, loading: false, error: result.error.message });
+        }
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        setState({ value: null, loading: false, error: (error as Error).message });
+      });
+    return () => { cancelled = true; };
+  }, [expression, instanceId, projectId, properties, schemaId, viewState]);
+
+  return state;
+}
+
+export function useDslObject(expression: NetiorDslExpression): InteractiveDslResult<NetiorDslObjectRef> {
+  const result = useDslValue(expression);
+  const value = result.value && typeof result.value === 'object' && !Array.isArray(result.value)
+    ? result.value as NetiorDslObjectRef
+    : null;
+  return {
+    value,
+    loading: result.loading,
+    error: result.error ?? (result.value != null && !value ? 'DSL result is not an object' : null),
+  };
+}
+
+export function useDslObjects(expression: NetiorDslExpression): InteractiveDslResult<NetiorDslObjectRef[]> {
+  const result = useDslValue(expression);
+  const value = Array.isArray(result.value) ? result.value as NetiorDslObjectRef[] : null;
+  return {
+    value,
+    loading: result.loading,
+    error: result.error ?? (result.value != null && !value ? 'DSL result is not an object list' : null),
+  };
 }
 
 export function Stack({ children }: { children: React.ReactNode }): JSX.Element {

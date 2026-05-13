@@ -20,6 +20,16 @@ import {
 export const ganttPlugin: WorkspaceLayoutPlugin = {
   key: 'gantt',
   displayName: 'Gantt Chart',
+  semanticDiscovery: [
+    {
+      key: 'gantt-time-fields',
+      expression: {
+        op: 'discover.schemas',
+        requires: [{ fieldMeaning: 'time.start' }],
+        optional: [{ fieldMeaning: 'time.end' }],
+      },
+    },
+  ],
 
   configModel: [],
 

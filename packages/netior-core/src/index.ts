@@ -22,3 +22,8 @@ export * from './repositories/settings';
 
 // Services
 export { serializeToAgent, parseFromAgent, renderTemplate } from './services/instance-content-sync';
+export {
+  evaluateNetiorDsl,
+  evaluateNetiorDslFieldBehaviorConfig,
+  parseNetiorDslFieldBehaviorConfig,
+} from './services/netior-dsl-evaluator';

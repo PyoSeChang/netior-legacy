@@ -64,6 +64,7 @@ import type {
   Layout,
   NetiorServiceResponse,
 } from '@netior/shared/types';
+import type { NetiorDslEvaluateRequest, NetiorDslEvalResult } from '@netior/shared/dsl';
 import { getNetiorServiceBaseUrl } from '../process/netior-service-manager';
 
 export async function getRemoteConfig(key: string): Promise<unknown> {
@@ -74,6 +75,13 @@ export async function setRemoteConfig(key: string, value: unknown): Promise<bool
   return requestJson<boolean>(`/config/${encodeURIComponent(key)}`, {
     method: 'PUT',
     body: JSON.stringify({ value }),
+  });
+}
+
+export async function evaluateRemoteDsl(data: NetiorDslEvaluateRequest): Promise<NetiorDslEvalResult> {
+  return requestJson<NetiorDslEvalResult>('/dsl/evaluate', {
+    method: 'POST',
+    body: JSON.stringify(data),
   });
 }
 

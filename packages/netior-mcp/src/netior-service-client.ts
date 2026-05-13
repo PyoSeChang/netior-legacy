@@ -46,6 +46,7 @@ import type {
   ModelUpdate,
   NetiorServiceResponse,
 } from '@netior/shared/types';
+import type { NetiorDslEvaluateRequest, NetiorDslEvalResult } from '@netior/shared/dsl';
 
 function getNetiorServiceBaseUrl(): string {
   return process.env.NETIOR_SERVICE_URL ?? `http://127.0.0.1:${process.env.NETIOR_SERVICE_PORT ?? '3201'}`;
@@ -214,6 +215,13 @@ export async function deleteSchema(id: string): Promise<boolean> {
 
 export async function listModels(projectId: string): Promise<Model[]> {
   return requestJson<Model[]>(`/models${toQueryString({ projectId })}`);
+}
+
+export async function evaluateDsl(data: NetiorDslEvaluateRequest): Promise<NetiorDslEvalResult> {
+  return requestJson<NetiorDslEvalResult>('/dsl/evaluate', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
 }
 
 export async function listModelCategories(projectId: string): Promise<Instance[]> {

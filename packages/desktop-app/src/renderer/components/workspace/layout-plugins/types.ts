@@ -5,6 +5,7 @@ import type {
   ModelRefKey,
   MeaningSlotKey,
 } from '@netior/shared/types';
+import type { NetiorDslExpression } from '@netior/shared/dsl';
 
 /** A user-configurable layout option */
 export interface ConfigField {
@@ -206,6 +207,11 @@ export interface WorkspaceLayoutPlugin {
   configModel: ConfigField[];
   /** Default layout_config values */
   getDefaultConfig(): Record<string, unknown>;
+  /** Optional semantic discovery queries used to propose schema/field candidates before saving exact config */
+  semanticDiscovery?: Array<{
+    key: string;
+    expression: NetiorDslExpression;
+  }>;
 
   /** Interaction constraints */
   interactionConstraints: InteractionConstraints;

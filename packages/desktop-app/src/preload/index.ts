@@ -235,6 +235,9 @@ const electronAPI = {
       ipcRenderer.invoke('model:update', id, data),
     delete: (id: string) => ipcRenderer.invoke('model:delete', id),
   },
+  dsl: {
+    evaluate: (data: Record<string, unknown>) => ipcRenderer.invoke('dsl:evaluate', data),
+  },
   instanceProp: {
     upsert: (data: Record<string, unknown>) => ipcRenderer.invoke('instanceProp:upsert', data),
     getByInstance: (instanceId: string) => ipcRenderer.invoke('instanceProp:getByInstance', instanceId),

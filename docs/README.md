@@ -141,3 +141,5 @@ Next Phase:
 ## Research
 
 - [predictive-context-architecture.md](research/predictive-context-architecture.md)
+- [ontology-network-db-dsl-ko.md](research/ontology-network-db-dsl-ko.md)
+- [netior-dsl-mvp-implementation-ko.md](research/netior-dsl-mvp-implementation-ko.md)

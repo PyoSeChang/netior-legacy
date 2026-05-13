@@ -1139,6 +1139,7 @@ export interface InteractiveViewManifest {
     readFields?: string[];
     writeFields?: string[];
     viewState?: boolean;
+    dsl?: boolean;
   };
   runtime?: InteractiveViewRuntime;
 }

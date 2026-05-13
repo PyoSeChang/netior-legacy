@@ -71,6 +71,10 @@ function collectFieldWrites(source: string): string[] {
   return [...writes];
 }
 
+function usesDslHooks(source: string): boolean {
+  return /\buseDsl(?:Value|Object|Objects)\s*\(/.test(source);
+}
+
 export function validateInteractiveViewSource(
   source: string,
   manifestJson: string,
@@ -132,6 +136,14 @@ export function validateInteractiveViewSource(
         severity: 'error',
       });
     }
+  }
+
+  if (usesDslHooks(source) && manifest?.permissions?.dsl !== true) {
+    issues.push({
+      code: 'permissions.dsl_not_declared',
+      message: 'DSL usage must be declared in manifest permissions.',
+      severity: 'error',
+    });
   }
 
   const runtime: InteractiveViewRuntime = manifest?.runtime === 'host' && issues.length === 0

@@ -17,6 +17,7 @@ import { registerObjectIpc } from './object-ipc';
 import { registerNarreIpc } from './narre-ipc';
 import { registerContextIpc } from './context-ipc';
 import { registerAgentDefinitionIpc } from './agent-definition-ipc';
+import { registerDslIpc } from './dsl-ipc';
 
 export function registerAllIpc(): void {
   registerProjectIpc();
@@ -38,4 +39,5 @@ export function registerAllIpc(): void {
   registerNarreIpc();
   registerContextIpc();
   registerAgentDefinitionIpc();
+  registerDslIpc();
 }

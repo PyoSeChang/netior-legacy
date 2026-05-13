@@ -323,6 +323,9 @@ export function InteractiveViewPanel({
     </div>
   ) : (
     <InteractiveViewProvider
+      projectId={projectId}
+      schemaId={schemaId}
+      instanceId={instanceId}
       fields={fields}
       properties={properties}
       content={content}

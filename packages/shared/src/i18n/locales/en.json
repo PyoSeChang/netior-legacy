@@ -1701,6 +1701,18 @@
       },
       "update_model": { "name": "Update Model" },
       "delete_model": { "name": "Delete Model" },
+      "list_model_catalog": {
+        "name": "List Model Catalog",
+        "description": "List built-in and curated models to reuse before creating custom models."
+      },
+      "validate_dsl": {
+        "name": "Validate DSL",
+        "description": "Validate a Netior DSL JSON AST expression or field behavior config."
+      },
+      "evaluate_dsl": {
+        "name": "Evaluate DSL",
+        "description": "Evaluate a read-only Netior DSL JSON AST expression against a project context."
+      },
       "list_instances": { "name": "List Instances" },
       "create_instance": {
         "name": "Create Instance",

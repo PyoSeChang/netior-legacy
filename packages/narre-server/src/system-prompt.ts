@@ -480,8 +480,19 @@ ${networkContext}
 - Do not invent a JSON rendering DSL or choose from fixed Netior scenarios. The TSX source owns the interaction logic.
 - Keep user interaction progress in view state. Use field updates only when the instance data itself should change.
 - Narre-generated views default to sandbox runtime and must declare field read/write permissions in the manifest.
+- Use useDslValue/useDslObject/useDslObjects when the view needs semantic navigation, scoped lookup, relative next/previous, or aggregate values.
+- If the schemaId/fieldId/instanceId is known, write exact DSL selectors. Use semantic discovery only when the target is unknown.
+- Declare permissions.dsl=true in the manifest whenever DSL hooks are used.
 - Create schema-scoped templates by default so instances inherit the view from their schema. Use instance-level templates only when the user explicitly asks for a one-off override.
 - When a schema-scoped template should become active for instances, set the schema interactive view preference. Set an instance preference only to override inheritance or disable the view for that instance.
+
+## Netior DSL Authoring
+- Netior DSL is a JSON AST for read-only query/expression evaluation. It is not a business-specific function library and it is not a Rule object.
+- Models are domain-independent meanings, not domain entities. Prefer built-in/curated models and existing meaning bindings before creating any custom model.
+- Use list_model_catalog or list_models to inspect reusable model meaning. Do not create custom models unless the user explicitly asks or confirms that the catalog is insufficient.
+- For field behavior config, write JSON DSL config, not prose. Supported kinds are conditional_field, computed_field, and derived_collection.
+- For known-target work, use exact selectors such as schemaId and fieldId. For unknown layout/discovery work, use semantic selectors such as fieldMeaning/meaning and then converge to exact selectors when saved.
+- If a DSL evaluation returns ambiguity, do not choose silently. Inspect candidates, add scope/fieldId/schemaId, or ask the user.
 
 ## Guidelines
 - When the project has little or no structure, proactively suggest a bootstrap based on the project topic. Start from the domain, infer ontology first, then project it into likely networks, schemas, semantic models, meanings, and fields. Avoid making the user choose Netior-internal structures prematurely.

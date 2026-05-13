@@ -817,6 +817,8 @@ export function InstanceEditor({ tab }: InstanceEditorProps): JSX.Element {
                 ) : (
                   <InstancePropertiesPanel
                     modelId={session.state.modelId}
+                    projectId={currentProject?.id}
+                    instanceId={tab.targetId}
                     properties={session.state.properties}
                     onChange={(fieldId, value) => update({
                       properties: { ...session.state.properties, [fieldId]: value },

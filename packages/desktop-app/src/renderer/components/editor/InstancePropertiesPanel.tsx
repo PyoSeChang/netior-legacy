@@ -1,6 +1,8 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import type { TranslationKey } from '@netior/shared/i18n';
 import type { SchemaField, FieldType, MeaningSlotKey } from '@netior/shared/types';
+import type { NetiorDslFieldBehaviorConfig, NetiorDslValue } from '@netior/shared/dsl';
+import { validateNetiorDslFieldBehaviorConfig } from '@netior/shared/dsl';
 import {
   getMeaningSlotDefinition,
   getMeaningSlotDescriptionKey,
@@ -30,9 +32,12 @@ import {
   toInstanceOptionValue,
 } from '../../lib/schema-field-options';
 import { getFieldMeaningSlot } from '../../lib/field-meaning-bindings';
+import { dslService } from '../../services/dsl-service';
 
 interface InstancePropertiesPanelProps {
   modelId: string;
+  instanceId?: string;
+  projectId?: string;
   properties: Record<string, string | null>;
   onChange: (fieldId: string, value: string | null) => void;
 }
@@ -134,7 +139,112 @@ function getSlotValidationMessage(
   }
 }
 
-export function InstancePropertiesPanel({ modelId, properties, onChange }: InstancePropertiesPanelProps): JSX.Element {
+interface FieldBehaviorState {
+  visible?: boolean;
+  computed?: NetiorDslValue;
+  derived?: NetiorDslValue;
+  error?: string;
+}
+
+interface UseFieldBehaviorStatesInput {
+  fields: SchemaField[];
+  schemaId?: string;
+  instanceId?: string;
+  projectId?: string;
+  properties: Record<string, string | null>;
+}
+
+function useFieldBehaviorStates({
+  fields,
+  schemaId,
+  instanceId,
+  projectId,
+  properties,
+}: UseFieldBehaviorStatesInput): Record<string, FieldBehaviorState> {
+  const [states, setStates] = useState<Record<string, FieldBehaviorState>>({});
+
+  const behaviorInputs = useMemo(() => fields.flatMap((field) => {
+    const behaviorBindings = field.bindings.filter((binding) => (
+      binding.binding_kind === 'conditional_field'
+      || binding.binding_kind === 'computed_field'
+      || binding.binding_kind === 'derived_collection'
+    ));
+    return behaviorBindings.map((binding) => ({
+      fieldId: field.id,
+      bindingKind: binding.binding_kind,
+      config: parseFieldBehaviorConfig(binding.config),
+    }));
+  }), [fields]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function evaluate(): Promise<void> {
+      if (!projectId || !schemaId || !instanceId || behaviorInputs.length === 0) {
+        setStates({});
+        return;
+      }
+
+      const nextStates: Record<string, FieldBehaviorState> = {};
+      for (const input of behaviorInputs) {
+        if (!input.config) {
+          nextStates[input.fieldId] = { ...nextStates[input.fieldId], error: 'Invalid DSL config' };
+          continue;
+        }
+
+        try {
+          const result = await dslService.evaluate({
+            context: {
+              projectId,
+              currentInstanceId: instanceId,
+              currentSchemaId: schemaId,
+              currentObject: { objectType: 'instance', refId: instanceId },
+              overrides: { properties },
+            },
+            expression: input.config.expression,
+          });
+          if (!result.ok) {
+            nextStates[input.fieldId] = { ...nextStates[input.fieldId], error: result.error.message };
+            continue;
+          }
+
+          if (input.bindingKind === 'conditional_field') {
+            nextStates[input.fieldId] = {
+              ...nextStates[input.fieldId],
+              visible: typeof result.value === 'boolean' ? result.value : true,
+              error: typeof result.value === 'boolean' ? undefined : 'Conditional field must return boolean',
+            };
+          } else if (input.bindingKind === 'computed_field') {
+            nextStates[input.fieldId] = { ...nextStates[input.fieldId], computed: result.value };
+          } else if (input.bindingKind === 'derived_collection') {
+            nextStates[input.fieldId] = { ...nextStates[input.fieldId], derived: result.value };
+          }
+        } catch (error) {
+          nextStates[input.fieldId] = { ...nextStates[input.fieldId], error: (error as Error).message };
+        }
+      }
+
+      if (!cancelled) setStates(nextStates);
+    }
+
+    void evaluate();
+    return () => { cancelled = true; };
+  }, [behaviorInputs, instanceId, projectId, properties, schemaId]);
+
+  return states;
+}
+
+function parseFieldBehaviorConfig(raw: string | null): NetiorDslFieldBehaviorConfig | null {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    return validateNetiorDslFieldBehaviorConfig(parsed).ok ? parsed as NetiorDslFieldBehaviorConfig : null;
+  } catch {
+    return null;
+  }
+}
+
+export function InstancePropertiesPanel({ modelId, instanceId, projectId, properties, onChange }: InstancePropertiesPanelProps): JSX.Element {
   const fields = useSchemaStore((s) => s.fields[modelId] ?? []);
   const loadFields = useSchemaStore((s) => s.loadFields);
 
@@ -147,6 +257,9 @@ export function InstancePropertiesPanel({ modelId, properties, onChange }: Insta
   return (
     <InstancePropertyInputs
       fields={fields}
+      schemaId={modelId}
+      instanceId={instanceId}
+      projectId={projectId}
       properties={properties}
       onChange={onChange}
     />
@@ -155,22 +268,35 @@ export function InstancePropertiesPanel({ modelId, properties, onChange }: Insta
 
 interface InstancePropertyInputsProps {
   fields: SchemaField[];
+  schemaId?: string;
+  instanceId?: string;
+  projectId?: string;
   properties: Record<string, string | null>;
   onChange: (fieldId: string, value: string | null) => void;
 }
 
 export function InstancePropertyInputs({
   fields,
+  schemaId,
+  instanceId,
+  projectId,
   properties,
   onChange,
 }: InstancePropertyInputsProps): JSX.Element | null {
+  const behaviorStates = useFieldBehaviorStates({
+    fields,
+    schemaId,
+    instanceId,
+    projectId,
+    properties,
+  });
   const recurrenceFields = useMemo(
     () => fields.filter((field) => isRecurrenceField(field) && getFieldMeaningSlot(field) !== 'recurrence_rule'),
     [fields],
   );
   const visibleFields = useMemo(
-    () => fields.filter((field) => !isRecurrenceField(field)),
-    [fields],
+    () => fields.filter((field) => !isRecurrenceField(field) && behaviorStates[field.id]?.visible !== false),
+    [fields, behaviorStates],
   );
 
   if (visibleFields.length === 0 && recurrenceFields.length === 0) return null;
@@ -185,10 +311,11 @@ export function InstancePropertyInputs({
         />
       )}
       {visibleFields.map((field) => (
-        <FieldInput
+        <BehaviorAwareFieldInput
           key={field.id}
           field={field}
           value={properties[field.id] ?? null}
+          behavior={behaviorStates[field.id]}
           onChange={(val) => onChange(field.id, val)}
         />
       ))}
@@ -320,6 +447,63 @@ interface FieldInputProps {
   field: SchemaField;
   value: string | null;
   onChange: (value: string | null) => void;
+}
+
+interface BehaviorAwareFieldInputProps extends FieldInputProps {
+  behavior?: FieldBehaviorState;
+}
+
+function BehaviorAwareFieldInput({
+  field,
+  value,
+  behavior,
+  onChange,
+}: BehaviorAwareFieldInputProps): JSX.Element {
+  if (behavior?.computed !== undefined) {
+    return <ReadOnlyBehaviorValue field={field} value={behavior.computed} error={behavior.error} />;
+  }
+
+  if (behavior?.derived !== undefined) {
+    return <ReadOnlyBehaviorValue field={field} value={behavior.derived} error={behavior.error} />;
+  }
+
+  return (
+    <div className="flex flex-col gap-1">
+      <FieldInput field={field} value={value} onChange={onChange} />
+      {behavior?.error && <div className="text-[11px] text-status-warning">{behavior.error}</div>}
+    </div>
+  );
+}
+
+function ReadOnlyBehaviorValue({
+  field,
+  value,
+  error,
+}: {
+  field: SchemaField;
+  value: NetiorDslValue;
+  error?: string;
+}): JSX.Element {
+  const displayValue = Array.isArray(value)
+    ? value.map((item) => `${item.objectType}:${item.refId}`).join(', ')
+    : value && typeof value === 'object'
+      ? `${value.objectType}:${value.refId}`
+      : value == null
+        ? ''
+        : String(value);
+
+  return (
+    <div className="flex flex-col gap-1">
+      <label className="text-xs font-medium text-muted">
+        {field.name}
+        {field.required && <span className="text-status-error ml-0.5">*</span>}
+      </label>
+      <div className="min-h-8 rounded-md border border-subtle bg-surface-editor px-3 py-2 text-xs text-secondary">
+        {displayValue || '-'}
+      </div>
+      {error && <div className="text-[11px] text-status-warning">{error}</div>}
+    </div>
+  );
 }
 
 export function FieldInput({ field, value, onChange }: FieldInputProps): JSX.Element {
