@@ -1685,6 +1685,10 @@
         "description": "스키마에 새 필드를 추가합니다."
       },
       "update_schema_field": { "name": "스키마 필드 수정" },
+      "set_field_behavior_dsl": {
+        "name": "필드 동작 DSL 설정",
+        "description": "사용자 도메인 요청에서 Narre가 생성한 검증된 Netior DSL로 조건부/계산/파생 필드 동작을 설정합니다."
+      },
       "delete_schema_field": { "name": "스키마 필드 삭제" },
       "reorder_schema_fields": { "name": "스키마 필드 순서 변경" },
       "list_schema_meanings": { "name": "스키마 의미 목록 가져오기" },
