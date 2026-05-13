@@ -98,6 +98,7 @@ export interface RunSpec {
   port?: number;
   baseline?: string;
   preserve?: boolean;
+  dev_db?: boolean;
   db_path?: string;
   project_id?: string;
   target_skill?: BuiltInSkillId;
@@ -499,6 +500,7 @@ export interface EvalOptions {
   baseline?: string;
   runSpec?: string;
   preserve?: boolean;
+  devDb?: boolean;
   dbPath?: string;
   projectId?: string;
 }

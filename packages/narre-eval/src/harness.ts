@@ -61,6 +61,7 @@ export async function setupScenario(
 
   // Per-scenario DB path inside temp dir
   const dbPath = options.dbPath ? resolve(options.dbPath) : join(tempDir, `${scenarioId}.db`);
+  mkdirSync(dirname(dbPath), { recursive: true });
 
   if (!options.dbPath && existsSync(dbPath)) {
     unlinkSync(dbPath);

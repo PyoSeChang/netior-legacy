@@ -11,6 +11,7 @@ import { recordResult, recordRunResult, printSummary } from './report.js';
 import { findBaselineRunDir, loadBaselineResult, compareResults } from './comparator.js';
 import { loadRunSpec, applyRunSpecToOptions, resolveRunId, resolveScenarioExecutionForRun } from './run-spec.js';
 import { emptyScenarioAnalysis } from './analyzer.js';
+import { resolveDevRuntimeTarget } from './dev-runtime.js';
 import type {
   AgentInfo,
   EvalOptions,
@@ -65,6 +66,9 @@ function parseArgs(argv: string[]): EvalOptions {
         break;
       case '--preserve':
         options.preserve = true;
+        break;
+      case '--dev-db':
+        options.devDb = true;
         break;
       case '--db-path':
         options.dbPath = args[++i];
@@ -246,6 +250,9 @@ async function main() {
   const rawOptions = parseArgs(process.argv);
   const runSpec: RunSpec | null = rawOptions.runSpec ? loadRunSpec(rawOptions.runSpec) : null;
   const options = applyRunSpecToOptions(rawOptions, runSpec);
+  const devRuntimeTarget = options.devDb ? resolveDevRuntimeTarget(process.cwd()) : null;
+  const scenarioDbPath = devRuntimeTarget?.dbPath ?? options.dbPath;
+  const preserveScenarioData = options.devDb ? true : options.preserve ?? false;
 
   const runId = resolveRunId(randomUUID().slice(0, 8), runSpec);
   setRunId(runId);
@@ -273,8 +280,13 @@ async function main() {
   if (baselineRunDir) console.log(`Baseline: ${baselineRunDir}`);
   if (!options.judge) console.log('LLM judge: disabled');
   if (options.repeat > 1) console.log(`Repeat: ${options.repeat}x`);
-  if (options.preserve) console.log('Preserve: enabled');
-  if (options.dbPath) console.log(`DB path: ${options.dbPath}`);
+  if (preserveScenarioData) console.log('Preserve: enabled');
+  if (devRuntimeTarget) {
+    console.log(`Dev runtime scope: ${devRuntimeTarget.runtimeScope}`);
+    console.log(`Dev DB: ${devRuntimeTarget.dbPath}`);
+  } else if (scenarioDbPath) {
+    console.log(`DB path: ${scenarioDbPath}`);
+  }
   if (options.projectId) console.log(`Project ID: ${options.projectId}`);
 
   const allResults: ScenarioResult[] = [];
@@ -307,9 +319,9 @@ async function main() {
       try {
         console.log('  Setting up scenario...');
         setup = await setupScenario(scenario.scenarioDir, scenario.seed, scenario.id, {
-          dbPath: options.dbPath,
+          dbPath: scenarioDbPath,
           projectId: options.projectId,
-          preserve: options.preserve ?? false,
+          preserve: preserveScenarioData,
         });
         if (setup.preserve) {
           console.log(`  Preserving scenario data: db=${setup.dbPath}, project=${setup.projectId}, dir=${setup.tempDir}`);
