@@ -42,6 +42,13 @@ verify:
       expect:
         count: 0
 
+  - name: "additional exam question instances are available for manual view checks"
+    db:
+      table: instances
+      condition: "project_id = '{{project_id}}' AND schema_id IN (SELECT id FROM schemas WHERE project_id = '{{project_id}}' AND name = 'Exam Question')"
+      expect:
+        count_min: 3
+
   - name: "no response error"
     response:
       no_error: true
@@ -67,9 +74,9 @@ verify:
         count_min: 0
         count_max: 0
 
-  - name: "no real instance field writes"
+  - name: "additional instance creation is bounded"
     tool:
-      name: upsert_instance_property
+      name: create_instance
       expect:
-        count_min: 0
-        count_max: 0
+        count_min: 2
+        count_max: 2

@@ -1,5 +1,5 @@
 import { existsSync, unlinkSync, mkdirSync, cpSync, rmSync } from 'fs';
-import { join } from 'path';
+import { dirname, join, resolve } from 'path';
 import { tmpdir } from 'os';
 import { randomUUID } from 'crypto';
 import type { SeedContext } from './types.js';
@@ -11,6 +11,7 @@ import {
   createFileEntity,
   createModule,
   createProject,
+  getProjectById,
   createRelationType,
   upsertInstanceProperty,
 } from './netior-service-client.js';
@@ -22,9 +23,16 @@ export interface SetupResult {
   projectId: string;
   tempDir: string;
   dbPath: string;
+  preserve: boolean;
   templateVars: Record<string, string>;
   serviceUrl: string;
   stopService: () => Promise<void>;
+}
+
+export interface SetupScenarioOptions {
+  dbPath?: string;
+  projectId?: string;
+  preserve?: boolean;
 }
 
 export function getRunId(): string {
@@ -42,22 +50,25 @@ export async function setupScenario(
   scenarioDir: string,
   seedFn: (ctx: SeedContext) => Promise<void>,
   scenarioId: string,
+  options: SetupScenarioOptions = {},
 ): Promise<SetupResult> {
   // Unique dir per setup call — safe under --repeat
   const uniqueSuffix = randomUUID().slice(0, 8);
-  const tempDir = join(tmpdir(), `narre-eval-${scenarioId}-${uniqueSuffix}`);
+  const tempDir = options.dbPath
+    ? join(dirname(resolve(options.dbPath)), `narre-eval-${scenarioId}-${uniqueSuffix}`)
+    : join(tmpdir(), `narre-eval-${scenarioId}-${uniqueSuffix}`);
   mkdirSync(tempDir, { recursive: true });
 
   // Per-scenario DB path inside temp dir
-  const dbPath = join(tempDir, `${scenarioId}.db`);
+  const dbPath = options.dbPath ? resolve(options.dbPath) : join(tempDir, `${scenarioId}.db`);
 
-  if (existsSync(dbPath)) {
+  if (!options.dbPath && existsSync(dbPath)) {
     unlinkSync(dbPath);
   }
 
   const service = await startNetiorServiceForEval(dbPath);
 
-  let projectId: string | null = null;
+  let projectId: string | null = options.projectId ?? null;
   let templateVars: Record<string, string> = {};
   const pendingOperations: Promise<unknown>[] = [];
 
@@ -69,7 +80,18 @@ export async function setupScenario(
   const ctx: SeedContext = {
     tempDir,
     scenarioDir,
+    projectId: projectId ?? undefined,
+    dbPath,
+    preserve: options.preserve ?? false,
     async createProject(data) {
+      if (options.projectId) {
+        const project = await track(getProjectById(service.baseUrl, options.projectId));
+        if (!project) {
+          throw new Error(`Project not found for --project-id: ${options.projectId}`);
+        }
+        projectId = project.id;
+        return project;
+      }
       const project = await track(createProject(service.baseUrl, {
         ...data,
         root_dir: data.root_dir || tempDir,
@@ -125,21 +147,28 @@ export async function setupScenario(
       projectId,
       tempDir,
       dbPath,
+      preserve: options.preserve ?? false,
       templateVars,
       serviceUrl: service.baseUrl,
       stopService: service.stop,
     };
   } catch (error) {
     await service.stop();
-    if (existsSync(tempDir)) {
+    if (!options.preserve && existsSync(tempDir)) {
       rmSync(tempDir, { recursive: true, force: true });
     }
     throw error;
   }
 }
 
-export async function teardownScenario(setup: Pick<SetupResult, 'tempDir' | 'stopService'>): Promise<void> {
+export async function teardownScenario(
+  setup: Pick<SetupResult, 'tempDir' | 'stopService'>,
+  options: { preserve?: boolean } = {},
+): Promise<void> {
   await setup.stopService();
+  if (options.preserve) {
+    return;
+  }
   if (existsSync(setup.tempDir)) {
     await removeDirectoryWithRetry(setup.tempDir);
   }

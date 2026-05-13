@@ -10,9 +10,10 @@ turns:
       - Show immediate correct/incorrect feedback.
       - Let the user reveal the explanation after checking.
       - Persist only view progress such as selected choice, checked state, and explanation visibility in view state.
-      - Do not update real instance fields.
+      - Do not update real instance fields for view progress; creating initial field values for the two new sample instances is allowed.
       - Store the template as the Exam Question schema default.
       - Do not create an instance override; this instance should inherit the schema template.
+      - Also create two more Exam Question instances with question, choices, answer, and explanation values so the schema-default view can be manually checked across multiple instances.
     mentions:
       - type: instance
         id: "{{question_instance_id}}"

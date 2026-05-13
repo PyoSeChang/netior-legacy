@@ -87,6 +87,38 @@ describe('Netior DSL evaluator', () => {
     });
   });
 
+  it('follows instance reference fields before reading nested field values', () => {
+    const project = createProject({ name: 'DSL', root_dir: '/tmp/dsl' });
+    const characterSchema = createSchema({ project_id: project.id, name: 'Character' });
+    insertField('field-job', characterSchema.id, 'Job', 'select');
+    const statSchema = createSchema({ project_id: project.id, name: 'Stat' });
+    insertField('field-character', statSchema.id, 'Character', 'relation');
+    const character = createInstance({ project_id: project.id, schema_id: characterSchema.id, title: 'Merlin' });
+    const stat = createInstance({ project_id: project.id, schema_id: statSchema.id, title: 'Merlin Stats' });
+    upsertProperty({ instance_id: character.id, field_id: 'field-job', value: 'Wizard' });
+    upsertProperty({ instance_id: stat.id, field_id: 'field-character', value: `instance:${character.id}` });
+
+    const result = evaluateNetiorDsl({
+      op: 'equals',
+      left: {
+        op: 'field.value',
+        of: {
+          op: 'field.object',
+          of: { op: 'context.object' },
+          fieldId: 'field-character',
+        },
+        fieldId: 'field-job',
+      },
+      right: { op: 'literal', value: 'Wizard' },
+    }, {
+      projectId: project.id,
+      currentInstanceId: stat.id,
+      currentSchemaId: statSchema.id,
+    });
+
+    expect(result).toEqual({ ok: true, value: true });
+  });
+
   it('discovers schemas by field meaning', () => {
     const project = createProject({ name: 'DSL', root_dir: '/tmp/dsl' });
     const schema = createSchema({ project_id: project.id, name: 'Event' });

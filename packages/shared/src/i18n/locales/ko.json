@@ -1689,6 +1689,10 @@
         "name": "필드 동작 DSL 설정",
         "description": "사용자 도메인 요청에서 Narre가 생성한 검증된 Netior DSL로 조건부/계산/파생 필드 동작을 설정합니다."
       },
+      "set_conditional_field_visibility": {
+        "name": "조건부 필드 표시 설정",
+        "description": "다른 필드 값 또는 참조된 객체의 필드 값이 특정 값일 때만 필드가 보이도록 설정합니다."
+      },
       "delete_schema_field": { "name": "스키마 필드 삭제" },
       "reorder_schema_fields": { "name": "스키마 필드 순서 변경" },
       "list_schema_meanings": { "name": "스키마 의미 목록 가져오기" },

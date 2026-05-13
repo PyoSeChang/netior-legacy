@@ -1,6 +1,6 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
-import type { FieldMeaningBindingKey, SchemaFieldBindingCreate } from '@netior/shared/types';
+import type { FieldMeaningBindingKey, SchemaField, SchemaFieldBindingCreate } from '@netior/shared/types';
 import type { NetiorDslFieldBehaviorConfig } from '@netior/shared/dsl';
 import { validateNetiorDslFieldBehaviorConfig } from '@netior/shared/dsl';
 import {
@@ -43,6 +43,7 @@ const bindingKindSchema = z.enum([
 ]);
 const bindingCardinalitySchema = z.enum(['none', 'one', 'many', 'object']);
 const dslConfigSchema = z.record(z.string(), z.unknown());
+const dslScalarSchema = z.union([z.string(), z.number(), z.boolean(), z.null()]);
 const fieldBindingSchema = z.object({
   model_id: z.string().nullable().optional(),
   binding_kind: bindingKindSchema,
@@ -106,6 +107,29 @@ function bindingToCreate(binding: FieldBindingInput | NonNullable<Awaited<Return
     config: binding.config,
     sort_order: binding.sort_order,
   };
+}
+
+async function setFieldBehaviorDsl(
+  schemaId: string,
+  fieldId: string,
+  config: NetiorDslFieldBehaviorConfig,
+): Promise<SchemaField | null> {
+  const fields = await listSchemaFields(schemaId);
+  const field = fields.find((item) => item.id === fieldId);
+  if (!field) return null;
+
+  const bindings = normalizeFieldBindings([
+    ...field.bindings.filter((binding) => binding.binding_kind !== config.kind).map(bindingToCreate),
+    {
+      binding_kind: config.kind,
+      cardinality: 'none',
+      read_only: config.kind !== 'conditional_field',
+      dsl_config: config,
+      sort_order: field.bindings.length,
+    },
+  ]);
+
+  return updateSchemaField(fieldId, { bindings });
 }
 
 const meaningBindingSchema = z.string().regex(
@@ -246,6 +270,57 @@ export function registerSchemaFieldTools(server: McpServer): void {
 
   registerNetiorTool(
     server,
+    'set_conditional_field_visibility',
+    {
+      schema_id: z.string().describe('Schema that owns the field whose visibility is being configured.'),
+      target_field_id: z.string().describe('Field that should be shown or hidden.'),
+      condition_field_id: z.string().describe('Field to compare. If via_field_id is provided, this field belongs to the referenced instance.'),
+      equals: dslScalarSchema.describe('Value that makes the target field visible.'),
+      via_field_id: z.string().optional().describe('Optional relation/instance-select field on the current object that points to the object containing condition_field_id.'),
+    },
+    async ({ schema_id, target_field_id, condition_field_id, equals, via_field_id }) => {
+      try {
+        const subject = via_field_id
+          ? { op: 'field.object' as const, of: { op: 'context.object' as const }, fieldId: via_field_id }
+          : { op: 'context.object' as const };
+        const result = await setFieldBehaviorDsl(schema_id, target_field_id, {
+          version: 1,
+          kind: 'conditional_field',
+          effect: 'visible',
+          expression: {
+            op: 'equals',
+            left: {
+              op: 'field.value',
+              of: subject,
+              fieldId: condition_field_id,
+            },
+            right: {
+              op: 'literal',
+              value: equals,
+            },
+          },
+        });
+        if (!result) {
+          return {
+            content: [{ type: 'text' as const, text: `Error: Schema field not found in schema ${schema_id}: ${target_field_id}` }],
+            isError: true,
+          };
+        }
+        emitChange({ type: 'schemaField', action: 'update', id: target_field_id });
+        return {
+          content: [{ type: 'text' as const, text: JSON.stringify(toAgentSchemaField(result), null, 2) }],
+        };
+      } catch (error) {
+        return {
+          content: [{ type: 'text' as const, text: `Error: ${(error as Error).message}` }],
+          isError: true,
+        };
+      }
+    },
+  );
+
+  registerNetiorTool(
+    server,
     'set_field_behavior_dsl',
     {
       schema_id: z.string().describe('Schema that owns the field. Narre should use the schema it just inspected or created.'),
@@ -256,36 +331,16 @@ export function registerSchemaFieldTools(server: McpServer): void {
     },
     async ({ schema_id, field_id, kind, effect, expression }) => {
       try {
-        const fields = await listSchemaFields(schema_id);
-        const field = fields.find((item) => item.id === field_id);
-        if (!field) {
-          return {
-            content: [{ type: 'text' as const, text: `Error: Schema field not found in schema ${schema_id}: ${field_id}` }],
-            isError: true,
-          };
-        }
-
         const dslConfig: NetiorDslFieldBehaviorConfig = {
           version: 1,
           kind,
           ...(effect ? { effect } : {}),
           expression: expression as NetiorDslFieldBehaviorConfig['expression'],
         };
-        const bindings = normalizeFieldBindings([
-          ...field.bindings.filter((binding) => binding.binding_kind !== kind).map(bindingToCreate),
-          {
-            binding_kind: kind,
-            cardinality: 'none',
-            read_only: kind !== 'conditional_field',
-            dsl_config: dslConfig,
-            sort_order: field.bindings.length,
-          },
-        ]);
-
-        const result = await updateSchemaField(field_id, { bindings });
+        const result = await setFieldBehaviorDsl(schema_id, field_id, dslConfig);
         if (!result) {
           return {
-            content: [{ type: 'text' as const, text: `Error: Schema field not found: ${field_id}` }],
+            content: [{ type: 'text' as const, text: `Error: Schema field not found in schema ${schema_id}: ${field_id}` }],
             isError: true,
           };
         }

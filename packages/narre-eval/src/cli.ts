@@ -63,6 +63,15 @@ function parseArgs(argv: string[]): EvalOptions {
       case '--run-spec':
         options.runSpec = args[++i];
         break;
+      case '--preserve':
+        options.preserve = true;
+        break;
+      case '--db-path':
+        options.dbPath = args[++i];
+        break;
+      case '--project-id':
+        options.projectId = args[++i];
+        break;
     }
   }
 
@@ -264,6 +273,9 @@ async function main() {
   if (baselineRunDir) console.log(`Baseline: ${baselineRunDir}`);
   if (!options.judge) console.log('LLM judge: disabled');
   if (options.repeat > 1) console.log(`Repeat: ${options.repeat}x`);
+  if (options.preserve) console.log('Preserve: enabled');
+  if (options.dbPath) console.log(`DB path: ${options.dbPath}`);
+  if (options.projectId) console.log(`Project ID: ${options.projectId}`);
 
   const allResults: ScenarioResult[] = [];
   const scenarioExecutions: Array<{ scenarioId: string; execution: ScenarioExecutionConfig }> = [];
@@ -294,7 +306,14 @@ async function main() {
 
       try {
         console.log('  Setting up scenario...');
-        setup = await setupScenario(scenario.scenarioDir, scenario.seed, scenario.id);
+        setup = await setupScenario(scenario.scenarioDir, scenario.seed, scenario.id, {
+          dbPath: options.dbPath,
+          projectId: options.projectId,
+          preserve: options.preserve ?? false,
+        });
+        if (setup.preserve) {
+          console.log(`  Preserving scenario data: db=${setup.dbPath}, project=${setup.projectId}, dir=${setup.tempDir}`);
+        }
 
         console.log(`  Starting narre-server (${execution.provider})...`);
         await adapter.setup({
@@ -338,6 +357,12 @@ async function main() {
           options.judge,
           gradeCtx,
         );
+        result.setup = {
+          projectId: setup.projectId,
+          dbPath: setup.dbPath,
+          tempDir: setup.tempDir,
+          preserved: setup.preserve,
+        };
 
         if (baselineRunDir) {
           const baseline = loadBaselineResult(baselineRunDir, scenario.id);
@@ -367,7 +392,7 @@ async function main() {
         }
         if (setup) {
           try {
-            await teardownScenario(setup);
+            await teardownScenario(setup, { preserve: setup.preserve });
           } catch (error) {
             console.warn(`  WARNING: scenario cleanup failed for ${scenario.id}: ${(error as Error).message}`);
           }

@@ -35,6 +35,9 @@ export function applyRunSpecToOptions(options: EvalOptions, runSpec: RunSpec | n
     ...(options.judge !== true || runSpec.judge == null ? {} : { judge: runSpec.judge }),
     ...(options.port !== 3199 || runSpec.port == null ? {} : { port: runSpec.port }),
     ...(options.baseline ? {} : isTruthyString(runSpec.baseline) ? { baseline: runSpec.baseline.trim() } : {}),
+    ...(options.preserve !== undefined || runSpec.preserve == null ? {} : { preserve: runSpec.preserve }),
+    ...(options.dbPath ? {} : isTruthyString(runSpec.db_path) ? { dbPath: runSpec.db_path.trim() } : {}),
+    ...(options.projectId ? {} : isTruthyString(runSpec.project_id) ? { projectId: runSpec.project_id.trim() } : {}),
   };
 }
 

@@ -491,7 +491,8 @@ ${networkContext}
 - Models are domain-independent meanings, not domain entities. Prefer built-in/curated models and existing meaning bindings before creating any custom model.
 - Use list_model_catalog or list_models to inspect reusable model meaning. Do not create custom models unless the user explicitly asks or confirms that the catalog is insufficient.
 - Users never author Netior DSL or field behavior configs. The user's responsibility ends at describing the domain. Narre must translate requests like "show Mana only when Job is Wizard" into validated DSL and save it.
-- For advanced field behavior, use set_field_behavior_dsl after the target field exists. Supported kinds are conditional_field, computed_field, and derived_collection. Do not call the work complete until the behavior tool returns the updated field with a saved config.
+- For simple conditional visibility, prefer set_conditional_field_visibility after the target field and condition field exist. If the condition lives on an object referenced by the current schema, pass that reference field as via_field_id.
+- Use set_field_behavior_dsl only for advanced behavior that cannot be represented by set_conditional_field_visibility. Supported kinds are conditional_field, computed_field, and derived_collection. Do not call the work complete until the behavior tool returns the updated field with a saved config.
 - For conditional visibility, use effect="visible" and exact fieldId selectors when the relevant fields were just created or inspected.
 - For known-target work, use exact selectors such as schemaId and fieldId. For unknown layout/discovery work, use semantic selectors such as fieldMeaning/meaning and then converge to exact selectors when saved.
 - If a DSL evaluation returns ambiguity, do not choose silently. Inspect candidates, add scope/fieldId/schemaId, or ask the user.

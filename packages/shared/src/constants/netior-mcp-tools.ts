@@ -59,6 +59,11 @@ export const NETIOR_MCP_TOOL_SPECS = {
     category: 'types',
     kind: 'mutation',
   },
+  set_conditional_field_visibility: {
+    description: 'Configure a field to be visible only when another field, optionally through a referenced object field, equals a specific value',
+    category: 'types',
+    kind: 'mutation',
+  },
   delete_schema_field: {
     description: 'Delete a schema field',
     category: 'types',

@@ -97,6 +97,9 @@ export interface RunSpec {
   judge?: boolean;
   port?: number;
   baseline?: string;
+  preserve?: boolean;
+  db_path?: string;
+  project_id?: string;
   target_skill?: BuiltInSkillId;
   scenario_kind?: EvalScenarioKind;
   agent_id?: string;
@@ -280,6 +283,9 @@ export interface QualitativeItem {
 export interface SeedContext {
   tempDir: string;
   scenarioDir: string;
+  projectId?: string;
+  dbPath: string;
+  preserve: boolean;
   createProject(data: ProjectCreate): Promise<Project>;
   createSchema(data: SchemaCreate): Promise<Schema>;
   createSchemaField(data: SchemaFieldCreate): Promise<SchemaField>;
@@ -436,6 +442,13 @@ export interface ScenarioAnalysis {
   toolUse: ToolUseAnalysis;
 }
 
+export interface ScenarioSetupInfo {
+  projectId: string;
+  dbPath: string;
+  tempDir: string;
+  preserved: boolean;
+}
+
 export interface ScenarioResult {
   runId: string;
   scenarioId: string;
@@ -455,6 +468,7 @@ export interface ScenarioResult {
   durationMs: number;
   metrics: Record<string, MetricValue>;
   analysis: ScenarioAnalysis;
+  setup?: ScenarioSetupInfo;
   transcript: Transcript;
   comparison?: ComparisonResult;
   error?: string;
@@ -484,4 +498,7 @@ export interface EvalOptions {
   /** Run ID substring to compare against. 'latest' (default) uses most recent run. */
   baseline?: string;
   runSpec?: string;
+  preserve?: boolean;
+  dbPath?: string;
+  projectId?: string;
 }

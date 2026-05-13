@@ -1,0 +1,34 @@
+id: character-stat-conditional-field
+title: "Character Stat Conditional Field"
+description: "Evaluates whether Narre can turn a Korean domain request into two schemas and a conditional field whose visibility follows a referenced Character's job field."
+scenario_version: "1.0.0"
+schema_version: 1
+type: single-turn
+lifecycle: active
+labels: [product, schema, dsl, field-behavior, conditional-field, fixed, deterministic]
+responsibility_surfaces: [NR05, NR10, NR11, NR24]
+
+execution:
+  supported_agents: [narre-server]
+  required_capabilities: [tool_call_trace]
+  scenario_kind: fixed
+  agent_id: narre-basic
+  provider: codex
+  tester: basic-turn-runner
+  analysis_targets: [tool_use, schema, dsl]
+
+turn_plan:
+  file: turns.yaml
+
+entrypoints:
+  seed: seed.ts
+
+assets:
+  verify:
+    - verify/checks.yaml
+
+provenance:
+  created_by:
+    id: netior-team
+    name: Netior Team
+    source: repo-scenario

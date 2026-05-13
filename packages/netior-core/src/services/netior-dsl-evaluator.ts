@@ -113,6 +113,13 @@ function evaluateExpression(
         expression.meaning,
         context,
       );
+    case 'field.object':
+      return getFieldObject(
+        requireObjectRef(evaluateExpression(expression.of, context, frame), 'field.object.of'),
+        expression.fieldId,
+        expression.meaning,
+        context,
+      );
     case 'related':
       return getRelatedObjects(
         requireObjectRef(evaluateExpression(expression.from, context, frame), 'related.from'),
@@ -219,6 +226,25 @@ function getFieldValue(
   const row = db.prepare('SELECT value FROM instance_properties WHERE instance_id = ? AND field_id = ?')
     .get(objectRef.refId, resolvedField.id) as { value: string | null } | undefined;
   return normalizePropertyValue(row?.value ?? null);
+}
+
+function getFieldObject(
+  objectRef: NetiorDslObjectRef,
+  fieldId: string | undefined,
+  meaning: string | undefined,
+  context: NetiorDslContext,
+): NetiorDslObjectRef | null {
+  const value = getFieldValue(objectRef, fieldId, meaning, context);
+  if (value == null) return null;
+  if (isObjectRef(value)) return toObjectRef(value.objectType, value.refId);
+  if (typeof value !== 'string') {
+    throw new DslError('type_mismatch', 'field.object requires an instance reference value');
+  }
+
+  const instanceId = value.startsWith('instance:') ? value.slice('instance:'.length) : value;
+  const instance = getDatabase().prepare('SELECT id FROM instances WHERE id = ?').get(instanceId) as { id: string } | undefined;
+  if (!instance) throw new DslError('not_found', 'Referenced instance not found');
+  return toObjectRef('instance', instance.id);
 }
 
 function getRelatedObjects(

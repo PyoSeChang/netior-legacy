@@ -52,6 +52,7 @@ export type NetiorDslExpression =
   | NetiorDslItemExpression
   | NetiorDslInstancesExpression
   | NetiorDslFieldValueExpression
+  | NetiorDslFieldObjectExpression
   | NetiorDslRelatedExpression
   | NetiorDslFilterExpression
   | NetiorDslCompareExpression
@@ -87,6 +88,13 @@ export interface NetiorDslInstancesExpression {
 
 export interface NetiorDslFieldValueExpression {
   op: 'field.value';
+  of: NetiorDslExpression;
+  fieldId?: string;
+  meaning?: FieldMeaningBindingKey;
+}
+
+export interface NetiorDslFieldObjectExpression {
+  op: 'field.object';
   of: NetiorDslExpression;
   fieldId?: string;
   meaning?: FieldMeaningBindingKey;
@@ -183,6 +191,7 @@ const EXPRESSION_OPS = new Set([
   'item',
   'instances',
   'field.value',
+  'field.object',
   'related',
   'filter',
   'equals',
@@ -239,9 +248,10 @@ function validateExpression(
 
   switch (op) {
     case 'field.value':
+    case 'field.object':
       validateExpression(input.of, `${path}.of`, errors);
       if (typeof input.fieldId !== 'string' && typeof input.meaning !== 'string') {
-        errors.push({ path, message: 'field.value requires fieldId or meaning' });
+        errors.push({ path, message: `${op} requires fieldId or meaning` });
       }
       break;
     case 'instances':

@@ -1,0 +1,64 @@
+verify:
+  - name: "character and stat schemas are created"
+    db:
+      table: schemas
+      condition: "project_id = '{{project_id}}' AND name IN ('캐릭터', '스탯')"
+      expect:
+        count: 2
+
+  - name: "character schema has age and job fields"
+    db:
+      table: schema_fields
+      condition: "schema_id IN (SELECT id FROM schemas WHERE project_id = '{{project_id}}' AND name = '캐릭터')"
+      expect:
+        count_min: 2
+        column_includes:
+          name: ["나이", "직업"]
+
+  - name: "stat schema has character reference and stat fields"
+    db:
+      table: schema_fields
+      condition: "schema_id IN (SELECT id FROM schemas WHERE project_id = '{{project_id}}' AND name = '스탯')"
+      expect:
+        count_min: 5
+        column_includes:
+          name: ["캐릭터", "근력", "민첩", "지능", "마나"]
+
+  - name: "stat character field references the character schema"
+    db:
+      table: schema_field_bindings
+      condition: "field_id IN (SELECT id FROM schema_fields WHERE name = '캐릭터' AND schema_id IN (SELECT id FROM schemas WHERE project_id = '{{project_id}}' AND name = '스탯')) AND binding_kind IN ('instance_select', 'schema_composition', 'schema_extension') AND source_schema_id IN (SELECT id FROM schemas WHERE project_id = '{{project_id}}' AND name = '캐릭터')"
+      expect:
+        count_min: 1
+
+  - name: "mana field has conditional visibility through the referenced character job"
+    db:
+      table: schema_field_bindings
+      condition: "field_id IN (SELECT id FROM schema_fields WHERE name = '마나' AND schema_id IN (SELECT id FROM schemas WHERE project_id = '{{project_id}}' AND name = '스탯')) AND binding_kind = 'conditional_field' AND config LIKE '%\"effect\":\"visible\"%' AND config LIKE '%\"field.object\"%' AND config LIKE '%\"field.value\"%' AND config LIKE '%마법사%' AND config LIKE '%' || (SELECT id FROM schema_fields WHERE name = '캐릭터' AND schema_id IN (SELECT id FROM schemas WHERE project_id = '{{project_id}}' AND name = '스탯') LIMIT 1) || '%' AND config LIKE '%' || (SELECT id FROM schema_fields WHERE name = '직업' AND schema_id IN (SELECT id FROM schemas WHERE project_id = '{{project_id}}' AND name = '캐릭터') LIMIT 1) || '%'"
+      expect:
+        count: 1
+
+  - name: "no response error"
+    response:
+      no_error: true
+
+  - name: "conditional visibility helper is used once"
+    tool:
+      name: set_conditional_field_visibility
+      expect:
+        count_min: 1
+        count_max: 1
+
+  - name: "raw DSL behavior tool is not used for this simple condition"
+    tool:
+      name: set_field_behavior_dsl
+      expect:
+        count_min: 0
+        count_max: 0
+
+  - name: "tool usage is bounded"
+    analysis:
+      tool_use:
+        summary:
+          total_calls:
+            max: 12

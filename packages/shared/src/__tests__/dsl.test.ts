@@ -24,6 +24,18 @@ describe('Netior DSL validation', () => {
     expect(result.ok).toBe(false);
   });
 
+  it('accepts field object dereference expressions', () => {
+    expect(validateNetiorDslExpression({
+      op: 'field.value',
+      of: {
+        op: 'field.object',
+        of: { op: 'context.object' },
+        fieldId: 'field-character',
+      },
+      fieldId: 'field-job',
+    })).toEqual({ ok: true });
+  });
+
   it('accepts field behavior config wrappers', () => {
     expect(validateNetiorDslFieldBehaviorConfig({
       version: 1,
