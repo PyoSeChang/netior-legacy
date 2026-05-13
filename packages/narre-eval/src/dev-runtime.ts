@@ -11,7 +11,7 @@ export interface DevRuntimeTarget {
 export function resolveDevRuntimeTarget(cwd = process.cwd()): DevRuntimeTarget {
   const runtimeScope = createRuntimeScope(cwd);
   const appData = process.env.APPDATA || process.env.HOME || '.';
-  const dataDir = join(appData, 'netior', 'runtime', runtimeScope, 'data');
+  const dataDir = join(appData, 'netior', 'data');
   return {
     runtimeScope,
     dbPath: join(dataDir, 'netior-dev.db'),
