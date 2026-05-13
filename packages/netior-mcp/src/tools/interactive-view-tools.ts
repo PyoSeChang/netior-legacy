@@ -1,7 +1,9 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { validateInteractiveViewSource } from '@netior/shared/interactive-view';
 import { z } from 'zod';
 import {
   createInteractiveViewTemplate,
+  getInteractiveViewTemplate,
   listInteractiveViewTemplates,
   updateInteractiveViewTemplate,
   upsertInteractiveViewPreference,
@@ -10,11 +12,65 @@ import {
 import { emitChange } from '../events.js';
 import { projectIdSchema, registerNetiorTool, resolveProjectId } from './shared-tool-registry.js';
 
-const targetKindSchema = z.enum(['project', 'schema', 'instance']);
+const targetKindSchema = z.enum(['schema', 'instance']);
 const sourceKindSchema = z.enum(['manual', 'narre']);
 const trustLevelSchema = z.enum(['untrusted', 'validated', 'trusted']);
 const runtimeSchema = z.enum(['host', 'sandbox']);
 const validationStatusSchema = z.enum(['unknown', 'passed', 'failed']);
+
+function formatValidationErrors(sourceCode: string, manifestJson: string): {
+  default_runtime: 'host' | 'sandbox';
+  validation_status: 'passed';
+  validation_errors_json: string;
+} {
+  const validation = validateInteractiveViewSource(sourceCode, manifestJson);
+  if (!validation.ok) {
+    const detail = validation.issues
+      .filter((issue) => issue.severity === 'error')
+      .map((issue) => `${issue.code}: ${issue.message}`)
+      .join('\n');
+    throw new Error(`Interactive View contract validation failed:\n${detail}`);
+  }
+
+  return {
+    default_runtime: validation.runtime,
+    validation_status: 'passed',
+    validation_errors_json: JSON.stringify(validation.issues),
+  };
+}
+
+function dryRunInteractiveView(sourceCode: string, manifestJson: string): {
+  ok: boolean;
+  runtime: 'host' | 'sandbox';
+  issues: ReturnType<typeof validateInteractiveViewSource>['issues'];
+  guidance: string[];
+} {
+  const validation = validateInteractiveViewSource(sourceCode, manifestJson);
+  const issueCodes = new Set(validation.issues.map((issue) => issue.code));
+  const guidance: string[] = [];
+  if (issueCodes.has('source.dsl_operator_not_available')) {
+    guidance.push('Use exact Netior DSL operators: instances, field.value, field.object, filter, equals, sort, aggregate, relative.');
+  }
+  if (issueCodes.has('source.dsl_projection_not_available')) {
+    guidance.push('Do not use select/projection clauses. Fetch object refs with DSL and read display fields with useField/useFieldValue or a supported follow-up DSL expression.');
+  }
+  if (issueCodes.has('source.dsl_order_by_array_not_available')) {
+    guidance.push('Use relative.orderBy as a single field selector object, for example { fieldId: "order-field-id" }.');
+  }
+  if (issueCodes.has('source.sdk_export_not_available')) {
+    guidance.push('Use only exports provided by @netior/interactive-sdk; inspect the validation issue messages for invalid names.');
+  }
+  if (issueCodes.has('permissions.dsl_not_declared')) {
+    guidance.push('Set manifest.permissions.dsl=true whenever useDslValue, useDslObject, or useDslObjects is used.');
+  }
+
+  return {
+    ok: validation.ok,
+    runtime: validation.runtime,
+    issues: validation.issues,
+    guidance,
+  };
+}
 
 export function registerInteractiveViewTools(server: McpServer): void {
   registerNetiorTool(
@@ -41,6 +97,23 @@ export function registerInteractiveViewTools(server: McpServer): void {
 
   registerNetiorTool(
     server,
+    'dry_run_interactive_view_template',
+    {
+      source_code: z.string().describe('Restricted TSX source to validate before creating or updating an Interactive View template'),
+      manifest_json: z.string().describe('Interactive View manifest JSON to validate before creating or updating a template'),
+    },
+    async ({ source_code, manifest_json }) => {
+      try {
+        const result = dryRunInteractiveView(source_code, manifest_json);
+        return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }], isError: !result.ok };
+      } catch (error) {
+        return { content: [{ type: 'text' as const, text: `Error: ${(error as Error).message}` }], isError: true };
+      }
+    },
+  );
+
+  registerNetiorTool(
+    server,
     'create_interactive_view_template',
     {
       project_id: projectIdSchema(),
@@ -59,9 +132,11 @@ export function registerInteractiveViewTools(server: McpServer): void {
     },
     async ({ project_id, ...input }) => {
       try {
+        const validation = formatValidationErrors(input.source_code, input.manifest_json);
         const result = await createInteractiveViewTemplate({
           project_id: resolveProjectId(project_id),
           ...input,
+          ...validation,
         });
         emitChange({ type: 'interactiveViewTemplate', action: 'create', id: result.id });
         return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] };
@@ -91,7 +166,21 @@ export function registerInteractiveViewTools(server: McpServer): void {
     },
     async ({ template_id, ...input }) => {
       try {
-        const result = await updateInteractiveViewTemplate(template_id, input);
+        let validation: ReturnType<typeof formatValidationErrors> | undefined;
+        if (input.source_code !== undefined || input.manifest_json !== undefined) {
+          const existing = await getInteractiveViewTemplate(template_id);
+          if (!existing) {
+            return { content: [{ type: 'text' as const, text: `Error: Template not found: ${template_id}` }], isError: true };
+          }
+          validation = formatValidationErrors(
+            input.source_code ?? existing.source_code,
+            input.manifest_json ?? existing.manifest_json,
+          );
+        }
+        const result = await updateInteractiveViewTemplate(template_id, {
+          ...input,
+          ...(validation ?? {}),
+        });
         if (!result) {
           return { content: [{ type: 'text' as const, text: `Error: Template not found: ${template_id}` }], isError: true };
         }

@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { validateInteractiveViewSource } from '@netior/shared/interactive-view';
 import type {
   VerifyItem,
   VerifyResult,
@@ -197,6 +198,9 @@ async function gradeVerify(
     if (item.side_effect) {
       results.push(await gradeSideEffect(item.name, item.side_effect, projectId, serviceUrl));
     }
+    if (item.interactive_view_contract) {
+      results.push(...await gradeInteractiveViewContract(item.name, item.interactive_view_contract, projectId, serviceUrl));
+    }
     if (item.tool) {
       results.push(gradeTool(item.name, item.tool, transcript));
       if (item.tool.sequence) {
@@ -212,6 +216,63 @@ async function gradeVerify(
     if (item.analysis?.tool_use) {
       results.push(...gradeToolUseAnalysis(item.name, item.analysis.tool_use, toolUseAnalysis));
     }
+  }
+
+  return results;
+}
+
+async function gradeInteractiveViewContract(
+  name: string,
+  spec: NonNullable<VerifyItem['interactive_view_contract']>,
+  projectId: string,
+  serviceUrl: string,
+): Promise<VerifyResult[]> {
+  const condition = spec.condition
+    ? spec.condition.replace(/\{\{project_id\}\}/g, projectId)
+    : `project_id = '${projectId}'`;
+
+  const rows = await evalQuery<{
+    id: string;
+    source_code: string;
+    manifest_json: string;
+  }>(
+    serviceUrl,
+    `SELECT id, source_code, manifest_json FROM interactive_view_templates WHERE ${condition}`,
+  );
+
+  const results: VerifyResult[] = [];
+  if (spec.expect?.count !== undefined) {
+    results.push({
+      name: `${name} (row count)`,
+      passed: rows.length === spec.expect.count,
+      detail: `expected ${spec.expect.count}, got ${rows.length}`,
+    });
+  }
+  if (spec.expect?.count_min !== undefined) {
+    results.push({
+      name: `${name} (row count minimum)`,
+      passed: rows.length >= spec.expect.count_min,
+      detail: `expected >= ${spec.expect.count_min}, got ${rows.length}`,
+    });
+  }
+
+  for (const row of rows) {
+    const validation = validateInteractiveViewSource(row.source_code, row.manifest_json);
+    results.push({
+      name: `${name} (${row.id})`,
+      passed: validation.ok,
+      detail: validation.ok
+        ? `contract valid, runtime=${validation.runtime}`
+        : validation.issues.map((issue) => `${issue.code}: ${issue.message}`).join('; '),
+    });
+  }
+
+  if (rows.length === 0 && spec.expect?.count === undefined && spec.expect?.count_min === undefined) {
+    results.push({
+      name,
+      passed: false,
+      detail: 'no interactive view templates matched the contract check',
+    });
   }
 
   return results;

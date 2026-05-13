@@ -15,6 +15,7 @@ const NO_TEMPLATE_OPTION = '__no_interactive_view__';
 const INTERACTIVE_VIEW_SELECTION_EVENT = 'netior:interactive-view-selection-changed';
 
 interface InteractiveViewPanelProps {
+  tabId?: string;
   projectId: string;
   schemaId: string;
   instanceId: string;
@@ -26,6 +27,7 @@ interface InteractiveViewPanelProps {
 }
 
 export function InteractiveViewPanel({
+  tabId,
   projectId,
   schemaId,
   instanceId,
@@ -323,6 +325,7 @@ export function InteractiveViewPanel({
     </div>
   ) : (
     <InteractiveViewProvider
+      tabId={tabId}
       projectId={projectId}
       schemaId={schemaId}
       instanceId={instanceId}

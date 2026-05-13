@@ -207,6 +207,11 @@ export const NETIOR_MCP_TOOL_SPECS = {
     scope: 'project',
     defaultProjectBinding: true,
   },
+  dry_run_interactive_view_template: {
+    description: 'Validate an Interactive View Restricted TSX source and manifest without saving it',
+    category: 'instances',
+    kind: 'query',
+  },
   create_interactive_view_template: {
     description: 'Create an interactive view template with Restricted TSX source and manifest metadata',
     category: 'instances',

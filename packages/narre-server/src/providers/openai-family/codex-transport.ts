@@ -128,6 +128,13 @@ function isNetiorMcpServerName(serverName: string): boolean {
   return serverName === 'netior' || serverName.startsWith('netior-');
 }
 
+function idPart(value: unknown, fallback: string): string {
+  const raw = typeof value === 'string' || typeof value === 'number'
+    ? String(value)
+    : fallback;
+  return raw.replace(/[^a-zA-Z0-9_-]/g, '_');
+}
+
 export class CodexTransport implements OpenAIFamilyTransport {
   readonly name = 'codex';
 
@@ -651,7 +658,13 @@ class CodexAppServerClient {
     const mode = payload.mode === 'url' ? 'url' : 'form';
     const message = typeof payload.message === 'string' ? payload.message : 'MCP server requires user input.';
     const requestedModel = payload.requestedModel;
-    const toolCallId = `mcp-elicitation:${request.id}`;
+    const toolCallId = [
+      'mcp-elicitation',
+      idPart(this.context.traceId, 'no-trace'),
+      idPart(this.context.sessionId, 'no-session'),
+      idPart(payload.turnId ?? this.activeTurn?.turnId, 'no-turn'),
+      idPart(request.id, 'no-request'),
+    ].join(':');
     const requestedToolName = extractRequestedMcpToolName(message);
     const requestedToolPreview = requestedToolName
       ? await this.buildPreviewForRecentTool(requestedToolName)

@@ -5,8 +5,11 @@ import { Button as UiButton } from '../../ui/Button';
 import { TextArea } from '../../ui/TextArea';
 import { Badge } from '../../ui/Badge';
 import { dslService } from '../../../services/dsl-service';
+import { useEditorStore } from '../../../stores/editor-store';
+import { useInstanceStore } from '../../../stores/instance-store';
 
 interface InteractiveViewContextValue {
+  tabId?: string;
   projectId: string;
   schemaId: string;
   instanceId: string;
@@ -16,9 +19,11 @@ interface InteractiveViewContextValue {
   viewState: Record<string, unknown>;
   setViewStateValue: (key: string, value: unknown) => void;
   updateFieldValue: (fieldKey: string, value: string | null) => void;
+  openObject: (objectType: string, refId: string, title?: string) => void;
 }
 
 interface InteractiveViewProviderProps {
+  tabId?: string;
   projectId: string;
   schemaId: string;
   instanceId: string;
@@ -34,6 +39,13 @@ interface InteractiveViewProviderProps {
 export interface InteractiveFieldValue {
   field: SchemaField | null;
   value: string | null;
+}
+
+export interface CurrentInteractiveInstance {
+  id: string;
+  projectId: string;
+  schemaId: string;
+  instanceId: string;
 }
 
 const InteractiveViewContext = createContext<InteractiveViewContextValue | null>(null);
@@ -55,6 +67,7 @@ function useInteractiveViewContext(): InteractiveViewContextValue {
 }
 
 export function InteractiveViewProvider({
+  tabId,
   projectId,
   schemaId,
   instanceId,
@@ -76,7 +89,34 @@ export function InteractiveViewProvider({
     onFieldChange(field.id, value);
   }, [fields, onFieldChange]);
 
+  const openObject = useCallback((objectType: string, refId: string, title?: string) => {
+    if (objectType !== 'instance') {
+      throw new Error(`Interactive view host cannot open object type yet: ${objectType}`);
+    }
+    const editorStore = useEditorStore.getState();
+    const instanceTitle = useInstanceStore.getState().instances.find((item) => item.id === refId)?.title;
+    const tabTitle = title?.trim() || instanceTitle || 'Instance';
+    if (tabId) {
+      editorStore.navigateTab(tabId, {
+        type: 'instance',
+        targetId: refId,
+        title: tabTitle,
+        projectId,
+        objectViewMode: 'interactive',
+      });
+      return;
+    }
+    void editorStore.openTab({
+      type: 'instance',
+      targetId: refId,
+      title: tabTitle,
+      projectId,
+      objectViewMode: 'interactive',
+    });
+  }, [projectId, tabId]);
+
   const value = useMemo<InteractiveViewContextValue>(() => ({
+    tabId,
     projectId,
     schemaId,
     instanceId,
@@ -86,7 +126,8 @@ export function InteractiveViewProvider({
     viewState,
     setViewStateValue,
     updateFieldValue,
-  }), [content, fields, instanceId, projectId, properties, schemaId, setViewStateValue, updateFieldValue, viewState]);
+    openObject,
+  }), [content, fields, instanceId, openObject, projectId, properties, schemaId, setViewStateValue, tabId, updateFieldValue, viewState]);
 
   return (
     <InteractiveViewContext.Provider value={value}>
@@ -104,6 +145,10 @@ export function useField(fieldKey: string): InteractiveFieldValue {
   };
 }
 
+export function useFieldValue(fieldKey: string): string | null {
+  return useField(fieldKey).value;
+}
+
 export function useFields(): InteractiveFieldValue[] {
   const { fields, properties } = useInteractiveViewContext();
   return useMemo(() => fields.map((field) => ({
@@ -114,6 +159,22 @@ export function useFields(): InteractiveFieldValue[] {
 
 export function useContent(): string | null {
   return useInteractiveViewContext().content;
+}
+
+export function useCurrentInstance(): CurrentInteractiveInstance {
+  const { projectId, schemaId, instanceId } = useInteractiveViewContext();
+  return { id: instanceId, projectId, schemaId, instanceId };
+}
+
+export function useOpenInstance(): (instanceId: string, title?: string) => void {
+  const openObject = useOpenObject();
+  return useCallback((instanceId: string, title?: string) => {
+    openObject('instance', instanceId, title);
+  }, [openObject]);
+}
+
+export function useOpenObject(): (objectType: string, refId: string, title?: string) => void {
+  return useInteractiveViewContext().openObject;
 }
 
 export function useUpdateField(): (fieldKey: string, value: string | null) => void {
@@ -138,6 +199,8 @@ export interface InteractiveDslResult<T> {
   loading: boolean;
   error: string | null;
 }
+
+export type InteractiveDslObjectsResult = NetiorDslObjectRef[] & InteractiveDslResult<NetiorDslObjectRef[]>;
 
 export function useDslValue<T extends NetiorDslValue = NetiorDslValue>(
   expression: NetiorDslExpression,
@@ -193,14 +256,14 @@ export function useDslObject(expression: NetiorDslExpression): InteractiveDslRes
   };
 }
 
-export function useDslObjects(expression: NetiorDslExpression): InteractiveDslResult<NetiorDslObjectRef[]> {
+export function useDslObjects(expression: NetiorDslExpression): InteractiveDslObjectsResult {
   const result = useDslValue(expression);
-  const value = Array.isArray(result.value) ? result.value as NetiorDslObjectRef[] : null;
-  return {
-    value,
-    loading: result.loading,
-    error: result.error ?? (result.value != null && !value ? 'DSL result is not an object list' : null),
-  };
+  const value = Array.isArray(result.value) ? result.value as NetiorDslObjectRef[] : [];
+  const objects = [...value] as InteractiveDslObjectsResult;
+  objects.value = value;
+  objects.loading = result.loading;
+  objects.error = result.error ?? (result.value != null && !Array.isArray(result.value) ? 'DSL result is not an object list' : null);
+  return objects;
 }
 
 export function Stack({ children }: { children: React.ReactNode }): JSX.Element {

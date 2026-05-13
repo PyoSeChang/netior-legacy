@@ -1040,6 +1040,7 @@ export interface SplitBranch {
 }
 
 export type SplitNode = SplitLeaf | SplitBranch;
+export type NetworkObjectEditorViewMode = 'body' | 'details' | 'interactive';
 
 export interface EditorTab {
   id: string;
@@ -1062,6 +1063,8 @@ export interface EditorTab {
   activeFilePath: string | null;
   /** Override editor type for file tabs (when user switches via context menu) */
   editorType?: string;
+  /** Preferred sub-view inside object editors such as body/details/interactive. */
+  objectViewMode?: NetworkObjectEditorViewMode;
   /** Network context for object tabs opened from a network node */
   networkId?: string;
   /** Network node context for object tabs opened from a concrete node */
@@ -1132,6 +1135,8 @@ export interface InteractiveViewManifest {
   kind: 'interactive-view';
   sdkVersion: number;
   target?: {
+    kind?: 'project' | 'schema' | 'instance';
+    id?: string;
     schemaId?: string;
     instanceId?: string;
   };

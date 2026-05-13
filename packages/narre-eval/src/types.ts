@@ -226,6 +226,13 @@ export interface VerifyItem {
     /** Expected count — typically set to the count after seed, before agent runs. */
     expect_count: number;
   };
+  interactive_view_contract?: {
+    condition?: string;
+    expect?: {
+      count?: number;
+      count_min?: number;
+    };
+  };
   tool?: {
     name: string;
     expect: {

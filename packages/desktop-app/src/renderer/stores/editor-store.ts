@@ -38,6 +38,7 @@ interface OpenTabParams {
   terminalCwd?: string;
   terminalLaunchConfig?: Pick<TerminalLaunchConfig, 'shell' | 'args' | 'agent'>;
   browserFaviconUrl?: string;
+  objectViewMode?: EditorTab['objectViewMode'];
   sideSplitRatio?: number;
   /** Host to open the tab in (defaults to MAIN_HOST_ID) */
   hostId?: string;
@@ -542,7 +543,7 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
   focusedHostId: MAIN_HOST_ID,
   pendingCloseTabId: null,
 
-  openTab: async ({ type, targetId, title, viewMode, isDirty, draftData, projectId, networkId, nodeId, terminalCwd, terminalLaunchConfig, browserFaviconUrl, sideSplitRatio, hostId }) => {
+  openTab: async ({ type, targetId, title, viewMode, isDirty, draftData, projectId, networkId, nodeId, terminalCwd, terminalLaunchConfig, browserFaviconUrl, objectViewMode, sideSplitRatio, hostId }) => {
     const { tabs } = get();
     const tabId = makeTabId(type, targetId);
     const resolvedHostId = hostId ?? MAIN_HOST_ID;
@@ -555,6 +556,7 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
       if (nodeId !== undefined) contextPatch.nodeId = nodeId;
       if (draftData !== undefined) contextPatch.draftData = draftData;
       if (browserFaviconUrl !== undefined) contextPatch.browserFaviconUrl = browserFaviconUrl;
+      if (objectViewMode !== undefined) contextPatch.objectViewMode = objectViewMode;
 
       // If tab exists in a different host, move it
       if (existing.hostId !== resolvedHostId) {
@@ -669,6 +671,7 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
       terminalCwd,
       terminalLaunchConfig,
       browserFaviconUrl,
+      objectViewMode,
     };
 
     if (resolvedHostId !== MAIN_HOST_ID) {
@@ -774,6 +777,7 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
             terminalCwd: params.terminalCwd,
             terminalLaunchConfig: params.terminalLaunchConfig,
             browserFaviconUrl: params.browserFaviconUrl,
+            objectViewMode: params.objectViewMode,
             editorType: undefined,
             isMinimized: false,
           };

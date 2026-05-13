@@ -1,4 +1,5 @@
 import { getNarreToolMetadata, normalizeNetiorToolName } from '@netior/shared/constants';
+import { validateInteractiveViewSource } from '@netior/shared/interactive-view';
 import type { NarreOperationPreview } from '@netior/shared/types';
 import {
   getNetworkTree,
@@ -358,17 +359,20 @@ export async function buildNarreOperationPreview(
       const name = asString(input.name) ?? 'Untitled interactive view';
       const source = asString(input.source_code) ?? '';
       const manifest = asString(input.manifest_json) ?? '';
+      const validation = validateInteractiveViewSource(source, manifest);
       return createPreview(normalizedToolName, {
         title: `Create interactive view: ${name}`,
-        summary: 'createInteractiveViewTemplate',
+        summary: validation.ok ? 'createInteractiveViewTemplate' : 'createInteractiveViewTemplate:invalid',
         items: [
           { label: 'Name', value: name },
           { label: 'Target', value: `${asString(input.target_kind) ?? 'unknown'}:${asString(input.target_id) ?? 'project'}` },
-          { label: 'Runtime', value: asString(input.default_runtime) ?? 'sandbox' },
+          { label: 'Runtime', value: validation.runtime },
+          { label: 'Validation', value: validation.ok ? 'passed' : 'failed' },
           { label: 'Source', value: `${source.length} chars` },
           { label: 'Manifest', value: manifest.length > 0 ? manifest : '(empty)' },
         ],
         details: [
+          ...validation.issues.map((issue) => `${issue.code}: ${issue.message}`),
           'This template will appear in the InstanceEditor Interactive View list after approval.',
         ],
       });

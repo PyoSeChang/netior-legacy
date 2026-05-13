@@ -1735,6 +1735,10 @@
         "name": "List Interactive View Templates",
         "description": "List Interactive View templates available for a schema or instance."
       },
+      "dry_run_interactive_view_template": {
+        "name": "Dry Run Interactive View Template",
+        "description": "Validate an Interactive View source and manifest without saving it."
+      },
       "create_interactive_view_template": {
         "name": "Create Interactive View Template",
         "description": "Create a user-authored Interactive View template with Restricted TSX source and manifest metadata."

@@ -1735,6 +1735,10 @@
         "name": "인터랙티브 뷰 템플릿 목록 가져오기",
         "description": "스키마 또는 인스턴스에 사용할 수 있는 인터랙티브 뷰 템플릿을 가져옵니다."
       },
+      "dry_run_interactive_view_template": {
+        "name": "인터랙티브 뷰 템플릿 Dry Run",
+        "description": "인터랙티브 뷰 소스와 manifest를 저장하지 않고 검증합니다."
+      },
       "create_interactive_view_template": {
         "name": "인터랙티브 뷰 템플릿 생성",
         "description": "사용자가 작성한 Restricted TSX 소스와 manifest 메타데이터로 인터랙티브 뷰 템플릿을 만듭니다."

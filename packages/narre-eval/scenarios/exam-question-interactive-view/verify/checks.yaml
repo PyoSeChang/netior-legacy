@@ -21,6 +21,12 @@ verify:
       expect:
         count: 1
 
+  - name: "template passes the runtime Interactive View contract"
+    interactive_view_contract:
+      condition: "project_id = '{{project_id}}' AND target_kind = 'schema' AND target_id IN (SELECT id FROM schemas WHERE project_id = '{{project_id}}' AND name = 'Exam Question')"
+      expect:
+        count: 1
+
   - name: "template contains choice checking behavior"
     db:
       table: interactive_view_templates
@@ -59,6 +65,16 @@ verify:
       expect:
         count_min: 1
         count_max: 1
+
+  - name: "interactive view dry run happens before creation"
+    tool:
+      name: dry_run_interactive_view_template
+      expect:
+        count_min: 1
+        count_max: 3
+      sequence:
+        - dry_run_interactive_view_template
+        - create_interactive_view_template
 
   - name: "schema preference tool called once"
     tool:

@@ -747,6 +747,7 @@ export function InstanceEditor({ tab }: InstanceEditorProps): JSX.Element {
           subtitle={isDraft ? t('instance.create') : t('editorShell.networkObject' as never)}
           description={selectedModelName}
           leadingVisual={<NodeVisual icon={session.state.icon ?? 'box'} size={24} imageSize={56} className="shrink-0" />}
+          initialViewMode={tab.objectViewMode ?? 'body'}
         >
           <NetworkObjectEditorSection title={t('editorShell.overview' as never)} viewMode="details">
               <Input
@@ -831,6 +832,7 @@ export function InstanceEditor({ tab }: InstanceEditorProps): JSX.Element {
             {!isDraft && currentProject && session.state.modelId && (
               <NetworkObjectEditorSection title={t('editorShell.interactiveView' as never)} viewMode="interactive">
                 <InteractiveViewPanel
+                  tabId={tab.id}
                   projectId={currentProject.id}
                   schemaId={session.state.modelId}
                   instanceId={tab.targetId}

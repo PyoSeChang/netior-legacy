@@ -33,6 +33,11 @@
       "types": "./dist/dsl/index.d.ts",
       "import": "./dist/dsl/index.js",
       "require": "./dist/dsl/index.cjs"
+    },
+    "./interactive-view": {
+      "types": "./dist/interactive-view/index.d.ts",
+      "import": "./dist/interactive-view/index.js",
+      "require": "./dist/interactive-view/index.cjs"
     }
   },
   "scripts": {

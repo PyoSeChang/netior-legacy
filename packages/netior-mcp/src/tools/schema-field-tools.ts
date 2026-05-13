@@ -63,12 +63,21 @@ const ADVANCED_FIELD_BEHAVIORS = new Set(['conditional_field', 'computed_field',
 function normalizeFieldBindings(bindings?: FieldBindingInput[]): SchemaFieldBindingCreate[] | undefined {
   if (!bindings) return undefined;
   return bindings.map((binding) => {
-    const { dsl_config, ...rest } = binding;
+    const base: SchemaFieldBindingCreate = {
+      model_id: binding.model_id,
+      binding_kind: binding.binding_kind,
+      source_schema_id: binding.source_schema_id,
+      source_field_id: binding.source_field_id,
+      cardinality: binding.cardinality,
+      read_only: binding.read_only,
+      config: binding.config,
+      sort_order: binding.sort_order,
+    };
     if (!ADVANCED_FIELD_BEHAVIORS.has(binding.binding_kind)) {
-      return rest;
+      return base;
     }
 
-    const config = dsl_config ?? parseRawDslConfig(binding.config, binding.binding_kind);
+    const config = binding.dsl_config ?? parseRawDslConfig(binding.config, binding.binding_kind);
     const validation = validateNetiorDslFieldBehaviorConfig(config);
     if (!validation.ok) {
       const details = validation.errors.map((error) => `${error.path}: ${error.message}`).join('; ');
@@ -79,7 +88,7 @@ function normalizeFieldBindings(bindings?: FieldBindingInput[]): SchemaFieldBind
     }
 
     return {
-      ...rest,
+      ...base,
       config: JSON.stringify(config),
     };
   });
@@ -124,7 +133,7 @@ async function setFieldBehaviorDsl(
       binding_kind: config.kind,
       cardinality: 'none',
       read_only: config.kind !== 'conditional_field',
-      dsl_config: config,
+      config: JSON.stringify(config),
       sort_order: field.bindings.length,
     },
   ]);
@@ -335,7 +344,7 @@ export function registerSchemaFieldTools(server: McpServer): void {
           version: 1,
           kind,
           ...(effect ? { effect } : {}),
-          expression: expression as NetiorDslFieldBehaviorConfig['expression'],
+          expression: expression as unknown as NetiorDslFieldBehaviorConfig['expression'],
         };
         const result = await setFieldBehaviorDsl(schema_id, field_id, dslConfig);
         if (!result) {

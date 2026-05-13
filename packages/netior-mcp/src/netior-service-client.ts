@@ -400,6 +400,12 @@ export async function createInteractiveViewTemplate(
   });
 }
 
+export async function getInteractiveViewTemplate(
+  id: string,
+): Promise<InteractiveViewTemplate | null> {
+  return requestJson<InteractiveViewTemplate | null>(`/interactive-view-templates/${encodeURIComponent(id)}`);
+}
+
 export async function updateInteractiveViewTemplate(
   id: string,
   data: InteractiveViewTemplateUpdate,

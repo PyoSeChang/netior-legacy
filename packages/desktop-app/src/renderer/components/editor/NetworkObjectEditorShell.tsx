@@ -1,9 +1,8 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
+import type { NetworkObjectEditorViewMode } from '@netior/shared/types';
 import { Badge } from '../ui/Badge';
 import { useI18n } from '../../hooks/useI18n';
-
-type NetworkObjectEditorViewMode = 'body' | 'details' | 'interactive';
 
 interface NetworkObjectEditorShellProps {
   badge: string;
@@ -15,6 +14,7 @@ interface NetworkObjectEditorShellProps {
   showHeader?: boolean;
   fillHeight?: boolean;
   bodySectionCount?: number;
+  initialViewMode?: NetworkObjectEditorViewMode;
   children: React.ReactNode;
 }
 
@@ -42,10 +42,14 @@ export function NetworkObjectEditorShell({
   showHeader = true,
   fillHeight = true,
   bodySectionCount = 2,
+  initialViewMode = 'body',
   children,
 }: NetworkObjectEditorShellProps): JSX.Element {
   const { t } = useI18n();
-  const [viewMode, setViewMode] = useState<NetworkObjectEditorViewMode>('body');
+  const [viewMode, setViewMode] = useState<NetworkObjectEditorViewMode>(initialViewMode);
+  useEffect(() => {
+    setViewMode(initialViewMode);
+  }, [initialViewMode]);
   const sections = useMemo(() => React.Children.toArray(children), [children]);
   const explicitBodySections = sections.filter((section) => (
     React.isValidElement<NetworkObjectEditorSectionProps>(section) && section.props.viewMode === 'body'

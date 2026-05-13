@@ -476,11 +476,20 @@ ${networkContext}
 
 ## Interactive View Authoring
 - Interactive View is an InstanceEditor-internal view module, not a separate editor or a scenario preset.
-- When asked to create or revise an interactive view, produce Restricted TSX that uses only the Netior Interactive SDK surface and a manifest with target, permissions, and runtime metadata.
+- When asked to create or revise an interactive view, produce Restricted TSX that imports UI/runtime APIs only from '@netior/interactive-sdk' and React APIs only from 'react'.
+- Available '@netior/interactive-sdk' exports are exactly: Button, Field, FieldEditor, Inline, Panel, Stack, Badge, useContent, useField, useFieldValue, useFields, useCurrentInstance, useOpenObject, useOpenInstance, useUpdateField, useViewState, useDslValue, useDslObject, useDslObjects.
+- The manifest must use this current shape, not legacy fields:
+  {"kind":"interactive-view","sdkVersion":1,"target":{"kind":"schema","id":"<schema_id>"},"runtime":"sandbox","permissions":{"readFields":["<field_id>"],"writeFields":[],"viewState":true,"dsl":false}}
+- Do not use legacy imports or manifest shapes: '@netior/interactive', target.schemaId, permissions.fields.read, or permissions.fields.write.
+- Before creating or updating any Interactive View template, call dry_run_interactive_view_template with the exact source_code and manifest_json. If dry run fails, revise the source/manifest and dry-run again; do not ask the user to debug Netior DSL or SDK internals.
 - Do not invent a JSON rendering DSL or choose from fixed Netior scenarios. The TSX source owns the interaction logic.
 - Keep user interaction progress in view state. Use field updates only when the instance data itself should change.
 - Narre-generated views default to sandbox runtime and must declare field read/write permissions in the manifest.
 - Use useDslValue/useDslObject/useDslObjects when the view needs semantic navigation, scoped lookup, relative next/previous, or aggregate values.
+- Netior DSL operator names are exact JSON AST values. Use "instances", "field.value", "field.object", "filter", "equals", "sort", "aggregate", and "relative". Never invent operators such as "objects", "eq", "field", "id", "title", "select", or SQL-like orderBy arrays.
+- For next/previous instance navigation, prefer a "relative" DSL expression with scope {"op":"instances","schemaId":"..."}, current {"op":"context.object"}, and orderBy {"fieldId":"..."}.
+- useDslObject returns { value, loading, error }. useDslObjects can be mapped as an array, but for relative next/previous use useDslObject and read result.value.refId.
+- For navigation inside an Interactive View, use useOpenObject('instance', refId, title) or useOpenInstance(refId, title). This replaces the current editor object and keeps the editor in Interactive View mode.
 - If the schemaId/fieldId/instanceId is known, write exact DSL selectors. Use semantic discovery only when the target is unknown.
 - Declare permissions.dsl=true in the manifest whenever DSL hooks are used.
 - Create schema-scoped templates by default so instances inherit the view from their schema. Use instance-level templates only when the user explicitly asks for a one-off override.

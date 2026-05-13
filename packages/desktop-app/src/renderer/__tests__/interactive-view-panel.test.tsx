@@ -21,6 +21,8 @@ vi.mock('../services', () => ({
 }));
 
 const { InteractiveViewPanel } = await import('../components/editor/interactive/InteractiveViewPanel');
+const { useEditorStore } = await import('../stores/editor-store');
+const { useInstanceStore } = await import('../stores/instance-store');
 
 class MockResizeObserver {
   observe() {}
@@ -72,6 +74,7 @@ const fields: SchemaField[] = [
 ];
 
 function renderPanel(overrides?: {
+  tabId?: string;
   stateJson?: string | null;
   templates?: Array<{
     id: string;
@@ -165,6 +168,7 @@ function renderPanel(overrides?: {
   const onFieldChange = overrides?.onFieldChange ?? vi.fn();
   const rendered = render(
     <InteractiveViewPanel
+      tabId={overrides?.tabId}
       projectId="project-1"
       schemaId="schema-1"
       instanceId="instance-1"
@@ -181,6 +185,8 @@ function renderPanel(overrides?: {
 describe('InteractiveViewPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    useEditorStore.getState().clear();
+    useInstanceStore.setState({ instances: [], loading: false, properties: {} });
   });
 
   const generatedTemplate = {
@@ -328,6 +334,85 @@ describe('InteractiveViewPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Update generated field' }));
 
     expect(onFieldChange).toHaveBeenCalledWith('field-a', 'from generated');
+  });
+
+  it('lets generated templates replace the current object while keeping interactive mode', async () => {
+    const navigationTemplate = {
+      id: 'template-navigation',
+      name: 'Navigation layout',
+      source_code: `
+        import React from 'react';
+        import { Button, Stack, useOpenObject } from '@netior/interactive-sdk';
+
+        export function View() {
+          const openObject = useOpenObject();
+          return (
+            <Stack>
+              <Button onClick={() => openObject('instance', 'instance-2', 'Second question')}>Next question</Button>
+            </Stack>
+          );
+        }
+      `,
+      manifest_json: JSON.stringify({
+        kind: 'interactive-view',
+        sdkVersion: 1,
+        permissions: {
+          readFields: [],
+          writeFields: [],
+          viewState: true,
+        },
+        runtime: 'host',
+      }),
+    };
+
+    useEditorStore.setState({
+      tabs: [{
+        id: 'instance:instance-1',
+        type: 'instance',
+        targetId: 'instance-1',
+        title: 'First question',
+        viewMode: 'side',
+        hostId: 'main',
+        isDirty: false,
+        isMinimized: false,
+        activeFilePath: null,
+        floatRect: { x: 0, y: 0, width: 600, height: 450 },
+        sideSplitRatio: 0.5,
+      }],
+      activeTabId: 'instance:instance-1',
+      sideLayout: { type: 'leaf', tabIds: ['instance:instance-1'], activeTabId: 'instance:instance-1' },
+      fullLayout: null,
+      sideLastActiveTabId: 'instance:instance-1',
+      fullLastActiveTabId: null,
+      hosts: {},
+      focusedHostId: 'main',
+    });
+
+    renderPanel({
+      tabId: 'instance:instance-1',
+      templates: [navigationTemplate],
+      preferenceTemplateId: 'template-navigation',
+      preferenceMode: 'template',
+    });
+
+    await waitFor(() => expect(screen.queryByText('Loading interactive view...')).toBeNull());
+    fireEvent.click(screen.getByRole('button', { name: 'Next question' }));
+
+    const state = useEditorStore.getState();
+    expect(state.tabs).toHaveLength(1);
+    expect(state.tabs[0]).toMatchObject({
+      id: 'instance:instance-2',
+      type: 'instance',
+      targetId: 'instance-2',
+      title: 'Second question',
+      objectViewMode: 'interactive',
+    });
+    expect(state.activeTabId).toBe('instance:instance-2');
+    expect(state.sideLayout).toMatchObject({
+      type: 'leaf',
+      tabIds: ['instance:instance-2'],
+      activeTabId: 'instance:instance-2',
+    });
   });
 
   it('does not load or autosave view state while rendering configure controls only', async () => {
