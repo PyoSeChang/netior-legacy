@@ -50,6 +50,7 @@ export type NetiorDslExpression =
   | NetiorDslContextObjectExpression
   | NetiorDslContextSchemaExpression
   | NetiorDslItemExpression
+  | NetiorDslObjectsInNetworkExpression
   | NetiorDslInstancesExpression
   | NetiorDslFieldValueExpression
   | NetiorDslFieldObjectExpression
@@ -78,6 +79,11 @@ export interface NetiorDslContextSchemaExpression {
 
 export interface NetiorDslItemExpression {
   op: 'item';
+}
+
+export interface NetiorDslObjectsInNetworkExpression {
+  op: 'objects.inNetwork';
+  networkId?: string;
 }
 
 export interface NetiorDslInstancesExpression {
@@ -189,6 +195,7 @@ const EXPRESSION_OPS = new Set([
   'context.object',
   'context.schema',
   'item',
+  'objects.inNetwork',
   'instances',
   'field.value',
   'field.object',
@@ -247,6 +254,11 @@ function validateExpression(
   }
 
   switch (op) {
+    case 'objects.inNetwork':
+      if (input.networkId != null && typeof input.networkId !== 'string') {
+        errors.push({ path: `${path}.networkId`, message: 'networkId must be a string' });
+      }
+      break;
     case 'field.value':
     case 'field.object':
       validateExpression(input.of, `${path}.of`, errors);

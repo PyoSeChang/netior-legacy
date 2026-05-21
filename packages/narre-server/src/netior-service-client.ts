@@ -1,6 +1,7 @@
 ﻿import type {
   NetiorServiceResponse,
   Network,
+  NetworkType,
   NetworkTreeNode,
   Project,
   Instance,
@@ -91,4 +92,8 @@ export async function getProjectOntologyNetwork(projectId: string): Promise<Netw
 
 export async function getNetworkTree(projectId: string): Promise<NetworkTreeNode[]> {
   return requestJson<NetworkTreeNode[]>(`/networks/tree${toQueryString({ projectId })}`);
+}
+
+export async function listNetworkTypes(projectId: string): Promise<NetworkType[]> {
+  return requestJson<NetworkType[]>(`/network-types${toQueryString({ projectId })}`);
 }

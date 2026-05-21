@@ -19,6 +19,7 @@ import type {
   OrchestrationRunStatus,
   OrchestrationTask,
   OrchestrationTaskStatus,
+  NarreCard,
 } from '@netior/shared/types';
 
 const MAX_EVENTS = 2_000;
@@ -314,7 +315,7 @@ export class OrchestrationRegistry {
     assignmentId?: string | null;
     agentKey?: string | null;
     sessionId?: string | null;
-    card?: Record<string, unknown>;
+    card?: NarreCard;
     prompt?: string | null;
     metadata?: Record<string, string>;
   }): AgentApprovalRequest {
@@ -332,6 +333,8 @@ export class OrchestrationRegistry {
       prompt: input.prompt ?? null,
       response: null,
       createdAt: now,
+      updatedAt: now,
+      completedAt: null,
       resolvedAt: null,
       metadata: cloneStringRecord(input.metadata),
     };
@@ -376,6 +379,8 @@ export class OrchestrationRegistry {
       ...current,
       status: input.status,
       response: input.response ?? null,
+      updatedAt: new Date().toISOString(),
+      completedAt: new Date().toISOString(),
       resolvedAt: new Date().toISOString(),
     };
     this.approvals.set(next.id, next);

@@ -23,7 +23,7 @@ export function NarreEditor({ tab }: NarreEditorProps): JSX.Element {
   const cached = narreStateCache.get(projectId) ?? {
     view: persisted.view as NarreView,
     sessionId: persisted.activeSessionId,
-    agentKey: null,
+    agentKey: persisted.activeAgentKey,
   };
 
   const [view, setView] = useState<NarreView>(cached?.view ?? 'sessionList');
@@ -39,17 +39,17 @@ export function NarreEditor({ tab }: NarreEditorProps): JSX.Element {
       ...prev,
       view: v,
       activeSessionId: sid,
+      activeAgentKey: agentKey,
     }));
   };
 
   useEffect(() => {
     return subscribeNarreProjectUiState(projectId, (next) => {
       const nextView = next.view;
-      const cachedAgentKey = narreStateCache.get(projectId)?.agentKey ?? null;
-      narreStateCache.set(projectId, { view: nextView, sessionId: next.activeSessionId, agentKey: cachedAgentKey });
+      narreStateCache.set(projectId, { view: nextView, sessionId: next.activeSessionId, agentKey: next.activeAgentKey });
       setView(nextView);
       setActiveSessionId(next.activeSessionId);
-      setActiveAgentKey(cachedAgentKey);
+      setActiveAgentKey(next.activeAgentKey);
     });
   }, [projectId]);
 

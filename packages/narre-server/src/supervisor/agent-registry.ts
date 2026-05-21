@@ -22,11 +22,32 @@ const SYSTEM_AGENTS: readonly NarreSystemAgentDefinition[] = [
     kind: 'narre',
     narreAgentType: 'system',
     systemAgentType: 'network-builder',
-    skills: [],
+    skills: [
+      {
+        id: 'network-representation-authoring',
+        name: 'network-representation',
+        source: 'builtin',
+      },
+      {
+        id: 'schema-field-behavior',
+        name: 'schema-field-behavior',
+        source: 'builtin',
+      },
+      {
+        id: 'interactive-view',
+        name: 'interactive-view',
+        source: 'builtin',
+      },
+      {
+        id: 'bootstrap',
+        name: 'bootstrap',
+        source: 'builtin',
+      },
+    ],
     runtimeProfile: {
       provider: 'openai',
       reasoningEffort: 'high',
-      toolProfileIds: ['core', 'bootstrap-execution'],
+      toolProfileIds: ['core'],
       approvalPolicy: 'strict',
       contextScope: 'run',
     },
@@ -42,7 +63,7 @@ const SYSTEM_AGENTS: readonly NarreSystemAgentDefinition[] = [
     runtimeProfile: {
       provider: 'openai',
       reasoningEffort: 'medium',
-      toolProfileIds: ['core', 'discovery'],
+      toolProfileIds: ['discovery'],
       approvalPolicy: 'default',
       contextScope: 'run',
     },

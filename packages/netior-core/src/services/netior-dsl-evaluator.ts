@@ -104,6 +104,8 @@ function evaluateExpression(
     case 'item':
       if (frame.item === undefined) throw new DslError('invalid_query', 'item is only available inside collection operators');
       return frame.item;
+    case 'objects.inNetwork':
+      return getObjectsInNetwork(expression.networkId ?? context.currentNetworkId, context.projectId);
     case 'instances':
       return getInstances(expression.schemaId ?? context.currentSchemaId, expression.projectId ?? context.projectId);
     case 'field.value':
@@ -202,6 +204,26 @@ function getInstances(schemaId: string | undefined, projectId: string): NetiorDs
     ? db.prepare('SELECT id FROM instances WHERE schema_id = ? AND project_id = ? ORDER BY title, id').all(schemaId, projectId) as InstanceRow[]
     : db.prepare('SELECT id FROM instances WHERE project_id = ? ORDER BY title, id').all(projectId) as InstanceRow[];
   return rows.map((row) => toObjectRef('instance', row.id));
+}
+
+function getObjectsInNetwork(networkId: string | undefined, projectId: string): NetiorDslObjectRef[] {
+  if (!networkId) throw new DslError('invalid_query', 'objects.inNetwork requires networkId or context.currentNetworkId');
+
+  const rows = getDatabase().prepare(`
+    SELECT o.object_type, o.ref_id, o.id AS object_id
+      FROM network_nodes nn
+      JOIN networks n ON n.id = nn.network_id
+      JOIN objects o ON o.id = nn.object_id
+     WHERE nn.network_id = ?
+       AND (n.project_id IS NULL OR n.project_id = ?)
+     ORDER BY nn.created_at, nn.id
+  `).all(networkId, projectId) as Array<{ object_type: string; ref_id: string; object_id: string }>;
+
+  return rows.map((row) => ({
+    objectType: row.object_type as NetiorDslObjectRef['objectType'],
+    refId: row.ref_id,
+    objectId: row.object_id,
+  }));
 }
 
 function getFieldValue(

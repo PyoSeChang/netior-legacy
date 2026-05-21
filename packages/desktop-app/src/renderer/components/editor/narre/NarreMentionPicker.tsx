@@ -152,7 +152,6 @@ function localizeMentionResult(
 function PreviewPanel({ item, t }: { item: MentionResult; t: (key: TranslationKey) => string }): JSX.Element {
   const catLabel = MENTION_CATEGORIES.find((c) => c.key === item.type)?.i18nKey;
   const instanceModel = item.type === 'instance' && typeof item.meta?.model === 'string' ? item.meta.model : null;
-  const modelNodeShape = item.type === 'model' && typeof item.meta?.nodeShape === 'string' ? item.meta.nodeShape : null;
   const modelDirected = item.type === 'model' && typeof item.meta?.directed === 'boolean' ? item.meta.directed : null;
   const modelLineStyle = item.type === 'model' && typeof item.meta?.lineStyle === 'string' ? item.meta.lineStyle : null;
   const filePath = item.type === 'file' && typeof item.meta?.path === 'string' ? item.meta.path : null;
@@ -185,12 +184,6 @@ function PreviewPanel({ item, t }: { item: MentionResult; t: (key: TranslationKe
             <div className="flex items-center gap-1">
               <span className="text-secondary">Model:</span>
               <span className="text-default">{instanceModel}</span>
-            </div>
-          )}
-          {modelNodeShape && (
-            <div className="flex items-center gap-1">
-              <span className="text-secondary">Shape:</span>
-              <span className="text-default">{modelNodeShape}</span>
             </div>
           )}
           {item.type === 'model' && (

@@ -266,7 +266,7 @@ Recommended additions:
 interface SystemPromptParams {
   projectName: string;
   projectRootDir?: string | null;
-  schemas: Array<{ id: string; name: string; group_id?: string | null; icon?: string | null; color?: string | null; node_shape?: string | null }>;
+  schemas: Array<{ id: string; name: string; group_id?: string | null; icon?: string | null; color?: string | null }>;
   relationTypes: Array<{ id: string; name: string; group_id?: string | null; directed: boolean; line_style: string; color?: string | null }>;
   schemaGroups?: Array<{ id: string; name: string; parent_group_id: string | null }>;
   relationTypeGroups?: Array<{ id: string; name: string; parent_group_id: string | null }>;

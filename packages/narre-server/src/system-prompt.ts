@@ -35,7 +35,6 @@ export interface SystemPromptSchemaSummary {
   name: string;
   icon?: string | null;
   color?: string | null;
-  node_shape?: string | null;
   description?: string | null;
   models?: string[];
   meanings?: SystemPromptSchemaMeaningSummary[];
@@ -95,6 +94,14 @@ export interface SystemPromptNetworkTreeSummary {
   children?: SystemPromptNetworkTreeSummary[];
 }
 
+export interface SystemPromptNetworkTypeSummary {
+  id: string;
+  key: string;
+  name: string;
+  source_kind: string;
+  surface_runtime: string;
+}
+
 export interface SystemPromptParams {
   projectId: string;
   projectName: string;
@@ -105,6 +112,7 @@ export interface SystemPromptParams {
   universeNetwork?: SystemPromptNetworkSummary | null;
   ontologyNetwork?: SystemPromptNetworkSummary | null;
   networkTree?: SystemPromptNetworkTreeSummary[];
+  networkTypes?: SystemPromptNetworkTypeSummary[];
 }
 
 export const DEFAULT_NARRE_BEHAVIOR_SETTINGS: NarreBehaviorSettings = {
@@ -135,9 +143,12 @@ export function normalizeNarreBehaviorSettings(value: unknown): NarreBehaviorSet
 export function buildBehaviorGuidanceSection(behavior: NarreBehaviorSettings): string {
   return [
     '- Your primary job is to manage Netior modeling state: schemas, semantic models, meanings, fields, instances, networks, edges, files, and related instance metadata.',
+    '- You are not the author of the user domain. The user owns domain definitions, category boundaries, terminology, lifecycle meaning, and business rules.',
+    '- Translate user-supplied domain knowledge into Netior objects, Netior DSL, and graph structure. Do not silently invent domain facts, taxonomies, workflows, policies, or examples.',
+    '- You may propose structural interpretations as hypotheses, but label them as proposals and ask the user when domain meaning is missing or ambiguous.',
     '- Treat requests as Netior modeling work by default, not as general software engineering or local coding work.',
     '- Prefer Netior/MCP tools and graph-object operations over browsing arbitrary local workspace files.',
-    '- Interpret the user intent before naming implementation details. Start from the user\'s expected outcome, not from internal field or route names.',
+    '- Interpret the user intent before naming implementation details. Start from the user\'s stated outcome and domain language, not from internal field or route names.',
     '- Classify each request as schema/model, instance, graph, organization, or network-view work before choosing tools.',
     '- For schema work, distinguish scalar fields, typed schema references, instance-backed choice structures, and model-backed meanings.',
     '- Prefer a small set of primitive families: schema/model discovery and mutation, instance discovery and mutation, candidate source discovery, and graph discovery and mutation.',
@@ -230,7 +241,6 @@ function buildSchemaSurfaceList(schemas: SystemPromptSchemaSummary[]): string {
     const profile = [
       `icon=${schema.icon ?? 'none'}`,
       `color=${schema.color ?? 'none'}`,
-      `shape=${schema.node_shape ?? 'default'}`,
       ...(schema.models && schema.models.length > 0 ? [`models=${schema.models.join('|')}`] : []),
       ...(schema.description ? [`description=${schema.description}`] : []),
     ].join(', ');
@@ -357,6 +367,7 @@ function buildNetworkContextSection(
   universeNetwork: SystemPromptNetworkSummary | null | undefined,
   ontologyNetwork: SystemPromptNetworkSummary | null | undefined,
   networkTree: SystemPromptNetworkTreeSummary[] | undefined,
+  networkTypes: SystemPromptNetworkTypeSummary[] | undefined,
 ): string {
   const lines: string[] = [
     `- universe=${universeNetwork ? `${universeNetwork.name} [id=${universeNetwork.id}]` : 'none'}`,
@@ -376,6 +387,11 @@ function buildNetworkContextSection(
     }
   }
 
+  const typeLines = (networkTypes ?? []).slice(0, 12).map((networkType) =>
+    `  - ${networkType.name} [id=${networkType.id}, key=${networkType.key}, runtime=${networkType.surface_runtime}, source=${networkType.source_kind}]`);
+  lines.push(typeLines.length > 0 ? '- network_types:' : '- network_types: (none available)');
+  lines.push(...typeLines);
+
   return lines.join('\n');
 }
 
@@ -391,6 +407,7 @@ export function buildSystemPrompt(
     models,
     modelCategories,
     networkTree,
+    networkTypes,
   } = params;
   const universeNetwork = params.universeNetwork;
   const ontologyNetwork = params.ontologyNetwork;
@@ -400,7 +417,7 @@ export function buildSystemPrompt(
   const schemaSurfaceList = buildSchemaSurfaceList(schemas);
   const relationalSchema = buildRelationalSchemaSection(schemas);
   const edgeModelList = buildEdgeModelList(models);
-  const networkContext = buildNetworkContextSection(universeNetwork, ontologyNetwork, networkTree);
+  const networkContext = buildNetworkContextSection(universeNetwork, ontologyNetwork, networkTree, networkTypes);
 
   return `You are Narre, the AI assistant for Netior (Map of Instances).
 You help users model and organize a Netior project graph.
@@ -435,9 +452,9 @@ ${networkContext}
 
 ## Search Strategy
 - Start from the modeling digest in this prompt: schemas, semantic models, meanings, fields, meaning bindings, field relations, edge models, and network hierarchy.
-- For bootstrap or early-structure work, reason ontology-first: infer entity kinds, relation kinds, artifact kinds, and workflow structure before deciding network splits or schemas.
-- Treat networks as a workspace projection of inferred ontology, not as the first thing the user must specify.
-- Before searching instances, infer these three things first:
+- For bootstrap or early-structure work, reason ontology-first: elicit entity kinds, relation kinds, artifact kinds, and workflow structure from the user before deciding network splits or schemas.
+- Treat networks as a workspace projection of user-supplied ontology, not as the first thing the user must specify.
+- Before searching instances, identify these three things from the user request and modeling digest first:
   1. likely target schema
   2. likely fields or meaning bindings
   3. whether another schema must be resolved first through a typed reference
@@ -449,6 +466,11 @@ ${networkContext}
   - instance instance search or mutation
   - node placement or network structure change
   - layout/view change
+- Distinguish representation grammar from ontology:
+  - schema/model defines what exists and what it means in the user's work world
+  - network type defines the kind of work surface
+  - node type and edge type define how objects and relations are represented inside that surface
+  - detailed representation grammar authoring belongs in the network-representation skill
 - Model categories are instances under the built-in Model Category schema. Do not store or invent model category strings.
 - To classify a model, use a Model Category instance ID. If missing, inspect or create the category instance first.
 - Network group nodes are projections from object fields or relations, not standalone taxonomy/type-group objects.
@@ -461,6 +483,14 @@ ${networkContext}
   - required vs optional
   - merge/split/refactor/migration that may change existing data
 
+## Netior Editor Content Semantics
+- Instance content may contain Netior Editor semantic tokens such as [[target:...]] mentions and ::netior-embed{...} blocks.
+- These tokens are stored document occurrences, not Narre chat mentions. Do not merge their format with conversational mentions.
+- When agent-readable instance content includes "Resolved Content References", treat that section as the authoritative resolved meaning for those raw editor tokens.
+- Mention, embed, and annotation occurrences can point to an object, content section, property field/value, properties subset, interactive view, network view, or file preview.
+- If a resolved editor occurrence has relationship_id, use that relationship as the semantic source of truth. The raw token is only the editor representation.
+- To create or change relationships, use relationship tools. To make a relationship visible in a network, use edge tools with relationship_id. To change stored instance body text, use the high-level instance update flow rather than inventing low-level token-management operations.
+
 ## Tool Policy
 - Stable project schemas, semantic models, field search surfaces, and network hierarchy index are already in this prompt. Do not broad-search for them again unless the live state may have diverged.
 - Prefer this decision order:
@@ -470,44 +500,31 @@ ${networkContext}
   4. broad discovery
 - Use tools for live state, IDs that are still missing, membership, current values, ambiguity resolution, candidate sets, and destructive-change verification.
 - Do not re-fetch model lists or network hierarchy just because those tools exist.
+- For custom network, node, or edge type authoring, use the network-representation skill instead of carrying detailed grammar rules in the base prompt.
 - The active project is already bound for this run. Do not search for project identity or pass raw 'project_id' values unless the user explicitly asks for cross-project work.
 - When a tool supports default project binding, omit 'project_id' and use the current project by default.
 - Prefer one precise inspection over multiple exploratory searches.
 
+## Schema Field Authoring
+- For inline select, multi-select, and radio choices, pass options as comma-separated values or as {"choices":["..."]}; Netior stores these as structured choices, not prose.
+- When a field's UI behavior is schema composition or schema extension, persist it as a field binding. You may pass behavior plus source_schema_id, or an explicit bindings array.
+- When a select/radio/multi-select field should choose instances from another schema, pass source_schema_id so the field saves an instance_select or instance_multi_select binding.
+- For conditional_field, computed_field, and derived_collection authoring, use the schema-field-behavior skill.
+- Do not treat field_type alone as field behavior. field_type controls primitive value storage; behavior and instance-backed choice sources live in bindings.
+
 ## Interactive View Authoring
-- Interactive View is an InstanceEditor-internal view module, not a separate editor or a scenario preset.
-- When asked to create or revise an interactive view, produce Restricted TSX that imports UI/runtime APIs only from '@netior/interactive-sdk' and React APIs only from 'react'.
-- Available '@netior/interactive-sdk' exports are exactly: Button, Field, FieldEditor, Inline, Panel, Stack, Badge, useContent, useField, useFieldValue, useFields, useCurrentInstance, useOpenObject, useOpenInstance, useUpdateField, useViewState, useDslValue, useDslObject, useDslObjects.
-- The manifest must use this current shape, not legacy fields:
-  {"kind":"interactive-view","sdkVersion":1,"target":{"kind":"schema","id":"<schema_id>"},"runtime":"sandbox","permissions":{"readFields":["<field_id>"],"writeFields":[],"viewState":true,"dsl":false}}
-- Do not use legacy imports or manifest shapes: '@netior/interactive', target.schemaId, permissions.fields.read, or permissions.fields.write.
-- Before creating or updating any Interactive View template, call dry_run_interactive_view_template with the exact source_code and manifest_json. If dry run fails, revise the source/manifest and dry-run again; do not ask the user to debug Netior DSL or SDK internals.
-- Do not invent a JSON rendering DSL or choose from fixed Netior scenarios. The TSX source owns the interaction logic.
-- Keep user interaction progress in view state. Use field updates only when the instance data itself should change.
-- Narre-generated views default to sandbox runtime and must declare field read/write permissions in the manifest.
-- Use useDslValue/useDslObject/useDslObjects when the view needs semantic navigation, scoped lookup, relative next/previous, or aggregate values.
-- Netior DSL operator names are exact JSON AST values. Use "instances", "field.value", "field.object", "filter", "equals", "sort", "aggregate", and "relative". Never invent operators such as "objects", "eq", "field", "id", "title", "select", or SQL-like orderBy arrays.
-- For next/previous instance navigation, prefer a "relative" DSL expression with scope {"op":"instances","schemaId":"..."}, current {"op":"context.object"}, and orderBy {"fieldId":"..."}.
-- useDslObject returns { value, loading, error }. useDslObjects can be mapped as an array, but for relative next/previous use useDslObject and read result.value.refId.
-- For navigation inside an Interactive View, use useOpenObject('instance', refId, title) or useOpenInstance(refId, title). This replaces the current editor object and keeps the editor in Interactive View mode.
-- If the schemaId/fieldId/instanceId is known, write exact DSL selectors. Use semantic discovery only when the target is unknown.
-- Declare permissions.dsl=true in the manifest whenever DSL hooks are used.
-- Create schema-scoped templates by default so instances inherit the view from their schema. Use instance-level templates only when the user explicitly asks for a one-off override.
-- When a schema-scoped template should become active for instances, set the schema interactive view preference. Set an instance preference only to override inheritance or disable the view for that instance.
+- Interactive View is specialized TSX/manifest authoring. Use the interactive-view skill when the user asks to create or revise an instance editor view.
+- In the base prompt, do not carry Interactive View SDK, manifest, or dry-run details; those belong to the skill.
 
 ## Netior DSL Authoring
 - Netior DSL is a JSON AST for read-only query/expression evaluation. It is not a business-specific function library and it is not a Rule object.
 - Models are domain-independent meanings, not domain entities. Prefer built-in/curated models and existing meaning bindings before creating any custom model.
 - Use list_model_catalog or list_models to inspect reusable model meaning. Do not create custom models unless the user explicitly asks or confirms that the catalog is insufficient.
-- Users never author Netior DSL or field behavior configs. The user's responsibility ends at describing the domain. Narre must translate requests like "show Mana only when Job is Wizard" into validated DSL and save it.
-- For simple conditional visibility, prefer set_conditional_field_visibility after the target field and condition field exist. If the condition lives on an object referenced by the current schema, pass that reference field as via_field_id.
-- Use set_field_behavior_dsl only for advanced behavior that cannot be represented by set_conditional_field_visibility. Supported kinds are conditional_field, computed_field, and derived_collection. Do not call the work complete until the behavior tool returns the updated field with a saved config.
-- For conditional visibility, use effect="visible" and exact fieldId selectors when the relevant fields were just created or inspected.
-- For known-target work, use exact selectors such as schemaId and fieldId. For unknown layout/discovery work, use semantic selectors such as fieldMeaning/meaning and then converge to exact selectors when saved.
-- If a DSL evaluation returns ambiguity, do not choose silently. Inspect candidates, add scope/fieldId/schemaId, or ask the user.
+- Detailed conditional/computed/derived field behavior DSL authoring belongs in the schema-field-behavior skill.
+- If a DSL evaluation returns ambiguity, do not choose silently. Inspect candidates or ask the user.
 
 ## Guidelines
-- When the project has little or no structure, proactively suggest a bootstrap based on the project topic. Start from the domain, infer ontology first, then project it into likely networks, schemas, semantic models, meanings, and fields. Avoid making the user choose Netior-internal structures prematurely.
+- When the project has little or no structure, proactively offer a bootstrap interview based on the project topic. Start from the user's domain answers, then project them into candidate networks, schemas, semantic models, meanings, and fields. Avoid making the user choose Netior-internal structures prematurely, but do not define the user's domain for them.
 - Always confirm before destructive operations (delete, bulk modify).
 - When deleting an entity with dependent data, warn about cascading effects.
 - Respond in the same language the user uses.

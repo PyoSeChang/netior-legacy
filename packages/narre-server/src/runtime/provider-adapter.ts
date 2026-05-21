@@ -35,5 +35,6 @@ export interface NarreProviderRunResult {
 export interface NarreProviderAdapter {
   readonly name: string;
   resolveUiCall: (toolCallId: string, response: unknown) => boolean;
+  steer?: (sessionId: string, message: string) => Promise<boolean> | boolean;
   run: (context: NarreProviderRunContext) => Promise<NarreProviderRunResult>;
 }

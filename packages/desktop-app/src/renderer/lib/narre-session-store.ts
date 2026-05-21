@@ -28,6 +28,7 @@ import {
 export interface NarreDisplayMessage {
   role: 'user' | 'assistant';
   timestamp: string;
+  completedAt?: string;
   blocks: NarreTranscriptBlock[];
   source: 'live' | 'restored';
 }
@@ -36,6 +37,7 @@ export interface NarreSessionState {
   projectId: string;
   sessionId: string | null;
   title: string;
+  agentKey: string | null;
   messages: NarreDisplayMessage[];
   loading: boolean;
   hasLoaded: boolean;
@@ -80,6 +82,7 @@ function createEmptySessionState(projectId: string, sessionId: string | null): N
     projectId,
     sessionId,
     title: '',
+    agentKey: null,
     messages: [],
     loading: false,
     hasLoaded: sessionId === null,
@@ -272,6 +275,7 @@ function transcriptTurnToDisplayMessage(turn: NarreTranscriptTurn): NarreDisplay
   return {
     role: turn.role,
     timestamp: turn.createdAt,
+    ...(turn.completedAt ? { completedAt: turn.completedAt } : {}),
     blocks: cloneTranscriptBlocks(turn.blocks),
     source: 'restored',
   };
@@ -469,6 +473,7 @@ function finalizeAssistantStream(state: NarreSessionState): void {
     state.messages.push({
       role: 'assistant',
       timestamp: state.streamingTimestamp ?? new Date().toISOString(),
+      completedAt: new Date().toISOString(),
       blocks: cloneTranscriptBlocks(state.streamingBlocks),
       source: 'live',
     });
@@ -605,6 +610,7 @@ export async function ensureNarreSessionLoaded(projectId: string, sessionId: str
     .then((data) => {
       const next = ensureSessionState(projectId, sessionId);
       next.title = data.title || '';
+      next.agentKey = data.agentKey ?? null;
       next.messages = buildDisplayMessages(data);
       next.loading = false;
       next.hasLoaded = true;

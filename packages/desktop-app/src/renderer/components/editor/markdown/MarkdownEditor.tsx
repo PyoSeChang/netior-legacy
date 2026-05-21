@@ -6,6 +6,7 @@ import { languages } from '@codemirror/language-data';
 import { GFM } from '@lezer/markdown';
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
 import { syntaxHighlighting, HighlightStyle } from '@codemirror/language';
+import type { Extension } from '@codemirror/state';
 import { tags } from '@lezer/highlight';
 import { createLivePreviewPlugin, livePreviewTheme } from './live-preview';
 import { MarkdownToc, extractHeadings } from './MarkdownToc';
@@ -49,10 +50,13 @@ interface MarkdownEditorProps {
   tabId: string;
   content: string;
   filePath?: string;
+  extensions?: Extension[];
   onChange: (content: string) => void;
 }
 
-export function MarkdownEditor({ tabId, content, filePath, onChange }: MarkdownEditorProps): JSX.Element {
+const EMPTY_EXTENSIONS: Extension[] = [];
+
+export function MarkdownEditor({ tabId, content, filePath, extensions: extraExtensions = EMPTY_EXTENSIONS, onChange }: MarkdownEditorProps): JSX.Element {
   const { t } = useI18n();
   const cmRef = useRef<ReactCodeMirrorRef>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -153,9 +157,10 @@ export function MarkdownEditor({ tabId, content, filePath, onChange }: MarkdownE
     cursorPlugin,
     ...createLivePreviewPlugin(handleLinkClick),
     livePreviewTheme,
+    ...extraExtensions,
     syntaxHighlighting(codeHighlightStyle),
     EditorView.lineWrapping,
-  ], [cursorPlugin, handleLinkClick]);
+  ], [cursorPlugin, extraExtensions, handleLinkClick]);
 
   const theme = useMemo(() => {
     const bg = getCssColorAsHex('--surface-editor', isDark ? '#242424' : '#f5f5f5');

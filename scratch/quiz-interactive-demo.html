@@ -1,0 +1,727 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Interactive Exam Demo</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #141414;
+      --panel: #1d1d1f;
+      --panel-2: #242427;
+      --line: #393a3f;
+      --line-strong: #585a61;
+      --text: #f3f3f5;
+      --muted: #a9abb3;
+      --soft: #d4d6de;
+      --accent: #63d28b;
+      --accent-soft: rgba(99, 210, 139, 0.15);
+      --bad: #ff7979;
+      --bad-soft: rgba(255, 121, 121, 0.13);
+      --warn: #f4c26b;
+      --shadow: 0 18px 50px rgba(0, 0, 0, 0.34);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at 18% 0%, rgba(99, 210, 139, 0.08), transparent 30%),
+        linear-gradient(180deg, #171719 0%, var(--bg) 46%, #101011 100%);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      letter-spacing: 0;
+    }
+
+    button {
+      font: inherit;
+    }
+
+    .app {
+      width: min(920px, calc(100vw - 32px));
+      margin: 0 auto;
+      padding: 44px 0 56px;
+    }
+
+    .quiz-shell {
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(29, 29, 31, 0.86);
+      box-shadow: var(--shadow);
+    }
+
+    .topbar {
+      display: grid;
+      grid-template-columns: 40px 1fr 40px;
+      align-items: center;
+      gap: 14px;
+      padding: 16px 18px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(20, 20, 20, 0.74);
+      backdrop-filter: blur(16px);
+    }
+
+    .nav-button {
+      display: inline-grid;
+      width: 36px;
+      height: 36px;
+      place-items: center;
+      border: 1px solid transparent;
+      border-radius: 999px;
+      background: transparent;
+      color: var(--soft);
+      cursor: pointer;
+      transition: background 140ms ease, border-color 140ms ease, color 140ms ease, transform 140ms ease;
+    }
+
+    .nav-button:hover:not(:disabled) {
+      border-color: var(--line-strong);
+      background: var(--panel-2);
+      color: var(--text);
+      transform: translateY(-1px);
+    }
+
+    .nav-button:disabled {
+      color: #55575e;
+      cursor: default;
+    }
+
+    .nav-button svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    .progress {
+      min-width: 0;
+    }
+
+    .progress-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 8px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .progress-title {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: var(--soft);
+      font-weight: 650;
+    }
+
+    .progress-track {
+      height: 4px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: #303136;
+    }
+
+    .progress-fill {
+      width: 0%;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--accent), #84d9ff);
+      transition: width 220ms ease;
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 240px;
+      gap: 0;
+    }
+
+    .main {
+      min-width: 0;
+      padding: 28px;
+      border-right: 1px solid var(--line);
+    }
+
+    .side {
+      padding: 24px 20px;
+      background: rgba(255, 255, 255, 0.025);
+    }
+
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 18px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
+      padding: 3px 9px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #202124;
+      color: var(--soft);
+      font-size: 12px;
+      font-weight: 600;
+      line-height: 1.2;
+    }
+
+    .pill.level {
+      border-color: rgba(244, 194, 107, 0.42);
+      background: rgba(244, 194, 107, 0.1);
+      color: #f5d28d;
+    }
+
+    .question-card {
+      margin-bottom: 22px;
+    }
+
+    .question-kicker {
+      margin-bottom: 8px;
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .question {
+      margin: 0;
+      color: var(--text);
+      font-size: 22px;
+      font-weight: 760;
+      line-height: 1.45;
+    }
+
+    .choices {
+      display: grid;
+      gap: 10px;
+    }
+
+    .choice {
+      display: grid;
+      grid-template-columns: 34px 1fr auto;
+      align-items: center;
+      gap: 12px;
+      width: 100%;
+      min-height: 58px;
+      padding: 10px 14px 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #1b1b1d;
+      color: var(--text);
+      text-align: left;
+      cursor: pointer;
+      transition: border-color 140ms ease, background 140ms ease, transform 140ms ease;
+    }
+
+    .choice:hover {
+      border-color: var(--line-strong);
+      background: #222326;
+      transform: translateY(-1px);
+    }
+
+    .choice.selected {
+      border-color: rgba(99, 210, 139, 0.8);
+      background: var(--accent-soft);
+    }
+
+    .choice.correct {
+      border-color: rgba(99, 210, 139, 0.9);
+      background: rgba(99, 210, 139, 0.18);
+    }
+
+    .choice.wrong {
+      border-color: rgba(255, 121, 121, 0.82);
+      background: var(--bad-soft);
+    }
+
+    .choice-number {
+      display: inline-grid;
+      width: 28px;
+      height: 28px;
+      place-items: center;
+      border-radius: 999px;
+      background: #2a2b2f;
+      color: var(--soft);
+      font-size: 12px;
+      font-weight: 750;
+    }
+
+    .choice-label {
+      min-width: 0;
+      overflow-wrap: anywhere;
+      font-size: 15px;
+      font-weight: 650;
+      line-height: 1.45;
+    }
+
+    .choice-state {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .feedback {
+      display: none;
+      margin-top: 16px;
+      padding: 13px 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel-2);
+      color: var(--soft);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .feedback.show {
+      display: block;
+    }
+
+    .feedback.correct {
+      border-color: rgba(99, 210, 139, 0.62);
+      background: var(--accent-soft);
+    }
+
+    .feedback.wrong {
+      border-color: rgba(255, 121, 121, 0.6);
+      background: var(--bad-soft);
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 22px;
+    }
+
+    .action-button {
+      min-height: 38px;
+      padding: 0 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #222326;
+      color: var(--text);
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 700;
+      transition: background 140ms ease, border-color 140ms ease;
+    }
+
+    .action-button.primary {
+      border-color: rgba(99, 210, 139, 0.7);
+      background: var(--accent);
+      color: #082111;
+    }
+
+    .action-button:hover {
+      border-color: var(--line-strong);
+      background: #2b2c31;
+    }
+
+    .action-button.primary:hover {
+      background: #76dfa0;
+    }
+
+    .side-title {
+      margin: 0 0 14px;
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 760;
+    }
+
+    .stat-grid {
+      display: grid;
+      gap: 10px;
+      margin-bottom: 22px;
+    }
+
+    .stat {
+      padding: 11px 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(20, 20, 20, 0.45);
+    }
+
+    .stat-label {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 650;
+    }
+
+    .stat-value {
+      margin-top: 3px;
+      color: var(--text);
+      font-size: 18px;
+      font-weight: 800;
+    }
+
+    .question-map {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 7px;
+    }
+
+    .map-button {
+      height: 32px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: #1c1d20;
+      color: var(--soft);
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 750;
+    }
+
+    .map-button.current {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+      color: var(--text);
+    }
+
+    .map-button.done {
+      color: var(--accent);
+    }
+
+    .explanation {
+      display: none;
+      margin-top: 14px;
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(20, 20, 20, 0.44);
+      color: var(--soft);
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    .explanation.show {
+      display: block;
+    }
+
+    @media (max-width: 760px) {
+      .app {
+        width: min(100vw - 20px, 920px);
+        padding: 20px 0 32px;
+      }
+
+      .content {
+        grid-template-columns: 1fr;
+      }
+
+      .main {
+        border-right: 0;
+        padding: 22px 18px;
+      }
+
+      .side {
+        border-top: 1px solid var(--line);
+      }
+
+      .question {
+        font-size: 19px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section class="quiz-shell" aria-label="시험 문제 풀이">
+      <header class="topbar">
+        <button class="nav-button" id="prevBtn" type="button" aria-label="이전 문제">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M15 18l-6-6 6-6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+        </button>
+        <div class="progress">
+          <div class="progress-row">
+            <span class="progress-title" id="quizTitle">수학 미니 테스트</span>
+            <span id="progressText">문제 1 / 5</span>
+          </div>
+          <div class="progress-track" aria-hidden="true">
+            <div class="progress-fill" id="progressFill"></div>
+          </div>
+        </div>
+        <button class="nav-button" id="nextBtn" type="button" aria-label="다음 문제">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+        </button>
+      </header>
+
+      <div class="content">
+        <section class="main">
+          <div class="meta" id="tagList"></div>
+
+          <article class="question-card">
+            <div class="question-kicker" id="questionKicker">Geometry</div>
+            <h1 class="question" id="questionText"></h1>
+          </article>
+
+          <div class="choices" id="choices"></div>
+
+          <div class="feedback" id="feedback" role="status"></div>
+
+          <div class="actions">
+            <button class="action-button primary" id="checkBtn" type="button">정답 확인</button>
+            <button class="action-button" id="explainBtn" type="button">해설 보기</button>
+            <button class="action-button" id="resetBtn" type="button">선택 초기화</button>
+          </div>
+
+          <section class="explanation" id="explanation"></section>
+        </section>
+
+        <aside class="side">
+          <h2 class="side-title">진행 상황</h2>
+          <div class="stat-grid">
+            <div class="stat">
+              <div class="stat-label">맞힌 문제</div>
+              <div class="stat-value" id="scoreText">0</div>
+            </div>
+            <div class="stat">
+              <div class="stat-label">현재 난이도</div>
+              <div class="stat-value" id="levelText">쉬움</div>
+            </div>
+          </div>
+
+          <h2 class="side-title">문제 이동</h2>
+          <div class="question-map" id="questionMap"></div>
+        </aside>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const questions = [
+      {
+        id: 1,
+        title: '문제 1',
+        topic: 'Arithmetic',
+        level: '쉬움',
+        tags: ['수학', '사칙연산'],
+        text: '12 + 18의 값은?',
+        choices: ['24', '28', '30', '32', '36'],
+        answer: 3,
+        explanation: '12와 18을 더하면 30입니다. 따라서 정답은 3번입니다.'
+      },
+      {
+        id: 2,
+        title: '문제 2',
+        topic: 'Statistics',
+        level: '보통',
+        tags: ['수학', '평균'],
+        text: '5, 7, 8, 10의 평균은?',
+        choices: ['6', '7.5', '8', '9', '10'],
+        answer: 2,
+        explanation: '네 수의 합은 30이고, 4개이므로 평균은 30 ÷ 4 = 7.5입니다.'
+      },
+      {
+        id: 3,
+        title: '문제 3',
+        topic: 'Geometry',
+        level: '쉬움',
+        tags: ['수학', '도형', '넓이'],
+        text: '가로가 6cm, 세로가 4cm인 직사각형의 넓이는?',
+        choices: ['10cm²', '20cm²', '24cm²', '30cm²', '36cm²'],
+        answer: 3,
+        explanation: '직사각형의 넓이는 가로 × 세로입니다. 6 × 4 = 24이므로 정답은 24cm²입니다.'
+      },
+      {
+        id: 4,
+        title: '문제 4',
+        topic: 'Ratio',
+        level: '보통',
+        tags: ['수학', '비율'],
+        text: '어떤 수의 25%가 18일 때, 그 수는?',
+        choices: ['45', '54', '64', '72', '90'],
+        answer: 4,
+        explanation: '25%는 1/4입니다. 어떤 수의 1/4이 18이면 전체는 18 × 4 = 72입니다.'
+      },
+      {
+        id: 5,
+        title: '문제 5',
+        topic: 'Algebra',
+        level: '어려움',
+        tags: ['수학', '방정식'],
+        text: '2x + 5 = 17일 때 x의 값은?',
+        choices: ['4', '5', '6', '7', '8'],
+        answer: 3,
+        explanation: '2x + 5 = 17에서 양변에 5를 빼면 2x = 12입니다. 따라서 x = 6입니다.'
+      }
+    ];
+
+    const state = {
+      index: 2,
+      selected: new Map(),
+      checked: new Set(),
+      explanationOpen: false
+    };
+
+    const els = {
+      prevBtn: document.getElementById('prevBtn'),
+      nextBtn: document.getElementById('nextBtn'),
+      progressText: document.getElementById('progressText'),
+      progressFill: document.getElementById('progressFill'),
+      tagList: document.getElementById('tagList'),
+      questionKicker: document.getElementById('questionKicker'),
+      questionText: document.getElementById('questionText'),
+      choices: document.getElementById('choices'),
+      feedback: document.getElementById('feedback'),
+      checkBtn: document.getElementById('checkBtn'),
+      explainBtn: document.getElementById('explainBtn'),
+      resetBtn: document.getElementById('resetBtn'),
+      explanation: document.getElementById('explanation'),
+      scoreText: document.getElementById('scoreText'),
+      levelText: document.getElementById('levelText'),
+      questionMap: document.getElementById('questionMap')
+    };
+
+    function currentQuestion() {
+      return questions[state.index];
+    }
+
+    function selectedAnswer() {
+      return state.selected.get(currentQuestion().id) ?? null;
+    }
+
+    function isChecked() {
+      return state.checked.has(currentQuestion().id);
+    }
+
+    function score() {
+      return questions.filter((question) => state.checked.has(question.id) && state.selected.get(question.id) === question.answer).length;
+    }
+
+    function setQuestion(index) {
+      state.index = Math.max(0, Math.min(questions.length - 1, index));
+      state.explanationOpen = false;
+      render();
+    }
+
+    function renderTags(question) {
+      els.tagList.innerHTML = '';
+      const level = document.createElement('span');
+      level.className = 'pill level';
+      level.textContent = question.level;
+      els.tagList.appendChild(level);
+
+      for (const tag of question.tags) {
+        const chip = document.createElement('span');
+        chip.className = 'pill';
+        chip.textContent = tag;
+        els.tagList.appendChild(chip);
+      }
+    }
+
+    function renderChoices(question) {
+      els.choices.innerHTML = '';
+      const selected = selectedAnswer();
+      const checked = isChecked();
+
+      question.choices.forEach((label, index) => {
+        const number = index + 1;
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'choice';
+        if (selected === number) button.classList.add('selected');
+        if (checked && number === question.answer) button.classList.add('correct');
+        if (checked && selected === number && number !== question.answer) button.classList.add('wrong');
+
+        button.innerHTML = `
+          <span class="choice-number">${number}</span>
+          <span class="choice-label">${label}</span>
+          <span class="choice-state">${checked && number === question.answer ? '정답' : selected === number ? '선택' : ''}</span>
+        `;
+        button.addEventListener('click', () => {
+          state.selected.set(question.id, number);
+          render();
+        });
+        els.choices.appendChild(button);
+      });
+    }
+
+    function renderFeedback(question) {
+      const selected = selectedAnswer();
+      const checked = isChecked();
+      els.feedback.className = 'feedback';
+      els.feedback.textContent = '';
+
+      if (!checked) return;
+
+      els.feedback.classList.add('show');
+      if (selected === question.answer) {
+        els.feedback.classList.add('correct');
+        els.feedback.textContent = '정답입니다. 풀이를 확인한 뒤 다음 문제로 넘어가도 좋습니다.';
+      } else if (selected == null) {
+        els.feedback.classList.add('wrong');
+        els.feedback.textContent = '아직 답을 선택하지 않았습니다.';
+      } else {
+        els.feedback.classList.add('wrong');
+        els.feedback.textContent = `오답입니다. 정답은 ${question.answer}번입니다.`;
+      }
+    }
+
+    function renderMap() {
+      els.questionMap.innerHTML = '';
+      for (let i = 0; i < questions.length; i += 1) {
+        const question = questions[i];
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'map-button';
+        if (i === state.index) button.classList.add('current');
+        if (state.checked.has(question.id)) button.classList.add('done');
+        button.textContent = String(question.id);
+        button.addEventListener('click', () => setQuestion(i));
+        els.questionMap.appendChild(button);
+      }
+    }
+
+    function render() {
+      const question = currentQuestion();
+      els.prevBtn.disabled = state.index === 0;
+      els.nextBtn.disabled = state.index === questions.length - 1;
+      els.progressText.textContent = `문제 ${state.index + 1} / ${questions.length}`;
+      els.progressFill.style.width = `${((state.index + 1) / questions.length) * 100}%`;
+      els.questionKicker.textContent = question.topic;
+      els.questionText.textContent = question.text;
+      els.levelText.textContent = question.level;
+      els.scoreText.textContent = String(score());
+      els.explainBtn.textContent = state.explanationOpen ? '해설 닫기' : '해설 보기';
+      els.explanation.textContent = question.explanation;
+      els.explanation.className = state.explanationOpen ? 'explanation show' : 'explanation';
+
+      renderTags(question);
+      renderChoices(question);
+      renderFeedback(question);
+      renderMap();
+    }
+
+    els.prevBtn.addEventListener('click', () => setQuestion(state.index - 1));
+    els.nextBtn.addEventListener('click', () => setQuestion(state.index + 1));
+    els.checkBtn.addEventListener('click', () => {
+      state.checked.add(currentQuestion().id);
+      render();
+    });
+    els.explainBtn.addEventListener('click', () => {
+      state.explanationOpen = !state.explanationOpen;
+      render();
+    });
+    els.resetBtn.addEventListener('click', () => {
+      const id = currentQuestion().id;
+      state.selected.delete(id);
+      state.checked.delete(id);
+      state.explanationOpen = false;
+      render();
+    });
+
+    render();
+  </script>
+</body>
+</html>

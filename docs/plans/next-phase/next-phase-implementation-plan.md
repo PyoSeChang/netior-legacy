@@ -479,7 +479,7 @@ import 변경: `CanvasTypeEditor` 삭제, `CanvasEditor` → `NetworkEditor`
 | `tools/canvas-type-tools.ts` | 파일 삭제 |
 | `tools/index.ts` | `registerCanvasTypeTools` import/호출 삭제 |
 | `tools/project-tools.ts` | `listCanvasTypes` 호출 → 삭제, `listCanvases` → `listNetworks`, 응답 내 canvas 관련 항목 → network |
-| `tools/schema-tools.ts` | `node_shape` 설명 "canvas rendering" → "network rendering" |
+| `tools/schema-tools.ts` | schema visual rendering 옵션 제거 |
 
 #### narre-server
 

@@ -51,6 +51,9 @@ import { migrate048 } from './migrations/048-interactive-view-state';
 import { migrate049 } from './migrations/049-interactive-view-templates';
 import { migrate050 } from './migrations/050-interactive-view-inheritance';
 import { migrate051 } from './migrations/051-interactive-view-user-authored-templates';
+import { migrate052 } from './migrations/052-remove-schema-node-shape';
+import { migrate053 } from './migrations/053-network-representation-grammar';
+import { migrate054 } from './migrations/054-relationships';
 import {
   ensureProjectNodeInUniverseForDb,
   ensureProjectOntologyNetworkForDb,
@@ -115,6 +118,9 @@ const migrations: Migration[] = [
   { version: 49, migrate: migrate049 },
   { version: 50, migrate: migrate050 },
   { version: 51, migrate: migrate051 },
+  { version: 52, migrate: migrate052 },
+  { version: 53, migrate: migrate053 },
+  { version: 54, migrate: migrate054 },
 ];
 
 export function hasColumn(db: Database.Database, table: string, column: string): boolean {

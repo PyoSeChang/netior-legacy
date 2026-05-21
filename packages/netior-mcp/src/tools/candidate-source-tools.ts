@@ -14,6 +14,15 @@ function parseInlineOptions(options: string | null): string[] {
     return [];
   }
 
+  try {
+    const parsed = JSON.parse(options) as { choices?: unknown };
+    if (Array.isArray(parsed.choices)) {
+      return parsed.choices.filter((item): item is string => typeof item === 'string' && item.trim().length > 0);
+    }
+  } catch {
+    // Legacy inline options were stored as comma-separated text.
+  }
+
   return options
     .split(',')
     .map((value) => value.trim())

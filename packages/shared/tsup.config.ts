@@ -8,6 +8,7 @@ export default defineConfig({
     'i18n/index': 'src/i18n/index.ts',
     'dsl/index': 'src/dsl/index.ts',
     'interactive-view/index': 'src/interactive-view/index.ts',
+    'semantic-editor': 'src/semantic-editor.ts',
   },
   format: ['esm', 'cjs'],
   dts: true,

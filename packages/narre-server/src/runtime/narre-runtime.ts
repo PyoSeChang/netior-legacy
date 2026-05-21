@@ -21,7 +21,7 @@ import {
   type SystemPromptParams,
 } from '../system-prompt.js';
 import { buildProjectPromptMetadata } from '../project-prompt-metadata.js';
-import { parseSkillInvocation } from '../skill-invocation-router.js';
+import { parseSkillInvocations } from '../skill-invocation-router.js';
 import { SessionStore } from '../session-store.js';
 import type { NarreMcpServerConfig, NarreProviderAdapter } from './provider-adapter.js';
 import {
@@ -44,6 +44,7 @@ export interface NarreRuntimeChatRequest {
   mentions?: NarreMention[];
   activeAgent?: AgentDefinition;
   runtimeProfile?: AgentRuntimeProfile;
+  skillIds?: string[];
   currentRunId?: string | null;
   currentTaskId?: string | null;
   assignmentId?: string | null;
@@ -75,6 +76,10 @@ export class NarreRuntime {
 
   resolveUiCall(toolCallId: string, response: unknown): boolean {
     return this.config.provider.resolveUiCall(toolCallId, response);
+  }
+
+  async steer(sessionId: string, message: string): Promise<boolean> {
+    return await this.config.provider.steer?.(sessionId, message) ?? false;
   }
 
   async listSkills(projectId: string): Promise<SkillDefinition[]> {
@@ -114,44 +119,47 @@ export class NarreRuntime {
 
     const metadata = await (this.config.resolvePromptMetadata ?? buildProjectPromptMetadata)(request.projectId);
     const behaviorSettings = this.config.behaviorSettings ?? DEFAULT_NARRE_BEHAVIOR_SETTINGS;
-    const availableSkills = await loadAvailableSkills({
+    const loadedSkills = await loadAvailableSkills({
       projectRootDir: metadata.projectRootDir ?? null,
       sharedUserDataRootDir: this.config.sharedUserDataRootDir ?? null,
       projectAgentId: this.config.projectUserAgentId ?? null,
       globalAgentId: this.config.globalUserAgentId ?? null,
     });
+    const availableSkills = filterSkillsForAgent(loadedSkills, request.activeAgent);
     const userAgentPromptDefinitions = await loadUserAgentPromptDefinitions({
       projectRootDir: metadata.projectRootDir ?? null,
       sharedUserDataRootDir: this.config.sharedUserDataRootDir ?? null,
       projectAgentId: this.config.projectUserAgentId ?? null,
       globalAgentId: this.config.globalUserAgentId ?? null,
     });
-    const parsedSkillInvocation = parseSkillInvocation(request.message, availableSkills);
-    const activeSkill: NarreSkillDefinition | null = parsedSkillInvocation
-      ? parsedSkillInvocation.skill as NarreSkillDefinition
-      : null;
+    const parsedSkillInvocations = parseSkillInvocations(request.message, availableSkills);
     const skillContext: NarreSkillContext = {
       params: metadata,
       behavior: behaviorSettings,
       projectId: request.projectId,
       historyTurns,
     };
+    const selectedSkills = resolveSelectedSkills(availableSkills, parsedSkillInvocations, request.skillIds);
     const userAgentSystemPrompt = buildUserAgentSystemPrompt(userAgentPromptDefinitions);
-    const skillPrompt = activeSkill
-      ? activeSkill.buildPrompt(skillContext)
+    const selectedSkillPrompt = selectedSkills.length > 0
+      ? selectedSkills.map((skill) => skill.buildPrompt(skillContext)).join('\n\n')
       : '';
     const runtimeProfile = request.runtimeProfile ?? request.activeAgent?.runtimeProfile;
     const systemPrompt = [
       buildSystemPrompt(metadata, behaviorSettings),
       buildActiveAgentSystemPrompt(request.activeAgent, runtimeProfile),
       userAgentSystemPrompt,
-      skillPrompt,
+      selectedSkillPrompt,
     ]
       .filter((section) => section.trim().length > 0)
       .join('\n\n');
-    const normalizedSkillArgs = parsedSkillInvocation
-      ? activeSkill?.normalizeArgs?.(request.message, parsedSkillInvocation.invocation) ?? parsedSkillInvocation.invocation.args
-      : undefined;
+    const normalizedSkillArgs = Object.fromEntries(
+      parsedSkillInvocations.map((parsed) => [
+        parsed.invocation.skillId,
+        (parsed.skill as NarreSkillDefinition).normalizeArgs?.(request.message, parsed.invocation)
+          ?? parsed.invocation.args,
+      ]),
+    );
     const supervisorSessionId = buildNarreSupervisorSessionId(resolvedSessionId);
     this.config.supervisor?.registerNarreSession({
       narreSessionId: resolvedSessionId,
@@ -160,7 +168,7 @@ export class NarreRuntime {
       surfaceId: request.activeAgent ? `narre-agent:${request.activeAgent.id}` : undefined,
       title: sessionData?.title ?? request.message.slice(0, 60),
       status: 'working',
-      skillId: activeSkill?.id ?? null,
+      skillId: selectedSkills[0]?.id ?? null,
       currentRunId: request.currentRunId ?? null,
       currentTaskId: request.currentTaskId ?? null,
       metadata: {
@@ -169,12 +177,13 @@ export class NarreRuntime {
         ...(request.assignmentId ? { assignmentId: request.assignmentId } : {}),
         ...(runtimeProfile?.model ? { model: runtimeProfile.model } : {}),
         ...(runtimeProfile?.reasoningEffort ? { reasoningEffort: runtimeProfile.reasoningEffort } : {}),
+        ...(selectedSkills.length > 0 ? { selectedSkillIds: selectedSkills.map((skill) => skill.id).join(',') } : {}),
       },
     });
 
     const processedMessage = this.buildPromptMessage(request.message, request.mentions);
 
-    const userTurn = buildUserTurn(request.message, request.mentions, parsedSkillInvocation?.invocation ?? null, normalizedSkillArgs);
+    const userTurn = buildUserTurn(request.message, request.mentions, parsedSkillInvocations.map((parsed) => parsed.invocation), normalizedSkillArgs);
     await this.config.sessionStore.appendTurn(resolvedSessionId, request.projectId, userTurn);
 
     const mcpServerPath = this.config.resolveMcpServerPath();
@@ -192,7 +201,7 @@ export class NarreRuntime {
     const mcpServerConfigs = this.buildMcpServerConfigs(
       mcpServerPath,
       request.projectId,
-      activeSkill,
+      selectedSkills,
       skillContext,
       runtimeProfile,
     );
@@ -209,6 +218,7 @@ export class NarreRuntime {
     const assistantBlocks: NarreTranscriptBlock[] = [];
     const assistantTurnId = buildTurnId();
     const assistantTurnCreatedAt = new Date().toISOString();
+    let assistantTurnCompletedAt: string | null = null;
     let checkpointPromise: Promise<void> = Promise.resolve();
     let activeTextBlock: Extract<NarreTranscriptBlock, { type: 'rich_text' }> | null = null;
 
@@ -216,6 +226,7 @@ export class NarreRuntime {
       id: assistantTurnId,
       role: 'assistant',
       createdAt: assistantTurnCreatedAt,
+      ...(assistantTurnCompletedAt ? { completedAt: assistantTurnCompletedAt } : {}),
       actor: {
         provider: resolveActorProvider(this.config.provider.name),
         ...(request.activeAgent ? { id: request.activeAgent.id } : {}),
@@ -390,6 +401,7 @@ export class NarreRuntime {
         return { sessionId: resolvedSessionId, assistantText: '' };
       }
 
+      assistantTurnCompletedAt = new Date().toISOString();
       await this.config.sessionStore.upsertTurn(resolvedSessionId, request.projectId, buildAssistantTurn());
       this.config.supervisor?.updateSessionStatus(supervisorSessionId, 'idle', {
         eventType: 'session_completed',
@@ -420,6 +432,7 @@ export class NarreRuntime {
     await checkpointPromise;
 
     if (assistantBlocks.length > 0) {
+      assistantTurnCompletedAt = new Date().toISOString();
       await this.config.sessionStore.upsertTurn(resolvedSessionId, request.projectId, buildAssistantTurn());
     }
 
@@ -443,7 +456,7 @@ export class NarreRuntime {
   private buildMcpServerConfigs(
     mcpServerPath: string,
     projectId: string,
-    activeSkill: NarreSkillDefinition | null,
+    selectedSkills: readonly NarreSkillDefinition[],
     skillContext: NarreSkillContext,
     runtimeProfile?: AgentRuntimeProfile,
   ): NarreMcpServerConfig[] {
@@ -458,18 +471,17 @@ export class NarreRuntime {
       baseEnv.ELECTRON_RUN_AS_NODE = '1';
     }
 
-    const profiles = Array.from(new Set(
-      activeSkill?.resolveToolProfiles?.(skillContext)
-      ?? [
-        'core',
-        ...(activeSkill?.additionalToolProfiles ?? []),
-      ],
-    ));
-    for (const profile of runtimeProfile?.toolProfileIds ?? []) {
-      profiles.push(profile);
-    }
+    const skillProfiles = [
+      ...selectedSkills.flatMap((skill) =>
+        skill.resolveToolProfiles?.(skillContext) ?? skill.additionalToolProfiles ?? [],
+      ),
+    ];
+    const profiles = Array.from(new Set([
+      ...(runtimeProfile?.toolProfileIds ?? []),
+      ...skillProfiles,
+    ]));
 
-    return Array.from(new Set(profiles)).map((profile) => ({
+    return profiles.map((profile) => ({
       name: profile === 'core' ? 'netior-core' : `netior-${profile}`,
       command: mcpCommand,
       args: [mcpServerPath],
@@ -512,6 +524,41 @@ function toPublicSkillDefinition(skill: NarreSkillDefinition): SkillDefinition {
     ...(skill.hint ? { hint: skill.hint } : {}),
     ...(skill.requiredMentionTypes ? { requiredMentionTypes: skill.requiredMentionTypes } : {}),
   };
+}
+
+function filterSkillsForAgent(
+  skills: readonly NarreSkillDefinition[],
+  agent: AgentDefinition | undefined,
+): NarreSkillDefinition[] {
+  if (!agent) {
+    return [];
+  }
+  const agentSkills = 'skills' in agent ? agent.skills : [];
+  if (agentSkills.length === 0) {
+    return [];
+  }
+
+  const allowedSkillIds = new Set(agentSkills.map((skill) => skill.id));
+  return skills.filter((skill) => allowedSkillIds.has(skill.id));
+}
+
+function resolveSelectedSkills(
+  allowedSkills: readonly NarreSkillDefinition[],
+  parsedSkillInvocations: readonly { skill: SkillDefinition }[],
+  requestedSkillIds: readonly string[] = [],
+): NarreSkillDefinition[] {
+  const allowedSkillById = new Map(allowedSkills.map((skill) => [skill.id, skill]));
+  const selectedSkillIds = [
+    ...parsedSkillInvocations.map((parsed) => parsed.skill.id),
+    ...requestedSkillIds,
+  ].filter((skillId, index, values) =>
+    allowedSkillById.has(skillId)
+    && values.indexOf(skillId) === index,
+  );
+
+  return selectedSkillIds
+    .map((skillId) => allowedSkillById.get(skillId) ?? null)
+    .filter((skill): skill is NarreSkillDefinition => Boolean(skill));
 }
 
 function buildTurnId(): string {
@@ -623,8 +670,11 @@ function getSystemAgentInstructionLines(systemAgentType: string): string[] {
         '',
         '### System Agent Responsibility',
         'You are Network Builder. Your primary job is turning accepted findings and user intent into concrete Netior network structure.',
+        'Do not define the user domain yourself. Use user-supplied domain meaning and accepted findings; ask or mark an assumption when domain meaning is missing.',
+        'When the request changes how a network represents work, choose or create the network type first, then design node types and edge types from fixed representation primitives before placing nodes or edges.',
+        'Do not put node card display, ports, routing, or edge presentation into schemas. Schemas model what exists; network representation grammar models how it appears on a work surface.',
         'You may propose or perform structure-changing work when the available tool profile and approval policy allow it.',
-        'Keep outputs handoff-ready: describe created or proposed instances, models, relation types, and unresolved questions.',
+        'Keep outputs handoff-ready: describe created or proposed network types, node types, edge types, instances, models, and unresolved questions.',
       ];
     case 'agent-operator':
       return [
@@ -649,26 +699,37 @@ function assistantBlocksToText(blocks: readonly NarreTranscriptBlock[]): string 
 function buildUserTurn(
   message: string,
   mentions: NarreMention[] | undefined,
-  skillInvocation: SkillInvocation | null,
-  skillArgs?: Record<string, string>,
+  skillInvocations: readonly SkillInvocation[],
+  skillArgsById: Record<string, Record<string, string>> = {},
 ): NarreTranscriptTurn {
   const blocks: NarreTranscriptBlock[] = [];
 
-  if (skillInvocation) {
-    const args = skillArgs ?? skillInvocation.args;
-    const skillName = skillInvocation.trigger?.type === 'slash'
-      ? skillInvocation.trigger.name
-      : skillInvocation.skillId;
+  if (skillInvocations.length > 0) {
+    for (const skillInvocation of skillInvocations) {
+      const args = skillArgsById[skillInvocation.skillId] ?? skillInvocation.args;
+      const skillName = skillInvocation.trigger?.type === 'slash'
+        ? skillInvocation.trigger.name
+        : skillInvocation.skillId;
 
-    blocks.push({
-      id: buildBlockId(),
-      type: 'skill',
-      skillId: skillInvocation.skillId,
-      name: skillName,
-      label: skillInvocation.trigger?.type === 'slash' ? `/${skillInvocation.trigger.name}` : skillName,
-      ...(Object.keys(args).length > 0 ? { args } : {}),
-      ...(mentions && mentions.length > 0 ? { refs: mentions } : {}),
-    });
+      blocks.push({
+        id: buildBlockId(),
+        type: 'skill',
+        skillId: skillInvocation.skillId,
+        name: skillName,
+        label: skillInvocation.trigger?.type === 'slash' ? `/${skillInvocation.trigger.name}` : skillName,
+        ...(Object.keys(args).length > 0 ? { args } : {}),
+        ...(mentions && mentions.length > 0 ? { refs: mentions } : {}),
+      });
+    }
+
+    const contentWithoutSkillLines = stripLeadingSkillInvocationLines(message);
+    if (contentWithoutSkillLines) {
+      blocks.push({
+        id: buildBlockId(),
+        type: 'rich_text',
+        text: contentWithoutSkillLines,
+      });
+    }
   } else {
     blocks.push({
       id: buildBlockId(),
@@ -684,6 +745,15 @@ function buildUserTurn(
     createdAt: new Date().toISOString(),
     blocks,
   };
+}
+
+function stripLeadingSkillInvocationLines(message: string): string {
+  const lines = message.trim().split(/\r?\n/);
+  while (lines[0]?.trim().startsWith('/')) {
+    lines.shift();
+  }
+
+  return lines.join('\n').trim();
 }
 
 function toolCallToBlock(toolCall: NarreToolCall): NarreToolBlock {

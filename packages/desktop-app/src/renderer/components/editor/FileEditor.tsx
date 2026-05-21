@@ -14,8 +14,9 @@ import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { CodeEditor } from './CodeEditor';
 import { ImageViewer } from './ImageViewer';
 import { PdfViewer } from './PdfViewer';
+import { BrowserEditor } from './BrowserEditor';
 import { UnsupportedFallback } from './UnsupportedFallback';
-import { getEditorType, getMonacoLanguage, type EditorType } from './editor-utils';
+import { getEditorType, getMonacoLanguage, toLocalFileUrl, type EditorType } from './editor-utils';
 import { MarkdownEditor } from './markdown/MarkdownEditor';
 import { toRelativePath } from '../../utils/path-utils';
 
@@ -122,6 +123,10 @@ export function FileEditor({ tab }: FileEditorProps): JSX.Element {
 
   if (session.isLoading) {
     return <div className="flex h-full items-center justify-center text-xs text-muted">{t('common.loading')}</div>;
+  }
+
+  if (editorType === 'browser') {
+    return <BrowserEditor key={`browser:${viewerRevision}`} tab={{ ...tab, type: 'browser', targetId: toLocalFileUrl(filePath) }} />;
   }
 
   return (

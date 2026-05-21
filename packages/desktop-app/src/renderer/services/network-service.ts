@@ -2,6 +2,7 @@
   Network, NetworkCreate, NetworkUpdate,
   NetworkNode, NetworkNodeCreate, NetworkNodeUpdate,
   Edge, EdgeCreate, EdgeUpdate,
+  Relationship, RelationshipCreate, RelationshipListFilters, RelationshipUpdate,
   ObjectRecord, Instance, FileEntity, Model, NetworkBreadcrumbItem,
   NetworkTreeNode, Layout,
 } from '@netior/shared/types';
@@ -24,7 +25,7 @@ export interface NetworkFullData {
     instance?: Instance;
     file?: FileEntity;
   })[];
-  edges: (Edge & { model?: Model })[];
+  edges: (Edge & { model?: Model; relationship?: Relationship & { model?: Model } })[];
   nodePositions: NodePosition[];
   edgeVisuals: EdgeVisual[];
 }
@@ -97,6 +98,30 @@ export async function deleteEdge(id: string): Promise<boolean> {
   return unwrapIpc(await window.electron.edge.delete(id));
 }
 
+export async function listRelationships(filters: RelationshipListFilters): Promise<Relationship[]> {
+  return unwrapIpc(await window.electron.relationship.list(filters as unknown as Record<string, unknown>));
+}
+
+export async function createRelationship(data: RelationshipCreate): Promise<Relationship> {
+  return unwrapIpc(await window.electron.relationship.create(data as unknown as Record<string, unknown>));
+}
+
+export async function getRelationship(id: string): Promise<Relationship | undefined> {
+  return unwrapIpc(await window.electron.relationship.get(id));
+}
+
+export async function updateRelationship(id: string, data: RelationshipUpdate): Promise<Relationship> {
+  return unwrapIpc(await window.electron.relationship.update(id, data as unknown as Record<string, unknown>));
+}
+
+export async function deleteRelationship(id: string): Promise<boolean> {
+  return unwrapIpc(await window.electron.relationship.delete(id));
+}
+
+export async function listRelationshipOccurrences(id: string): Promise<Edge[]> {
+  return unwrapIpc(await window.electron.relationship.listOccurrences(id));
+}
+
 export const networkService = {
   create: createNetwork, list: listNetworks, update: updateNetwork,
   delete: deleteNetwork, getFull: getNetworkFull,
@@ -104,4 +129,12 @@ export const networkService = {
   getAncestors: getNetworkAncestors, getTree: getNetworkTree,
   node: { add: addNetworkNode, update: updateNetworkNode, remove: removeNetworkNode },
   edge: { create: createEdge, get: getEdge, update: updateEdge, delete: deleteEdge },
+  relationship: {
+    list: listRelationships,
+    create: createRelationship,
+    get: getRelationship,
+    update: updateRelationship,
+    delete: deleteRelationship,
+    listOccurrences: listRelationshipOccurrences,
+  },
 };

@@ -78,6 +78,22 @@ export const BUILT_IN_SKILLS: readonly SkillDefinition[] = [
     hint: 'narre.command.interactiveViewHint',
     requiredMentionTypes: ['instance'],
   },
+  {
+    id: 'network-representation-authoring',
+    name: 'network-representation',
+    description: 'narre.command.networkRepresentation',
+    source: 'builtin',
+    trigger: { type: 'slash', name: 'network-representation' },
+    hint: 'narre.command.networkRepresentationHint',
+  },
+  {
+    id: 'schema-field-behavior',
+    name: 'schema-field-behavior',
+    description: 'narre.command.schemaFieldBehavior',
+    source: 'builtin',
+    trigger: { type: 'slash', name: 'schema-field-behavior' },
+    hint: 'narre.command.schemaFieldBehaviorHint',
+  },
 ] as const;
 
 export const SLASH_TRIGGER_SKILLS = BUILT_IN_SKILLS.filter(
@@ -271,6 +287,7 @@ export const IPC_CHANNELS = {
   NARRE_SET_API_KEY: 'narre:setApiKey',
   NARRE_RESPOND_CARD: 'narre:respondCard',
   NARRE_INTERRUPT_MESSAGE: 'narre:interruptMessage',
+  NARRE_STEER_MESSAGE: 'narre:steerMessage',
 } as const;
 
 // ============================================

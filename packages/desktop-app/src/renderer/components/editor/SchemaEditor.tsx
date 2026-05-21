@@ -24,12 +24,12 @@ import { useModelStore } from '../../stores/model-store';
 import { useEditorSession } from '../../hooks/useEditorSession';
 import { useI18n } from '../../hooks/useI18n';
 import { Input } from '../ui/Input';
+import { Button } from '../ui/Button';
 import { TextArea } from '../ui/TextArea';
 import { IconSelector } from '../ui/IconSelector';
 import { RadioGroup } from '../ui/RadioGroup';
 import { FilePicker } from '../ui/FilePicker';
 import { ColorPicker } from '../ui/ColorPicker';
-import { Select } from '../ui/Select';
 import { ScrollArea } from '../ui/ScrollArea';
 import { SchemaSlotDesigner, type ModelCategoryOption, type ModelOptionDefinition } from './SchemaSlotDesigner';
 import { useSettingsStore } from '../../stores/settings-store';
@@ -53,7 +53,6 @@ interface SchemaState {
   description: string | null;
   icon: string | null;
   color: string | null;
-  node_shape: string | null;
   file_template: string | null;
   models: ModelRefKey[];
 }
@@ -63,7 +62,6 @@ const EMPTY_SCHEMA_STATE: SchemaState = {
   description: null,
   icon: null,
   color: null,
-  node_shape: null,
   file_template: null,
   models: [],
 };
@@ -136,6 +134,7 @@ export function SchemaEditor({ tab }: SchemaEditorProps): JSX.Element {
     deleteMeaning,
   } = useSchemaStore();
   const updateSchema = useSchemaStore((s) => s.updateSchema);
+  const deleteSchema = useSchemaStore((s) => s.deleteSchema);
   const fieldComplexityLevel = useSettingsStore((s) => s.fieldComplexityLevel);
   const setShowSettings = useUIStore((s) => s.setShowSettings);
   const [activeSemanticCategory, setActiveSemanticCategory] = useState<SemanticCategoryRefKey>('time');
@@ -169,7 +168,6 @@ export function SchemaEditor({ tab }: SchemaEditorProps): JSX.Element {
         description: a.description,
         icon: a.icon,
         color: a.color,
-        node_shape: a.node_shape,
         file_template: a.file_template,
         models: normalizeModelRefs(a.models),
       };
@@ -393,6 +391,11 @@ export function SchemaEditor({ tab }: SchemaEditorProps): JSX.Element {
     [schemaId, tab.id, deleteField],
   );
 
+  const handleDelete = useCallback(async () => {
+    await deleteSchema(schemaId);
+    useEditorStore.getState().closeTab(tab.id);
+  }, [deleteSchema, schemaId, tab.id]);
+
   const handleToggleModel = useCallback(async (model: ModelRefKey, checked: boolean) => {
     const nextModels = checked
       ? [...new Set([...selectedModels, model])]
@@ -416,17 +419,6 @@ export function SchemaEditor({ tab }: SchemaEditorProps): JSX.Element {
     }
   }, [schemaId, ensureMeaning, modelDefinitionByKey, selectedModels, session, tab.id]);
 
-  const nodeShapeOptions = [
-    { value: 'rectangle', label: t('schema.rectangle') },
-    { value: 'rounded', label: t('schema.rounded') },
-    { value: 'circle', label: t('schema.circle') },
-    { value: 'diamond', label: t('schema.diamond') },
-    { value: 'hexagon', label: t('schema.hexagon') },
-    { value: 'parallelogram', label: t('schema.parallelogram') },
-    { value: 'cylinder', label: t('schema.cylinder') },
-    { value: 'stadium', label: t('schema.stadium') },
-  ];
-
   if (!schema) {
     return (
       <div className="flex h-full items-center justify-center text-xs text-muted">
@@ -446,7 +438,7 @@ export function SchemaEditor({ tab }: SchemaEditorProps): JSX.Element {
         description={t('schema.descriptionPlaceholder')}
         leadingVisual={<NodeVisual icon={editorState.icon ?? 'boxes'} size={24} imageSize={56} className="shrink-0" />}
       >
-        <NetworkObjectEditorSection title={t('editorShell.overview' as never)} viewMode="details">
+        <NetworkObjectEditorSection title={t('editorShell.overview' as never)} defaultOpen={tab.isDirty} viewMode="body">
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium text-secondary">{t('schema.name')}</label>
             <Input
@@ -497,17 +489,6 @@ export function SchemaEditor({ tab }: SchemaEditorProps): JSX.Element {
               onChange={(color) => update({ color })}
             />
           </div>
-
-          <div className="flex flex-col gap-2">
-            <span className="text-xs text-secondary">{t('schema.nodeShape')}</span>
-            <Select
-              options={nodeShapeOptions}
-              value={editorState.node_shape ?? ''}
-              onChange={(e) => update({ node_shape: e.target.value || null })}
-              placeholder={t('schema.nodeShapePlaceholder')}
-              selectSize="sm"
-            />
-          </div>
         </NetworkObjectEditorSection>
 
         <NetworkObjectEditorSection title={t('schema.fileTemplate')} defaultOpen={false} viewMode="details">
@@ -550,6 +531,19 @@ export function SchemaEditor({ tab }: SchemaEditorProps): JSX.Element {
             ]}
           />
         </NetworkObjectEditorSection>
+
+        <div className="mx-auto flex w-full max-w-[760px] justify-end px-6 pt-1" data-network-object-view-mode="details">
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="bg-status-error/10 text-status-error hover:bg-status-error/15 hover:text-status-error"
+            disabled={schema.source_kind !== 'project'}
+            onClick={() => { void handleDelete(); }}
+          >
+            {t('common.delete')}
+          </Button>
+        </div>
       </NetworkObjectEditorShell>
     </ScrollArea>
   );

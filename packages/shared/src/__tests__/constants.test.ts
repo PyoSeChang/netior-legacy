@@ -60,7 +60,13 @@ describe('AGENT_SKILL_STORAGE', () => {
 
 describe('BUILT_IN_SKILLS', () => {
   it('should expose built-in slash-triggered skills', () => {
-    expect(SLASH_TRIGGER_SKILLS.map((skill) => skill.id)).toEqual(['bootstrap', 'index', 'interactive-view']);
+    expect(SLASH_TRIGGER_SKILLS.map((skill) => skill.id)).toEqual([
+      'bootstrap',
+      'index',
+      'interactive-view',
+      'network-representation-authoring',
+      'schema-field-behavior',
+    ]);
     expect(findSkillBySlashTrigger('bootstrap')?.id).toBe('bootstrap');
     expect(findSkillBySlashTrigger('missing')).toBeNull();
   });

@@ -7,5 +7,6 @@ export interface OpenAIFamilyTransportRunContext extends NarreProviderRunContext
 
 export interface OpenAIFamilyTransport {
   readonly name: string;
+  steer?: (sessionId: string, message: string) => Promise<boolean> | boolean;
   run: (context: OpenAIFamilyTransportRunContext) => Promise<NarreProviderRunResult>;
 }

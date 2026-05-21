@@ -282,37 +282,6 @@ function localizeMeaningBindings(value: string | undefined, t: ReturnType<typeof
     .join(', ');
 }
 
-function renderNodeShapeValue(value: string | undefined, t: ReturnType<typeof useI18n>['t']): JSX.Element | string {
-  if (!value) return '';
-  const isCircle = value === 'circle';
-  const isDiamond = value === 'diamond';
-  const isHexagon = value === 'hexagon';
-  const isParallelogram = value === 'parallelogram';
-  const isCylinder = value === 'cylinder';
-  const translated = t(`schema.${value}` as never);
-  const label = translated === `schema.${value}` ? value : translated;
-  return (
-    <span className="inline-flex items-center gap-1.5" title={label} aria-label={label}>
-      <span
-        className={[
-          'inline-block h-4 w-5 border border-default bg-surface-hover',
-          isCircle ? 'rounded-full' : '',
-          isDiamond ? 'h-3.5 w-3.5 rotate-45 rounded-[2px]' : '',
-          value === 'rounded' ? 'rounded-md' : '',
-          value === 'stadium' ? 'rounded-full' : '',
-          !isCircle && !isDiamond && value !== 'rounded' && value !== 'stadium' ? 'rounded-[2px]' : '',
-        ].join(' ')}
-        style={{
-          ...(isHexagon ? { clipPath: 'polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%)' } : {}),
-          ...(isParallelogram ? { transform: 'skew(-16deg)' } : {}),
-          ...(isCylinder ? { borderRadius: '50% / 20%' } : {}),
-        }}
-      />
-      <span>{label}</span>
-    </span>
-  );
-}
-
 function inferToolKeyFromMessage(message: string): string | null {
   const match = message.match(/tool "([^"]+)"/i);
   return match?.[1] ?? null;
@@ -384,10 +353,6 @@ function PreviewValue({
 
   if (item.kind === 'color') {
     return <>{renderColorValue(item.value)}</>;
-  }
-
-  if (item.kind === 'node_shape') {
-    return <>{renderNodeShapeValue(item.value, t)}</>;
   }
 
   if (labelKey === 'fieldType') {

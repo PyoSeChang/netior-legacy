@@ -52,16 +52,24 @@ export function EdgeEditor({ tab }: EdgeEditorProps): JSX.Element {
       const ev = useNetworkStore.getState().edgeVisuals.find((v) => v.edgeId === edgeId);
       const parsed: EdgeVisualState = ev ? JSON.parse(ev.visualJson) : { color: null, line_style: null, directed: null };
       return {
-        model_id: e.model_id,
-        description: e.description,
+        model_id: e.relationship?.model_id ?? e.model_id,
+        description: e.relationship?.description ?? e.description,
         visual: parsed,
       };
     },
     save: async (state) => {
-      await networkService.edge.update(edgeId, {
-        model_id: state.model_id,
-        description: state.description,
-      });
+      const e = useNetworkStore.getState().edges.find((ed) => ed.id === edgeId);
+      if (e?.relationship_id) {
+        await networkService.relationship.update(e.relationship_id, {
+          model_id: state.model_id,
+          description: state.description,
+        });
+      } else {
+        await networkService.edge.update(edgeId, {
+          model_id: state.model_id,
+          description: state.description,
+        });
+      }
       await setEdgeVisual(edgeId, JSON.stringify(state.visual));
       const network = useNetworkStore.getState().currentNetwork;
       if (network) await openNetwork(network.id);
@@ -115,7 +123,7 @@ export function EdgeEditor({ tab }: EdgeEditorProps): JSX.Element {
   };
 
   // Resolve effective values for display (edge override > model default)
-  const selectedModel = models.find((model) => model.id === session.state.model_id) ?? edge.model;
+  const selectedModel = models.find((model) => model.id === session.state.model_id) ?? edge.relationship?.model ?? edge.model;
   const effectiveDirected = session.state.visual.directed != null ? session.state.visual.directed : (selectedModel?.directed ?? false);
 
   return (

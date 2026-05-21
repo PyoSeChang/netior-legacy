@@ -234,6 +234,7 @@ export function InstanceEditor({ tab }: InstanceEditorProps): JSX.Element {
   const {
     createInstance,
     updateInstance,
+    deleteInstance,
     loadByProject: loadInstancesByProject,
     upsertProperty,
     deleteProperty: deleteInstanceProperty,
@@ -733,6 +734,12 @@ export function InstanceEditor({ tab }: InstanceEditorProps): JSX.Element {
     session.setState((prev) => ({ ...prev, ...patch }));
   };
 
+  const handleDelete = async () => {
+    if (isDraft) return;
+    await deleteInstance(tab.targetId);
+    useEditorStore.getState().closeTab(tab.id);
+  };
+
   const selectedModelName = session.state.modelId ? (() => {
     const model = models.find((a) => a.id === session.state.modelId);
     return model ? model.name : null;
@@ -749,7 +756,7 @@ export function InstanceEditor({ tab }: InstanceEditorProps): JSX.Element {
           leadingVisual={<NodeVisual icon={session.state.icon ?? 'box'} size={24} imageSize={56} className="shrink-0" />}
           initialViewMode={tab.objectViewMode ?? 'body'}
         >
-          <NetworkObjectEditorSection title={t('editorShell.overview' as never)} viewMode="details">
+          <NetworkObjectEditorSection title={t('editorShell.overview' as never)} defaultOpen={isDraft} viewMode="body">
               <Input
                 value={session.state.title}
                 onChange={(e) => {
@@ -851,6 +858,8 @@ export function InstanceEditor({ tab }: InstanceEditorProps): JSX.Element {
               <InstanceBodyEditor
                 tabId={tab.id}
                 content={session.state.content ?? ''}
+                projectId={currentProject?.id}
+                instanceId={isDraft ? null : tab.targetId}
                 onChange={(content) => update({ content: content || null })}
               />
             </NetworkObjectEditorSection>
@@ -1239,6 +1248,20 @@ export function InstanceEditor({ tab }: InstanceEditorProps): JSX.Element {
                   ]}
                 />
               </NetworkObjectEditorSection>
+            )}
+
+            {!isDraft && (
+              <div className="mx-auto flex w-full max-w-[760px] justify-end px-6 pt-1" data-network-object-view-mode="details">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  className="bg-status-error/10 text-status-error hover:bg-status-error/15 hover:text-status-error"
+                  onClick={() => { void handleDelete(); }}
+                >
+                  {t('common.delete')}
+                </Button>
+              </div>
             )}
           </NetworkObjectEditorShell>
       </ScrollArea>

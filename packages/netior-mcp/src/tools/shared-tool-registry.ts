@@ -19,6 +19,9 @@ export function getActiveNetiorMcpToolProfile(): NetiorMcpToolProfile {
     case 'bootstrap-interview':
     case 'bootstrap-execution':
     case 'index-skill':
+    case 'interactive-view-authoring':
+    case 'network-representation-authoring':
+    case 'schema-field-behavior':
       return raw;
     default:
       return DEFAULT_NETIOR_MCP_TOOL_PROFILE;

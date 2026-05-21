@@ -38,8 +38,9 @@ export function useNetiorSync(projectId: string | null): void {
           break;
         }
         case 'edges':
+        case 'relationships':
         case 'layouts': {
-          // Refresh the current network to get updated edges/layouts
+          // Refresh the current network to get updated relationship-backed edges/layouts.
           const currentNetwork = useNetworkStore.getState().currentNetwork;
           if (currentNetwork) {
             useNetworkStore.getState().openNetwork(currentNetwork.id);

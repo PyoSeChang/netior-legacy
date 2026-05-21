@@ -98,7 +98,7 @@ export function FieldBehaviorSelect({
     <>
       <div
         ref={triggerRef}
-        className={`flex w-full min-w-[190px] items-start gap-2 rounded-lg border border-input bg-surface-input px-2.5 py-1.5 text-sm outline-none transition-all duration-fast hover:border-strong focus:border-accent ${open ? 'border-accent' : ''} ${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
+        className={`flex w-full min-w-[190px] items-center gap-2 rounded-lg border border-input bg-surface-input px-2.5 py-1.5 text-sm outline-none transition-all duration-fast hover:border-strong focus:border-accent ${open ? 'border-accent' : ''} ${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
         onClick={() => {
           if (!disabled) setOpen((current) => !current);
         }}
@@ -108,12 +108,11 @@ export function FieldBehaviorSelect({
         aria-expanded={open}
         aria-disabled={disabled}
       >
-        <SelectedIcon size={14} className="mt-0.5 shrink-0 text-muted" />
+        <SelectedIcon size={14} className="shrink-0 text-muted" />
         <div className="min-w-0 flex-1 text-left">
           <div className="truncate text-default">{t(selected.labelKey)}</div>
-          <div className="mt-0.5 truncate text-[11px] text-secondary">{t(selected.descriptionKey)}</div>
         </div>
-        <ChevronDown size={12} className={`mt-0.5 shrink-0 text-muted transition-transform ${open ? 'rotate-180' : ''}`} />
+        <ChevronDown size={12} className={`shrink-0 text-muted transition-transform ${open ? 'rotate-180' : ''}`} />
       </div>
       {open && createPortal(
         <div

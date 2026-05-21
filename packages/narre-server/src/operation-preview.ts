@@ -43,7 +43,6 @@ function genericMutationPreview(toolName: string, input: Record<string, unknown>
       value: formatOptional(value) ?? JSON.stringify(value),
       ...(label === 'icon' ? { kind: 'icon' as const } : {}),
       ...(label === 'color' ? { kind: 'color' as const } : {}),
-      ...(label === 'node_shape' ? { kind: 'node_shape' as const } : {}),
     }));
 
   return {
@@ -267,7 +266,6 @@ export async function buildNarreOperationPreview(
         ...(asString(input.description) ? [{ label: 'Description', value: asString(input.description)! }] : []),
         ...(asString(input.icon) ? [{ label: 'Icon', value: asString(input.icon)!, kind: 'icon' as const }] : []),
         ...(asString(input.color) ? [{ label: 'Color', value: asString(input.color)!, kind: 'color' as const }] : []),
-        ...(asString(input.node_shape) ? [{ label: 'Node shape', value: asString(input.node_shape)!, kind: 'node_shape' as const }] : []),
         ...(models.length > 0 ? [{ label: 'Models', value: models.join(', '), kind: 'model_list' as const }] : []),
         ...(input.file_template !== undefined ? [{ label: 'File template', value: formatOptional(input.file_template) ?? 'set' }] : []),
       ];
@@ -281,7 +279,7 @@ export async function buildNarreOperationPreview(
     }
 
     case 'update_schema': {
-      const changes = ['name', 'description', 'icon', 'color', 'node_shape', 'file_template', 'models']
+      const changes = ['name', 'description', 'icon', 'color', 'file_template', 'models']
         .filter((key) => input[key] !== undefined);
       return withContext(context, normalizedToolName, input, createPreview(normalizedToolName, {
         title: `Update schema${asString(input.name) ? `: ${asString(input.name)}` : ''}`,
@@ -296,7 +294,6 @@ export async function buildNarreOperationPreview(
             ...(key === 'models' ? { kind: 'model_list' as const } : {}),
             ...(key === 'icon' ? { kind: 'icon' as const } : {}),
             ...(key === 'color' ? { kind: 'color' as const } : {}),
-            ...(key === 'node_shape' ? { kind: 'node_shape' as const } : {}),
           })),
         ],
       }));
@@ -308,6 +305,8 @@ export async function buildNarreOperationPreview(
       const bindings = Array.isArray(input.bindings) ? input.bindings : [];
       const optionalItems: NarreOperationPreview['items'] = [
         ...(asString(input.options) ? [{ label: 'Options', value: asString(input.options)! }] : []),
+        ...(asString(input.behavior) ? [{ label: 'Behavior', value: asString(input.behavior)! }] : []),
+        ...(asString(input.source_schema_id) ? [{ label: 'Source schema', value: asString(input.source_schema_id)! }] : []),
         ...(bindings.length > 0 ? [{ label: 'Bindings', value: `${bindings.length}` }] : []),
         ...(meanings.length > 0 ? [{ label: 'Meaning bindings', value: meanings.join(', ') }] : []),
       ];

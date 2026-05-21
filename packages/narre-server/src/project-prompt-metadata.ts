@@ -5,6 +5,7 @@ import {
   getNetworkTree,
   getProjectById,
   getUniverseNetwork,
+  listNetworkTypes,
   listModelCategories,
   listModels,
   listSchemaFields,
@@ -24,6 +25,16 @@ function mapNetworkTree(nodes: NetworkTreeNode[]): NonNullable<SystemPromptParam
 function buildOptionsPreview(options: string | null): string[] | undefined {
   if (!options) {
     return undefined;
+  }
+
+  try {
+    const parsed = JSON.parse(options) as { choices?: unknown };
+    if (Array.isArray(parsed.choices)) {
+      const choices = parsed.choices.filter((item): item is string => typeof item === 'string' && item.trim().length > 0);
+      return choices.length > 0 ? choices.slice(0, 5) : undefined;
+    }
+  } catch {
+    // Legacy inline options were stored as comma-separated text.
   }
 
   const values = options
@@ -100,7 +111,6 @@ function mapSchemas(
     models: schema.models,
     icon: schema.icon,
     color: schema.color,
-    node_shape: schema.node_shape,
     fields: mapSchemaFields(schemaFieldsById.get(schema.id) ?? [], schemaNameMap),
     meanings: mapSchemaMeanings(schemaMeaningsById.get(schema.id) ?? []),
   }));
@@ -162,6 +172,7 @@ export async function buildProjectPromptMetadata(projectId: string): Promise<Sys
     universeNetwork,
     ontologyNetwork,
     networkTree,
+    networkTypes,
   ] = await Promise.all([
     listModels(projectId),
     listModelCategories(projectId),
@@ -169,6 +180,7 @@ export async function buildProjectPromptMetadata(projectId: string): Promise<Sys
     getUniverseNetwork(),
     getProjectOntologyNetwork(projectId),
     getNetworkTree(projectId),
+    listNetworkTypes(projectId),
   ]);
 
   const schemaNameMap = new Map<string, string>(schemas.map((schema) => [schema.id, schema.name]));
@@ -196,5 +208,12 @@ export async function buildProjectPromptMetadata(projectId: string): Promise<Sys
       ? { id: ontologyNetwork.id, name: ontologyNetwork.name }
       : null,
     networkTree: mapNetworkTree(networkTree),
+    networkTypes: networkTypes.map((networkType) => ({
+      id: networkType.id,
+      key: networkType.key,
+      name: networkType.name,
+      source_kind: networkType.source_kind,
+      surface_runtime: networkType.surface_runtime,
+    })),
   };
 }

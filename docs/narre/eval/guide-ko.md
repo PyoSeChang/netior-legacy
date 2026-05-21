@@ -219,6 +219,10 @@ scenarios/<scenario-id>/
 - `fantasy-character-orm`
 - `fantasy-quest-orm`
 
+Interactive View 시나리오:
+
+- `exam-question-interactive-view`
+
 ### fantasy-world-bootstrap
 
 목적:
@@ -259,6 +263,23 @@ scenarios/<scenario-id>/
 - `required_artifacts -> Artifact`
 - `status`, `priority`는 `select`
 
+### exam-question-interactive-view
+
+목적:
+
+- 시험 문제 schema와 여러 문제 instance를 만들고
+- schema 기본 Interactive View template을 생성하고
+- 문제 풀이, 정답 확인, 해설 표시, 이전/다음 문제 이동을 검증한다.
+
+핵심 검증:
+
+- 저장 전에 `dry_run_interactive_view_template`을 호출해야 한다.
+- source는 `@netior/interactive-sdk`만 Interactive SDK import로 사용해야 한다.
+- manifest는 `kind: "interactive-view"`, `sdkVersion: 1`, `target.kind/id`, `permissions.readFields/writeFields/viewState/dsl` 형식을 사용해야 한다.
+- 다음/이전 문제 이동은 renderer store import가 아니라 `useOpenObject('instance', refId, title)` 또는 `useOpenInstance(refId, title)`로 작성해야 한다.
+- DSL hook을 쓰면 `permissions.dsl: true`가 필요하다.
+- DSL operator는 shared validator의 allowlist 안에 있어야 한다.
+
 ## 10. Verify 항목
 
 현재 `verify/checks.yaml`에서 지원하는 주요 항목:
@@ -266,6 +287,7 @@ scenarios/<scenario-id>/
 - `db`
 - `db_absent`
 - `db_row_match`
+- `interactive_view_template`
 - `side_effect`
 - `tool`
 - `tool_absent_in_turn`
@@ -292,6 +314,20 @@ DB row 개수나 특정 컬럼 값 포함 여부를 본다.
 ### db_row_match
 
 특정 row가 존재하고, 추가 컬럼까지 맞는지 본다.
+
+### interactive_view_template
+
+Interactive View template의 source/manifest/검증 상태를 deterministic하게 검사한다.
+
+주요 용도:
+
+- source import가 현재 SDK 계약을 따르는지 확인
+- legacy manifest shape이 남아 있지 않은지 확인
+- `dry_run_interactive_view_template` 이후 저장됐는지 확인
+- navigation API가 `useOpenObject` 또는 `useOpenInstance`를 쓰는지 확인
+- DSL permission과 DSL operator 사용이 validator 계약을 따르는지 확인
+
+이 검증은 Interactive View를 실제 브라우저에서 클릭하는 E2E 대체물이 아니다. Narre가 저장한 template이 런타임에 로드 가능한 계약을 만족하는지 먼저 막는 deterministic gate다.
 
 ### side_effect
 

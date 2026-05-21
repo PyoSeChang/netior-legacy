@@ -791,7 +791,7 @@ export function registerNarreIpc(): void {
           color: schema.color,
           icon: schema.icon,
           description: schema.description,
-          meta: { nodeShape: schema.node_shape, models: schema.models },
+          meta: { models: schema.models },
         });
       }
 
@@ -840,6 +840,7 @@ export function registerNarreIpc(): void {
         projectId: string;
         message: string;
         mentions?: unknown[];
+        skillIds?: unknown[];
       };
 
       console.log(
@@ -858,7 +859,10 @@ export function registerNarreIpc(): void {
         return { success: false, error: 'No main window available' };
       }
 
-      const body = JSON.stringify({ sessionId, projectId, message, mentions });
+      const skillIds = Array.isArray(data.skillIds)
+        ? data.skillIds.filter((value): value is string => typeof value === 'string')
+        : undefined;
+      const body = JSON.stringify({ sessionId, projectId, message, mentions, skillIds });
       const chatUrl = new URL('/chat', await ensureNarreServerBaseUrl());
 
       const req = http.request(
@@ -1048,6 +1052,57 @@ export function registerNarreIpc(): void {
       });
 
       return { success: true, data: true };
+    } catch (err) {
+      return { success: false, error: (err as Error).message };
+    }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.NARRE_STEER_MESSAGE, async (_e, data: Record<string, unknown>): Promise<IpcResult<boolean>> => {
+    try {
+      const { sessionId, message } = data as { sessionId?: string; message?: string };
+      if (!sessionId || typeof sessionId !== 'string') {
+        return { success: false, error: 'sessionId is required' };
+      }
+      if (!message || typeof message !== 'string' || message.trim().length === 0) {
+        return { success: false, error: 'message is required' };
+      }
+
+      const body = JSON.stringify({ sessionId, message });
+      const steerUrl = new URL('/chat/steer', await ensureNarreServerBaseUrl());
+
+      return new Promise((resolve) => {
+        const req = http.request(
+          steerUrl,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Content-Length': Buffer.byteLength(body),
+            },
+          },
+          (res) => {
+            let responseBody = '';
+            res.on('data', (chunk: Buffer) => { responseBody += chunk.toString(); });
+            res.on('end', () => {
+              if ((res.statusCode ?? 500) >= 400) {
+                try {
+                  const parsed = JSON.parse(responseBody) as { error?: string };
+                  resolve({ success: false, error: parsed.error ?? 'Failed to steer Narre message' });
+                } catch {
+                  resolve({ success: false, error: responseBody || 'Failed to steer Narre message' });
+                }
+                return;
+              }
+              resolve({ success: true, data: true });
+            });
+          },
+        );
+        req.on('error', (err) => {
+          resolve({ success: false, error: err.message });
+        });
+        req.write(body);
+        req.end();
+      });
     } catch (err) {
       return { success: false, error: (err as Error).message };
     }

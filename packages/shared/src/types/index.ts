@@ -90,6 +90,7 @@ export interface InstanceUpdate {
 export interface Network {
   id: string;
   project_id: string | null;
+  network_type_id: string | null;
   scope: string;
   kind: NetworkKind;
   parent_network_id: string | null;
@@ -106,12 +107,144 @@ export interface NetworkCreate {
   scope?: string;
   kind?: NetworkKind;
   parent_network_id?: string;
+  network_type_id?: string | null;
 }
 
 export interface NetworkUpdate {
   name?: string;
   scope?: string;
   parent_network_id?: string | null;
+  network_type_id?: string | null;
+}
+
+export type SurfaceRuntimeKey = 'canvas' | 'grid';
+
+export interface NetworkType {
+  id: string;
+  project_id: string | null;
+  key: string;
+  name: string;
+  description: string | null;
+  source_kind: OntologySourceKind;
+  source_id: string | null;
+  source_ref: string | null;
+  source_version: string | null;
+  surface_runtime: SurfaceRuntimeKey;
+  grammar_json: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface NetworkTypeCreate {
+  project_id?: string | null;
+  key: string;
+  name: string;
+  description?: string | null;
+  source_kind?: OntologySourceKind;
+  source_id?: string | null;
+  source_ref?: string | null;
+  source_version?: string | null;
+  surface_runtime: SurfaceRuntimeKey;
+  grammar_json?: string;
+}
+
+export interface NetworkTypeUpdate {
+  name?: string;
+  description?: string | null;
+  grammar_json?: string;
+}
+
+export interface NetworkNodeType {
+  id: string;
+  network_type_id: string;
+  key: string;
+  name: string;
+  description: string | null;
+  source_kind: OntologySourceKind;
+  source_id: string | null;
+  source_ref: string | null;
+  source_version: string | null;
+  renderer_key: string;
+  presentation_json: string;
+  projection_json: string;
+  interface_json: string;
+  placement_json: string;
+  interaction_json: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface NetworkNodeTypeCreate {
+  network_type_id: string;
+  key: string;
+  name: string;
+  description?: string | null;
+  source_kind?: OntologySourceKind;
+  source_id?: string | null;
+  source_ref?: string | null;
+  source_version?: string | null;
+  renderer_key: string;
+  presentation_json?: string;
+  projection_json?: string;
+  interface_json?: string;
+  placement_json?: string;
+  interaction_json?: string;
+}
+
+export interface NetworkNodeTypeUpdate {
+  name?: string;
+  description?: string | null;
+  renderer_key?: string;
+  presentation_json?: string;
+  projection_json?: string;
+  interface_json?: string;
+  placement_json?: string;
+  interaction_json?: string;
+}
+
+export interface NetworkEdgeType {
+  id: string;
+  network_type_id: string;
+  key: string;
+  name: string;
+  description: string | null;
+  source_kind: OntologySourceKind;
+  source_id: string | null;
+  source_ref: string | null;
+  source_version: string | null;
+  renderer_key: string;
+  presentation_json: string;
+  routing_json: string;
+  interface_json: string;
+  interaction_json: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface NetworkEdgeTypeCreate {
+  network_type_id: string;
+  key: string;
+  name: string;
+  description?: string | null;
+  source_kind?: OntologySourceKind;
+  source_id?: string | null;
+  source_ref?: string | null;
+  source_version?: string | null;
+  renderer_key: string;
+  presentation_json?: string;
+  routing_json?: string;
+  interface_json?: string;
+  interaction_json?: string;
+}
+
+export interface NetworkEdgeTypeUpdate {
+  name?: string;
+  description?: string | null;
+  renderer_key?: string;
+  presentation_json?: string;
+  routing_json?: string;
+  interface_json?: string;
+  interaction_json?: string;
 }
 
 // ============================================
@@ -260,6 +393,7 @@ export interface NetworkNode {
   network_id: string;
   object_id: string;
   node_type: NodeType;
+  node_type_id: string | null;
   parent_node_id: string | null;
   metadata: string | null;
   created_at: string;
@@ -270,12 +404,14 @@ export interface NetworkNodeCreate {
   network_id: string;
   object_id: string;
   node_type?: NodeType;
+  node_type_id?: string | null;
   parent_node_id?: string;
   metadata?: string | null;
 }
 
 export interface NetworkNodeUpdate {
   node_type?: NodeType;
+  node_type_id?: string | null;
   parent_node_id?: string | null;
   metadata?: string | null;
 }
@@ -289,7 +425,12 @@ export interface Edge {
   network_id: string;
   source_node_id: string;
   target_node_id: string;
+  relationship_id: string | null;
   model_id: string | null;
+  edge_type_id: string | null;
+  source_port_key: string | null;
+  target_port_key: string | null;
+  route_json: string | null;
   description: string | null;
   created_at: string;
 }
@@ -298,13 +439,73 @@ export interface EdgeCreate {
   network_id: string;
   source_node_id: string;
   target_node_id: string;
+  relationship_id?: string | null;
   model_id?: string | null;
+  edge_type_id?: string | null;
+  source_port_key?: string | null;
+  target_port_key?: string | null;
+  route_json?: string | null;
   description?: string;
 }
 
 export interface EdgeUpdate {
+  relationship_id?: string | null;
+  model_id?: string | null;
+  edge_type_id?: string | null;
+  source_port_key?: string | null;
+  target_port_key?: string | null;
+  route_json?: string | null;
+  description?: string | null;
+}
+
+// ============================================
+// Relationship
+// ============================================
+
+export interface Relationship {
+  id: string;
+  project_id: string;
+  source_object_id: string;
+  target_object_id: string;
+  model_id: string | null;
+  description: string | null;
+  properties_json: string | null;
+  source_kind: OntologySourceKind;
+  source_id: string | null;
+  source_ref: string | null;
+  source_version: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface RelationshipCreate {
+  project_id: string;
+  source_object_id: string;
+  target_object_id: string;
   model_id?: string | null;
   description?: string | null;
+  properties_json?: string | null;
+  source_kind?: OntologySourceKind;
+  source_id?: string | null;
+  source_ref?: string | null;
+  source_version?: string | null;
+}
+
+export interface RelationshipUpdate {
+  model_id?: string | null;
+  description?: string | null;
+  properties_json?: string | null;
+  source_kind?: OntologySourceKind;
+  source_id?: string | null;
+  source_ref?: string | null;
+  source_version?: string | null;
+}
+
+export interface RelationshipListFilters {
+  project_id: string;
+  source_object_id?: string;
+  target_object_id?: string;
+  model_id?: string;
 }
 
 // ============================================
@@ -647,13 +848,21 @@ export interface EdgeVisual {
 
 export interface NetworkFullData {
   network: Network;
+  networkType?: NetworkType;
   layout: Layout | undefined;
   nodes: (NetworkNode & {
     object?: ObjectRecord;
     instance?: Instance;
     file?: FileEntity;
+    representationType?: NetworkNodeType;
   })[];
-  edges: (Edge & { model?: Model })[];
+  edges: (Edge & {
+    model?: Model;
+    relationship?: Relationship & { model?: Model };
+    representationType?: NetworkEdgeType;
+  })[];
+  nodeTypes?: NetworkNodeType[];
+  edgeTypes?: NetworkEdgeType[];
   nodePositions: NodePosition[];
   edgeVisuals: EdgeVisual[];
 }
@@ -739,7 +948,6 @@ export interface Schema {
   description: string | null;
   icon: string | null;
   color: string | null;
-  node_shape: string | null;
   file_template: string | null;
   models: ModelRefKey[];
   source_kind: OntologySourceKind;
@@ -756,7 +964,6 @@ export interface SchemaCreate {
   description?: string;
   icon?: string;
   color?: string;
-  node_shape?: string;
   file_template?: string;
   models?: ModelRefKey[];
   source_kind?: OntologySourceKind;
@@ -770,7 +977,6 @@ export interface SchemaUpdate {
   description?: string | null;
   icon?: string | null;
   color?: string | null;
-  node_shape?: string | null;
   file_template?: string | null;
   models?: ModelRefKey[];
   source_kind?: OntologySourceKind;
@@ -1245,6 +1451,7 @@ export interface NarreSession {
   created_at: string;
   last_message_at: string;
   message_count: number;
+  agentKey?: string | null;
 }
 
 export interface NarreMessage {
@@ -1289,7 +1496,10 @@ export type NetiorMcpToolProfile =
   | 'bootstrap-skill'
   | 'bootstrap-interview'
   | 'bootstrap-execution'
-  | 'index-skill';
+  | 'index-skill'
+  | 'interactive-view-authoring'
+  | 'network-representation-authoring'
+  | 'schema-field-behavior';
 export type NetiorMcpToolScope = 'app' | 'project' | 'network' | 'object' | 'file' | 'mixed';
 
 export interface NetiorMcpToolSpec {
@@ -1379,6 +1589,7 @@ export interface NarreTranscriptTurn {
   id: string;
   role: 'user' | 'assistant';
   createdAt: string;
+  completedAt?: string;
   actor?: NarreActor;
   blocks: NarreTranscriptBlock[];
 }
@@ -1451,8 +1662,13 @@ export interface NarreStreamEvent {
 // ============================================
 
 export type SkillId = string;
-export type BuiltInSkillId = 'bootstrap' | 'index' | 'interactive-view';
 export type SkillSource = 'builtin' | 'file';
+export type BuiltInSkillId =
+  | 'bootstrap'
+  | 'index'
+  | 'interactive-view'
+  | 'network-representation-authoring'
+  | 'schema-field-behavior';
 export type SkillArgType = 'string' | 'enum' | 'number' | 'number_list';
 
 export interface SkillArg {
@@ -1533,7 +1749,7 @@ export interface NarreOperationPreviewItem {
   label: string;
   value?: string;
   detail?: string;
-  kind?: 'text' | 'icon' | 'color' | 'node_shape' | 'model_list';
+  kind?: 'text' | 'icon' | 'color' | 'model_list';
   models?: Array<{
     key: string;
     name: string;
@@ -1597,7 +1813,7 @@ export type NarreCard =
   | NarreSummaryCard;
 
 export interface NetiorChangeEvent {
-  type: 'schemas' | 'models' | 'instances' | 'relationTypes' | 'networks' | 'edges' | 'layouts' | 'contexts';
+  type: 'schemas' | 'models' | 'instances' | 'relationTypes' | 'relationships' | 'networks' | 'edges' | 'layouts' | 'contexts';
   action: 'created' | 'updated' | 'deleted';
   id: string;
 }
@@ -1618,6 +1834,7 @@ export interface AgentSkillRef {
   name?: string;
   version?: string;
   format?: AgentSkillPackageFormat;
+  source?: SkillSource;
 }
 
 export interface UserAgentSkillPackage {
@@ -1684,6 +1901,7 @@ export interface BaseAgentDefinition {
   name: string;
   description?: string;
   systemPrompt?: string;
+  runtimeProfile?: AgentRuntimeProfile;
 }
 
 export interface NarreSystemAgentDefinition extends BaseAgentDefinition {
@@ -1742,6 +1960,8 @@ export interface SupervisorAgentSessionSnapshot {
   surface: AgentSurfaceRef;
   externalSessionId: string | null;
   projectId?: string;
+  currentRunId: string | null;
+  currentTaskId: string | null;
   title?: string | null;
   skillId?: SkillId | null;
   createdAt: string;
@@ -1765,6 +1985,8 @@ export interface SupervisorSessionReport {
   sessionId: string;
   externalSessionId?: string | null;
   projectId?: string;
+  currentRunId?: string | null;
+  currentTaskId?: string | null;
   title?: string | null;
   status?: AgentStatus;
   reason?: AgentAttentionReason | null;
@@ -1790,6 +2012,8 @@ export interface AgentRuntimeProfile {
   contextBudget?: number;
   extraInstruction?: string;
   toolProfileIds?: string[];
+  approvalPolicy?: 'default' | 'strict';
+  contextScope?: 'run' | 'task';
   metadata?: Record<string, string>;
 }
 
@@ -1824,12 +2048,16 @@ export type AgentEventType =
   | 'user_message'
   | 'task_created'
   | 'task_assigned'
+  | 'task_started'
   | 'approval_requested'
   | 'approval_resolved'
   | 'run_completed'
   | 'task_completed'
   | 'executor_registered'
+  | 'executor_heartbeat'
   | 'terminal_command'
+  | 'handoff'
+  | 'tool_call'
   | 'agent_message'
   | 'error';
 
@@ -1895,6 +2123,7 @@ export interface AgentApprovalRequest {
   createdAt: string;
   updatedAt: string;
   completedAt: string | null;
+  resolvedAt?: string | null;
   metadata?: Record<string, string>;
 }
 

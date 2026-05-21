@@ -53,6 +53,10 @@ import type {
   NetworkUpdate,
   NetworkFullData,
   NodePosition,
+  Relationship,
+  RelationshipCreate,
+  RelationshipListFilters,
+  RelationshipUpdate,
   EdgeVisual,
   ObjectRecord,
   Project,
@@ -628,6 +632,43 @@ export async function deleteRemoteEdge(id: string): Promise<boolean> {
   return requestJson<boolean>(`/edges/${encodeURIComponent(id)}`, {
     method: 'DELETE',
   });
+}
+
+export async function listRemoteRelationships(filters: RelationshipListFilters): Promise<Relationship[]> {
+  return requestJson<Relationship[]>(`/relationships${toQueryString({
+    projectId: filters.project_id,
+    sourceObjectId: filters.source_object_id,
+    targetObjectId: filters.target_object_id,
+    modelId: filters.model_id,
+  })}`);
+}
+
+export async function createRemoteRelationship(data: RelationshipCreate): Promise<Relationship> {
+  return requestJson<Relationship>('/relationships', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function getRemoteRelationship(id: string): Promise<Relationship | null> {
+  return requestJson<Relationship | null>(`/relationships/${encodeURIComponent(id)}`);
+}
+
+export async function updateRemoteRelationship(id: string, data: RelationshipUpdate): Promise<Relationship | null> {
+  return requestJson<Relationship | null>(`/relationships/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteRemoteRelationship(id: string): Promise<boolean> {
+  return requestJson<boolean>(`/relationships/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function listRemoteRelationshipOccurrences(id: string): Promise<Edge[]> {
+  return requestJson<Edge[]>(`/relationships/${encodeURIComponent(id)}/occurrences`);
 }
 
 export async function getRemoteLayoutByNetwork(networkId: string): Promise<Layout | null> {

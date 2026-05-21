@@ -32,12 +32,24 @@ import type {
   Network,
   NetworkBreadcrumbItem,
   NetworkCreate,
+  NetworkType,
+  NetworkTypeCreate,
+  NetworkTypeUpdate,
+  NetworkNodeType,
+  NetworkNodeTypeCreate,
+  NetworkNodeTypeUpdate,
+  NetworkEdgeType,
+  NetworkEdgeTypeCreate,
+  NetworkEdgeTypeUpdate,
   NetworkFullData,
   NetworkNode,
   NetworkNodeCreate,
   NetworkNodeUpdate,
   NetworkTreeNode,
   NetworkUpdate,
+  Relationship,
+  RelationshipCreate,
+  RelationshipUpdate,
   NetworkObjectType,
   ObjectRecord,
   Project,
@@ -312,6 +324,82 @@ export async function getNetworkAncestors(networkId: string): Promise<NetworkBre
   return requestJson<NetworkBreadcrumbItem[]>(`/networks/${encodeURIComponent(networkId)}/ancestors`);
 }
 
+export async function listNetworkTypes(projectId?: string | null): Promise<NetworkType[]> {
+  return requestJson<NetworkType[]>(`/network-types${toQueryString({ projectId: projectId ?? undefined })}`);
+}
+
+export async function getNetworkType(id: string): Promise<NetworkType | null> {
+  return requestJson<NetworkType | null>(`/network-types/${encodeURIComponent(id)}`);
+}
+
+export async function createNetworkType(data: NetworkTypeCreate): Promise<NetworkType> {
+  return requestJson<NetworkType>('/network-types', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateNetworkType(id: string, data: NetworkTypeUpdate): Promise<NetworkType | null> {
+  return requestJson<NetworkType | null>(`/network-types/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteNetworkType(id: string): Promise<boolean> {
+  return requestJson<boolean>(`/network-types/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function listNodeTypes(networkTypeId: string): Promise<NetworkNodeType[]> {
+  return requestJson<NetworkNodeType[]>(`/network-types/${encodeURIComponent(networkTypeId)}/node-types`);
+}
+
+export async function createNodeType(data: NetworkNodeTypeCreate): Promise<NetworkNodeType> {
+  return requestJson<NetworkNodeType>('/node-types', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateNodeType(id: string, data: NetworkNodeTypeUpdate): Promise<NetworkNodeType | null> {
+  return requestJson<NetworkNodeType | null>(`/node-types/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteNodeType(id: string): Promise<boolean> {
+  return requestJson<boolean>(`/node-types/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function listEdgeTypes(networkTypeId: string): Promise<NetworkEdgeType[]> {
+  return requestJson<NetworkEdgeType[]>(`/network-types/${encodeURIComponent(networkTypeId)}/edge-types`);
+}
+
+export async function createEdgeType(data: NetworkEdgeTypeCreate): Promise<NetworkEdgeType> {
+  return requestJson<NetworkEdgeType>('/edge-types', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateEdgeType(id: string, data: NetworkEdgeTypeUpdate): Promise<NetworkEdgeType | null> {
+  return requestJson<NetworkEdgeType | null>(`/edge-types/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteEdgeType(id: string): Promise<boolean> {
+  return requestJson<boolean>(`/edge-types/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+  });
+}
+
 export async function createNetworkNode(data: NetworkNodeCreate): Promise<NetworkNode> {
   return requestJson<NetworkNode>('/network-nodes', {
     method: 'POST',
@@ -334,6 +422,43 @@ export async function deleteNetworkNode(id: string): Promise<boolean> {
   return requestJson<boolean>(`/network-nodes/${encodeURIComponent(id)}`, {
     method: 'DELETE',
   });
+}
+
+export async function listRelationships(query: {
+  projectId: string;
+  sourceObjectId?: string;
+  targetObjectId?: string;
+  modelId?: string;
+}): Promise<Relationship[]> {
+  return requestJson<Relationship[]>(`/relationships${toQueryString(query)}`);
+}
+
+export async function createRelationship(data: RelationshipCreate): Promise<Relationship> {
+  return requestJson<Relationship>('/relationships', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function getRelationship(id: string): Promise<Relationship | null> {
+  return requestJson<Relationship | null>(`/relationships/${encodeURIComponent(id)}`);
+}
+
+export async function updateRelationship(id: string, data: RelationshipUpdate): Promise<Relationship | null> {
+  return requestJson<Relationship | null>(`/relationships/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteRelationship(id: string): Promise<boolean> {
+  return requestJson<boolean>(`/relationships/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function listRelationshipOccurrences(relationshipId: string): Promise<unknown[]> {
+  return requestJson<unknown[]>(`/relationships/${encodeURIComponent(relationshipId)}/occurrences`);
 }
 
 export async function createEdge(data: EdgeCreate): Promise<Edge> {

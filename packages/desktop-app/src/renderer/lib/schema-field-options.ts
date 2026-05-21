@@ -14,7 +14,12 @@ export function parseSchemaFieldOptions(options: string | null): SchemaFieldOpti
       : [];
     return { choices };
   } catch {
-    return { choices: [] };
+    return {
+      choices: options
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean),
+    };
   }
 }
 

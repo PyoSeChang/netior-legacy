@@ -17,7 +17,7 @@ Do not reintroduce `Concept` as a domain object name. The old `Concept` role is 
 
 | Layer | Location | Contents |
 |---|---|---|
-| Metadata | `%APPDATA%/netior/data/netior.db` | projects, instances, schemas, models, networks, network_nodes, edges, files, objects, sources, instance_properties, editor prefs |
+| Metadata | `%APPDATA%/netior/data/netior.db` | projects, instances, schemas, models, relationships, networks, network_nodes, edges, files, objects, sources, instance_properties, editor prefs |
 | Instance data | User project directory | `.md`, `.pdf`, `.png`, and other user-owned files |
 
 Project directories are for real files. Metadata belongs in SQLite.
@@ -30,9 +30,23 @@ Project directories are for real files. Metadata belongs in SQLite.
 - **Model**: semantic meaning object. It classifies how objects or edges should be read by Netior, Narre, MCP tools, and layouts.
 - **Network**: object graph surface. It owns `network_nodes`, `edges`, layout state, viewport state, and hierarchy/group behavior.
 - **NetworkNode**: placement of an object in a network. It references an `objects` row rather than embedding instance/model/project/file identity directly.
-- **Edge**: connection between two network nodes. Its `model_id` points to a model whose key/source defines the edge meaning.
+- **Relationship**: project/domain relationship between two objects. Its `model_id` points to the model that defines the relationship meaning.
+- **Edge**: network-local occurrence that visually connects two network nodes. When it represents a domain relationship, `relationship_id` points to `relationships`; edge type and visual fields describe representation, not meaning.
 - **ObjectRecord**: normalized object reference with `object_type`, `ref_id`, scope, and project id. Networks use this as the common reference layer for projects, networks, instances, files, schemas, models, contexts, agents, and future object kinds.
 - **FileEntity**: metadata for a project file or directory. File contents stay on disk.
+
+## Relationship And Edge
+
+Relationship and Edge are separate domain layers.
+
+- A `Relationship` says that a relation exists between two project objects.
+- The relationship's `model_id` is the semantic meaning of that relation.
+- An `Edge` says that a relationship, or a network-structural connection, appears inside one network surface.
+- The edge's `edge_type_id`, ports, route, and visual overrides are representation data.
+- A relationship may have zero, one, or many edge occurrences across networks.
+- A network may contain structural edges, such as containment, hierarchy parent, or portal edges, that are not user-authored domain relationships.
+
+Do not use `Edge` as the canonical object-to-object relation. Use `Relationship` for model-backed meaning, and use `Edge` for network representation.
 
 ## Source Provenance
 

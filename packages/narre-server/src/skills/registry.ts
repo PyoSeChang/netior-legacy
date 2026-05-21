@@ -22,6 +22,8 @@ export async function loadBuiltInSkills(): Promise<NarreSkillDefinition[]> {
     (await import('./bootstrap-skill.js')).bootstrapSkill,
     (await import('./index-skill.js')).indexSkill,
     (await import('./interactive-view-skill.js')).interactiveViewSkill,
+    (await import('./network-representation-skill.js')).networkRepresentationSkill,
+    (await import('./schema-field-behavior-skill.js')).schemaFieldBehaviorSkill,
   ];
 }
 
@@ -35,6 +37,10 @@ export async function loadSkill(
       return (await import('./index-skill.js')).indexSkill;
     case 'interactive-view':
       return (await import('./interactive-view-skill.js')).interactiveViewSkill;
+    case 'network-representation-authoring':
+      return (await import('./network-representation-skill.js')).networkRepresentationSkill;
+    case 'schema-field-behavior':
+      return (await import('./schema-field-behavior-skill.js')).schemaFieldBehaviorSkill;
     default:
       return null;
   }

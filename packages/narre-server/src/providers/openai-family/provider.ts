@@ -15,6 +15,10 @@ export class OpenAIFamilyProviderAdapter implements NarreProviderAdapter {
     return this.uiBridge.resolveResponse(toolCallId, response);
   }
 
+  steer(sessionId: string, message: string): Promise<boolean> | boolean {
+    return this.transport.steer?.(sessionId, message) ?? false;
+  }
+
   run(context: NarreProviderRunContext): Promise<NarreProviderRunResult> {
     return this.transport.run({
       ...context,

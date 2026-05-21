@@ -126,18 +126,8 @@ export function ContextEditor({ tab }: ContextEditorProps): JSX.Element {
         title={session.state.name || context.name}
         subtitle={t('editorShell.networkObject' as never)}
         description={t('context.description')}
-        actions={(
-          <Button
-            size="sm"
-            variant="ghost"
-            className="text-status-error hover:text-status-error"
-            onClick={handleDelete}
-          >
-            {t('common.delete')}
-          </Button>
-        )}
       >
-        <NetworkObjectEditorSection title={t('editorShell.overview' as never)} viewMode="details">
+        <NetworkObjectEditorSection title={t('editorShell.overview' as never)} defaultOpen={tab.isDirty} viewMode="body">
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium text-muted">{t('context.name')}</label>
             <Input
@@ -197,6 +187,18 @@ export function ContextEditor({ tab }: ContextEditorProps): JSX.Element {
             ]}
           />
         </NetworkObjectEditorSection>
+
+        <div className="mx-auto flex w-full max-w-[760px] justify-end px-6 pt-1" data-network-object-view-mode="details">
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="bg-status-error/10 text-status-error hover:bg-status-error/15 hover:text-status-error"
+            onClick={handleDelete}
+          >
+            {t('common.delete')}
+          </Button>
+        </div>
       </NetworkObjectEditorShell>
       {pickerOpen && (
         <ContextMemberPicker

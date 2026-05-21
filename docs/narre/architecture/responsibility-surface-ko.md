@@ -375,7 +375,7 @@ Narre 책임:
 Narre 책임:
 
 - schema을 도메인 class로 설계한다.
-- `name`, `description`, `icon`, `color`, `node_shape`, `file_template`, `models`, `group_id`를 다룬다.
+- `name`, `description`, `icon`, `color`, `file_template`, `models`, `group_id`를 다룬다.
 - schema을 만들고 끝내지 않고 필요한 field definition와 relation type까지 연결한다.
 
 ### NR17. schema field definition CRUD

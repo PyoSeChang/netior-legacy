@@ -66,19 +66,19 @@ function userAgentRecordToAgentDefinition(record: UserAgentRecord): AgentDefinit
     name: record.name,
     description: record.description,
     systemPrompt: record.systemPrompt,
-    kind: 'narre',
-    narreAgentType: 'user',
+    kind: 'narre' as const,
+    narreAgentType: 'user' as const,
     skills: record.skills.map((skill) => ({
       id: skill.id,
       name: skill.name,
-      format: 'skill-md-directory',
+      format: 'skill-md-directory' as const,
     })),
     runtimeProfile: {
-      provider: 'openai',
-      reasoningEffort: 'medium',
+      provider: 'openai' as const,
+      reasoningEffort: 'medium' as const,
       toolProfileIds: ['core'],
-      approvalPolicy: 'default',
-      contextScope: 'run',
+      approvalPolicy: 'default' as const,
+      contextScope: 'run' as const,
     },
   };
 

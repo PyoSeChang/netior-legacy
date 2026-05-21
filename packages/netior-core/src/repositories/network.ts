@@ -19,12 +19,20 @@ import type {
   EdgeLineStyle,
   NetworkBreadcrumbItem,
   NetworkFullData,
+  NetworkType,
+  NetworkNodeType,
+  NetworkEdgeType,
+  Relationship,
   ModelRefKey,
   SemanticMeaningKey,
   MeaningSlotKey,
   ModelTargetKind,
   OntologySourceKind,
 } from '@netior/shared/types';
+
+const DEFAULT_NETWORK_TYPE_ID = 'network-type-default';
+const DEFAULT_BASIC_NODE_TYPE_ID = 'node-type-default-basic';
+const DEFAULT_BASIC_EDGE_TYPE_ID = 'edge-type-default-basic';
 
 // ── Network ──
 
@@ -39,10 +47,10 @@ export function createNetwork(data: NetworkCreate): Network {
   }
 
   db.prepare(
-    `INSERT INTO networks (id, project_id, name, scope, kind, parent_network_id, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO networks (id, project_id, network_type_id, name, scope, kind, parent_network_id, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
-    id, data.project_id, data.name,
+    id, data.project_id, data.network_type_id ?? DEFAULT_NETWORK_TYPE_ID, data.name,
     scope,
     kind,
     data.parent_network_id ?? null,
@@ -114,11 +122,11 @@ export function getNetworkAncestors(networkId: string): NetworkBreadcrumbItem[] 
 
   // Recursive CTE following parent_network_id chain
   const rows = db.prepare(`
-    WITH RECURSIVE ancestors(id, project_id, name, scope, kind, parent_network_id, created_at, updated_at, depth) AS (
-      SELECT id, project_id, name, scope, kind, parent_network_id, created_at, updated_at, 0
+    WITH RECURSIVE ancestors(id, project_id, network_type_id, name, scope, kind, parent_network_id, created_at, updated_at, depth) AS (
+      SELECT id, project_id, network_type_id, name, scope, kind, parent_network_id, created_at, updated_at, 0
         FROM networks WHERE id = ?
       UNION ALL
-      SELECT n.id, n.project_id, n.name, n.scope, n.kind, n.parent_network_id, n.created_at, n.updated_at, a.depth + 1
+      SELECT n.id, n.project_id, n.network_type_id, n.name, n.scope, n.kind, n.parent_network_id, n.created_at, n.updated_at, a.depth + 1
         FROM networks n
         JOIN ancestors a ON n.id = a.parent_network_id
     )
@@ -149,11 +157,12 @@ export function updateNetwork(id: string, data: NetworkUpdate): Network | undefi
   const now = new Date().toISOString();
 
   db.prepare(
-    `UPDATE networks SET name = ?, scope = ?, parent_network_id = ?, updated_at = ? WHERE id = ?`,
+    `UPDATE networks SET name = ?, scope = ?, parent_network_id = ?, network_type_id = ?, updated_at = ? WHERE id = ?`,
   ).run(
     data.name !== undefined ? data.name : existing.name,
     data.scope !== undefined ? data.scope : existing.scope,
     data.parent_network_id !== undefined ? data.parent_network_id : existing.parent_network_id,
+    data.network_type_id !== undefined ? data.network_type_id : existing.network_type_id,
     now,
     id,
   );
@@ -205,6 +214,7 @@ type ModelRow = Omit<Model, 'meaning_keys' | 'core_slots' | 'optional_slots' | '
   directed: number | null;
 };
 type EdgeRow = Edge;
+type RelationshipRow = Relationship;
 
 function parseStringArray<T extends string>(raw: string | null | undefined): T[] {
   if (!raw) return [];
@@ -258,6 +268,15 @@ export function getNetworkFull(networkId: string): NetworkFullData | undefined {
     : initialNetwork;
 
   const layout = getLayoutByNetwork(network.id);
+  const networkType = network.network_type_id
+    ? db.prepare('SELECT * FROM network_types WHERE id = ?').get(network.network_type_id) as NetworkType | undefined
+    : undefined;
+  const nodeTypes = network.network_type_id
+    ? db.prepare('SELECT * FROM node_types WHERE network_type_id = ? ORDER BY name').all(network.network_type_id) as NetworkNodeType[]
+    : [];
+  const edgeTypes = network.network_type_id
+    ? db.prepare('SELECT * FROM edge_types WHERE network_type_id = ? ORDER BY name').all(network.network_type_id) as NetworkEdgeType[]
+    : [];
 
   const nodes = db.prepare(
     `SELECT nn.*,
@@ -288,10 +307,14 @@ export function getNetworkFull(networkId: string): NetworkFullData | undefined {
       network_id: row.network_id as string,
       object_id: row.object_id as string,
       node_type: ((row.node_type as string) === 'box' ? 'group' : ((row.node_type as string) ?? 'basic')),
+      node_type_id: (row.node_type_id as string | null) ?? null,
       parent_node_id: (row.parent_node_id as string | null) ?? null,
       metadata: (row.metadata as string | null) ?? null,
       created_at: row.created_at as string,
       updated_at: row.updated_at as string,
+      ...(row.node_type_id ? {
+        representationType: nodeTypes.find((type) => type.id === row.node_type_id),
+      } : {}),
       object: {
         id: row.o_id as string,
         object_type: row.o_object_type as string,
@@ -350,23 +373,105 @@ export function getNetworkFull(networkId: string): NetworkFullData | undefined {
             m.source_id as m_source_id,
             m.source_ref as m_source_ref,
             m.source_version as m_source_version,
-            m.created_at as m_created_at, m.updated_at as m_updated_at
+            m.created_at as m_created_at, m.updated_at as m_updated_at,
+            r.id as r_id, r.project_id as r_project_id,
+            r.source_object_id as r_source_object_id, r.target_object_id as r_target_object_id,
+            r.model_id as r_model_id, r.description as r_description,
+            r.properties_json as r_properties_json,
+            r.source_kind as r_source_kind, r.source_id as r_source_id,
+            r.source_ref as r_source_ref, r.source_version as r_source_version,
+            r.created_at as r_created_at, r.updated_at as r_updated_at,
+            rm.id as rm_id, rm.project_id as rm_project_id,
+            rm.key as rm_key, rm.name as rm_name,
+            rm.description as rm_description,
+            rm.category_instance_id as rm_category_instance_id,
+            rmc.title as rm_category_instance_title,
+            rmc.source_ref as rm_category_instance_source_ref,
+            rm.target_kind as rm_target_kind,
+            rm.meaning_keys as rm_meaning_keys, rm.core_slots as rm_core_slots,
+            rm.optional_slots as rm_optional_slots, rm.recipe_json as rm_recipe_json,
+            rm.color as rm_color, rm.icon as rm_icon,
+            rm.line_style as rm_line_style,
+            rm.directed as rm_directed, rm.built_in as rm_built_in,
+            rm.source_kind as rm_source_kind,
+            rm.source_id as rm_source_id,
+            rm.source_ref as rm_source_ref,
+            rm.source_version as rm_source_version,
+            rm.created_at as rm_created_at, rm.updated_at as rm_updated_at
      FROM edges e
      LEFT JOIN models m ON e.model_id = m.id
      LEFT JOIN instances mc ON mc.id = m.category_instance_id
+     LEFT JOIN relationships r ON e.relationship_id = r.id
+     LEFT JOIN models rm ON r.model_id = rm.id
+     LEFT JOIN instances rmc ON rmc.id = rm.category_instance_id
      WHERE e.network_id = ?`,
   ).all(network.id) as (Record<string, unknown>)[];
 
   const edges = edgeRows.map((row) => {
     const hasModel = row.m_id != null;
+    const hasRelationship = row.r_id != null;
+    const hasRelationshipModel = row.rm_id != null;
     return {
       id: row.id as string,
       network_id: row.network_id as string,
       source_node_id: row.source_node_id as string,
       target_node_id: row.target_node_id as string,
+      relationship_id: (row.relationship_id as string | null) ?? null,
       model_id: (row.model_id as string | null) ?? null,
+      edge_type_id: (row.edge_type_id as string | null) ?? null,
+      source_port_key: (row.source_port_key as string | null) ?? null,
+      target_port_key: (row.target_port_key as string | null) ?? null,
+      route_json: (row.route_json as string | null) ?? null,
       description: (row.description as string | null) ?? null,
       created_at: row.created_at as string,
+      ...(row.edge_type_id ? {
+        representationType: edgeTypes.find((type) => type.id === row.edge_type_id),
+      } : {}),
+      ...(hasRelationship ? {
+        relationship: {
+          id: row.r_id as string,
+          project_id: row.r_project_id as string,
+          source_object_id: row.r_source_object_id as string,
+          target_object_id: row.r_target_object_id as string,
+          model_id: (row.r_model_id as string | null) ?? null,
+          description: (row.r_description as string | null) ?? null,
+          properties_json: (row.r_properties_json as string | null) ?? null,
+          source_kind: ((row.r_source_kind as string | null) ?? 'project') as RelationshipRow['source_kind'],
+          source_id: (row.r_source_id as string | null) ?? null,
+          source_ref: (row.r_source_ref as string | null) ?? null,
+          source_version: (row.r_source_version as string | null) ?? null,
+          created_at: row.r_created_at as string,
+          updated_at: row.r_updated_at as string,
+          ...(hasRelationshipModel ? {
+            model: toModel({
+              id: row.rm_id as string,
+              project_id: row.rm_project_id as string,
+              key: row.rm_key as string,
+              name: row.rm_name as string,
+              description: (row.rm_description as string | null) ?? null,
+              category_instance_id: (row.rm_category_instance_id as string | null) ?? null,
+              category_instance_title: (row.rm_category_instance_title as string | null) ?? null,
+              category_instance_source_ref: (row.rm_category_instance_source_ref as string | null) ?? null,
+              target_kind: ((row.rm_target_kind as string | null) ?? 'object') as ModelTargetKind,
+              meaning_keys: (row.rm_meaning_keys as string | null) ?? null,
+              core_slots: (row.rm_core_slots as string | null) ?? null,
+              optional_slots: (row.rm_optional_slots as string | null) ?? null,
+              recipe_json: (row.rm_recipe_json as string | null) ?? null,
+              color: (row.rm_color as string | null) ?? null,
+              icon: (row.rm_icon as string | null) ?? null,
+              line_style: ((row.rm_line_style as string | null) ?? null) as EdgeLineStyle | null,
+              directed: (row.rm_directed as number | null) ?? null,
+              built_in: (row.rm_built_in as number | null) ?? 0,
+              source_kind: ((row.rm_source_kind as string | null) ?? 'project') as OntologySourceKind,
+              source_id: (row.rm_source_id as string | null) ?? null,
+              source_ref: (row.rm_source_ref as string | null) ?? null,
+              source_version: (row.rm_source_version as string | null) ?? null,
+              created_at: row.rm_created_at as string,
+              updated_at: row.rm_updated_at as string,
+            }),
+          } : {}),
+        },
+      } : {}),
       ...(hasModel ? {
         model: toModel({
           id: row.m_id as string,
@@ -401,7 +506,17 @@ export function getNetworkFull(networkId: string): NetworkFullData | undefined {
   const nodePositions = layout ? getNodePositions(layout.id) : [];
   const edgeVisuals = layout ? getEdgeVisuals(layout.id) : [];
 
-  return { network, layout, nodes: parsedNodes, edges, nodePositions, edgeVisuals } as NetworkFullData;
+  return {
+    network,
+    networkType,
+    layout,
+    nodes: parsedNodes,
+    edges,
+    nodeTypes,
+    edgeTypes,
+    nodePositions,
+    edgeVisuals,
+  } as NetworkFullData;
 }
 
 // ── Network Node ──
@@ -412,12 +527,13 @@ export function addNetworkNode(data: NetworkNodeCreate): NetworkNode {
   const now = new Date().toISOString();
 
   db.prepare(
-    `INSERT INTO network_nodes (id, network_id, object_id, node_type, parent_node_id, metadata, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO network_nodes (id, network_id, object_id, node_type, node_type_id, parent_node_id, metadata, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     id, data.network_id,
     data.object_id,
     data.node_type ?? 'basic',
+    data.node_type_id ?? DEFAULT_BASIC_NODE_TYPE_ID,
     data.parent_node_id ?? null,
     data.metadata ?? null,
     now, now,
@@ -440,6 +556,7 @@ export function updateNetworkNode(id: string, data: NetworkNodeUpdate): NetworkN
   const values: unknown[] = [];
 
   if ('node_type' in data) { sets.push('node_type = ?'); values.push(data.node_type); }
+  if ('node_type_id' in data) { sets.push('node_type_id = ?'); values.push(data.node_type_id ?? null); }
   if ('parent_node_id' in data) { sets.push('parent_node_id = ?'); values.push(data.parent_node_id ?? null); }
   if ('metadata' in data) { sets.push('metadata = ?'); values.push(data.metadata ?? null); }
 
@@ -482,11 +599,20 @@ export function createEdge(data: EdgeCreate): Edge {
   const now = new Date().toISOString();
 
   db.prepare(
-    `INSERT INTO edges (id, network_id, source_node_id, target_node_id, model_id, description, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO edges (
+      id, network_id, source_node_id, target_node_id, relationship_id, model_id, edge_type_id,
+      source_port_key, target_port_key, route_json, description, created_at
+    )
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     id, data.network_id, data.source_node_id, data.target_node_id,
-    data.model_id ?? null, data.description ?? null,
+    data.relationship_id ?? null,
+    data.model_id ?? null,
+    data.edge_type_id ?? DEFAULT_BASIC_EDGE_TYPE_ID,
+    data.source_port_key ?? null,
+    data.target_port_key ?? null,
+    data.route_json ?? null,
+    data.description ?? null,
     now,
   );
 
@@ -503,8 +629,23 @@ export function updateEdge(id: string, data: EdgeUpdate): Edge | undefined {
   const existingRow = db.prepare('SELECT * FROM edges WHERE id = ?').get(id) as EdgeRow | undefined;
   if (!existingRow) return undefined;
 
-  db.prepare('UPDATE edges SET model_id = ?, description = ? WHERE id = ?').run(
+  db.prepare(`
+    UPDATE edges
+       SET model_id = ?,
+           relationship_id = ?,
+           edge_type_id = ?,
+           source_port_key = ?,
+           target_port_key = ?,
+           route_json = ?,
+           description = ?
+     WHERE id = ?
+  `).run(
     data.model_id !== undefined ? data.model_id : existingRow.model_id,
+    data.relationship_id !== undefined ? data.relationship_id : existingRow.relationship_id,
+    data.edge_type_id !== undefined ? data.edge_type_id : existingRow.edge_type_id,
+    data.source_port_key !== undefined ? data.source_port_key : existingRow.source_port_key,
+    data.target_port_key !== undefined ? data.target_port_key : existingRow.target_port_key,
+    data.route_json !== undefined ? data.route_json : existingRow.route_json,
     data.description !== undefined ? data.description : existingRow.description,
     id,
   );

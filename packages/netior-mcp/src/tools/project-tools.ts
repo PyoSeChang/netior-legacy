@@ -10,7 +10,9 @@ import {
   listSchemas,
   listModels,
   getInstancesByProject,
+  listNetworkTypes,
   listNetworks,
+  listRelationships,
 } from '../netior-service-client.js';
 import { projectIdSchema, registerNetiorTool, resolveProjectId } from './shared-tool-registry.js';
 import { toAgentInstance, toAgentFieldType } from './schema-surface.js';
@@ -18,6 +20,16 @@ import { toAgentInstance, toAgentFieldType } from './schema-surface.js';
 function buildOptionsPreview(options: string | null): string[] | undefined {
   if (!options) {
     return undefined;
+  }
+
+  try {
+    const parsed = JSON.parse(options) as { choices?: unknown };
+    if (Array.isArray(parsed.choices)) {
+      const choices = parsed.choices.filter((item): item is string => typeof item === 'string' && item.trim().length > 0);
+      return choices.length > 0 ? choices.slice(0, 5) : undefined;
+    }
+  } catch {
+    // Legacy inline options were stored as comma-separated text.
   }
 
   const values = options
@@ -103,6 +115,8 @@ export function registerProjectTools(server: McpServer): void {
           models,
           instances,
           networks,
+          networkTypes,
+          relationships,
           universeNetwork,
           ontologyNetwork,
           networkTree,
@@ -111,6 +125,8 @@ export function registerProjectTools(server: McpServer): void {
           listModels(targetProjectId),
           getInstancesByProject(targetProjectId),
           listNetworks(targetProjectId),
+          listNetworkTypes(targetProjectId),
+          listRelationships({ projectId: targetProjectId }),
           getUniverseNetwork(),
           getProjectOntologyNetwork(targetProjectId),
           getNetworkTree(targetProjectId),
@@ -136,7 +152,6 @@ export function registerProjectTools(server: McpServer): void {
               name: schema.name,
               icon: schema.icon,
               color: schema.color,
-              node_shape: schema.node_shape,
               description: schema.description,
               fields: mapSchemaFields(schemaFieldsById.get(schema.id) ?? [], schemaNameMap),
             })),
@@ -162,7 +177,33 @@ export function registerProjectTools(server: McpServer): void {
           },
           networks: {
             count: networks.length,
-            items: networks.map((n) => ({ id: n.id, name: n.name, kind: n.kind, parent_network_id: n.parent_network_id })),
+            items: networks.map((n) => ({
+              id: n.id,
+              name: n.name,
+              kind: n.kind,
+              network_type_id: n.network_type_id,
+              parent_network_id: n.parent_network_id,
+            })),
+          },
+          network_types: {
+            count: networkTypes.length,
+            items: networkTypes.map((networkType) => ({
+              id: networkType.id,
+              key: networkType.key,
+              name: networkType.name,
+              source_kind: networkType.source_kind,
+              surface_runtime: networkType.surface_runtime,
+            })),
+          },
+          relationships: {
+            count: relationships.length,
+            items: relationships.slice(0, 50).map((relationship) => ({
+              id: relationship.id,
+              source_object_id: relationship.source_object_id,
+              target_object_id: relationship.target_object_id,
+              model_id: relationship.model_id,
+              description: relationship.description,
+            })),
           },
           system_networks: {
             universe: universeNetwork ? { id: universeNetwork.id, name: universeNetwork.name } : null,

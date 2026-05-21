@@ -355,7 +355,7 @@ react-pdf 기반 PDF 뷰어.
 
 Schema(개념 클래스) 편집기.
 
-- **편집 항목**: name, description, icon(IconSelector), color(ColorPicker), node_shape(Select), file_template(TextArea)
+- **편집 항목**: name, description, icon(IconSelector), color(ColorPicker), file_template(TextArea)
 - **필드 스키마**: SchemaFieldRow 목록. 즉시 저장 (세션과 별도)
 - **스토어**: schemaStore (schemas, fields, loadFields, createField, updateField, deleteField)
 

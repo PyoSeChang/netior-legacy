@@ -19,7 +19,8 @@ Required workflow:
 Source contract:
 - Write normal TSX.
 - Import UI/runtime APIs only from "@netior/interactive-sdk" and React APIs only from "react".
-- Available "@netior/interactive-sdk" exports are exactly: Button, Field, FieldEditor, Inline, Panel, Stack, Badge, useContent, useField, useFieldValue, useFields, useCurrentInstance, useOpenObject, useOpenInstance, useUpdateField, useViewState, useDslValue, useDslObject, useDslObjects.
+- Available "@netior/interactive-sdk" exports are exactly: ViewRoot, Button, IconButton, TextInput, TextArea, Select, Checkbox, Toggle, Field, FieldEditor, Inline, Panel, Stack, Badge, Chip, Divider, useContent, useField, useFieldValue, useFields, useCurrentInstance, useOpenObject, useOpenInstance, useUpdateField, useViewState, useDslValue, useDslObject, useDslObjects.
+- Prefer SDK UI primitives over raw HTML controls. Use IconButton for compact icon actions such as previous/next, Chip for tag/list values, Select/Checkbox/Toggle/TextInput/TextArea for controls, and ViewRoot as the top-level view container.
 - Export default, View, or InteractiveView.
 - Use useField/useFields/useContent to read instance data.
 - Use useDslValue/useDslObject/useDslObjects when the view needs scoped lookup, semantic navigation, relative next/previous, or aggregates.
@@ -61,6 +62,7 @@ export const interactiveViewSkill: NarreSkillDefinition = {
   source: 'builtin',
   trigger: { type: 'slash', name: 'interactive-view' },
   hint: 'narre.command.interactiveViewHint',
+  additionalToolProfiles: ['interactive-view-authoring'],
   requiredMentionTypes: ['instance'],
   buildPrompt: () => buildInteractiveViewPrompt(),
 };

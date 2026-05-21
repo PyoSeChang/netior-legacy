@@ -172,6 +172,15 @@ const electronAPI = {
       ipcRenderer.invoke('edge:update', id, data),
     delete: (id: string) => ipcRenderer.invoke('edge:delete', id),
   },
+  relationship: {
+    list: (filters: Record<string, unknown>) => ipcRenderer.invoke('relationship:list', filters),
+    create: (data: Record<string, unknown>) => ipcRenderer.invoke('relationship:create', data),
+    get: (id: string) => ipcRenderer.invoke('relationship:get', id),
+    update: (id: string, data: Record<string, unknown>) =>
+      ipcRenderer.invoke('relationship:update', id, data),
+    delete: (id: string) => ipcRenderer.invoke('relationship:delete', id),
+    listOccurrences: (id: string) => ipcRenderer.invoke('relationship:listOccurrences', id),
+  },
   context: {
     create: (data: Record<string, unknown>) => ipcRenderer.invoke('context:create', data),
     list: (networkId: string) => ipcRenderer.invoke('context:list', networkId),
@@ -435,7 +444,7 @@ const electronAPI = {
     cancelSupervisorRun: (runId: string) => ipcRenderer.invoke('narre:supervisorCancelRun', runId),
     listSupervisorApprovals: (runId: string) => ipcRenderer.invoke('narre:supervisorListApprovals', runId),
     resolveSupervisorApproval: (data: Record<string, unknown>) => ipcRenderer.invoke('narre:supervisorResolveApproval', data),
-    createSession: (projectId: string) => ipcRenderer.invoke('narre:createSession', projectId),
+    createSession: (input: string | Record<string, unknown>) => ipcRenderer.invoke('narre:createSession', input),
     getSession: (sessionId: string) => ipcRenderer.invoke('narre:getSession', sessionId),
     updateSessionTitle: (data: Record<string, unknown>) => ipcRenderer.invoke('narre:updateSessionTitle', data),
     deleteSession: (sessionId: string) => ipcRenderer.invoke('narre:deleteSession', sessionId),
@@ -445,6 +454,7 @@ const electronAPI = {
     sendMessage: (data: Record<string, unknown>) => ipcRenderer.invoke('narre:sendMessage', data),
     respondToCard: (data: Record<string, unknown>) => ipcRenderer.invoke('narre:respondCard', data),
     interruptMessage: (data: Record<string, unknown>) => ipcRenderer.invoke('narre:interruptMessage', data),
+    steerMessage: (data: Record<string, unknown>) => ipcRenderer.invoke('narre:steerMessage', data),
     onStreamEvent: (callback: (event: unknown) => void) => {
       const handler = (_event: IpcRendererEvent, data: unknown) => callback(data);
       ipcRenderer.on('narre:streamEvent', handler);

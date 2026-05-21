@@ -30,8 +30,11 @@ interface NarreInputSwitcherProps {
   draftHtml?: string;
   availableSkills?: readonly SkillDefinition[];
   pendingSkillInvocation?: NarrePendingSkillInvocationState | null;
+  queuedCount?: number;
+  scheduledMessages?: readonly string[];
   onDraftChange?: (draftHtml: string) => void;
   onPendingSkillInvocationChange?: (pendingSkillInvocation: NarrePendingSkillInvocationState | null) => void;
+  onRemoveScheduledMessage?: (index: number) => void;
   onSend: (payload: NarreComposerSubmit) => Promise<boolean | void> | boolean | void;
   onStop?: () => Promise<void> | void;
   activePrompt: NarreInteractivePrompt | null;
@@ -68,8 +71,11 @@ export function NarreInputSwitcher({
   draftHtml = '',
   availableSkills,
   pendingSkillInvocation = null,
+  queuedCount = 0,
+  scheduledMessages = [],
   onDraftChange,
   onPendingSkillInvocationChange,
+  onRemoveScheduledMessage,
   onSend,
   onStop,
   activePrompt,
@@ -131,8 +137,11 @@ export function NarreInputSwitcher({
         draftHtml={draftHtml}
         availableSkills={availableSkills}
         pendingSkillInvocation={pendingSkillInvocation}
+        queuedCount={queuedCount}
+        scheduledMessages={scheduledMessages}
         onDraftChange={onDraftChange}
         onPendingSkillInvocationChange={onPendingSkillInvocationChange}
+        onRemoveScheduledMessage={onRemoveScheduledMessage}
         onStop={onStop}
       />
     </div>

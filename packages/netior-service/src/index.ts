@@ -13,6 +13,10 @@ import {
   deleteMeaning,
   createModule,
   createNetwork,
+  createNetworkType,
+  createNodeType,
+  createEdgeType,
+  createRelationship,
   createProject,
   createModel,
   deleteProject,
@@ -24,6 +28,10 @@ import {
   deleteFileEntity,
   deleteModule,
   deleteNetwork,
+  deleteNetworkType,
+  deleteNodeType,
+  deleteEdgeType,
+  deleteRelationship,
   deleteProperty,
   deleteModel,
   getContext,
@@ -45,6 +53,10 @@ import {
   getNetworkAncestors,
   getNetworkFull,
   getNetworkNode,
+  getNetworkType,
+  getNodeType,
+  getEdgeType,
+  getRelationship,
   getNetworkTree,
   getNodePositions,
   getObject,
@@ -63,6 +75,11 @@ import {
   listModuleDirectories,
   listModules,
   listNetworks,
+  listNetworkTypes,
+  listNodeTypes,
+  listEdgeTypes,
+  listRelationships,
+  listRelationshipOccurrences,
   listProjects,
   listModels,
   listModelCategories,
@@ -99,6 +116,10 @@ import {
   updateModuleDirectoryPath,
   updateNetwork,
   updateNetworkNode,
+  updateNetworkType,
+  updateNodeType,
+  updateEdgeType,
+  updateRelationship,
   updateProject,
   updateProjectRootDir,
   updateModel,
@@ -139,9 +160,17 @@ import type {
   ModuleUpdate,
   NetworkObjectType,
   NetworkCreate,
+  NetworkTypeCreate,
+  NetworkTypeUpdate,
+  NetworkNodeTypeCreate,
+  NetworkNodeTypeUpdate,
+  NetworkEdgeTypeCreate,
+  NetworkEdgeTypeUpdate,
   NetworkNodeCreate,
   NetworkNodeUpdate,
   NetworkUpdate,
+  RelationshipCreate,
+  RelationshipUpdate,
   ProjectCreate,
   ProjectUpdate,
   ModelCreate,
@@ -372,7 +401,14 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
 
     if (method === 'PATCH') {
       const body = await readJsonBody<InstanceUpdate>(req);
-      sendJson(res, 200, { ok: true, data: updateInstance(id, body) });
+      let result = updateInstance(id, body);
+      if (result && body.content !== undefined && body.agent_content === undefined) {
+        const refreshed = loadInstanceContentData(id);
+        if (refreshed) {
+          result = updateInstance(id, { agent_content: serializeToAgent(refreshed) });
+        }
+      }
+      sendJson(res, 200, { ok: true, data: result });
       return;
     }
 
@@ -1022,6 +1058,135 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
     return;
   }
 
+  if (pathname === '/network-types') {
+    if (method === 'GET') {
+      sendJson(res, 200, { ok: true, data: listNetworkTypes(url.searchParams.get('projectId')) });
+      return;
+    }
+
+    if (method === 'POST') {
+      const body = await readJsonBody<NetworkTypeCreate>(req);
+      sendJson(res, 200, { ok: true, data: createNetworkType(body) });
+      return;
+    }
+
+    sendJson(res, 405, { ok: false, error: `Method ${method} not allowed for ${pathname}` });
+    return;
+  }
+
+  const networkTypeNodesMatch = pathname.match(/^\/network-types\/([^/]+)\/node-types$/);
+  if (networkTypeNodesMatch) {
+    if (method !== 'GET') {
+      sendJson(res, 405, { ok: false, error: `Method ${method} not allowed for ${pathname}` });
+      return;
+    }
+
+    sendJson(res, 200, { ok: true, data: listNodeTypes(decodeURIComponent(networkTypeNodesMatch[1])) });
+    return;
+  }
+
+  const networkTypeEdgesMatch = pathname.match(/^\/network-types\/([^/]+)\/edge-types$/);
+  if (networkTypeEdgesMatch) {
+    if (method !== 'GET') {
+      sendJson(res, 405, { ok: false, error: `Method ${method} not allowed for ${pathname}` });
+      return;
+    }
+
+    sendJson(res, 200, { ok: true, data: listEdgeTypes(decodeURIComponent(networkTypeEdgesMatch[1])) });
+    return;
+  }
+
+  if (pathname.startsWith('/network-types/')) {
+    const id = decodeURIComponent(pathname.slice('/network-types/'.length));
+
+    if (method === 'GET') {
+      sendJson(res, 200, { ok: true, data: getNetworkType(id) ?? null });
+      return;
+    }
+
+    if (method === 'PATCH') {
+      const body = await readJsonBody<NetworkTypeUpdate>(req);
+      sendJson(res, 200, { ok: true, data: updateNetworkType(id, body) ?? null });
+      return;
+    }
+
+    if (method === 'DELETE') {
+      sendJson(res, 200, { ok: true, data: deleteNetworkType(id) });
+      return;
+    }
+
+    sendJson(res, 405, { ok: false, error: `Method ${method} not allowed for ${pathname}` });
+    return;
+  }
+
+  if (pathname === '/node-types') {
+    if (method !== 'POST') {
+      sendJson(res, 405, { ok: false, error: `Method ${method} not allowed for ${pathname}` });
+      return;
+    }
+
+    const body = await readJsonBody<NetworkNodeTypeCreate>(req);
+    sendJson(res, 200, { ok: true, data: createNodeType(body) });
+    return;
+  }
+
+  if (pathname.startsWith('/node-types/')) {
+    const id = decodeURIComponent(pathname.slice('/node-types/'.length));
+
+    if (method === 'GET') {
+      sendJson(res, 200, { ok: true, data: getNodeType(id) ?? null });
+      return;
+    }
+
+    if (method === 'PATCH') {
+      const body = await readJsonBody<NetworkNodeTypeUpdate>(req);
+      sendJson(res, 200, { ok: true, data: updateNodeType(id, body) ?? null });
+      return;
+    }
+
+    if (method === 'DELETE') {
+      sendJson(res, 200, { ok: true, data: deleteNodeType(id) });
+      return;
+    }
+
+    sendJson(res, 405, { ok: false, error: `Method ${method} not allowed for ${pathname}` });
+    return;
+  }
+
+  if (pathname === '/edge-types') {
+    if (method !== 'POST') {
+      sendJson(res, 405, { ok: false, error: `Method ${method} not allowed for ${pathname}` });
+      return;
+    }
+
+    const body = await readJsonBody<NetworkEdgeTypeCreate>(req);
+    sendJson(res, 200, { ok: true, data: createEdgeType(body) });
+    return;
+  }
+
+  if (pathname.startsWith('/edge-types/')) {
+    const id = decodeURIComponent(pathname.slice('/edge-types/'.length));
+
+    if (method === 'GET') {
+      sendJson(res, 200, { ok: true, data: getEdgeType(id) ?? null });
+      return;
+    }
+
+    if (method === 'PATCH') {
+      const body = await readJsonBody<NetworkEdgeTypeUpdate>(req);
+      sendJson(res, 200, { ok: true, data: updateEdgeType(id, body) ?? null });
+      return;
+    }
+
+    if (method === 'DELETE') {
+      sendJson(res, 200, { ok: true, data: deleteEdgeType(id) });
+      return;
+    }
+
+    sendJson(res, 405, { ok: false, error: `Method ${method} not allowed for ${pathname}` });
+    return;
+  }
+
   if (pathname === '/networks') {
     if (method === 'GET') {
       const projectId = getRequiredSearchParam(url, 'projectId');
@@ -1109,6 +1274,66 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
 
     if (method === 'DELETE') {
       sendJson(res, 200, { ok: true, data: removeNetworkNode(id) });
+      return;
+    }
+
+    sendJson(res, 405, { ok: false, error: `Method ${method} not allowed for ${pathname}` });
+    return;
+  }
+
+  if (pathname === '/relationships') {
+    if (method === 'GET') {
+      const projectId = getRequiredSearchParam(url, 'projectId');
+      sendJson(res, 200, {
+        ok: true,
+        data: listRelationships({
+          project_id: projectId,
+          source_object_id: url.searchParams.get('sourceObjectId') ?? undefined,
+          target_object_id: url.searchParams.get('targetObjectId') ?? undefined,
+          model_id: url.searchParams.get('modelId') ?? undefined,
+        }),
+      });
+      return;
+    }
+
+    if (method === 'POST') {
+      const body = await readJsonBody<RelationshipCreate>(req);
+      sendJson(res, 200, { ok: true, data: createRelationship(body) });
+      return;
+    }
+
+    sendJson(res, 405, { ok: false, error: `Method ${method} not allowed for ${pathname}` });
+    return;
+  }
+
+  const relationshipOccurrencesMatch = pathname.match(/^\/relationships\/([^/]+)\/occurrences$/);
+  if (relationshipOccurrencesMatch) {
+    if (method !== 'GET') {
+      sendJson(res, 405, { ok: false, error: `Method ${method} not allowed for ${pathname}` });
+      return;
+    }
+
+    const relationshipId = decodeURIComponent(relationshipOccurrencesMatch[1]);
+    sendJson(res, 200, { ok: true, data: listRelationshipOccurrences(relationshipId) });
+    return;
+  }
+
+  if (pathname.startsWith('/relationships/')) {
+    const id = decodeURIComponent(pathname.slice('/relationships/'.length));
+
+    if (method === 'GET') {
+      sendJson(res, 200, { ok: true, data: getRelationship(id) ?? null });
+      return;
+    }
+
+    if (method === 'PATCH') {
+      const body = await readJsonBody<RelationshipUpdate>(req);
+      sendJson(res, 200, { ok: true, data: updateRelationship(id, body) ?? null });
+      return;
+    }
+
+    if (method === 'DELETE') {
+      sendJson(res, 200, { ok: true, data: deleteRelationship(id) });
       return;
     }
 

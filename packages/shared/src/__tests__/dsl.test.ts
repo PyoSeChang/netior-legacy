@@ -36,6 +36,13 @@ describe('Netior DSL validation', () => {
     })).toEqual({ ok: true });
   });
 
+  it('accepts network concern scope expressions', () => {
+    expect(validateNetiorDslExpression({
+      op: 'objects.inNetwork',
+      networkId: 'network-1',
+    })).toEqual({ ok: true });
+  });
+
   it('accepts field behavior config wrappers', () => {
     expect(validateNetiorDslFieldBehaviorConfig({
       version: 1,

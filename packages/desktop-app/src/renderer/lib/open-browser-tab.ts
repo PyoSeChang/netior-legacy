@@ -4,6 +4,14 @@ export function normalizeBrowserUrl(value: string): string | null {
   const trimmed = value.trim();
   if (!trimmed) return null;
 
+  if (/^file:\/\//i.test(trimmed)) {
+    try {
+      return new URL(trimmed).toString();
+    } catch {
+      return null;
+    }
+  }
+
   const hasHttpScheme = /^https?:\/\//i.test(trimmed);
   const looksLikeLocalUrl = /^(localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\])(?::\d+)?(?:[/?#]|$)/i.test(trimmed);
   const looksLikeHostPort = /^[A-Za-z0-9.-]+:\d+(?:[/?#]|$)/.test(trimmed);
@@ -25,6 +33,9 @@ export function normalizeBrowserUrl(value: string): string | null {
 export function getBrowserTabTitle(url: string): string {
   try {
     const parsed = new URL(url);
+    if (parsed.protocol === 'file:') {
+      return decodeURIComponent(parsed.pathname.split('/').filter(Boolean).pop() || url);
+    }
     return parsed.host || url;
   } catch {
     return url;
@@ -34,6 +45,7 @@ export function getBrowserTabTitle(url: string): string {
 export function getDefaultFaviconUrl(url: string): string | undefined {
   try {
     const parsed = new URL(url);
+    if (parsed.protocol === 'file:') return undefined;
     return `${parsed.origin}/favicon.ico`;
   } catch {
     return undefined;

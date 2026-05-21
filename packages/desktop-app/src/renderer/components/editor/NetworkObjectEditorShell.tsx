@@ -51,14 +51,18 @@ export function NetworkObjectEditorShell({
     setViewMode(initialViewMode);
   }, [initialViewMode]);
   const sections = useMemo(() => React.Children.toArray(children), [children]);
+  const getSectionViewMode = (section: React.ReactNode): NetworkObjectEditorViewMode | undefined => {
+    if (!React.isValidElement<NetworkObjectEditorSectionProps & { 'data-network-object-view-mode'?: NetworkObjectEditorViewMode }>(section)) return undefined;
+    return section.props.viewMode ?? section.props['data-network-object-view-mode'];
+  };
   const explicitBodySections = sections.filter((section) => (
-    React.isValidElement<NetworkObjectEditorSectionProps>(section) && section.props.viewMode === 'body'
+    getSectionViewMode(section) === 'body'
   ));
   const explicitDetailSections = sections.filter((section) => (
-    React.isValidElement<NetworkObjectEditorSectionProps>(section) && section.props.viewMode === 'details'
+    getSectionViewMode(section) === 'details'
   ));
   const explicitInteractiveSections = sections.filter((section) => (
-    React.isValidElement<NetworkObjectEditorSectionProps>(section) && section.props.viewMode === 'interactive'
+    getSectionViewMode(section) === 'interactive'
   ));
   const hasExplicitModes = explicitBodySections.length > 0 || explicitDetailSections.length > 0 || explicitInteractiveSections.length > 0;
   const bodySections = hasExplicitModes ? explicitBodySections : sections.slice(0, bodySectionCount);

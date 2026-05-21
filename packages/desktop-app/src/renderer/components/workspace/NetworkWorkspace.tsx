@@ -34,6 +34,7 @@ import { getLayout } from './layout-plugins/registry';
 import type { LayoutControlsRendererProps, LayoutRenderNode } from './layout-plugins/types';
 import { dateToEpochDays, isoToEpochDays } from './layout-plugins/time-axis/scale-utils';
 import { formatTemporalSlotValueForWriteback, getOccurrenceKey, getSourceNodeId } from './layout-plugins/temporal-utils';
+import { buildResolvedLayoutGraph } from './layout-resolution';
 import { applyInstanceSemanticProjection } from './semantic-projection';
 import { useNetworkShortcuts } from './useNetworkShortcuts';
 import { openNetworkViewerTab } from '../../lib/open-network-viewer-tab';
@@ -785,7 +786,7 @@ function toRenderNodes(
         y: pos?.y ?? 0,
         label,
         icon,
-        shape: isPortal ? 'dashed' : isHierarchy ? 'hierarchy' : isGroup ? 'group' : arch?.node_shape ?? undefined,
+        shape: isPortal ? 'dashed' : isHierarchy ? 'hierarchy' : isGroup ? 'group' : undefined,
         semanticType: arch?.name || 'instance',
         semanticTypeLabel: isPortal ? 'Portal' : isHierarchy ? 'Hierarchy' : isGroup ? 'Group' : arch?.name || 'Instance',
         width: isCollapsed
@@ -2084,17 +2085,25 @@ export function NetworkWorkspace({
     }),
   [visibleRenderNodes, nodes, modelFieldsById, nodeProperties, models]);
 
+  const resolvedLayoutGraph = useMemo(
+    () => buildResolvedLayoutGraph({
+      nodes: layoutRenderNodes,
+      edges: renderEdges,
+    }),
+    [layoutRenderNodes, renderEdges],
+  );
+
   const projectedLayoutNodes = useMemo<LayoutRenderNode[]>(() => (
     layoutPlugin.projectNodes
       ? layoutPlugin.projectNodes({
-        nodes: layoutRenderNodes,
-        edges: renderEdges,
+        nodes: resolvedLayoutGraph.renderNodes,
+        edges: resolvedLayoutGraph.renderEdges,
         viewport: { width: containerSize.width, height: containerSize.height },
         viewportState: { zoom, panX, panY },
         config: layoutConfig,
       })
-      : layoutRenderNodes
-  ), [layoutPlugin, layoutRenderNodes, renderEdges, containerSize.width, containerSize.height, zoom, panX, panY, layoutConfig]);
+      : resolvedLayoutGraph.renderNodes
+  ), [layoutPlugin, resolvedLayoutGraph, containerSize.width, containerSize.height, zoom, panX, panY, layoutConfig]);
 
 
   // Compute layout positions (freeform returns same positions, timeline computes from metadata)
@@ -2264,11 +2273,25 @@ export function NetworkWorkspace({
       }
     }
 
+    const sourceEdgeNodeId = shouldCreateHierarchyParent ? parentNodeId : sourceNodeId;
+    const targetEdgeNodeId = shouldCreateHierarchyParent ? childNodeId : targetNodeId;
+    const sourceEdgeNode = nodeById.get(sourceEdgeNodeId);
+    const targetEdgeNode = nodeById.get(targetEdgeNodeId);
+    const relationship = !shouldCreateHierarchyParent && currentNetwork.project_id && sourceEdgeNode?.object_id && targetEdgeNode?.object_id
+      ? await networkService.relationship.create({
+        project_id: currentNetwork.project_id,
+        source_object_id: sourceEdgeNode.object_id,
+        target_object_id: targetEdgeNode.object_id,
+      })
+      : null;
+    if (!shouldCreateHierarchyParent && !relationship) return null;
+
     const edge = await addEdge({
       network_id: currentNetwork.id,
-      source_node_id: shouldCreateHierarchyParent ? parentNodeId : sourceNodeId,
-      target_node_id: shouldCreateHierarchyParent ? childNodeId : targetNodeId,
+      source_node_id: sourceEdgeNodeId,
+      target_node_id: targetEdgeNodeId,
       ...(modelId ? { model_id: modelId } : {}),
+      ...(relationship ? { relationship_id: relationship.id } : {}),
     });
     if (shouldCreateHierarchyParent && currentLayout) {
       const currentPosition = rawPosMap.get(childNodeId);

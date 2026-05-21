@@ -7,7 +7,9 @@ import { registerInstancePropertyTools } from './instance-property-tools.js';
 import { registerEdgeTools } from './edge-tools.js';
 import { registerInstanceTools } from './instance-tools.js';
 import { registerNetworkNodeTools } from './network-node-tools.js';
+import { registerNetworkRepresentationTools } from './network-representation-tools.js';
 import { registerNetworkTools } from './network-tools.js';
+import { registerRelationshipTools } from './relationship-tools.js';
 import { registerObjectTools } from './object-tools.js';
 import { registerProjectTools } from './project-tools.js';
 import { registerFilesystemTools } from './filesystem-tools.js';
@@ -29,6 +31,8 @@ export function registerAllTools(server: McpServer): void {
   registerDslTools(server);
   registerObjectTools(server);
   registerNetworkTools(server);
+  registerNetworkRepresentationTools(server);
+  registerRelationshipTools(server);
   registerNetworkNodeTools(server);
   registerEdgeTools(server);
   registerProjectTools(server);

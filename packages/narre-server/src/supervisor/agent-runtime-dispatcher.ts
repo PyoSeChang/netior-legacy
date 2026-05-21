@@ -79,6 +79,7 @@ export class AgentRuntimeDispatcher {
           traceId: `assignment:${assignmentId}`,
           activeAgent: agent,
           runtimeProfile,
+          skillIds: parseTaskSkillIds(task.metadata),
           currentRunId: snapshot.run.id,
           currentTaskId: task.id,
           assignmentId,
@@ -99,7 +100,7 @@ export class AgentRuntimeDispatcher {
               sessionId: assignment.sessionId ?? null,
               agentKey: assignment.agentKey,
               prompt: `Agent produced ${card.type} card`,
-              card: card as unknown as Record<string, unknown>,
+              card,
             });
           },
           onError: (error) => {
@@ -320,6 +321,17 @@ function collectUpstreamResults(
       title: candidate.title,
       result: candidate.result,
     }));
+}
+
+function parseTaskSkillIds(metadata: Record<string, string> | undefined): string[] {
+  const raw = metadata?.skillIds?.trim();
+  if (!raw) {
+    return [];
+  }
+  return raw
+    .split(',')
+    .map((skillId) => skillId.trim())
+    .filter((skillId, index, values) => skillId.length > 0 && values.indexOf(skillId) === index);
 }
 
 function resolveRuntimeProfile(

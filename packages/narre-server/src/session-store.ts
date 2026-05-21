@@ -2,6 +2,8 @@
 import path from 'path';
 import { randomUUID } from 'crypto';
 import type {
+  NarreDraftResponse,
+  NarreInterviewResponse,
   NarreMessage,
   NarreSession,
   NarreSessionDetail,
@@ -127,6 +129,105 @@ function buildSessionDetail(projectId: string, session: NarreSession, file: Narr
     transcript: file.transcript,
     messages: transcriptToMessages(file.transcript),
   };
+}
+
+function mergePersistedCardResponses(
+  incoming: NarreTranscriptTurn,
+  persisted: NarreTranscriptTurn,
+): NarreTranscriptTurn {
+  const persistedResponses = new Map<string, {
+    resolvedActionKey?: string;
+    submittedResponse?: unknown;
+  }>();
+
+  for (const block of persisted.blocks) {
+    if (block.type !== 'card' || !('toolCallId' in block.card)) {
+      continue;
+    }
+
+    switch (block.card.type) {
+      case 'permission':
+        if (typeof block.card.resolvedActionKey === 'string' && block.card.resolvedActionKey.length > 0) {
+          persistedResponses.set(block.card.toolCallId, {
+            resolvedActionKey: block.card.resolvedActionKey,
+          });
+        }
+        break;
+      case 'draft':
+      case 'interview':
+        if (block.card.submittedResponse) {
+          persistedResponses.set(block.card.toolCallId, {
+            submittedResponse: block.card.submittedResponse,
+          });
+        }
+        break;
+      default:
+        break;
+    }
+  }
+
+  if (persistedResponses.size === 0) {
+    return incoming;
+  }
+
+  let changed = false;
+  const blocks = incoming.blocks.map((block) => {
+    if (block.type !== 'card' || !('toolCallId' in block.card)) {
+      return block;
+    }
+
+    const persistedResponse = persistedResponses.get(block.card.toolCallId);
+    if (!persistedResponse) {
+      return block;
+    }
+
+    switch (block.card.type) {
+      case 'permission':
+        if (
+          !block.card.resolvedActionKey
+          && typeof persistedResponse.resolvedActionKey === 'string'
+          && persistedResponse.resolvedActionKey.length > 0
+        ) {
+          changed = true;
+          return {
+            ...block,
+            card: {
+              ...block.card,
+              resolvedActionKey: persistedResponse.resolvedActionKey,
+            },
+          };
+        }
+        return block;
+      case 'draft':
+        if (!block.card.submittedResponse && persistedResponse.submittedResponse) {
+          changed = true;
+          return {
+            ...block,
+            card: {
+              ...block.card,
+              submittedResponse: persistedResponse.submittedResponse as NarreDraftResponse,
+            },
+          };
+        }
+        return block;
+      case 'interview':
+        if (!block.card.submittedResponse && persistedResponse.submittedResponse) {
+          changed = true;
+          return {
+            ...block,
+            card: {
+              ...block.card,
+              submittedResponse: persistedResponse.submittedResponse as NarreInterviewResponse,
+            },
+          };
+        }
+        return block;
+      default:
+        return block;
+    }
+  });
+
+  return changed ? { ...incoming, blocks } : incoming;
 }
 
 export class SessionStore {
@@ -263,7 +364,10 @@ export class SessionStore {
     const existingIndex = file.transcript.turns.findIndex((candidate) => candidate.id === turn.id);
 
     if (existingIndex >= 0) {
-      file.transcript.turns[existingIndex] = turn;
+      file.transcript.turns[existingIndex] = mergePersistedCardResponses(
+        turn,
+        file.transcript.turns[existingIndex],
+      );
     } else {
       file.transcript.turns.push(turn);
     }

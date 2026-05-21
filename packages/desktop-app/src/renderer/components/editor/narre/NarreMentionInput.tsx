@@ -1,5 +1,5 @@
 import React, { useRef, useState, useCallback, useEffect } from 'react';
-import { Plus, Send, Square, X } from 'lucide-react';
+import { ChevronRight, CornerDownRight, Plus, Send, Square, X } from 'lucide-react';
 import type { NarreMention, SkillDefinition } from '@netior/shared/types';
 import { SLASH_TRIGGER_SKILLS } from '@netior/shared/constants';
 import type { MentionResult } from '../../../services/narre-service';
@@ -23,6 +23,7 @@ export interface NarreComposerSubmit {
   mentions: NarreMention[];
   draftHtml: string;
   pendingSkillInvocation: NarrePendingSkillInvocationState | null;
+  delivery?: 'send' | 'queue' | 'steer';
 }
 
 interface NarreMentionInputProps {
@@ -36,12 +37,15 @@ interface NarreMentionInputProps {
   draftHtml?: string;
   availableSkills?: readonly SkillDefinition[];
   pendingSkillInvocation?: NarrePendingSkillInvocationState | null;
+  queuedCount?: number;
+  scheduledMessages?: readonly string[];
   allowMentions?: boolean;
   allowSlashSkills?: boolean;
   agentMentions?: MentionResult[];
   footerLabel?: string;
   onDraftChange?: (draftHtml: string) => void;
   onPendingSkillInvocationChange?: (pendingSkillInvocation: NarrePendingSkillInvocationState | null) => void;
+  onRemoveScheduledMessage?: (index: number) => void;
   onStop?: () => Promise<void> | void;
 }
 
@@ -56,10 +60,124 @@ interface ComposerSnapshot {
   mentions: NarreMention[];
 }
 
+interface ComposerImageAttachment {
+  id: string;
+  name: string;
+  mimeType: string;
+  dataUrl: string;
+}
+
 const EMPTY_SNAPSHOT: ComposerSnapshot = {
   text: '',
   mentions: [],
 };
+
+function createAttachmentId(): string {
+  return `image-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+function getImageFiles(fileList: FileList | null | undefined): File[] {
+  return Array.from(fileList ?? []).filter((file) => file.type.startsWith('image/'));
+}
+
+function readImageAttachment(file: File): Promise<ComposerImageAttachment> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result !== 'string') {
+        reject(new Error('Failed to read image attachment'));
+        return;
+      }
+
+      resolve({
+        id: createAttachmentId(),
+        name: file.name || 'Pasted image',
+        mimeType: file.type || 'image/png',
+        dataUrl: reader.result,
+      });
+    };
+    reader.onerror = () => reject(reader.error ?? new Error('Failed to read image attachment'));
+    reader.readAsDataURL(file);
+  });
+}
+
+function imageAttachmentsFromHtml(html: string): ComposerImageAttachment[] {
+  if (!html.includes('<img')) {
+    return [];
+  }
+
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  return Array.from(doc.querySelectorAll('img'))
+    .map((image, index) => {
+      const src = image.getAttribute('src')?.trim();
+      if (!src) {
+        return null;
+      }
+
+      return {
+        id: createAttachmentId(),
+        name: image.getAttribute('alt')?.trim() || `Pasted image ${index + 1}`,
+        mimeType: src.startsWith('data:image/')
+          ? src.slice(5, src.indexOf(';')) || 'image'
+          : 'image',
+        dataUrl: src,
+      };
+    })
+    .filter((attachment): attachment is ComposerImageAttachment => attachment !== null);
+}
+
+function NarreImagePreviewOverlay({
+  attachment,
+  onClose,
+}: {
+  attachment: ComposerImageAttachment | null;
+  onClose: () => void;
+}): JSX.Element | null {
+  useEffect(() => {
+    if (!attachment) {
+      return;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => window.removeEventListener('keydown', handleKeyDown, true);
+  }, [attachment, onClose]);
+
+  if (!attachment) {
+    return null;
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/80 p-6 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="relative max-h-[90vh] max-w-[92vw] overflow-hidden rounded-xl border border-subtle bg-surface-modal shadow-2xl"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="flex items-center justify-between border-b border-subtle px-3 py-2">
+          <span className="truncate pr-4 text-sm text-secondary">{attachment.name}</span>
+          <IconButton label="Close" className="h-7 w-7" onClick={onClose}>
+            <X size={15} />
+          </IconButton>
+        </div>
+        <div className="max-h-[calc(90vh-44px)] overflow-auto bg-surface-base p-3">
+          <img
+            src={attachment.dataUrl}
+            alt={attachment.name}
+            className="max-h-[calc(90vh-68px)] max-w-[calc(92vw-24px)] object-contain"
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function serializeContentEditable(el: HTMLDivElement): {
   text: string;
@@ -213,12 +331,15 @@ export function NarreMentionInput({
   draftHtml = '',
   availableSkills = SLASH_TRIGGER_SKILLS,
   pendingSkillInvocation = null,
+  queuedCount = 0,
+  scheduledMessages = [],
   allowMentions = true,
   allowSlashSkills = true,
   agentMentions = [],
   footerLabel,
   onDraftChange,
   onPendingSkillInvocationChange,
+  onRemoveScheduledMessage,
   onStop,
 }: NarreMentionInputProps): JSX.Element {
   const { t } = useI18n();
@@ -236,11 +357,28 @@ export function NarreMentionInput({
     query: '',
     position: { bottom: 0, left: 0 },
   });
+  const [imageAttachments, setImageAttachments] = useState<ComposerImageAttachment[]>([]);
+  const [previewAttachmentId, setPreviewAttachmentId] = useState<string | null>(null);
   const mentionSearchStart = useRef<number | null>(null);
   const mentionReplaceRange = useRef<{ node: Text; atPos: number; cursorPos: number } | null>(null);
   const previousDisabled = useRef(disabled);
   const selectedSkill = pendingSkillInvocation ? getSlashSkillByName(pendingSkillInvocation.name, availableSkills) : null;
   const fileMention = snapshot.mentions.find((mention) => mention.type === 'file');
+  const previewAttachment = imageAttachments.find((attachment) => attachment.id === previewAttachmentId) ?? null;
+
+  const addImageFiles = useCallback(async (files: File[]) => {
+    if (files.length === 0) {
+      return;
+    }
+
+    const attachments = await Promise.all(files.map(readImageAttachment));
+    setImageAttachments((current) => [...current, ...attachments]);
+  }, []);
+
+  const removeImageAttachment = useCallback((id: string) => {
+    setImageAttachments((current) => current.filter((attachment) => attachment.id !== id));
+    setPreviewAttachmentId((current) => current === id ? null : current);
+  }, []);
 
   const syncComposerState = useCallback((): ComposerSnapshot => {
     const el = editorRef.current;
@@ -267,6 +405,8 @@ export function NarreMentionInput({
     setIsEmpty(true);
     setPicker((p) => ({ ...p, isOpen: false }));
     setSlashPicker((p) => ({ ...p, isOpen: false }));
+    setImageAttachments([]);
+    setPreviewAttachmentId(null);
     mentionSearchStart.current = null;
     mentionReplaceRange.current = null;
     onDraftChange?.('');
@@ -293,26 +433,31 @@ export function NarreMentionInput({
     return null;
   })();
 
-  const canSubmit = pendingSkillInvocation ? skillValidationMessage === null : !isEmpty;
+  const canSubmit = pendingSkillInvocation ? skillValidationMessage === null : !isEmpty || imageAttachments.length > 0;
 
-  const handleSend = useCallback(async () => {
+  const handleSend = useCallback(async (delivery: NarreComposerSubmit['delivery'] = 'send') => {
     const el = editorRef.current;
-    if (!el || disabled || sendDisabled || !canSubmit) return;
+    if (!el || disabled || !canSubmit) return;
+    if (!isStreaming && sendDisabled) return;
 
     const { text, mentions } = serializeContentEditable(el);
-    if (!pendingSkillInvocation && !text.trim()) return;
+    if (!pendingSkillInvocation && !text.trim() && imageAttachments.length === 0) return;
+
+    const attachmentText = imageAttachments.map((attachment) => `[Image: ${attachment.name}]`).join('\n');
+    const outboundText = [text, attachmentText].filter(Boolean).join('\n');
 
     const result = await onSend({
-      text,
+      text: outboundText,
       mentions,
       draftHtml: el.innerHTML,
       pendingSkillInvocation,
+      delivery,
     });
     if (result === false) return;
 
     logShortcut('shortcut.narreChat.sendMessage');
     resetEditor();
-  }, [canSubmit, disabled, onSend, pendingSkillInvocation, resetEditor, sendDisabled]);
+  }, [canSubmit, disabled, imageAttachments, isStreaming, onSend, pendingSkillInvocation, resetEditor, sendDisabled]);
 
   const handleSlashSelect = useCallback((skill: SkillDefinition) => {
     const el = editorRef.current;
@@ -343,8 +488,8 @@ export function NarreMentionInput({
 
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      if (sendDisabled) return;
-      void handleSend();
+      if (!isStreaming && sendDisabled) return;
+      void handleSend(isStreaming ? 'queue' : 'send');
       return;
     }
     if (e.key === 'Enter' && e.shiftKey) {
@@ -386,7 +531,7 @@ export function NarreMentionInput({
         }
       }
     }
-  }, [picker.isOpen, slashPicker.isOpen, handleSend, onDraftChange, sendDisabled, syncComposerState]);
+  }, [picker.isOpen, slashPicker.isOpen, handleSend, isStreaming, onDraftChange, sendDisabled, syncComposerState]);
 
   const handleInput = useCallback(() => {
     const editor = editorRef.current;
@@ -406,6 +551,9 @@ export function NarreMentionInput({
         setPicker((p) => ({ ...p, isOpen: false }));
         mentionSearchStart.current = null;
         mentionReplaceRange.current = null;
+      }
+      if (slashPicker.isOpen) {
+        setSlashPicker((p) => ({ ...p, isOpen: false }));
       }
       return;
     }
@@ -535,21 +683,33 @@ export function NarreMentionInput({
   }, []);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
-    if (disabled || !allowMentions || !isNarreMentionDrag(e)) return;
+    const hasImageFiles = getImageFiles(e.dataTransfer.files).length > 0;
+    if (disabled || (!hasImageFiles && (!allowMentions || !isNarreMentionDrag(e)))) return;
     e.preventDefault();
     e.stopPropagation();
     e.dataTransfer.dropEffect = 'copy';
   }, [allowMentions, disabled]);
 
   const handleDragEnter = useCallback((e: React.DragEvent) => {
-    if (disabled || !allowMentions || !isNarreMentionDrag(e)) return;
+    const hasImageFiles = getImageFiles(e.dataTransfer.files).length > 0;
+    if (disabled || (!hasImageFiles && (!allowMentions || !isNarreMentionDrag(e)))) return;
     e.preventDefault();
     e.stopPropagation();
     e.dataTransfer.dropEffect = 'copy';
   }, [allowMentions, disabled]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
-    if (disabled || !allowMentions || !isNarreMentionDrag(e)) return;
+    if (disabled) return;
+
+    const imageFiles = getImageFiles(e.dataTransfer.files);
+    if (imageFiles.length > 0) {
+      e.preventDefault();
+      e.stopPropagation();
+      void addImageFiles(imageFiles);
+      return;
+    }
+
+    if (!allowMentions || !isNarreMentionDrag(e)) return;
     e.preventDefault();
     e.stopPropagation();
 
@@ -569,7 +729,28 @@ export function NarreMentionInput({
     mentionReplaceRange.current = null;
     syncComposerState();
     onDraftChange?.(el.innerHTML);
-  }, [allowMentions, disabled, onDraftChange, syncComposerState]);
+  }, [addImageFiles, allowMentions, disabled, onDraftChange, syncComposerState]);
+
+  const handlePaste = useCallback((e: React.ClipboardEvent<HTMLDivElement>) => {
+    if (disabled) return;
+
+    const imageFiles = getImageFiles(e.clipboardData.files);
+    if (imageFiles.length > 0) {
+      e.preventDefault();
+      e.stopPropagation();
+      void addImageFiles(imageFiles);
+      return;
+    }
+
+    const htmlAttachments = imageAttachmentsFromHtml(e.clipboardData.getData('text/html'));
+    if (htmlAttachments.length === 0) {
+      return;
+    }
+
+    e.preventDefault();
+    e.stopPropagation();
+    setImageAttachments((current) => [...current, ...htmlAttachments]);
+  }, [addImageFiles, disabled]);
 
   useEffect(() => {
     const el = editorRef.current;
@@ -671,6 +852,63 @@ export function NarreMentionInput({
   return (
     <div className="mx-auto w-full max-w-[860px]">
       <div className="relative rounded-2xl border border-input bg-surface-input px-3 pb-2 pt-2 shadow-sm transition-colors hover:border-strong focus-within:border-accent">
+        {scheduledMessages.length > 0 && (
+          <div className="-mx-3 -mt-2 mb-2 overflow-hidden rounded-t-2xl border-b border-subtle bg-surface-panel">
+            <div className="px-3 py-2 text-xs text-secondary">
+              {t('narre.scheduledMessages' as never, { count: scheduledMessages.length } as never)}
+            </div>
+            <div className="divide-y divide-subtle">
+              {scheduledMessages.map((summary, index) => (
+                <div key={`${index}:${summary}`} className="flex min-w-0 items-center gap-2 px-3 py-2 text-xs">
+                  <ChevronRight size={13} className="shrink-0 text-muted" aria-hidden="true" />
+                  <span className="min-w-0 flex-1 truncate text-default">{summary}</span>
+                  {onRemoveScheduledMessage && (
+                    <IconButton
+                      label={t('narre.removeScheduledMessage' as never)}
+                      className="h-6 w-6 text-muted hover:enabled:text-default"
+                      onClick={() => onRemoveScheduledMessage(index)}
+                    >
+                      <X size={13} />
+                    </IconButton>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        {imageAttachments.length > 0 && (
+          <div className="mb-2 flex flex-wrap gap-2">
+            {imageAttachments.map((attachment) => (
+              <div
+                key={attachment.id}
+                className="group relative h-20 w-20 overflow-hidden rounded-lg border border-subtle bg-surface-card"
+              >
+                <button
+                  type="button"
+                  className="block h-full w-full"
+                  onClick={() => setPreviewAttachmentId(attachment.id)}
+                >
+                  <img
+                    src={attachment.dataUrl}
+                    alt={attachment.name}
+                    className="h-full w-full object-cover"
+                  />
+                </button>
+                <button
+                  type="button"
+                  aria-label={t('narre.removeImageAttachment' as never)}
+                  className="absolute right-1 top-1 z-10 inline-flex h-5 w-5 items-center justify-center rounded-full border border-default bg-surface-modal text-default shadow-sm transition-colors hover:bg-surface-hover"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    removeImageAttachment(attachment.id);
+                  }}
+                >
+                  <X size={12} strokeWidth={2.5} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
         <div
           ref={editorRef}
           data-narre-mention-drop-target="true"
@@ -686,9 +924,10 @@ export function NarreMentionInput({
           onDragEnter={handleDragEnter}
           onDragOver={handleDragOver}
           onDrop={handleDrop}
+          onPaste={handlePaste}
           suppressContentEditableWarning
         />
-        {isEmpty && !disabled && (
+        {isEmpty && imageAttachments.length === 0 && !disabled && (
           <div className="pointer-events-none absolute left-3 top-3 text-sm text-muted">
             {placeholder || t('narre.inputPlaceholder')}
           </div>
@@ -754,19 +993,42 @@ export function NarreMentionInput({
           {footerLabel && (
             <span className="truncate text-xs text-muted">{footerLabel}</span>
           )}
+          {queuedCount > 0 && (
+            <Badge variant="accent">
+              {t('narre.queuedMessages' as never, { count: queuedCount } as never)}
+            </Badge>
+          )}
           <div className="ml-auto flex items-center gap-2">
             {allowMentions && (
               <span className="text-xs text-muted">@</span>
             )}
             {isStreaming ? (
-              <IconButton
-                label={t('narre.stopMessage' as never)}
-                disabled={stopDisabled || !onStop}
-                className="h-8 w-8 rounded-full bg-surface-hover text-default hover:enabled:bg-state-hover"
-                onClick={() => { void onStop?.(); }}
-              >
-                <Square size={14} />
-              </IconButton>
+              <>
+                <IconButton
+                  label={t('narre.steerMessage' as never)}
+                  disabled={disabled || !canSubmit || Boolean(pendingSkillInvocation)}
+                  className="h-8 w-8 rounded-full bg-accent text-on-accent hover:enabled:bg-accent-hover disabled:bg-surface-hover disabled:text-muted"
+                  onClick={() => { void handleSend('steer'); }}
+                >
+                  <Send size={15} />
+                </IconButton>
+                <IconButton
+                  label={t('narre.queueMessage' as never)}
+                  disabled={disabled || !canSubmit}
+                  className="h-8 w-8 rounded-full bg-surface-hover text-default hover:enabled:bg-state-hover disabled:text-muted"
+                  onClick={() => { void handleSend('queue'); }}
+                >
+                  <CornerDownRight size={15} />
+                </IconButton>
+                <IconButton
+                  label={t('narre.stopMessage' as never)}
+                  disabled={stopDisabled || !onStop}
+                  className="h-8 w-8 rounded-full bg-surface-hover text-default hover:enabled:bg-state-hover"
+                  onClick={() => { void onStop?.(); }}
+                >
+                  <Square size={14} />
+                </IconButton>
+              </>
             ) : (
               <IconButton
                 label={t('narre.sendMessage')}
@@ -780,6 +1042,10 @@ export function NarreMentionInput({
           </div>
         </div>
       </div>
+      <NarreImagePreviewOverlay
+        attachment={previewAttachment}
+        onClose={() => setPreviewAttachmentId(null)}
+      />
       {allowMentions && picker.isOpen && (
         <NarreMentionPicker
           query={picker.query}

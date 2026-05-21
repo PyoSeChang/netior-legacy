@@ -39,10 +39,10 @@ export function ensureModelCategoryTaxonomyForProjectDb(
 
   db.prepare(`
     INSERT OR IGNORE INTO schemas (
-      id, project_id, name, description, icon, color, node_shape, file_template, models,
+      id, project_id, name, description, icon, color, file_template, models,
       source_kind, source_id, source_ref, source_version, created_at, updated_at
     )
-    VALUES (?, ?, 'Model Category', 'Built-in enum schema for semantic model categories.', 'folder-tree', '#6b7280', 'rounded', NULL, '[]',
+    VALUES (?, ?, 'Model Category', 'Built-in enum schema for semantic model categories.', 'folder-tree', '#6b7280', NULL, '[]',
       'system', ?, ?, ?, ?, ?)
   `).run(schemaId, projectId, SYSTEM_ONTOLOGY_SOURCE_ID, MODEL_CATEGORY_SCHEMA_SOURCE_REF, SYSTEM_ONTOLOGY_SOURCE_VERSION, now, now);
   db.prepare(`

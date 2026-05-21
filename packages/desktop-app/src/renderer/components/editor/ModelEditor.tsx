@@ -295,6 +295,7 @@ export function ModelEditor({ tab }: ModelEditorProps): JSX.Element {
   const models = useModelStore((s) => s.models);
   const loadModels = useModelStore((s) => s.loadByProject);
   const updateModel = useModelStore((s) => s.updateModel);
+  const deleteModel = useModelStore((s) => s.deleteModel);
   const currentProject = useProjectStore((s) => s.currentProject);
   const instances = useInstanceStore((s) => s.instances);
   const loadInstances = useInstanceStore((s) => s.loadByProject);
@@ -675,6 +676,11 @@ export function ModelEditor({ tab }: ModelEditorProps): JSX.Element {
     setShowCategoryCreator(false);
   };
 
+  const handleDelete = async () => {
+    await deleteModel(modelId);
+    useEditorStore.getState().closeTab(tab.id);
+  };
+
   return (
     <ScrollArea className="h-full min-h-0">
       <NetworkObjectEditorShell
@@ -684,7 +690,7 @@ export function ModelEditor({ tab }: ModelEditorProps): JSX.Element {
         description={displayDescription || t('model.descriptionPlaceholder' as never)}
         leadingVisual={<NodeVisual icon={displayIcon} size={24} imageSize={56} className="shrink-0" />}
       >
-        <NetworkObjectEditorSection title={t('editorShell.overview' as never)} viewMode="body">
+        <NetworkObjectEditorSection title={t('editorShell.overview' as never)} defaultOpen={tab.isDirty} viewMode="body">
           <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_170px]">
             <div className="flex flex-col gap-1">
               <label className="text-xs font-medium text-secondary">{t('model.name' as never)}</label>
@@ -1190,6 +1196,19 @@ export function ModelEditor({ tab }: ModelEditorProps): JSX.Element {
             ]}
           />
         </NetworkObjectEditorSection>
+
+        <div className="mx-auto flex w-full max-w-[760px] justify-end px-6 pt-1" data-network-object-view-mode="details">
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="bg-status-error/10 text-status-error hover:bg-status-error/15 hover:text-status-error"
+            disabled={isBuiltInModel || model.source_kind !== 'project'}
+            onClick={() => { void handleDelete(); }}
+          >
+            {t('common.delete')}
+          </Button>
+        </div>
       </NetworkObjectEditorShell>
     </ScrollArea>
   );

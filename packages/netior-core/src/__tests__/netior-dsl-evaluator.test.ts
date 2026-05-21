@@ -13,6 +13,8 @@ import { createProject } from '../repositories/project';
 import { createSchema } from '../repositories/schema';
 import { createInstance } from '../repositories/instance';
 import { upsertProperty } from '../repositories/instance-property';
+import { addNetworkNode, createNetwork } from '../repositories/network';
+import { getObjectByRef } from '../repositories/objects';
 import { evaluateNetiorDsl } from '../services/netior-dsl-evaluator';
 
 function insertField(id: string, schemaId: string, name: string, fieldType = 'text'): void {
@@ -135,6 +137,33 @@ describe('Netior DSL evaluator', () => {
     expect(result).toEqual({
       ok: true,
       value: [{ objectType: 'schema', refId: schema.id, objectId: expect.any(String) }],
+    });
+  });
+
+  it('resolves objects placed in the current network scope', () => {
+    const project = createProject({ name: 'DSL', root_dir: '/tmp/dsl' });
+    const schema = createSchema({ project_id: project.id, name: 'Problem' });
+    const first = createInstance({ project_id: project.id, schema_id: schema.id, title: 'Q1' });
+    const second = createInstance({ project_id: project.id, schema_id: schema.id, title: 'Q2' });
+    const network = createNetwork({ project_id: project.id, name: 'Problem Set' });
+    const firstObject = getObjectByRef('instance', first.id)!;
+    const secondObject = getObjectByRef('instance', second.id)!;
+    addNetworkNode({ network_id: network.id, object_id: firstObject.id });
+    addNetworkNode({ network_id: network.id, object_id: secondObject.id });
+
+    const result = evaluateNetiorDsl({
+      op: 'objects.inNetwork',
+    }, {
+      projectId: project.id,
+      currentNetworkId: network.id,
+    });
+
+    expect(result).toEqual({
+      ok: true,
+      value: [
+        { objectType: 'instance', refId: first.id, objectId: firstObject.id },
+        { objectType: 'instance', refId: second.id, objectId: secondObject.id },
+      ],
     });
   });
 });

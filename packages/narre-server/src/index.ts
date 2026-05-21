@@ -32,6 +32,7 @@ import { initNarreLogging } from './logging.js';
 import { buildProjectPromptMetadata } from './project-prompt-metadata.js';
 import { getProjectById } from './netior-service-client.js';
 import { SupervisorRegistry } from './supervisor/supervisor-registry.js';
+import { getSupervisorAgentKey } from './supervisor/agent-registry.js';
 import { OrchestrationRegistry } from './supervisor/orchestration-registry.js';
 import { AgentRuntimeDispatcher } from './supervisor/agent-runtime-dispatcher.js';
 import { AgentOperator } from './supervisor/agent-operator.js';
@@ -623,12 +624,52 @@ app.post('/chat/respond', async (req, res) => {
   res.json({ ok: true });
 });
 
+app.post('/chat/steer', async (req, res) => {
+  const { sessionId, message } = req.body as {
+    sessionId?: unknown;
+    message?: unknown;
+  };
+
+  if (typeof sessionId !== 'string' || sessionId.length === 0) {
+    res.status(400).json({ error: 'sessionId required' });
+    return;
+  }
+
+  if (typeof message !== 'string' || message.trim().length === 0) {
+    res.status(400).json({ error: 'message required' });
+    return;
+  }
+
+  try {
+    const steered = await runtime.steer(sessionId, message);
+    if (!steered) {
+      res.status(409).json({ error: 'No active steerable Narre run' });
+      return;
+    }
+
+    const session = await sessionStore.getSessionById(sessionId);
+    if (session?.projectId) {
+      await sessionStore.appendMessage(sessionId, session.projectId, {
+        role: 'user',
+        content: message,
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    res.json({ ok: true });
+  } catch (error) {
+    res.status(500).json({ error: (error as Error).message });
+  }
+});
+
 app.post('/chat', async (req, res) => {
-  const { sessionId, projectId, message, mentions } = req.body as {
+  const { sessionId, projectId, message, mentions, agentKey, skillIds } = req.body as {
     sessionId?: string;
     projectId: string;
     message: string;
     mentions?: NarreMention[];
+    agentKey?: string | null;
+    skillIds?: unknown[];
   };
   const traceId = req.get(NARRE_TRACE_HEADER) || randomUUID();
   const requestStartedAt = Date.now();
@@ -676,8 +717,24 @@ app.post('/chat', async (req, res) => {
       `chars=${message.length} mentions=${mentions?.length ?? 0}`,
     );
 
+    const session = sessionId ? await sessionStore.getSession(sessionId, projectId) : null;
+    const effectiveAgentKey = agentKey ?? session?.agentKey ?? mentions?.find((mention) => mention.type === 'agent')?.id ?? null;
+    const activeAgent = effectiveAgentKey
+      ? supervisor.listAgents(projectId).find((agent) => getSupervisorAgentKey(agent) === effectiveAgentKey)
+      : undefined;
+
     const result = await runtime.runChat(
-      { sessionId, projectId, message, mentions, traceId },
+      {
+        sessionId,
+        projectId,
+        message,
+        mentions,
+        traceId,
+        activeAgent,
+        skillIds: Array.isArray(skillIds)
+          ? skillIds.filter((value): value is string => typeof value === 'string')
+          : undefined,
+      },
       {
         onText: (content) => {
           if (!abortController.signal.aborted) {

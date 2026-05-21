@@ -491,10 +491,10 @@ export function createSchema(data: SchemaCreate): Schema {
 
   db.prepare(
     `INSERT INTO schemas (
-      id, project_id, name, description, icon, color, node_shape, file_template, models,
+      id, project_id, name, description, icon, color, file_template, models,
       source_kind, source_id, source_ref, source_version, created_at, updated_at
     )
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     id,
     data.project_id,
@@ -502,7 +502,6 @@ export function createSchema(data: SchemaCreate): Schema {
     data.description ?? null,
     data.icon ?? null,
     data.color ?? null,
-    data.node_shape ?? null,
     data.file_template ?? null,
     serializeModels(models),
     data.source_kind ?? 'project',
@@ -546,7 +545,7 @@ export function updateSchema(id: string, data: SchemaUpdate): Schema | undefined
 
   db.prepare(
     `UPDATE schemas
-        SET name = ?, description = ?, icon = ?, color = ?, node_shape = ?, file_template = ?, models = ?,
+        SET name = ?, description = ?, icon = ?, color = ?, file_template = ?, models = ?,
             source_kind = ?, source_id = ?, source_ref = ?, source_version = ?, updated_at = ?
       WHERE id = ?`,
   ).run(
@@ -554,7 +553,6 @@ export function updateSchema(id: string, data: SchemaUpdate): Schema | undefined
     data.description !== undefined ? data.description : existing.description,
     data.icon !== undefined ? data.icon : existing.icon,
     data.color !== undefined ? data.color : existing.color,
-    data.node_shape !== undefined ? data.node_shape : existing.node_shape,
     data.file_template !== undefined ? data.file_template : existing.file_template,
     nextModels,
     data.source_kind !== undefined ? data.source_kind : existing.source_kind,

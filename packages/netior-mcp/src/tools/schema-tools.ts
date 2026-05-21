@@ -45,19 +45,17 @@ export function registerSchemaTools(server: McpServer): void {
       name: z.string().describe('Schema name'),
       icon: z.string().optional().describe('Icon identifier'),
       color: z.string().optional().describe('Color value'),
-      node_shape: z.string().optional().describe('Node shape for network rendering'),
       description: z.string().optional().describe('Schema description'),
       file_template: z.string().nullable().optional().describe('Optional file template for new instances'),
       models: modelKeysSchema.optional().describe('Model keys attached to this schema'),
     },
-    async ({ project_id, name, icon, color, node_shape, description, file_template, models }) => {
+    async ({ project_id, name, icon, color, description, file_template, models }) => {
       try {
         const result = await createSchema({
           project_id: resolveProjectId(project_id),
           name,
           icon,
           color,
-          node_shape,
           description,
           file_template: file_template ?? undefined,
           models: models as ModelRefKey[] | undefined,
@@ -83,18 +81,16 @@ export function registerSchemaTools(server: McpServer): void {
       name: z.string().optional().describe('New name'),
       icon: z.string().optional().describe('New icon identifier'),
       color: z.string().optional().describe('New color value'),
-      node_shape: z.string().optional().describe('New node shape'),
       description: z.string().optional().describe('New description'),
       file_template: z.string().nullable().optional().describe('New file template or null'),
       models: modelKeysSchema.optional().describe('New model keys attached to this schema'),
     },
-    async ({ schema_id, name, icon, color, node_shape, description, file_template, models }) => {
+    async ({ schema_id, name, icon, color, description, file_template, models }) => {
       try {
         const result = await updateSchema(schema_id, {
           name,
           icon,
           color,
-          node_shape,
           description,
           file_template,
           models: models as ModelRefKey[] | undefined,

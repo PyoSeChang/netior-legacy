@@ -38,6 +38,11 @@
       "types": "./dist/interactive-view/index.d.ts",
       "import": "./dist/interactive-view/index.js",
       "require": "./dist/interactive-view/index.cjs"
+    },
+    "./semantic-editor": {
+      "types": "./dist/semantic-editor.d.ts",
+      "import": "./dist/semantic-editor.js",
+      "require": "./dist/semantic-editor.cjs"
     }
   },
   "scripts": {

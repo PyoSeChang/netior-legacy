@@ -114,17 +114,19 @@ export function registerNetworkNodeTools(server: McpServer): void {
       network_id: z.string().describe('The network ID'),
       object_id: z.string().describe('The object record ID'),
       node_type: nodeTypeModel.optional().describe('The node type'),
+      node_type_id: z.string().optional().describe('Representation node type ID'),
       parent_node_id: z.string().optional().describe('Optional parent node ID'),
       metadata: z.string().nullable().optional().describe('Raw node metadata JSON string. Prefer node_config for layout/sort changes.'),
       node_config: nodeConfigModel.optional().describe('Structured node config stored at metadata.nodeConfig. Use this for group node layout and sort settings.'),
     },
-    async ({ network_id, object_id, node_type, parent_node_id, metadata, node_config }) => {
+    async ({ network_id, object_id, node_type, node_type_id, parent_node_id, metadata, node_config }) => {
       try {
         const mergedMetadata = buildNodeMetadata({ metadata, node_config });
         const result = await createNetworkNode({
           network_id,
           object_id,
           node_type,
+          node_type_id,
           parent_node_id,
           ...(mergedMetadata !== undefined ? { metadata: mergedMetadata } : {}),
         });
@@ -147,11 +149,12 @@ export function registerNetworkNodeTools(server: McpServer): void {
     {
       node_id: z.string().describe('The network node ID'),
       node_type: nodeTypeModel.optional().describe('New node type'),
+      node_type_id: z.string().nullable().optional().describe('Representation node type ID or null'),
       parent_node_id: z.string().nullable().optional().describe('Parent node ID or null'),
       metadata: z.string().nullable().optional().describe('Raw node metadata JSON string or null. Prefer node_config for layout/sort changes.'),
       node_config: nodeConfigModel.nullable().optional().describe('Structured node config stored at metadata.nodeConfig. Pass null to remove existing nodeConfig.'),
     },
-    async ({ node_id, node_type, parent_node_id, metadata, node_config }) => {
+    async ({ node_id, node_type, node_type_id, parent_node_id, metadata, node_config }) => {
       try {
         const existingNode = node_config !== undefined && metadata === undefined
           ? await getNetworkNode(node_id)
@@ -171,6 +174,7 @@ export function registerNetworkNodeTools(server: McpServer): void {
         });
         const result = await updateNetworkNode(node_id, {
           node_type,
+          node_type_id,
           parent_node_id,
           ...(mergedMetadata !== undefined ? { metadata: mergedMetadata } : {}),
         });

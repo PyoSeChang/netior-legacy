@@ -137,8 +137,19 @@ function idPart(value: unknown, fallback: string): string {
 
 export class CodexTransport implements OpenAIFamilyTransport {
   readonly name = 'codex';
+  private readonly activeClients = new Map<string, CodexAppServerClient>();
 
   constructor(private readonly options: CodexTransportOptions) {}
+
+  async steer(sessionId: string, message: string): Promise<boolean> {
+    const client = this.activeClients.get(sessionId);
+    if (!client) {
+      return false;
+    }
+
+    await client.steerTurn(message);
+    return true;
+  }
 
   async run(context: OpenAIFamilyTransportRunContext) {
     const traceId = context.traceId ?? 'no-trace';
@@ -204,6 +215,7 @@ export class CodexTransport implements OpenAIFamilyTransport {
         await context.onToolEnd(tool, error ?? result, tracked.metadata ?? getNarreToolMetadata(tool));
       };
 
+      this.activeClients.set(context.sessionId, client);
       await client.startTurn(threadId, context.userPrompt);
 
       console.log(
@@ -216,6 +228,9 @@ export class CodexTransport implements OpenAIFamilyTransport {
         toolCalls: Array.from(trackedToolCalls.values()),
       };
     } finally {
+      if (this.activeClients.get(context.sessionId) === client) {
+        this.activeClients.delete(context.sessionId);
+      }
       context.signal?.removeEventListener('abort', abortHandler);
       await client.close();
     }
@@ -276,6 +291,7 @@ class CodexAppServerClient {
   private readonly pendingRequests = new Map<number | string, PendingRequest>();
   private nextRequestId = 1;
   private activeTurn: ActiveTurn | null = null;
+  private activeThreadId: string | null = null;
   private startupError: Error | null = null;
   private readonly mcpServerStartupStates = new Map<string, McpServerStartupState>();
   private readonly recentToolCalls = new Map<string, RecentToolCall>();
@@ -484,9 +500,32 @@ class CodexAppServerClient {
       throw new Error('Codex app-server did not return a turn id');
     }
 
-    await new Promise<void>((resolve, reject) => {
-      this.activeTurn = { turnId, resolve, reject };
-    });
+    this.activeThreadId = threadId;
+    try {
+      await new Promise<void>((resolve, reject) => {
+        this.activeTurn = { turnId, resolve, reject };
+      });
+    } finally {
+      this.activeThreadId = null;
+    }
+  }
+
+  async steerTurn(prompt: string): Promise<void> {
+    const activeTurn = this.activeTurn;
+    if (!activeTurn || !this.activeThreadId) {
+      throw new Error('No active Codex turn to steer');
+    }
+
+    await this.request('turn/steer', {
+      threadId: this.activeThreadId,
+      expectedTurnId: activeTurn.turnId,
+      input: [
+        {
+          type: 'text',
+          text: prompt,
+        },
+      ],
+    }, 10_000);
   }
 
   private async listMcpServerStatuses(): Promise<McpServerStatusListResponse> {

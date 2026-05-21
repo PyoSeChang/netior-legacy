@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useRef, useCallback, useSyncExternalStore } from 'react';
-import { ArrowLeft, Bot, Check, MoreVertical, X } from 'lucide-react';
+import React, { useEffect, useState, useRef, useCallback, useMemo, useSyncExternalStore } from 'react';
+import { ArrowLeft, Bot, Check, ChevronRight, MoreVertical, X } from 'lucide-react';
 import { SLASH_TRIGGER_SKILLS } from '@netior/shared/constants';
 import type {
   NarreCard,
@@ -66,9 +66,78 @@ function getSkillDescription(skill: SkillDefinition, translate: (key: any) => st
   return skill.source === 'builtin' ? translate(skill.description as any) : skill.description;
 }
 
+function resolvePendingSkillIds(
+  pendingSkillInvocation: NarrePendingSkillInvocationState | null,
+  skills: readonly SkillDefinition[],
+): string[] {
+  if (!pendingSkillInvocation) {
+    return [];
+  }
+
+  const skill = getSlashSkill(pendingSkillInvocation.name, skills);
+  return skill ? [skill.id] : [];
+}
+
 function isPdfMention(mention: NarreMention): boolean {
   const candidate = mention.path ?? mention.display;
   return candidate.toLowerCase().endsWith('.pdf');
+}
+
+function parseTimestamp(value: string | null | undefined): number | null {
+  if (!value) {
+    return null;
+  }
+
+  const time = Date.parse(value);
+  return Number.isNaN(time) ? null : time;
+}
+
+function formatDurationSeconds(startTime: string | null | undefined, endTimeMs: number): number {
+  const startedAt = parseTimestamp(startTime);
+  if (!startedAt) {
+    return 0;
+  }
+
+  return Math.max(0, Math.round((endTimeMs - startedAt) / 1000));
+}
+
+function formatDurationCompact(totalSeconds: number): string {
+  const seconds = Math.max(0, Math.round(totalSeconds));
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const remainingSeconds = seconds % 60;
+
+  if (hours > 0) {
+    return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
+  }
+
+  if (minutes > 0) {
+    return remainingSeconds > 0 ? `${minutes}m ${remainingSeconds}s` : `${minutes}m`;
+  }
+
+  return `${remainingSeconds}s`;
+}
+
+function NarreTurnStatus({
+  label,
+  active = false,
+}: {
+  label: string;
+  active?: boolean;
+}): JSX.Element {
+  return (
+    <div className="flex justify-start">
+      <div className="w-full max-w-[85%]">
+        <div className="flex items-center gap-1.5 border-b border-subtle pb-2 text-xs text-muted">
+          {active && (
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-accent" aria-hidden="true" />
+          )}
+          <span>{label}</span>
+          {!active && <ChevronRight size={13} aria-hidden="true" />}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function parseOverviewPagesText(rawText: string): number[] | undefined {
@@ -180,6 +249,20 @@ function getAgentKey(agent: AgentDefinition): string {
   return `narre:user:global:${agent.id}`;
 }
 
+function resolveAgentSkillDefinitions(
+  agent: AgentDefinition,
+  skills: readonly SkillDefinition[],
+): SkillDefinition[] {
+  if (!('skills' in agent) || agent.skills.length === 0) {
+    return [];
+  }
+
+  const skillById = new Map(skills.map((skill) => [skill.id, skill]));
+  return agent.skills
+    .map((agentSkill) => skillById.get(agentSkill.id) ?? null)
+    .filter((skill): skill is SkillDefinition => Boolean(skill));
+}
+
 function isSystemNarreAgent(agent: AgentDefinition): boolean {
   return agent.kind === 'narre' && agent.narreAgentType === 'system';
 }
@@ -232,13 +315,16 @@ export function NarreChat({
   const [sessionId, setSessionId] = useState<string | null>(initialSessionId);
   const [availableSkills, setAvailableSkills] = useState<readonly SkillDefinition[]>(SLASH_TRIGGER_SKILLS);
   const [activeAgent, setActiveAgent] = useState<AgentDefinition | null>(null);
+  const [activeAgentResolvedKey, setActiveAgentResolvedKey] = useState<string | null>(null);
   const [isRenamingTitle, setIsRenamingTitle] = useState(false);
   const [renameTitle, setRenameTitle] = useState('');
   const [isSavingTitle, setIsSavingTitle] = useState(false);
   const [moreMenu, setMoreMenu] = useState<{ x: number; y: number } | null>(null);
+  const [queuedSubmissions, setQueuedSubmissions] = useState<NarreComposerSubmit[]>([]);
   const moreButtonRef = useRef<HTMLButtonElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const autoScrollRef = useRef(true);
+  const isDequeuingRef = useRef(false);
   useEffect(() => {
     setSessionId(initialSessionId);
   }, [initialSessionId]);
@@ -249,6 +335,7 @@ export function NarreChat({
     messages,
     isStreaming,
     streamingBlocks,
+    streamingTimestamp,
     hasReceivedFirstStreamEvent,
     isInterrupting,
     pendingDraftHtml,
@@ -259,6 +346,8 @@ export function NarreChat({
     pendingSkillInvocation,
     draftHtml,
   } = sessionState;
+  const effectiveAgentKey = agentKey ?? sessionState.agentKey;
+  const [nowMs, setNowMs] = useState(() => Date.now());
   const activePrompt = (() => {
     const streamingPrompt = findActiveInteractivePrompt(streamingBlocks);
     if (streamingPrompt) {
@@ -279,7 +368,6 @@ export function NarreChat({
 
     return null;
   })();
-
   useEffect(() => {
     void ensureNarreSessionLoaded(projectId, sessionId).catch(() => {});
   }, [projectId, sessionId]);
@@ -287,35 +375,44 @@ export function NarreChat({
   useEffect(() => {
     let cancelled = false;
 
-    if (!agentKey) {
+    if (!effectiveAgentKey) {
       setActiveAgent(null);
+      setActiveAgentResolvedKey(null);
       return () => {
         cancelled = true;
       };
     }
 
-    void Promise.all([
+    void Promise.allSettled([
       narreService.listSupervisorAgents(projectId),
       agentService.listDefinitions(projectId),
     ])
-      .then(([supervisorAgents, userAgents]) => {
+      .then(([supervisorAgentsResult, userAgentsResult]) => {
         if (cancelled) return;
+        const supervisorAgents = supervisorAgentsResult.status === 'fulfilled'
+          ? supervisorAgentsResult.value
+          : [];
+        const userAgents = userAgentsResult.status === 'fulfilled'
+          ? userAgentsResult.value
+          : [];
         const chatAgents = [
           ...supervisorAgents.filter(isSystemNarreAgent),
           ...userAgents.map(userAgentRecordToAgentDefinition),
         ];
-        setActiveAgent(chatAgents.find((agent) => getAgentKey(agent) === agentKey) ?? null);
+        setActiveAgent(chatAgents.find((agent) => getAgentKey(agent) === effectiveAgentKey) ?? null);
+        setActiveAgentResolvedKey(effectiveAgentKey);
       })
       .catch(() => {
         if (!cancelled) {
           setActiveAgent(null);
+          setActiveAgentResolvedKey(effectiveAgentKey);
         }
       });
 
     return () => {
       cancelled = true;
     };
-  }, [agentKey, projectId]);
+  }, [effectiveAgentKey, projectId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -360,11 +457,27 @@ export function NarreChat({
     updateNarreCardResponse(projectId, sessionId, toolCallId, response);
   }, [projectId, sessionId]);
 
+  const scopedAvailableSkills = useMemo(() => {
+    if (!effectiveAgentKey) {
+      return [];
+    }
+
+    if (activeAgentResolvedKey !== effectiveAgentKey) {
+      return [];
+    }
+
+    if (!activeAgent) {
+      return [];
+    }
+
+    return resolveAgentSkillDefinitions(activeAgent, availableSkills);
+  }, [activeAgent, activeAgentResolvedKey, availableSkills, effectiveAgentKey]);
+
   const buildSkillPreview = useCallback((
     skillInvocationState: NarrePendingSkillInvocationState,
     mentions: NarreMention[],
   ): string => {
-    const slashSkill = getSlashSkill(skillInvocationState.name, availableSkills);
+    const slashSkill = getSlashSkill(skillInvocationState.name, scopedAvailableSkills);
     const label = slashSkill ? getSkillDescription(slashSkill, t) : `/${skillInvocationState.name}`;
 
     if (skillInvocationState.name !== 'index') {
@@ -380,7 +493,7 @@ export function NarreChat({
         : null,
     ].filter((part): part is string => Boolean(part));
     return detailParts.length > 0 ? `${label}\n${detailParts.join(' - ')}` : label;
-  }, [availableSkills, t]);
+  }, [scopedAvailableSkills, t]);
 
   const sendToAgent = useCallback(async ({
     message,
@@ -442,6 +555,7 @@ export function NarreChat({
         projectId,
         message,
         mentions: runtimeMentions.length > 0 ? runtimeMentions : undefined,
+        skillIds: resolvePendingSkillIds(skillInvocationState, scopedAvailableSkills),
       });
       return true;
     } catch (error) {
@@ -457,16 +571,51 @@ export function NarreChat({
       );
       return false;
     }
-  }, [agentKey, sessionId, projectId, onSessionCreated]);
+  }, [agentKey, scopedAvailableSkills, sessionId, projectId, onSessionCreated]);
 
   const handleSend = useCallback(async ({
     text,
     mentions,
     draftHtml: composerHtml,
     pendingSkillInvocation: skillInvocationState,
+    delivery = 'send',
   }: NarreComposerSubmit) => {
     if (isStreaming) {
-      return false;
+      if (delivery === 'steer') {
+        if (!sessionId || skillInvocationState) {
+          return false;
+        }
+        try {
+          const steered = await narreService.steerMessage(sessionId, text);
+          if (!steered) {
+            setQueuedSubmissions((current) => [
+              ...current,
+              { text, mentions, draftHtml: composerHtml, pendingSkillInvocation: null, delivery: 'send' },
+            ]);
+            return true;
+          }
+          const userMsg: NarreDisplayMessage = {
+            role: 'user',
+            timestamp: new Date().toISOString(),
+            blocks: buildUserDisplayBlocks(text, mentions, null),
+            source: 'live',
+          };
+          appendNarreUserMessage(projectId, sessionId, userMsg);
+          return true;
+        } catch {
+          setQueuedSubmissions((current) => [
+            ...current,
+            { text, mentions, draftHtml: composerHtml, pendingSkillInvocation: null, delivery: 'send' },
+          ]);
+          return true;
+        }
+      }
+
+      setQueuedSubmissions((current) => [
+        ...current,
+        { text, mentions, draftHtml: composerHtml, pendingSkillInvocation: skillInvocationState, delivery: 'send' },
+      ]);
+      return true;
     }
 
     if (!skillInvocationState) {
@@ -527,11 +676,38 @@ export function NarreChat({
       userBlocks: buildUserDisplayBlocks(normalizedText, mentions, skillInvocationState),
       pendingSkillInvocation: skillInvocationState,
     });
-  }, [buildSkillPreview, currentProject, isStreaming, projectId, sendToAgent]);
+  }, [buildSkillPreview, currentProject, isStreaming, projectId, sendToAgent, sessionId]);
+
+  useEffect(() => {
+    if (isStreaming || queuedSubmissions.length === 0 || isDequeuingRef.current) {
+      return;
+    }
+
+    const [nextSubmission, ...remaining] = queuedSubmissions;
+    isDequeuingRef.current = true;
+    setQueuedSubmissions(remaining);
+    void handleSend({ ...nextSubmission, delivery: 'send' })
+      .finally(() => {
+        isDequeuingRef.current = false;
+      });
+  }, [handleSend, isStreaming, queuedSubmissions]);
+
+  const removeQueuedSubmission = useCallback((indexToRemove: number) => {
+    setQueuedSubmissions((current) => current.filter((_submission, index) => index !== indexToRemove));
+  }, []);
+
+  const scheduledMessageSummaries = queuedSubmissions.map((submission) => {
+    const text = submission.text.trim();
+    const skillPreview = submission.pendingSkillInvocation
+      ? buildSkillPreview(submission.pendingSkillInvocation, submission.mentions)
+      : null;
+    return [skillPreview, text].filter(Boolean).join(' - ') || t('narre.inputPlaceholder');
+  });
 
   const title = sessionTitle || t('narre.newChat');
-  const agentName = activeAgent ? getLocalizedAgentName(activeAgent, t) : agentKey ?? '';
-  const sendLocked = isStreaming;
+  const agentName = activeAgent ? getLocalizedAgentName(activeAgent, t) : effectiveAgentKey ?? '';
+  const sendLocked = false;
+  const streamingDuration = formatDurationCompact(formatDurationSeconds(streamingTimestamp, nowMs));
 
   const startRenameTitle = useCallback(() => {
     if (!sessionId) return;
@@ -621,6 +797,22 @@ export function NarreChat({
 
   useEffect(() => {
     if (!isStreaming) {
+      setNowMs(Date.now());
+      return;
+    }
+
+    setNowMs(Date.now());
+    const intervalId = window.setInterval(() => {
+      setNowMs(Date.now());
+    }, 1000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [isStreaming]);
+
+  useEffect(() => {
+    if (!isStreaming) {
       return;
     }
 
@@ -699,12 +891,6 @@ export function NarreChat({
             </span>
           )}
         </div>
-        {isStreaming && (
-          <div className="ml-auto flex items-center gap-1.5 text-xs text-muted">
-            <Spinner size="sm" />
-            <span>{isInterrupting ? t('narre.interrupting') : t('narre.streaming')}</span>
-          </div>
-        )}
         {sessionId && !isRenamingTitle && (
           <IconButton ref={moreButtonRef} label={t('common.more' as never)} onClick={openMoreMenu}>
             <MoreVertical size={16} />
@@ -743,24 +929,48 @@ export function NarreChat({
               </div>
             )}
 
-            {messages.map((msg, idx) => (
-              <NarreMessageBubble
-                key={idx}
-                role={msg.role}
-                blocks={msg.blocks}
-                onCardRespond={handleCardRespond}
-                defaultExpandedInteractiveBlocks={!activePrompt && msg.source === 'live' && msg.role === 'assistant' && idx === messages.length - 1}
-              />
-            ))}
+            {messages.map((msg, idx) => {
+              const completedAtMs = parseTimestamp(msg.completedAt);
+              const workedDuration = msg.role === 'assistant' && completedAtMs
+                ? formatDurationCompact(formatDurationSeconds(msg.timestamp, completedAtMs))
+                : null;
+
+              return (
+                <React.Fragment key={`${msg.timestamp}:${idx}`}>
+                  {workedDuration !== null && (
+                    <NarreTurnStatus
+                      label={t('narre.workedDuration' as never, { duration: workedDuration } as never)}
+                    />
+                  )}
+                  <NarreMessageBubble
+                    role={msg.role}
+                    blocks={msg.blocks}
+                    onCardRespond={handleCardRespond}
+                    defaultExpandedInteractiveBlocks={!activePrompt && msg.source === 'live' && msg.role === 'assistant' && idx === messages.length - 1}
+                  />
+                </React.Fragment>
+              );
+            })}
             {/* Streaming partial message */}
-            {isStreaming && streamingBlocks.length > 0 && (
-              <NarreMessageBubble
-                role="assistant"
-                blocks={streamingBlocks}
-                onCardRespond={handleCardRespond}
-                defaultExpandedInteractiveBlocks={!activePrompt}
-                isStreaming
-              />
+            {isStreaming && (
+              <>
+                <NarreTurnStatus
+                  active
+                  label={t(
+                    (isInterrupting ? 'narre.interruptingDuration' : 'narre.workingDuration') as never,
+                    { duration: streamingDuration } as never,
+                  )}
+                />
+                {streamingBlocks.length > 0 && (
+                  <NarreMessageBubble
+                    role="assistant"
+                    blocks={streamingBlocks}
+                    onCardRespond={handleCardRespond}
+                    defaultExpandedInteractiveBlocks={!activePrompt}
+                    isStreaming
+                  />
+                )}
+              </>
             )}
           </div>
         </ScrollArea>
@@ -771,17 +981,20 @@ export function NarreChat({
         <NarreInputSwitcher
           projectId={projectId}
           onSend={handleSend}
-          disabled={isStreaming && !isInterrupting}
+          disabled={false}
           sendDisabled={sendLocked}
           isStreaming={isStreaming}
           stopDisabled={isInterrupting}
           placeholder={t('narre.inputPlaceholder')}
           draftHtml={draftHtml}
-          availableSkills={availableSkills}
+          availableSkills={scopedAvailableSkills}
           pendingSkillInvocation={pendingSkillInvocation}
           activePrompt={activePrompt}
           onPromptRespond={handleCardRespond}
           onStop={handleInterrupt}
+          queuedCount={queuedSubmissions.length}
+          scheduledMessages={scheduledMessageSummaries}
+          onRemoveScheduledMessage={removeQueuedSubmission}
           onDraftChange={(nextDraftHtml) => {
             setNarreSessionDraft(projectId, sessionId, nextDraftHtml);
           }}

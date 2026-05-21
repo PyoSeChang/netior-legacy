@@ -134,6 +134,7 @@ export async function sendMessage(data: {
   projectId: string;
   message: string;
   mentions?: NarreMention[];
+  skillIds?: string[];
 }): Promise<void> {
   // Fire-and-forget: streaming events come via onStreamEvent
   unwrapIpc(await window.electron.narre.sendMessage(data as Record<string, unknown>));
@@ -153,6 +154,10 @@ export async function respondToCard(
 
 export async function interruptMessage(sessionId: string): Promise<boolean> {
   return unwrapIpc(await window.electron.narre.interruptMessage({ sessionId }));
+}
+
+export async function steerMessage(sessionId: string, message: string): Promise<boolean> {
+  return unwrapIpc(await window.electron.narre.steerMessage({ sessionId, message }));
 }
 
 export const narreService = {
@@ -181,4 +186,5 @@ export const narreService = {
   onStreamEvent,
   respondToCard,
   interruptMessage,
+  steerMessage,
 };

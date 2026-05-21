@@ -51,14 +51,16 @@ export function registerNetworkTools(server: McpServer): void {
       project_id: projectIdOrNullSchema('Project ID or null for app scope'),
       scope: z.string().optional().describe('Optional network scope'),
       parent_network_id: z.string().optional().describe('Parent network ID'),
+      network_type_id: z.string().optional().describe('Network type ID. Use built-in default or a custom network type.'),
     },
-    async ({ name, project_id, scope, parent_network_id }) => {
+    async ({ name, project_id, scope, parent_network_id, network_type_id }) => {
       try {
         const result = await createNetwork({
           name,
           project_id: resolveNullableProjectId(project_id),
           scope,
           parent_network_id,
+          network_type_id,
         });
         emitChange({ type: 'network', action: 'create', id: result.id });
         return {
@@ -81,13 +83,15 @@ export function registerNetworkTools(server: McpServer): void {
       name: z.string().optional().describe('New network name'),
       scope: z.string().optional().describe('New scope'),
       parent_network_id: z.string().nullable().optional().describe('Parent network ID or null'),
+      network_type_id: z.string().nullable().optional().describe('Network type ID or null'),
     },
-    async ({ network_id, name, scope, parent_network_id }) => {
+    async ({ network_id, name, scope, parent_network_id, network_type_id }) => {
       try {
         const result = await updateNetwork(network_id, {
           name,
           scope,
           parent_network_id,
+          network_type_id,
         });
         if (!result) {
           return {

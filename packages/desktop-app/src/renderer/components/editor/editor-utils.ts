@@ -1,10 +1,10 @@
-﻿export type EditorType = 'code' | 'markdown' | 'image' | 'pdf' | 'unsupported';
+﻿export type EditorType = 'code' | 'markdown' | 'browser' | 'image' | 'pdf' | 'unsupported';
 
 /** 1:N mapping ??first element is the default editor for the extension */
 const EDITOR_MAP: Record<string, EditorType[]> = {
   md: ['markdown', 'code'], mdx: ['markdown', 'code'],
   txt: ['code'], json: ['code'], yaml: ['code'], yml: ['code'],
-  csv: ['code'], xml: ['code'], html: ['code'], css: ['code'],
+  csv: ['code'], xml: ['code'], html: ['browser', 'code'], htm: ['browser', 'code'], css: ['code'],
   js: ['code'], ts: ['code'], tsx: ['code'], jsx: ['code'],
   py: ['code'], rb: ['code'], go: ['code'], rs: ['code'], sh: ['code'],
   toml: ['code'], ini: ['code'], env: ['code'], gitignore: ['code'],
@@ -16,6 +16,7 @@ const EDITOR_MAP: Record<string, EditorType[]> = {
 export const EDITOR_LABELS: Record<EditorType, string> = {
   markdown: 'Markdown Editor',
   code: 'Code Editor',
+  browser: 'Browser Preview',
   image: 'Image Viewer',
   pdf: 'PDF Viewer',
   unsupported: 'Unsupported',
@@ -54,6 +55,23 @@ const LANGUAGE_MAP: Record<string, string> = {
 export function getMonacoLanguage(filePath: string): string {
   const ext = filePath.split('.').pop()?.toLowerCase() ?? '';
   return LANGUAGE_MAP[ext] ?? 'plaintext';
+}
+
+export function toLocalFileUrl(filePath: string): string {
+  const normalized = filePath.replace(/\\/g, '/');
+  if (normalized.startsWith('//')) {
+    const [host = '', ...parts] = normalized.slice(2).split('/');
+    return `file://${host}/${parts.map(encodeURIComponent).join('/')}`;
+  }
+
+  const parts = normalized.split('/');
+  const encoded = parts.map((part, index) => (
+    index === 0 && /^[A-Za-z]:$/.test(part)
+      ? part
+      : encodeURIComponent(part)
+  ));
+
+  return `file:///${encoded.join('/')}`;
 }
 
 /**

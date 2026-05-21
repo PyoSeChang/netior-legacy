@@ -205,7 +205,8 @@ export function NetworkEditor({ tab }: NetworkEditorProps): JSX.Element {
         >
           <NetworkObjectEditorSection
             title={t('editorShell.overview' as never)}
-            viewMode="details"
+            defaultOpen={tab.isDirty}
+            viewMode="body"
             actions={(
               <div className="flex flex-wrap justify-end gap-2">
                 <Button
@@ -230,16 +231,6 @@ export function NetworkEditor({ tab }: NetworkEditorProps): JSX.Element {
                   }}
                 >
                   {t('common.save')}
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="text-status-error hover:text-status-error"
-                  onClick={() => {
-                    void handleDelete();
-                  }}
-                >
-                  {t('common.delete')}
                 </Button>
               </div>
             )}
@@ -317,6 +308,18 @@ export function NetworkEditor({ tab }: NetworkEditorProps): JSX.Element {
               ]}
             />
           </NetworkObjectEditorSection>
+
+          <div className="mx-auto flex w-full max-w-[760px] justify-end px-6 pt-1" data-network-object-view-mode="details">
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="bg-status-error/10 text-status-error hover:bg-status-error/15 hover:text-status-error"
+              onClick={() => { void handleDelete(); }}
+            >
+              {t('common.delete')}
+            </Button>
+          </div>
         </NetworkObjectEditorShell>
       </div>
     </div>

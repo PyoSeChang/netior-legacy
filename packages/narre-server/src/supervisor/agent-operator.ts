@@ -44,6 +44,7 @@ export class AgentOperator {
           input: planTask.input,
           agentKey: planTask.agentKey,
           dependsOnTaskIds,
+          skillIds: planTask.skillIds,
         }));
       }
     } else {
@@ -176,6 +177,7 @@ export class AgentOperator {
     input: string;
     agentKey: string;
     dependsOnTaskIds: string[];
+    skillIds?: string[];
   }): OrchestrationTask {
     const task = this.config.orchestration.createTask({
       runId: input.runId,
@@ -183,6 +185,9 @@ export class AgentOperator {
       input: input.input,
       assignedAgentKey: input.agentKey,
       dependsOnTaskIds: input.dependsOnTaskIds,
+      metadata: input.skillIds && input.skillIds.length > 0
+        ? { skillIds: input.skillIds.join(',') }
+        : undefined,
     });
     this.config.orchestration.assignTask({
       runId: input.runId,
@@ -231,7 +236,7 @@ export class AgentOperator {
             runId: snapshot.run.id,
             agentKey: getSupervisorAgentKey(operator),
             prompt: `Agent Operator produced ${card.type} card while planning.`,
-            card: card as unknown as Record<string, unknown>,
+            card,
           });
         },
         onError: (error) => {
@@ -263,6 +268,7 @@ interface ResolvedPlanTask {
   input: string;
   agentKey: string;
   dependsOnIndexes: number[];
+  skillIds: string[];
 }
 
 interface ResolvedPlan {
@@ -275,6 +281,7 @@ interface PlannerTaskJson {
   input?: unknown;
   agent?: unknown;
   dependsOn?: unknown;
+  skills?: unknown;
 }
 
 interface PlannerJson {
@@ -296,7 +303,7 @@ function buildPlannerPrompt(snapshot: OrchestrationSnapshot, agents: readonly Ag
     'Return JSON only. Do not include Markdown fences or commentary.',
     '',
     'Model:',
-    '{"tasks":[{"title":"short task title","input":"full instruction for the assigned agent","agent":"agent key from available agents","dependsOn":[0]}]}',
+    '{"tasks":[{"title":"short task title","input":"full instruction for the assigned agent","agent":"agent key from available agents","skills":["skill-id"],"dependsOn":[0]}]}',
     '',
     'Rules:',
     '- Use independent tasks when work can run in parallel.',
@@ -304,6 +311,8 @@ function buildPlannerPrompt(snapshot: OrchestrationSnapshot, agents: readonly Ag
     '- Use network-finder for discovery/read-only investigation.',
     '- Use network-builder for Netior structure creation or mutation.',
     '- Use agent-operator for coordination, synthesis, or direct answers.',
+    '- Use skills only when the task needs specialized procedure knowledge.',
+    '- Available specialized skills: network-representation-authoring, schema-field-behavior, interactive-view, bootstrap.',
     '- Keep tasks concrete enough that each agent can run without more UI context.',
     '',
     'Available agents:',
@@ -326,6 +335,12 @@ function parsePlannerResult(text: string, agents: readonly AgentDefinition[]): R
       return { source: 'rule-based-fallback', tasks: [] };
     }
     const validAgentKeys = new Set(agents.map(getSupervisorAgentKey));
+    const validSkillIds = new Set([
+      'network-representation-authoring',
+      'schema-field-behavior',
+      'interactive-view',
+      'bootstrap',
+    ]);
     const tasks = parsed.tasks
       .map((task): PlannerTaskJson => task as PlannerTaskJson)
       .map((task): ResolvedPlanTask | null => {
@@ -342,11 +357,17 @@ function parsePlannerResult(text: string, agents: readonly AgentDefinition[]): R
             .filter((value): value is number => Number.isInteger(value) && value >= 0)
             .filter((value, index, values) => values.indexOf(value) === index)
           : [];
+        const skillIds = Array.isArray(task.skills)
+          ? task.skills
+            .filter((value): value is string => typeof value === 'string' && validSkillIds.has(value))
+            .filter((value, index, values) => values.indexOf(value) === index)
+          : [];
         return {
           title: task.title.trim(),
           input: task.input.trim(),
           agentKey: task.agent,
           dependsOnIndexes,
+          skillIds,
         };
       })
       .filter((task): task is ResolvedPlanTask =>

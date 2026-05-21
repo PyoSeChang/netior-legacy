@@ -15,10 +15,22 @@ const manifest = JSON.stringify({
 describe('interactive view contract validator', () => {
   it('accepts current Interactive SDK source and manifest', () => {
     const result = validateInteractiveViewSource(`
-      import { useUpdateField, Button } from '@netior/interactive-sdk';
+      import { useUpdateField, Button, ViewRoot, IconButton, Chip, Select, Checkbox, Toggle, TextInput, TextArea, Divider } from '@netior/interactive-sdk';
       export function View() {
         const updateField = useUpdateField();
-        return <Button onClick={() => updateField('field-a', 'ok')}>Save</Button>;
+        return (
+          <ViewRoot>
+            <IconButton icon="chevron-left" label="Previous" />
+            <Chip>Tag</Chip>
+            <Select value="a" options={[{ value: 'a', label: 'A' }]} onChange={() => {}} />
+            <Checkbox checked={false} onChange={() => {}} />
+            <Toggle checked={false} onChange={() => {}} />
+            <TextInput value="" onChange={() => {}} />
+            <TextArea value="" onChange={() => {}} />
+            <Divider />
+            <Button onClick={() => updateField('field-a', 'ok')}>Save</Button>
+          </ViewRoot>
+        );
       }
     `, manifest);
 

@@ -7,6 +7,9 @@ type NetworkScope = 'app' | 'project';
 type SystemNetworkKind = 'universe' | 'ontology';
 type OntologyObjectRole = 'model' | 'model_category';
 
+const DEFAULT_NETWORK_TYPE_ID = 'network-type-default';
+const DEFAULT_BASIC_NODE_TYPE_ID = 'node-type-default-basic';
+
 function insertNetworkLayout(db: Database.Database, networkId: string, now: string): void {
   db.prepare(
     `INSERT INTO layouts (id, layout_type, network_id, context_id, created_at, updated_at)
@@ -83,9 +86,9 @@ function insertSystemNetwork(
   const now = new Date().toISOString();
 
   db.prepare(
-    `INSERT INTO networks (id, project_id, name, scope, kind, parent_network_id, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-  ).run(id, data.projectId, data.name, data.scope, data.kind, data.parentNetworkId, now, now);
+    `INSERT INTO networks (id, project_id, network_type_id, name, scope, kind, parent_network_id, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  ).run(id, data.projectId, DEFAULT_NETWORK_TYPE_ID, data.name, data.scope, data.kind, data.parentNetworkId, now, now);
 
   insertNetworkLayout(db, id, now);
   ensureObjectForDb(db, 'network', data.scope, data.projectId, id, now);
@@ -108,6 +111,7 @@ function normalizeSystemNetwork(
     && network.scope === data.scope
     && network.kind === data.kind
     && network.parent_network_id === data.parentNetworkId
+    && network.network_type_id === DEFAULT_NETWORK_TYPE_ID
   ) {
     ensureObjectForDb(db, 'network', data.scope, network.project_id, network.id, network.created_at);
     ensureNetworkLayout(db, network.id);
@@ -116,9 +120,9 @@ function normalizeSystemNetwork(
 
   db.prepare(
     `UPDATE networks
-        SET name = ?, scope = ?, kind = ?, parent_network_id = ?, updated_at = ?
+        SET name = ?, scope = ?, kind = ?, parent_network_id = ?, network_type_id = ?, updated_at = ?
       WHERE id = ?`,
-  ).run(data.name, data.scope, data.kind, data.parentNetworkId, new Date().toISOString(), network.id);
+  ).run(data.name, data.scope, data.kind, data.parentNetworkId, DEFAULT_NETWORK_TYPE_ID, new Date().toISOString(), network.id);
 
   ensureObjectForDb(db, 'network', data.scope, network.project_id, network.id, network.created_at);
   ensureNetworkLayout(db, network.id);
@@ -136,9 +140,9 @@ function insertNetworkNode(
   const id = randomUUID();
 
   db.prepare(
-    `INSERT INTO network_nodes (id, network_id, object_id, node_type, parent_node_id, metadata, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-  ).run(id, networkId, objectId, nodeType, null, metadata, now, now);
+    `INSERT INTO network_nodes (id, network_id, object_id, node_type, node_type_id, parent_node_id, metadata, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  ).run(id, networkId, objectId, nodeType, DEFAULT_BASIC_NODE_TYPE_ID, null, metadata, now, now);
 
   return db.prepare('SELECT * FROM network_nodes WHERE id = ?').get(id) as NetworkNode;
 }
@@ -204,10 +208,10 @@ export function ensureObjectNodeInNetworkForDb(
 
   const layoutId = data.positionJson ? ensureNetworkLayout(db, data.networkId) : null;
   if (existing) {
-    if (existing.node_type !== nodeType || existing.metadata !== metadata) {
+    if (existing.node_type !== nodeType || existing.node_type_id !== DEFAULT_BASIC_NODE_TYPE_ID || existing.metadata !== metadata) {
       db.prepare(
-        'UPDATE network_nodes SET node_type = ?, metadata = ?, updated_at = ? WHERE id = ?',
-      ).run(nodeType, metadata, new Date().toISOString(), existing.id);
+        'UPDATE network_nodes SET node_type = ?, node_type_id = ?, metadata = ?, updated_at = ? WHERE id = ?',
+      ).run(nodeType, DEFAULT_BASIC_NODE_TYPE_ID, metadata, new Date().toISOString(), existing.id);
     }
     if (layoutId && data.positionJson) {
       ensureNodePosition(db, layoutId, existing.id, data.positionJson);

@@ -35,7 +35,7 @@ export const confirmToolModel = z.object({
       label: z.string(),
       value: z.string().optional(),
       detail: z.string().optional(),
-      kind: z.enum(['text', 'icon', 'color', 'node_shape', 'model_list']).optional(),
+      kind: z.enum(['text', 'icon', 'color', 'model_list']).optional(),
       models: z.array(z.object({
         key: z.string(),
         name: z.string(),

@@ -228,8 +228,9 @@ export function registerInstanceTools(server: McpServer): void {
       color: z.string().optional().describe('Color value'),
       icon: z.string().nullable().optional().describe('Icon identifier or emoji text. Use this when not setting profile_image.'),
       profile_image: z.string().nullable().optional().describe('Profile image source. Can be an image URL, data URL, file URL, or local file path. Stored in the instance icon field.'),
+      content: z.string().nullable().optional().describe('Optional instance body content. May include Netior Editor semantic tokens such as [[target:...]] or ::netior-embed{...}.'),
     },
-    async ({ project_id, title, schema_id, color, icon, profile_image }) => {
+    async ({ project_id, title, schema_id, color, icon, profile_image, content }) => {
       try {
         const visual = resolveInstanceVisualValue({ icon, profile_image });
         const result = await createInstance({
@@ -237,6 +238,7 @@ export function registerInstanceTools(server: McpServer): void {
           title,
           schema_id: schema_id,
           color,
+          ...(content !== undefined && content !== null ? { content } : {}),
           ...(visual !== undefined && visual !== null ? { icon: visual } : {}),
         });
         emitChange({ type: 'instance', action: 'create', id: result.id });
@@ -262,14 +264,16 @@ export function registerInstanceTools(server: McpServer): void {
       color: z.string().optional().describe('New color value'),
       icon: z.string().nullable().optional().describe('New icon identifier or emoji text. Use this when not setting profile_image.'),
       profile_image: z.string().nullable().optional().describe('New profile image source. Can be an image URL, data URL, file URL, or local file path. Stored in the instance icon field.'),
+      content: z.string().nullable().optional().describe('New instance body content. May include Netior Editor semantic tokens such as [[target:...]] or ::netior-embed{...}.'),
     },
-    async ({ instance_id, title, schema_id, color, icon, profile_image }) => {
+    async ({ instance_id, title, schema_id, color, icon, profile_image, content }) => {
       try {
         const visual = resolveInstanceVisualValue({ icon, profile_image });
         const result = await updateInstance(instance_id, {
           title,
           schema_id: schema_id,
           color,
+          ...(content !== undefined ? { content } : {}),
           ...(visual !== undefined ? { icon: visual } : {}),
         });
         if (!result) {

@@ -12,6 +12,7 @@ export interface NarrePendingSkillInvocationState {
 export interface NarreProjectUiState {
   view: 'sessionList' | 'chat';
   activeSessionId: string | null;
+  activeAgentKey: string | null;
   drafts: Record<string, string>;
   pendingSkillInvocations: Record<string, NarrePendingSkillInvocationState>;
 }
@@ -22,6 +23,7 @@ const STORAGE_PREFIX = 'netior:narre-ui:';
 const DEFAULT_PROJECT_UI_STATE: NarreProjectUiState = {
   view: 'sessionList',
   activeSessionId: null,
+  activeAgentKey: null,
   drafts: {},
   pendingSkillInvocations: {},
 };
@@ -95,6 +97,7 @@ function sanitizeProjectUiState(value: unknown): NarreProjectUiState {
   return {
     view: source.view === 'chat' ? 'chat' : 'sessionList',
     activeSessionId: typeof source.activeSessionId === 'string' ? source.activeSessionId : null,
+    activeAgentKey: typeof source.activeAgentKey === 'string' ? source.activeAgentKey : null,
     drafts,
     pendingSkillInvocations,
   };
