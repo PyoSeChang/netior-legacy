@@ -159,7 +159,7 @@ export function OntologyEditor({ tab }: OntologyEditorProps): JSX.Element {
           projectId,
           draftData: currentNetwork?.project_id === projectId
             ? { networkId: currentNetwork.id }
-            : undefined,
+            : {},
         });
         break;
       }

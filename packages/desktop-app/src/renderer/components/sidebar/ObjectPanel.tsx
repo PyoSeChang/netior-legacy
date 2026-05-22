@@ -478,7 +478,7 @@ export function ObjectPanel({ types }: ObjectPanelProps = {}): JSX.Element {
           type: 'instance',
           targetId: draftId,
           title: t('instance.defaultTitle'),
-          draftData: currentNetwork ? { networkId: currentNetwork.id } : undefined,
+          draftData: currentNetwork ? { networkId: currentNetwork.id } : {},
         });
         break;
       }

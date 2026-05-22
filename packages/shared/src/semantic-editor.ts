@@ -38,6 +38,7 @@ export interface SemanticEditorToken {
   target: SemanticTarget;
   label?: string;
   projection?: TargetProjection;
+  fieldLabels?: string[];
   relationshipId?: string;
 }
 
@@ -45,11 +46,12 @@ export interface SerializedSemanticTarget {
   target: string;
   label?: string;
   projection?: TargetProjection;
+  fieldLabels?: string[];
   relationshipId?: string;
 }
 
 const MENTION_PATTERN = /\[\[target:([^[\]|]+)(?:\|([^\]]+))?\]\]/g;
-const EMBED_PATTERN = /^::netior-embed\{([^}]*)\}\s*$/gm;
+const EMBED_PATTERN = /^::netior-embed\{([^}]*)\}[ \t]*$/gm;
 
 function parseAttributeBody(body: string): Record<string, string> {
   const attrs: Record<string, string> = {};
@@ -139,11 +141,12 @@ export function createMentionToken({ target, label, relationshipId }: Serialized
   return `[[target:${target}${label ? `|${label}${rel}` : rel ? rel.slice(1) : ''}]]`;
 }
 
-export function createEmbedToken({ target, projection, label, relationshipId }: SerializedSemanticTarget): string {
+export function createEmbedToken({ target, projection, label, fieldLabels, relationshipId }: SerializedSemanticTarget): string {
   const attrs = [
     `target="${target}"`,
     projection ? `projection="${projection}"` : null,
     label ? `label="${label.replace(/"/g, '\\"')}"` : null,
+    fieldLabels?.length ? `fieldLabels="${fieldLabels.map((item) => item.replace(/"/g, '\\"')).join('|')}"` : null,
     relationshipId ? `relationshipId="${relationshipId}"` : null,
   ].filter(Boolean);
   return `::netior-embed{${attrs.join(' ')}}`;
@@ -192,6 +195,7 @@ export function parseSemanticEditorTokens(content: string): SemanticEditorToken[
       target,
       label: attrs.label || undefined,
       projection: attrs.projection as TargetProjection | undefined,
+      fieldLabels: attrs.fieldLabels?.split('|').map((item) => item.trim()).filter(Boolean),
       relationshipId: attrs.relationshipId || undefined,
     });
   }

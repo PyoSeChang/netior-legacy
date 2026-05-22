@@ -16,7 +16,7 @@ import {
   EditorView,
   WidgetType,
 } from '@codemirror/view';
-import { type EditorState, type Extension, type Range, StateField } from '@codemirror/state';
+import { type EditorState, type Extension, type Range, StateField, type Transaction } from '@codemirror/state';
 import { syntaxTree } from '@codemirror/language';
 
 // ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧
@@ -242,6 +242,7 @@ interface MR { marks: DecorationSet; reps: DecorationSet }
 export type MarkdownLinkHandler = (href: string, event: MouseEvent) => void;
 
 function buildMR(view: EditorView): MR {
+  const startedAt = performance.now();
   const { state } = view;
   const fl = focusedLines(state);
   const m: Range<Decoration>[] = [];
@@ -249,7 +250,9 @@ function buildMR(view: EditorView): MR {
   let inCode = false;
   const fmRange = getFrontmatterRange(state);
 
-  syntaxTree(state).iterate({
+  for (const visibleRange of view.visibleRanges) syntaxTree(state).iterate({
+    from: visibleRange.from,
+    to: visibleRange.to,
     enter(nd) {
       const n = nd.name;
 
@@ -368,7 +371,35 @@ function buildMR(view: EditorView): MR {
     leave(nd) { if (nd.name === 'FencedCode') inCode = false; },
   });
 
+  const duration = performance.now() - startedAt;
+  if (duration > 12) {
+    console.debug('[NetiorPerf] markdownLivePreview.buildMR', {
+      durationMs: Math.round(duration * 10) / 10,
+      docLength: state.doc.length,
+      visibleRanges: view.visibleRanges.length,
+    });
+  }
   return { marks: Decoration.set(m, true), reps: Decoration.set(r, true) };
+}
+
+function rangeTouches(state: EditorState, from: number, to: number, targetFrom: number, targetTo: number): boolean {
+  const lineFrom = state.doc.lineAt(Math.max(0, Math.min(from, state.doc.length))).from;
+  const lineTo = state.doc.lineAt(Math.max(0, Math.min(to, state.doc.length))).to;
+  return lineFrom <= targetTo && lineTo >= targetFrom;
+}
+
+function changedLineTextIncludes(tr: Transaction, needle: string): boolean {
+  let found = false;
+  tr.changes.iterChangedRanges((fromA, toA, fromB, toB) => {
+    if (found) return;
+    const oldStart = tr.startState.doc.lineAt(Math.max(0, Math.min(fromA, tr.startState.doc.length)));
+    const oldEnd = tr.startState.doc.lineAt(Math.max(0, Math.min(toA, tr.startState.doc.length)));
+    const nextStart = tr.state.doc.lineAt(Math.max(0, Math.min(fromB, tr.state.doc.length)));
+    const nextEnd = tr.state.doc.lineAt(Math.max(0, Math.min(toB, tr.state.doc.length)));
+    found = tr.startState.doc.sliceString(oldStart.from, oldEnd.to).includes(needle)
+      || tr.state.doc.sliceString(nextStart.from, nextEnd.to).includes(needle);
+  });
+  return found;
 }
 
 // ?? Cache ??
@@ -431,7 +462,21 @@ function buildFrontmatterDecos(state: EditorState): DecorationSet {
 const frontmatterField = StateField.define<DecorationSet>({
   create(state) { return buildFrontmatterDecos(state); },
   update(decos, tr) {
-    if (tr.docChanged || tr.selection) return buildFrontmatterDecos(tr.state);
+    const fm = getFrontmatterRange(tr.startState) ?? getFrontmatterRange(tr.state);
+    if (!fm) {
+      if (tr.docChanged && changedLineTextIncludes(tr, '---')) return buildFrontmatterDecos(tr.state);
+      return tr.docChanged ? decos.map(tr.changes) : decos;
+    }
+    if (tr.docChanged) {
+      let touches = false;
+      tr.changes.iterChangedRanges((fromA, toA, fromB, toB) => {
+        if (touches) return;
+        touches = rangeTouches(tr.startState, fromA, toA, fm.from, fm.to)
+          || rangeTouches(tr.state, fromB, toB, fm.from, fm.to);
+      });
+      return touches ? buildFrontmatterDecos(tr.state) : decos.map(tr.changes);
+    }
+    if (tr.selection) return buildFrontmatterDecos(tr.state);
     return decos;
   },
   provide: f => EditorView.decorations.from(f),
@@ -467,7 +512,10 @@ function buildTableDecos(state: EditorState): DecorationSet {
 const tableField = StateField.define<DecorationSet>({
   create(state) { return buildTableDecos(state); },
   update(decos, tr) {
-    if (tr.docChanged || tr.selection) return buildTableDecos(tr.state);
+    if (tr.docChanged) {
+      return changedLineTextIncludes(tr, '|') ? buildTableDecos(tr.state) : decos.map(tr.changes);
+    }
+    if (tr.selection) return buildTableDecos(tr.state);
     return decos;
   },
   provide: f => EditorView.decorations.from(f),

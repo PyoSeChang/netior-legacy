@@ -4,19 +4,95 @@ import {
   WidgetType,
   type DecorationSet,
 } from '@codemirror/view';
-import { StateField, type EditorState, type Extension, type Range } from '@codemirror/state';
+import { StateField, type EditorState, type Extension, type Range, type Transaction } from '@codemirror/state';
 import {
-  getSemanticTargetDisplayFallback,
   parseSemanticEditorTokens,
   type SemanticEditorToken,
+  type TargetProjection,
 } from '@netior/shared';
 
+interface SemanticPreviewContext {
+  getPropertyValue?: (instanceId: string, fieldId: string) => string | null | undefined;
+  getContent?: (instanceId: string) => string | null | undefined;
+  shouldRenderInteractiveView?: () => boolean;
+  renderInteractiveView?: (container: HTMLElement, token: SemanticEditorToken) => (() => void) | void;
+  getVersion?: () => unknown;
+}
+
 function focusedToken(state: EditorState, token: SemanticEditorToken): boolean {
-  return state.selection.ranges.some((range) => range.from <= token.to && range.to >= token.from);
+  return state.selection.ranges.some((range) => {
+    if (range.empty) return range.from > token.from && range.from < token.to;
+    return range.from < token.to && range.to > token.from;
+  });
 }
 
 function getTokenLabel(token: SemanticEditorToken): string {
-  return token.label ?? getSemanticTargetDisplayFallback(token.target);
+  if (token.label) return token.label;
+  switch (token.target.kind) {
+    case 'object':
+      return token.target.objectType;
+    case 'instance_content':
+      return 'Content';
+    case 'instance_properties':
+      return 'Properties';
+    case 'instance_property':
+      return 'Property';
+    case 'interactive_view':
+      return 'Interactive view';
+    case 'network_view':
+      return 'Network';
+    case 'file_preview':
+      return 'File';
+  }
+}
+
+function getProjectionLabel(projection: TargetProjection | undefined): string {
+  switch (projection) {
+    case 'content':
+      return 'content';
+    case 'property_value':
+      return 'property';
+    case 'properties_table':
+      return 'properties';
+    case 'interactive_view':
+      return 'view';
+    case 'network_preview':
+      return 'network';
+    case 'file_preview':
+      return 'file';
+    case 'inline':
+    case 'chip':
+    case 'summary_card':
+    default:
+      return 'summary';
+  }
+}
+
+function getTargetKindLabel(token: SemanticEditorToken): string {
+  switch (token.target.kind) {
+    case 'object':
+      return token.target.objectType;
+    case 'instance_content':
+      return 'Instance content';
+    case 'instance_properties':
+      return 'Instance properties';
+    case 'instance_property':
+      return 'Instance property';
+    case 'interactive_view':
+      return 'Interactive view';
+    case 'network_view':
+      return 'Network view';
+    case 'file_preview':
+      return 'File preview';
+  }
+}
+
+function appendText(parent: HTMLElement, className: string, text: string): HTMLElement {
+  const child = document.createElement('div');
+  child.className = className;
+  child.textContent = text;
+  parent.appendChild(child);
+  return child;
 }
 
 class MentionWidget extends WidgetType {
@@ -59,17 +135,24 @@ class MentionWidget extends WidgetType {
 }
 
 class EmbedWidget extends WidgetType {
-  constructor(readonly token: SemanticEditorToken) {
+  constructor(
+    readonly token: SemanticEditorToken,
+    readonly context: SemanticPreviewContext = {},
+    readonly version: unknown = undefined,
+  ) {
     super();
   }
 
+  private cleanup: (() => void) | undefined;
+
   eq(other: EmbedWidget): boolean {
-    return this.token.raw === other.token.raw;
+    return this.token.raw === other.token.raw && Object.is(this.version, other.version);
   }
 
   toDOM(): HTMLElement {
     const block = document.createElement('div');
-    block.className = 'netior-embed-block';
+    const projection = this.token.projection ?? 'summary_card';
+    block.className = `netior-embed-block netior-embed-${projection.replace(/_/g, '-')}`;
     block.dataset.netiorOccurrenceType = this.token.occurrenceType;
     block.dataset.netiorRelationshipId = this.token.relationshipId ?? '';
 
@@ -81,16 +164,64 @@ class EmbedWidget extends WidgetType {
     title.textContent = getTokenLabel(this.token);
     header.appendChild(title);
 
-    const projection = document.createElement('div');
-    projection.className = 'netior-embed-projection';
-    projection.textContent = this.token.projection ?? 'summary_card';
-    header.appendChild(projection);
+    const projectionBadge = document.createElement('div');
+    projectionBadge.className = 'netior-embed-projection';
+    projectionBadge.textContent = getProjectionLabel(this.token.projection);
+    header.appendChild(projectionBadge);
 
     block.appendChild(header);
 
     const body = document.createElement('div');
     body.className = 'netior-embed-body';
-    body.textContent = getSemanticTargetDisplayFallback(this.token.target);
+
+    if (this.token.projection === 'properties_table' || this.token.target.kind === 'instance_properties') {
+      const table = document.createElement('table');
+      table.className = 'netior-embed-properties-grid';
+      const tbody = document.createElement('tbody');
+      const fieldIds = this.token.target.kind === 'instance_properties' ? this.token.target.fieldIds ?? [] : [];
+      const rows = fieldIds.length > 0 ? fieldIds : ['properties'];
+
+      for (const [index, fieldId] of rows.entries()) {
+        const row = document.createElement('tr');
+        const name = document.createElement('th');
+        name.textContent = this.token.fieldLabels?.[index] ?? (fieldIds.length > 0 ? `Property ${index + 1}` : 'Properties');
+        const value = document.createElement('td');
+        value.textContent = this.token.target.kind === 'instance_properties'
+          ? this.context.getPropertyValue?.(this.token.target.instanceId, fieldId) || '-'
+          : '-';
+        row.appendChild(name);
+        row.appendChild(value);
+        tbody.appendChild(row);
+      }
+
+      table.appendChild(tbody);
+      body.appendChild(table);
+    } else if (this.token.projection === 'interactive_view' || this.token.target.kind === 'interactive_view') {
+      if (this.context.shouldRenderInteractiveView?.() === false) {
+        appendText(body, 'netior-embed-kicker', 'Interactive View');
+        appendText(body, 'netior-embed-copy', 'Paused while editing');
+      } else {
+        const mount = document.createElement('div');
+        mount.className = 'netior-embed-interactive-mount';
+        body.appendChild(mount);
+        const cleanup = this.context.renderInteractiveView?.(mount, this.token);
+        this.cleanup = typeof cleanup === 'function' ? cleanup : undefined;
+      }
+    } else if (this.token.projection === 'content' || this.token.target.kind === 'instance_content') {
+      const embeddedContent = this.token.target.kind === 'instance_content'
+        ? this.context.getContent?.(this.token.target.instanceId)
+        : null;
+      appendText(body, 'netior-embed-content-text', embeddedContent?.trim() || '-');
+    } else if (this.token.projection === 'property_value' || this.token.target.kind === 'instance_property') {
+      appendText(body, 'netior-embed-kicker', 'Property');
+      const value = this.token.target.kind === 'instance_property'
+        ? this.context.getPropertyValue?.(this.token.target.instanceId, this.token.target.fieldId)
+        : null;
+      appendText(body, 'netior-embed-copy', value || '-');
+    } else {
+      appendText(body, 'netior-embed-kicker', getTargetKindLabel(this.token));
+    }
+
     block.appendChild(body);
 
     return block;
@@ -99,11 +230,18 @@ class EmbedWidget extends WidgetType {
   ignoreEvent(): boolean {
     return false;
   }
+
+  destroy(): void {
+    this.cleanup?.();
+    this.cleanup = undefined;
+  }
 }
 
-function buildSemanticDecos(state: EditorState): DecorationSet {
+function buildSemanticDecos(state: EditorState, context: SemanticPreviewContext): DecorationSet {
+  const startedAt = performance.now();
   const decos: Range<Decoration>[] = [];
   const tokens = parseSemanticEditorTokens(state.doc.toString());
+  const version = context.getVersion?.();
 
   for (const token of tokens) {
     if (focusedToken(state, token)) {
@@ -112,25 +250,91 @@ function buildSemanticDecos(state: EditorState): DecorationSet {
     }
 
     if (token.occurrenceType === 'embed') {
-      decos.push(Decoration.replace({ widget: new EmbedWidget(token), block: true }).range(token.from, token.to));
+      decos.push(Decoration.replace({ widget: new EmbedWidget(token, context, version), block: true }).range(token.from, token.to));
     } else {
       decos.push(Decoration.replace({ widget: new MentionWidget(token) }).range(token.from, token.to));
     }
   }
 
-  return Decoration.set(decos, true);
+  const result = Decoration.set(decos, true);
+  const duration = performance.now() - startedAt;
+  if (duration > 12) {
+    console.debug('[NetiorPerf] semanticPreview.buildDecorations', {
+      durationMs: Math.round(duration * 10) / 10,
+      docLength: state.doc.length,
+      tokenCount: tokens.length,
+    });
+  }
+  return result;
 }
 
-const semanticField = StateField.define<DecorationSet>({
-  create(state) {
-    return buildSemanticDecos(state);
-  },
-  update(decos, tr) {
-    if (tr.docChanged || tr.selection) return buildSemanticDecos(tr.state);
-    return decos;
-  },
-  provide: (field) => EditorView.decorations.from(field),
-});
+function lineRangeHasSemanticSyntax(state: EditorState, from: number, to: number): boolean {
+  const start = state.doc.lineAt(Math.max(0, Math.min(from, state.doc.length)));
+  const end = state.doc.lineAt(Math.max(0, Math.min(to, state.doc.length)));
+  const text = state.doc.sliceString(start.from, end.to);
+  return text.includes('::netior-embed') || text.includes('[[') || text.includes(']]');
+}
+
+function changesTouchSemanticSyntax(tr: Transaction): boolean {
+  const startedAt = performance.now();
+  let touches = false;
+  tr.changes.iterChangedRanges((fromA, toA, fromB, toB) => {
+    if (touches) return;
+    touches = lineRangeHasSemanticSyntax(tr.startState, fromA, toA)
+      || lineRangeHasSemanticSyntax(tr.state, fromB, toB);
+  });
+  const duration = performance.now() - startedAt;
+  if (duration > 8) {
+    console.debug('[NetiorPerf] semanticPreview.changeCheck', {
+      durationMs: Math.round(duration * 10) / 10,
+      touches,
+    });
+  }
+  return touches;
+}
+
+function createSemanticField(context: SemanticPreviewContext): StateField<DecorationSet> {
+  let version: unknown = context.getVersion?.();
+
+  return StateField.define<DecorationSet>({
+    create(state) {
+      version = context.getVersion?.();
+      return buildSemanticDecos(state, context);
+    },
+    update(decos, tr) {
+      const startedAt = performance.now();
+      const nextVersion = context.getVersion?.();
+      if (tr.docChanged && changesTouchSemanticSyntax(tr)) {
+        version = nextVersion;
+        const nextDecos = buildSemanticDecos(tr.state, context);
+        const duration = performance.now() - startedAt;
+        if (duration > 12) {
+          console.debug('[NetiorPerf] semanticPreview.update.rebuild', {
+            durationMs: Math.round(duration * 10) / 10,
+            docChanged: tr.docChanged,
+          });
+        }
+        return nextDecos;
+      }
+      if (tr.docChanged) {
+        const mapped = decos.map(tr.changes);
+        const duration = performance.now() - startedAt;
+        if (duration > 12) {
+          console.debug('[NetiorPerf] semanticPreview.update.mapOnly', {
+            durationMs: Math.round(duration * 10) / 10,
+          });
+        }
+        return mapped;
+      }
+      if (!Object.is(nextVersion, version)) {
+        version = nextVersion;
+        return buildSemanticDecos(tr.state, context);
+      }
+      return decos;
+    },
+    provide: (field) => EditorView.decorations.from(field),
+  });
+}
 
 export const netiorSemanticPreviewTheme = EditorView.theme({
   '.netior-mention-chip': {
@@ -166,11 +370,49 @@ export const netiorSemanticPreviewTheme = EditorView.theme({
   },
   '.netior-embed-block': {
     display: 'block',
+    width: 'min(100%, 640px)',
     border: '1px solid var(--border-default)',
     borderRadius: '8px',
     backgroundColor: 'var(--surface-card)',
-    margin: '8px 0',
+    margin: '10px auto',
     overflow: 'hidden',
+    boxShadow: '0 1px 0 rgba(0, 0, 0, 0.08)',
+  },
+  '.netior-embed-properties-table.netior-embed-block': {
+    width: 'fit-content',
+    minWidth: '280px',
+    maxWidth: 'min(100%, 560px)',
+  },
+  '.netior-embed-properties-table .netior-embed-body': {
+    padding: '0',
+  },
+  '.netior-embed-properties-grid': {
+    width: '100%',
+    borderCollapse: 'collapse',
+    tableLayout: 'auto',
+  },
+  '.netior-embed-properties-grid th, .netior-embed-properties-grid td': {
+    borderTop: '1px solid var(--border-subtle)',
+    padding: '8px 12px',
+    textAlign: 'left',
+    verticalAlign: 'middle',
+  },
+  '.netior-embed-properties-grid tr:first-child th, .netior-embed-properties-grid tr:first-child td': {
+    borderTop: 'none',
+  },
+  '.netior-embed-properties-grid th': {
+    minWidth: '92px',
+    maxWidth: '220px',
+    borderRight: '1px solid var(--border-subtle)',
+    color: 'var(--text-secondary)',
+    fontWeight: '600',
+    whiteSpace: 'nowrap',
+  },
+  '.netior-embed-properties-grid td': {
+    minWidth: '128px',
+    maxWidth: '360px',
+    color: 'var(--text-default)',
+    overflowWrap: 'anywhere',
   },
   '.netior-embed-header': {
     display: 'flex',
@@ -178,7 +420,7 @@ export const netiorSemanticPreviewTheme = EditorView.theme({
     justifyContent: 'space-between',
     gap: '12px',
     borderBottom: '1px solid var(--border-subtle)',
-    padding: '8px 10px',
+    padding: '9px 14px',
   },
   '.netior-embed-title': {
     minWidth: '0',
@@ -198,9 +440,45 @@ export const netiorSemanticPreviewTheme = EditorView.theme({
     fontSize: '0.72em',
   },
   '.netior-embed-body': {
-    padding: '10px',
+    padding: '12px 14px',
     color: 'var(--text-secondary)',
     fontSize: '0.82em',
+  },
+  '.netior-embed-kicker': {
+    color: 'var(--text-muted)',
+    fontSize: '0.76em',
+    fontWeight: '600',
+    textTransform: 'uppercase',
+  },
+  '.netior-embed-copy': {
+    marginTop: '4px',
+    color: 'var(--text-secondary)',
+  },
+  '.netior-embed-interactive-view .netior-embed-body': {
+    minHeight: '96px',
+    backgroundColor: 'var(--surface-panel)',
+  },
+  '.netior-embed-interactive-mount': {
+    minHeight: '96px',
+  },
+  '.netior-embed-interactive-mount > *': {
+    minWidth: '0',
+  },
+  '.netior-embed-interactive-view-panel': {
+    minWidth: '0',
+  },
+  '.netior-embed-interactive-view-panel > div': {
+    gap: '8px',
+  },
+  '.netior-embed-content .netior-embed-body': {
+    backgroundColor: 'var(--surface-base)',
+  },
+  '.netior-embed-content-text': {
+    color: 'var(--text-default)',
+    fontSize: '0.9em',
+    lineHeight: '1.65',
+    whiteSpace: 'pre-wrap',
+    overflowWrap: 'anywhere',
   },
   '.netior-semantic-token-source': {
     backgroundColor: 'var(--accent-muted)',
@@ -208,6 +486,6 @@ export const netiorSemanticPreviewTheme = EditorView.theme({
   },
 });
 
-export function createNetiorSemanticPreviewPlugin(): Extension[] {
-  return [semanticField, netiorSemanticPreviewTheme];
+export function createNetiorSemanticPreviewPlugin(context: SemanticPreviewContext = {}): Extension[] {
+  return [createSemanticField(context), netiorSemanticPreviewTheme];
 }

@@ -27,7 +27,15 @@ export interface EditorSession<T> {
 function defaultIsEqual<T>(a: T, b: T): boolean {
   if (a === b) return true;
   if (typeof a === 'string' || typeof a === 'number' || typeof a === 'boolean') return false;
-  return JSON.stringify(a) === JSON.stringify(b);
+  const startedAt = performance.now();
+  const equal = JSON.stringify(a) === JSON.stringify(b);
+  const duration = performance.now() - startedAt;
+  if (duration > 12) {
+    console.debug('[NetiorPerf] useEditorSession.defaultIsEqual', {
+      durationMs: Math.round(duration * 10) / 10,
+    });
+  }
+  return equal;
 }
 
 /** Draft cache that survives component unmount/remount */
@@ -43,6 +51,7 @@ export function replaceDraftCache<T>(tabId: string, data: T): void {
 
 export function useEditorSession<T>(config: EditorSessionConfig<T>): EditorSession<T> {
   const { tabId, load, save, isEqual = defaultIsEqual, deps = [] } = config;
+  const depsKey = JSON.stringify(deps);
 
   const cached = draftCache.get(tabId) as { draft: T; snapshot: T } | undefined;
   const [state, setStateRaw] = useState<T>(cached?.draft ?? (undefined as unknown as T));
@@ -63,7 +72,15 @@ export function useEditorSession<T>(config: EditorSessionConfig<T>): EditorSessi
   loadRef.current = load;
 
   const syncDirty = useCallback((current: T) => {
+    const startedAt = performance.now();
     const dirty = !isEqualRef.current(snapshotRef.current, current);
+    const duration = performance.now() - startedAt;
+    if (duration > 12) {
+      console.debug('[NetiorPerf] useEditorSession.syncDirty', {
+        tabId,
+        durationMs: Math.round(duration * 10) / 10,
+      });
+    }
     setIsDirtyLocal(dirty);
     useEditorStore.getState().setDirty(tabId, dirty);
   }, [tabId]);
@@ -102,7 +119,7 @@ export function useEditorSession<T>(config: EditorSessionConfig<T>): EditorSessi
   // Load on mount and when deps change
   useEffect(() => {
     doLoad();
-  }, [doLoad, ...deps]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [doLoad, depsKey]);
 
   const setState = useCallback((updater: T | ((prev: T) => T)) => {
     setStateRaw((prev) => {

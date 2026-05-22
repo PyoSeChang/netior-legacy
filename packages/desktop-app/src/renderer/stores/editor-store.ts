@@ -809,7 +809,7 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
       window.electron.terminal.shutdown(tab.targetId).catch(() => {});
       cleanupTodoSession(tab.targetId);
     }
-    if (tab.type === 'instance' && !tab.targetId.startsWith('draft-')) {
+    if (tab.type === 'instance' && !(tab.targetId.startsWith('draft-') && tab.draftData !== undefined)) {
       editorPrefsService.upsert(tab.targetId, {
         view_mode: tab.viewMode,
         float_x: tab.floatRect.x,

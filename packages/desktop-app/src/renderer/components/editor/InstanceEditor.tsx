@@ -88,7 +88,7 @@ const IMAGE_FILE_FILTERS = [
   { name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp'] },
 ] as const;
 
-const isDraftTab = (tab: EditorTab) => tab.targetId.startsWith('draft-');
+const isDraftTab = (tab: EditorTab) => tab.targetId.startsWith('draft-') && tab.draftData !== undefined;
 
 type VisualMode = 'icon' | 'image';
 
@@ -224,6 +224,45 @@ function subtractOccurrenceBoundary(value: string, isAllDay: boolean): string | 
   }
 
   return formatLocalDateTime(parsed);
+}
+
+function areInstancePropertiesEqual(
+  a: Record<string, string | null>,
+  b: Record<string, string | null>,
+): boolean {
+  const aKeys = Object.keys(a);
+  const bKeys = Object.keys(b);
+  if (aKeys.length !== bKeys.length) return false;
+  for (const key of aKeys) {
+    if (a[key] !== b[key]) return false;
+  }
+  return true;
+}
+
+function areNodeOccurrencesEqual(
+  a: InstanceNodeOccurrenceDraft[],
+  b: InstanceNodeOccurrenceDraft[],
+): boolean {
+  if (a.length !== b.length) return false;
+  return a.every((item, index) => {
+    const other = b[index];
+    return other
+      && item.nodeId === other.nodeId
+      && item.networkId === other.networkId
+      && item.networkName === other.networkName
+      && item.nodeType === other.nodeType
+      && item.metadata === other.metadata;
+  });
+}
+
+function areInstanceEditorStatesEqual(a: InstanceEditorState, b: InstanceEditorState): boolean {
+  return a.title === b.title
+    && a.modelId === b.modelId
+    && a.icon === b.icon
+    && a.color === b.color
+    && a.content === b.content
+    && areInstancePropertiesEqual(a.properties, b.properties)
+    && areNodeOccurrencesEqual(a.nodeOccurrences, b.nodeOccurrences);
 }
 
 export function InstanceEditor({ tab }: InstanceEditorProps): JSX.Element {
@@ -482,6 +521,7 @@ export function InstanceEditor({ tab }: InstanceEditorProps): JSX.Element {
           }));
           useEditorStore.getState().updateTitle(tab.id, state.title);
         },
+    isEqual: areInstanceEditorStatesEqual,
     deps: isDraft ? [] : [tab.targetId, instance?.schema_id, currentProject?.id],
   });
 

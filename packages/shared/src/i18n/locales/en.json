@@ -801,6 +801,31 @@
   "markdown": {
     "toc": "Table of Contents"
   },
+  "netiorEditor": {
+    "mention": "Mention",
+    "mentionAction": "Mention instance or field",
+    "embed": "Embed",
+    "embedAction": "Embed content, properties, or view",
+    "mentionTitle": "Mention from Netior",
+    "embedTitle": "Embed from Netior",
+    "searchInstances": "Search instances",
+    "noInstances": "No instances",
+    "target": "Target",
+    "targetInstance": "Instance",
+    "targetContent": "Content",
+    "targetProperty": "Field value",
+    "targetProperties": "Properties",
+    "targetInteractiveView": "Interactive view",
+    "field": "Field",
+    "view": "View",
+    "projection": "Projection",
+    "noFields": "No fields",
+    "noViews": "No views",
+    "schema": "schema",
+    "insert": "Insert",
+    "dropTitle": "Insert dropped instance",
+    "dropInstanceOnly": "Body drops currently support instances only."
+  },
   "settings": {
     "title": "Settings",
     "search": "Search settings",

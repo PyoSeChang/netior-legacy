@@ -27,7 +27,7 @@ describe('semantic editor tokens', () => {
 
   it('parses embed directives with projection and relationship id', () => {
     const tokens = parseSemanticEditorTokens(
-      '::netior-embed{target="interactive-view:inst-1:tpl-1" projection="interactive_view" relationshipId="rel-1" label="Timeline"}',
+      '::netior-embed{target="interactive-view:inst-1:tpl-1" projection="interactive_view" relationshipId="rel-1" label="Timeline" fieldLabels="Start|End"}',
     );
 
     expect(tokens).toHaveLength(1);
@@ -35,9 +35,20 @@ describe('semantic editor tokens', () => {
       occurrenceType: 'embed',
       label: 'Timeline',
       projection: 'interactive_view',
+      fieldLabels: ['Start', 'End'],
       relationshipId: 'rel-1',
       target: { kind: 'interactive_view', instanceId: 'inst-1', templateId: 'tpl-1' },
     });
+  });
+
+  it('does not consume following blank lines as part of embed directives', () => {
+    const directive = '::netior-embed{target="instance:inst-1" projection="summary_card" label="Instance One"}';
+    const tokens = parseSemanticEditorTokens(`${directive}\n\nnext paragraph`);
+
+    expect(tokens).toHaveLength(1);
+    expect(tokens[0].raw).toBe(directive);
+    expect(tokens[0].from).toBe(0);
+    expect(tokens[0].to).toBe(directive.length);
   });
 
   it('round-trips semantic targets', () => {

@@ -1288,6 +1288,7 @@ export interface EditorTab {
     slotIndex?: number;
     positionX?: number;
     positionY?: number;
+    allowedModelIds?: string[];
     allowedSchemaIds?: string[];
   };
   /** Whether the user manually renamed this tab (prevents auto-title updates) */

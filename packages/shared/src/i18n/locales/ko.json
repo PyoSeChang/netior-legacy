@@ -801,6 +801,31 @@
   "markdown": {
     "toc": "목차"
   },
+  "netiorEditor": {
+    "mention": "언급",
+    "mentionAction": "인스턴스 또는 필드 언급",
+    "embed": "임베딩",
+    "embedAction": "본문, 속성 또는 뷰 임베딩",
+    "mentionTitle": "Netior에서 언급 삽입",
+    "embedTitle": "Netior에서 임베딩 삽입",
+    "searchInstances": "인스턴스 검색",
+    "noInstances": "인스턴스가 없습니다",
+    "target": "대상",
+    "targetInstance": "인스턴스",
+    "targetContent": "본문",
+    "targetProperty": "필드 값",
+    "targetProperties": "속성",
+    "targetInteractiveView": "인터랙티브 뷰",
+    "field": "필드",
+    "view": "뷰",
+    "projection": "프로젝션",
+    "noFields": "필드가 없습니다",
+    "noViews": "뷰가 없습니다",
+    "schema": "스키마",
+    "insert": "삽입",
+    "dropTitle": "드롭한 인스턴스 삽입",
+    "dropInstanceOnly": "현재 본문 드롭은 인스턴스만 지원합니다."
+  },
   "settings": {
     "title": "설정",
     "search": "설정 검색",

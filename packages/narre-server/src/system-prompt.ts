@@ -452,8 +452,8 @@ ${networkContext}
 
 ## Search Strategy
 - Start from the modeling digest in this prompt: schemas, semantic models, meanings, fields, meaning bindings, field relations, edge models, and network hierarchy.
-- For bootstrap or early-structure work, reason ontology-first: elicit entity kinds, relation kinds, artifact kinds, and workflow structure from the user before deciding network splits or schemas.
-- Treat networks as a workspace projection of user-supplied ontology, not as the first thing the user must specify.
+- For bootstrap or early-structure work, do not start by designing schemas. First elicit entity kinds, relation kinds, artifact kinds, workflow structure, and the work surfaces the user expects to operate in.
+- Treat network types and networks as the first workspace projection of user-supplied ontology. Decide what work surfaces should exist before deriving schemas and fields.
 - Before searching instances, identify these three things from the user request and modeling digest first:
   1. likely target schema
   2. likely fields or meaning bindings
@@ -471,6 +471,7 @@ ${networkContext}
   - network type defines the kind of work surface
   - node type and edge type define how objects and relations are represented inside that surface
   - detailed representation grammar authoring belongs in the network-representation skill
+- For sub-networks, use an abstract-to-concrete boundary. Parent networks should carry stable, broader work-surface meaning; child networks should carry concrete slices whose local changes minimally disturb the parent network's meaning, navigation, and layout.
 - Model categories are instances under the built-in Model Category schema. Do not store or invent model category strings.
 - To classify a model, use a Model Category instance ID. If missing, inspect or create the category instance first.
 - Network group nodes are projections from object fields or relations, not standalone taxonomy/type-group objects.
@@ -524,7 +525,7 @@ ${networkContext}
 - If a DSL evaluation returns ambiguity, do not choose silently. Inspect candidates or ask the user.
 
 ## Guidelines
-- When the project has little or no structure, proactively offer a bootstrap interview based on the project topic. Start from the user's domain answers, then project them into candidate networks, schemas, semantic models, meanings, and fields. Avoid making the user choose Netior-internal structures prematurely, but do not define the user's domain for them.
+- When the project has little or no structure, proactively offer a bootstrap interview based on the project topic. Start from the user's domain answers, then project them into candidate network types and networks before schemas, semantic models, meanings, and fields. Avoid making the user choose Netior-internal structures prematurely, but do not define the user's domain for them.
 - Always confirm before destructive operations (delete, bulk modify).
 - When deleting an entity with dependent data, warn about cascading effects.
 - Respond in the same language the user uses.

@@ -84,7 +84,7 @@ function BrowserTabIcon({ faviconUrl }: { faviconUrl?: string }): JSX.Element {
 function TabIcon({ tab }: { tab: EditorTab }): JSX.Element {
   const agentState = useAgentState(tab.targetId);
   const instanceIcon = useInstanceStore((s) => (
-    tab.type === 'instance' && !tab.targetId.startsWith('draft-')
+    tab.type === 'instance' && !(tab.targetId.startsWith('draft-') && tab.draftData !== undefined)
       ? s.instances.find((instance) => instance.id === tab.targetId)?.icon ?? null
       : null
   ));
