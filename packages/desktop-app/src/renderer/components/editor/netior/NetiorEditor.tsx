@@ -1,31 +1,34 @@
 import React, { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { Link2, PanelTop, Search } from 'lucide-react';
+import { createOntologyDisplayResolver } from '@netior/shared';
 import {
   createEmbedToken,
   createMentionToken,
   parseSemanticEditorTokens,
   serializeSemanticTarget,
+  type SemanticEditorToken,
   type SemanticTarget,
   type TargetProjection,
 } from '@netior/shared/semantic-editor';
-import type { Instance, InstanceProperty, InteractiveViewTemplate, SchemaField } from '@netior/shared/types';
+import type { Instance, InstanceProperty, InteractiveViewTemplate, Model, SchemaField } from '@netior/shared/types';
 import type { MentionResult } from '../../../services/narre-service';
 import { MarkdownEditor } from '../markdown/MarkdownEditor';
-import { createNetiorSemanticPreviewPlugin } from './semantic-preview';
+import { createNetiorSemanticPreviewPlugin, NETIOR_EMBED_EDIT_EVENT } from './semantic-preview';
 import { InteractiveViewPanel } from '../interactive/InteractiveViewPanel';
 import { IconButton } from '../../ui/IconButton';
 import { Modal } from '../../ui/Modal';
 import { Button } from '../../ui/Button';
 import { Checkbox } from '../../ui/Checkbox';
 import { Select } from '../../ui/Select';
-import { instanceService, interactiveViewTemplateService, schemaService } from '../../../services';
+import { instanceService, interactiveViewTemplateService, modelService, schemaService } from '../../../services';
 import { useI18n } from '../../../hooks/useI18n';
 import { useInstanceStore } from '../../../stores/instance-store';
 import {
   NARRE_MENTION_CUSTOM_DROP_EVENT,
   type NarreMentionCustomDropDetail,
 } from '../../../hooks/useNarreMentionDrag';
+import { useRenderPerfTrace } from '../../../lib/perf-diagnostics';
 
 type InsertMode = 'mention' | 'embed';
 type TargetScope = 'instance' | 'content' | 'property' | 'properties' | 'interactive_view';
@@ -42,10 +45,30 @@ interface InsertRequest {
   id: number;
   text: string;
   block?: boolean;
+  replaceFrom?: number;
+  replaceTo?: number;
+}
+
+interface EditingTokenState {
+  token: SemanticEditorToken;
+  mode: InsertMode;
 }
 
 function isEmbeddableInstance(instance: Instance): boolean {
   return instance.source_kind === 'project' || instance.source_kind === 'imported';
+}
+
+function isRelationModel(model: Model): boolean {
+  const targetKind = model.target_kind as string;
+  return targetKind === 'relation' || targetKind === 'both';
+}
+
+function needsTrailingSemanticEditableLine(value: string): boolean {
+  const trimmedRight = value.replace(/[ \t]+$/u, '');
+  if (!trimmedRight || trimmedRight.endsWith('\n')) return false;
+  const tokens = parseSemanticEditorTokens(trimmedRight);
+  const lastToken = tokens[tokens.length - 1];
+  return lastToken?.occurrenceType === 'embed' && lastToken.to === trimmedRight.length;
 }
 
 function projectionForScope(scope: TargetScope): TargetProjection {
@@ -94,12 +117,14 @@ export function NetiorEditor({
   onChange,
 }: NetiorEditorProps): JSX.Element {
   const { t } = useI18n();
+  const display = useMemo(() => createOntologyDisplayResolver(t), [t]);
   const storeInstances = useInstanceStore((state) => state.instances);
   const propertiesByInstance = useInstanceStore((state) => state.properties);
   const loadProperties = useInstanceStore((state) => state.loadProperties);
   const [insertRequest, setInsertRequest] = useState<InsertRequest | null>(null);
   const [mode, setMode] = useState<InsertMode | null>(null);
   const [instances, setInstances] = useState<Instance[]>([]);
+  const [models, setModels] = useState<Model[]>([]);
   const [fieldsBySchemaId, setFieldsBySchemaId] = useState<Record<string, SchemaField[]>>({});
   const [interactiveEmbedsPaused, setInteractiveEmbedsPaused] = useState(false);
   const interactiveEmbedsPausedRef = useRef(false);
@@ -196,11 +221,8 @@ export function NetiorEditor({
   interactiveEmbedsPausedRef.current = interactiveEmbedsPaused;
   semanticDataVersionRef.current = semanticDataVersion;
 
-  const semanticExtensions = useMemo(() => createNetiorSemanticPreviewPlugin({
-    getPropertyValue: (targetInstanceId, fieldId) => propertyValuesRef.current[targetInstanceId]?.[fieldId],
-    getContent: (targetInstanceId) => instanceByIdRef.current[targetInstanceId]?.content,
-    shouldRenderInteractiveView: () => !interactiveEmbedsPausedRef.current,
-    renderInteractiveView: (container, token) => {
+  const semanticExtensions = useMemo(() => {
+    const renderInteractiveView = (container: HTMLElement, token: SemanticEditorToken) => {
       const startedAt = performance.now();
       if (token.target.kind !== 'interactive_view' || !projectId) {
         container.textContent = '-';
@@ -241,9 +263,41 @@ export function NetiorEditor({
       return () => {
         queueMicrotask(() => root.unmount());
       };
-    },
-    getVersion: () => semanticDataVersionRef.current,
-  }), [projectId, tabId]);
+    };
+
+    const createExtensions = (embedDepth: number) => createNetiorSemanticPreviewPlugin({
+      getPropertyValue: (targetInstanceId, fieldId) => propertyValuesRef.current[targetInstanceId]?.[fieldId],
+      getContent: (targetInstanceId) => instanceByIdRef.current[targetInstanceId]?.content,
+      renderContent: (container, token, embeddedContent, depth) => {
+        const root: Root = createRoot(container);
+        root.render(
+          <MarkdownEditor
+            tabId={`${tabId}:embed:${token.from}`}
+            content={embeddedContent}
+            extensions={createExtensions(depth)}
+            contentMaxWidth="100%"
+            contentPadding="0"
+            fillHeight={false}
+            minHeight="0"
+            readOnly
+            showToc={false}
+            refreshKey={semanticDataVersionRef.current}
+            onChange={() => undefined}
+          />,
+        );
+        return () => {
+          queueMicrotask(() => root.unmount());
+        };
+      },
+      shouldRenderInteractiveView: () => !interactiveEmbedsPausedRef.current,
+      renderInteractiveView,
+      getVersion: () => semanticDataVersionRef.current,
+      embedDepth,
+      maxEmbedDepth: 1,
+    });
+
+    return createExtensions(0);
+  }, [projectId, tabId]);
   const [fields, setFields] = useState<SchemaField[]>([]);
   const [templates, setTemplates] = useState<InteractiveViewTemplate[]>([]);
   const [query, setQuery] = useState('');
@@ -252,8 +306,64 @@ export function NetiorEditor({
   const [selectedFieldId, setSelectedFieldId] = useState('');
   const [selectedPropertyFieldIds, setSelectedPropertyFieldIds] = useState<string[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState('');
+  const [selectedModelId, setSelectedModelId] = useState('');
   const [droppedMention, setDroppedMention] = useState<MentionResult | null>(null);
+  const [editingToken, setEditingToken] = useState<EditingTokenState | null>(null);
   const selectedInstanceButtonRef = useRef<HTMLButtonElement | null>(null);
+  const pendingTargetSelectionRef = useRef<{ fieldId?: string; fieldIds?: string[]; templateId?: string | null } | null>(null);
+  useRenderPerfTrace('NetiorEditor', {
+    tabId,
+    projectId: projectId ?? null,
+    instanceId: _instanceId ?? null,
+    contentLength: content.length,
+    hasSemanticSyntax: content.includes('::netior-embed') || content.includes('[['),
+    referencedAllCount: referencedTargetIds.all.length,
+    referencedContentCount: referencedTargetIds.content.length,
+    referencedPropertiesCount: referencedTargetIds.properties.length,
+    referencedInteractiveCount: referencedTargetIds.interactive.length,
+    storeInstancesCount: storeInstances.length,
+    localInstancesCount: instances.length,
+    propertyInstanceCount: Object.keys(propertiesByInstance).length,
+    fieldsBySchemaCount: Object.keys(fieldsBySchemaId).length,
+    mode: mode ?? null,
+    interactiveEmbedsPaused,
+  });
+
+  const openTokenEdit = (token: SemanticEditorToken) => {
+    let nextScope: TargetScope = 'instance';
+    let nextInstanceId = '';
+    pendingTargetSelectionRef.current = null;
+
+    if (token.target.kind === 'object' && token.target.objectType === 'instance') {
+      nextScope = 'instance';
+      nextInstanceId = token.target.objectId;
+    } else if (token.target.kind === 'instance_content') {
+      nextScope = 'content';
+      nextInstanceId = token.target.instanceId;
+    } else if (token.target.kind === 'instance_property') {
+      nextScope = 'property';
+      nextInstanceId = token.target.instanceId;
+      pendingTargetSelectionRef.current = { fieldId: token.target.fieldId };
+    } else if (token.target.kind === 'instance_properties') {
+      nextScope = 'properties';
+      nextInstanceId = token.target.instanceId;
+      pendingTargetSelectionRef.current = { fieldIds: token.target.fieldIds };
+    } else if (token.target.kind === 'interactive_view') {
+      nextScope = 'interactive_view';
+      nextInstanceId = token.target.instanceId;
+      pendingTargetSelectionRef.current = { templateId: token.target.templateId };
+    } else {
+      return;
+    }
+
+    droppedInstanceIdRef.current = nextInstanceId;
+    setEditingToken({ token, mode: token.occurrenceType === 'embed' ? 'embed' : 'mention' });
+    setMode(token.occurrenceType === 'embed' ? 'embed' : 'mention');
+    setScope(nextScope);
+    setSelectedInstanceId(nextInstanceId);
+    setSelectedModelId(token.modelId ?? '');
+    setQuery('');
+  };
 
   useEffect(() => {
     const handleMentionDrop = (event: Event) => {
@@ -270,11 +380,20 @@ export function NetiorEditor({
       setQuery('');
       setDroppedMention(mention);
     };
+    const handleEmbedEdit = (event: Event) => {
+      const token = (event as CustomEvent<{ token?: SemanticEditorToken }>).detail?.token;
+      if (!token) return;
+      openTokenEdit(token);
+    };
 
     const root = rootRef.current;
     if (!root) return undefined;
     root.addEventListener(NARRE_MENTION_CUSTOM_DROP_EVENT, handleMentionDrop);
-    return () => root.removeEventListener(NARRE_MENTION_CUSTOM_DROP_EVENT, handleMentionDrop);
+    root.addEventListener(NETIOR_EMBED_EDIT_EVENT, handleEmbedEdit);
+    return () => {
+      root.removeEventListener(NARRE_MENTION_CUSTOM_DROP_EVENT, handleMentionDrop);
+      root.removeEventListener(NETIOR_EMBED_EDIT_EVENT, handleEmbedEdit);
+    };
   }, []);
 
   useEffect(() => {
@@ -302,6 +421,20 @@ export function NetiorEditor({
     });
     return () => { cancelled = true; };
   }, [mode, projectId, referencedTargetIds.all]);
+
+  useEffect(() => {
+    if (!projectId || !mode) return;
+    let cancelled = false;
+    void modelService.list(projectId).then((items) => {
+      if (cancelled) return;
+      const relationModels = items.filter(isRelationModel);
+      setModels(relationModels);
+      setSelectedModelId((current) => (
+        current && relationModels.some((model) => model.id === current) ? current : ''
+      ));
+    });
+    return () => { cancelled = true; };
+  }, [mode, projectId]);
 
   const selectedInstance = useMemo(
     () => instances.find((instance) => instance.id === selectedInstanceId),
@@ -345,11 +478,18 @@ export function NetiorEditor({
       }),
     ]).then(([nextFields, nextTemplates]) => {
       if (cancelled) return;
+      const pending = pendingTargetSelectionRef.current;
       setFields(nextFields);
       setTemplates(nextTemplates);
-      setSelectedFieldId(nextFields[0]?.id ?? '');
-      setSelectedPropertyFieldIds(nextFields.map((field) => field.id));
-      setSelectedTemplateId(nextTemplates[0]?.id ?? '');
+      setSelectedFieldId(pending?.fieldId && nextFields.some((field) => field.id === pending.fieldId)
+        ? pending.fieldId
+        : nextFields[0]?.id ?? '');
+      setSelectedPropertyFieldIds(pending?.fieldIds?.filter((fieldId) => nextFields.some((field) => field.id === fieldId))
+        ?? nextFields.map((field) => field.id));
+      setSelectedTemplateId(pending?.templateId && nextTemplates.some((template) => template.id === pending.templateId)
+        ? pending.templateId
+        : nextTemplates[0]?.id ?? '');
+      pendingTargetSelectionRef.current = null;
     });
     return () => { cancelled = true; };
   }, [mode, projectId, selectedInstance?.id, selectedInstance?.schema_id]);
@@ -399,8 +539,10 @@ export function NetiorEditor({
   );
 
   const openFlow = (nextMode: InsertMode) => {
+    setEditingToken(null);
     setMode(nextMode);
     setScope(nextMode === 'embed' ? 'properties' : 'instance');
+    setSelectedModelId('');
     setQuery('');
   };
 
@@ -419,7 +561,10 @@ export function NetiorEditor({
     ));
   };
 
-  const closeFlow = () => setMode(null);
+  const closeFlow = () => {
+    setMode(null);
+    setEditingToken(null);
+  };
   const closeDroppedMention = () => setDroppedMention(null);
 
   const continueDroppedMention = (nextMode: InsertMode) => {
@@ -429,6 +574,8 @@ export function NetiorEditor({
     }
     setMode(nextMode);
     setScope(nextMode === 'embed' ? 'properties' : 'instance');
+    setEditingToken(null);
+    setSelectedModelId('');
     setQuery('');
     setDroppedMention(null);
   };
@@ -475,13 +622,21 @@ export function NetiorEditor({
         label,
         projection: projectionForScope(scope),
         fieldLabels: scope === 'properties' ? selectedPropertyFields.map((field) => field.name) : undefined,
+        modelId: selectedModelId || undefined,
       })
       : createMentionToken({
         target: serializedTarget,
         label,
+        modelId: selectedModelId || undefined,
       });
 
-    setInsertRequest({ id: Date.now(), text, block: mode === 'embed' });
+    setInsertRequest({
+      id: Date.now(),
+      text,
+      block: mode === 'embed',
+      replaceFrom: editingToken?.token.from,
+      replaceTo: editingToken?.token.to,
+    });
     closeFlow();
   };
 
@@ -522,6 +677,7 @@ export function NetiorEditor({
         contentPadding="0.75rem 1.5rem 10rem 1.5rem"
         fillHeight={false}
         refreshKey={semanticDataVersion}
+        needsTrailingEditableLine={needsTrailingSemanticEditableLine}
         onInputActivity={handleInputActivity}
         onChange={onChange}
       />
@@ -529,7 +685,11 @@ export function NetiorEditor({
       <Modal
         open={mode !== null}
         onClose={closeFlow}
-        title={mode === 'embed' ? t('netiorEditor.embedTitle') : t('netiorEditor.mentionTitle')}
+        title={editingToken
+          ? t('netiorEditor.editTitle')
+          : mode === 'embed'
+            ? t('netiorEditor.embedTitle')
+            : t('netiorEditor.mentionTitle')}
         width="min(92vw, 640px)"
         footer={(
           <>
@@ -594,6 +754,21 @@ export function NetiorEditor({
                         { value: 'properties', label: t('netiorEditor.targetProperties') },
                         { value: 'interactive_view', label: t('netiorEditor.targetInteractiveView') },
                       ]}
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-medium text-secondary">{t('netiorEditor.relationshipModel')}</label>
+                <Select
+                  selectSize="sm"
+                  searchable
+                  value={selectedModelId}
+                  onChange={(event) => setSelectedModelId(event.target.value)}
+                  options={[
+                    { value: '', label: t('netiorEditor.noRelationshipModel') },
+                    ...models.map((model) => ({ value: model.id, label: display.modelName(model) })),
+                  ]}
+                  emptyMessage={t('netiorEditor.noRelationshipModels')}
                 />
               </div>
 

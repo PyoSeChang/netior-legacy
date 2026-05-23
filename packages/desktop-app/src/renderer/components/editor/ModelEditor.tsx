@@ -122,7 +122,7 @@ const FIELD_TYPE_OPTIONS: Array<{ value: FieldType; labelKey: string }> = [
 
 const TARGET_KIND_OPTIONS: Array<{ value: ModelTargetKind; labelKey: string }> = [
   { value: 'object', labelKey: 'model.targetKind.object' },
-  { value: 'edge', labelKey: 'model.targetKind.edge' },
+  { value: 'relation', labelKey: 'model.targetKind.relation' },
   { value: 'both', labelKey: 'model.targetKind.both' },
 ];
 
@@ -396,6 +396,8 @@ export function ModelEditor({ tab }: ModelEditorProps): JSX.Element {
         description: state.description,
         target_kind: state.target_kind,
         built_in: state.built_in,
+        source_kind: model?.source_kind ?? 'project',
+        source_ref: model?.source_ref ?? null,
       };
       useEditorStore.getState().updateTitle(tab.id, display.modelName(nextDisplayModel) || t('model.title' as never));
     },

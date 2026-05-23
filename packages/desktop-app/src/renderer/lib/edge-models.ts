@@ -1,8 +1,8 @@
 import type { Edge, Model, ModelRefKey, Relationship } from '@netior/shared/types';
 
-export const CONTAINS_MODEL_KEY = 'contains_relation' as const;
-export const ENTRY_PORTAL_MODEL_KEY = 'entry_portal_relation' as const;
-export const HIERARCHY_PARENT_MODEL_KEY = 'parent_relation' as const;
+export const CONTAINS_MODEL_KEY = 'contains' as const;
+export const ENTRY_PORTAL_MODEL_KEY = 'entry_portal' as const;
+export const HIERARCHY_PARENT_MODEL_KEY = 'parent' as const;
 
 export type EdgeWithModel = Edge & {
   model?: Model;

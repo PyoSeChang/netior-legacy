@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   parseSemanticEditorTokens,
   parseSemanticTarget,
+  createEmbedToken,
+  createMentionToken,
   serializeSemanticTarget,
 } from '../semantic-editor';
 
@@ -25,9 +27,9 @@ describe('semantic editor tokens', () => {
     });
   });
 
-  it('parses embed directives with projection and relationship id', () => {
+  it('parses embed directives with projection and relationship metadata', () => {
     const tokens = parseSemanticEditorTokens(
-      '::netior-embed{target="interactive-view:inst-1:tpl-1" projection="interactive_view" relationshipId="rel-1" label="Timeline" fieldLabels="Start|End"}',
+      '::netior-embed{target="interactive-view:inst-1:tpl-1" projection="interactive_view" relationshipId="rel-1" modelId="model-1" label="Timeline" fieldLabels="Start|End"}',
     );
 
     expect(tokens).toHaveLength(1);
@@ -37,8 +39,17 @@ describe('semantic editor tokens', () => {
       projection: 'interactive_view',
       fieldLabels: ['Start', 'End'],
       relationshipId: 'rel-1',
+      modelId: 'model-1',
       target: { kind: 'interactive_view', instanceId: 'inst-1', templateId: 'tpl-1' },
     });
+  });
+
+  it('round-trips mention and embed model ids', () => {
+    const mention = createMentionToken({ target: 'instance:inst-1', label: 'Instance One', modelId: 'model-1' });
+    const embed = createEmbedToken({ target: 'instance:inst-1', projection: 'summary_card', label: 'Instance One', modelId: 'model-2' });
+
+    expect(parseSemanticEditorTokens(mention)[0]).toMatchObject({ modelId: 'model-1' });
+    expect(parseSemanticEditorTokens(embed)[0]).toMatchObject({ modelId: 'model-2' });
   });
 
   it('does not consume following blank lines as part of embed directives', () => {

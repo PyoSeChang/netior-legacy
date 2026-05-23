@@ -551,9 +551,19 @@ export type ModelKey =
   | 'conditional_field'
   | 'computed_field'
   | 'derived_collection'
-  | 'contains_relation'
-  | 'entry_portal_relation'
-  | 'parent_relation';
+  | 'contains'
+  | 'entry_portal'
+  | 'parent'
+  | 'references'
+  | 'explains'
+  | 'evidence_for'
+  | 'supports'
+  | 'contradicts'
+  | 'causes'
+  | 'derived_from'
+  | 'summarizes'
+  | 'details'
+  | 'example_of';
 
 export type ModelRefKey = ModelKey | (string & {});
 
@@ -686,7 +696,7 @@ export type SlotBindingTargetKind = 'field' | 'edge' | 'derived';
 export type SlotConstraintLevel = 'strict' | 'constrained' | 'loose';
 
 export type ModelRepresentationKind = 'single_field' | 'field_group' | 'relation' | 'computed';
-export type ModelTargetKind = 'object' | 'edge' | 'both';
+export type ModelTargetKind = 'object' | 'relation' | 'both';
 export type SchemaFieldBindingKind =
   | 'instance_select'
   | 'instance_multi_select'

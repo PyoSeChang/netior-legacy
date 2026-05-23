@@ -455,7 +455,7 @@ function ensureOntologyContainsEdge(
   db: Database.Database,
   data: { networkId: string; sourceNodeId: string; targetNodeId: string; projectId: string },
 ): void {
-  const modelId = `model-${data.projectId}-contains_relation`;
+  const modelId = `model-${data.projectId}-contains`;
   const existing = db.prepare(
     `SELECT id FROM edges
       WHERE network_id = ?
@@ -475,7 +475,7 @@ function removeManagedOntologyContainsEdges(
   db: Database.Database,
   data: { networkId: string; projectId: string },
 ): void {
-  const modelId = `model-${data.projectId}-contains_relation`;
+  const modelId = `model-${data.projectId}-contains`;
   db.prepare(
     `DELETE FROM edges
       WHERE network_id = ?

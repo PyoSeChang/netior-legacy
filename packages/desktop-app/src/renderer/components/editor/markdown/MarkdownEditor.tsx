@@ -6,7 +6,7 @@ import { languages } from '@codemirror/language-data';
 import { GFM } from '@lezer/markdown';
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
 import { syntaxHighlighting, HighlightStyle } from '@codemirror/language';
-import type { Extension } from '@codemirror/state';
+import { EditorState, type Extension } from '@codemirror/state';
 import { tags } from '@lezer/highlight';
 import { createLivePreviewPlugin, livePreviewTheme } from './live-preview';
 import { MarkdownToc, extractHeadings } from './MarkdownToc';
@@ -16,6 +16,7 @@ import { getCssColorAsHex } from '../editor-utils';
 import { useSettingsStore } from '../../../stores/settings-store';
 import { useEditorStore, MAIN_HOST_ID } from '../../../stores/editor-store';
 import { openMarkdownLink } from '../../../lib/markdown-link';
+import { emitPerfDiagnostic, useLongTaskPerfTrace, useRenderPerfTrace, perfDiagnosticsEnabled } from '../../../lib/perf-diagnostics';
 
 const codeHighlightStyle = HighlightStyle.define([
   { tag: tags.keyword, color: '#c678dd' },
@@ -51,11 +52,15 @@ interface MarkdownEditorProps {
   content: string;
   filePath?: string;
   extensions?: Extension[];
-  insertTextRequest?: { id: number; text: string; block?: boolean } | null;
+  insertTextRequest?: { id: number; text: string; block?: boolean; replaceFrom?: number; replaceTo?: number } | null;
   contentMaxWidth?: string;
   contentPadding?: string;
   fillHeight?: boolean;
+  minHeight?: string;
+  readOnly?: boolean;
+  showToc?: boolean;
   refreshKey?: unknown;
+  needsTrailingEditableLine?: (content: string) => boolean;
   onInputActivity?: () => void;
   onChange: (content: string) => void;
 }
@@ -72,7 +77,11 @@ export function MarkdownEditor({
   contentMaxWidth = '600px',
   contentPadding = '1.5rem 1rem 10rem 1rem',
   fillHeight = true,
+  minHeight = '360px',
+  readOnly = false,
+  showToc = true,
   refreshKey,
+  needsTrailingEditableLine,
   onInputActivity,
   onChange,
 }: MarkdownEditorProps): JSX.Element {
@@ -97,6 +106,25 @@ export function MarkdownEditor({
   const resolvedThemeMode = useSettingsStore((s) => s.resolvedThemeMode);
   const themeRevision = useSettingsStore((s) => s.themeRevision);
   const isDark = resolvedThemeMode !== 'light';
+  useRenderPerfTrace('MarkdownEditor', {
+    tabId,
+    contentLength: content.length,
+    editorValueLength: editorValue.length,
+    extraExtensionsCount: extraExtensions.length,
+    hasInsertTextRequest: Boolean(insertTextRequest),
+    hasRefreshKey: refreshKey !== undefined,
+    fillHeight,
+    headingsCount: headings.length,
+    currentLine,
+    themeRevision,
+  });
+  useLongTaskPerfTrace('MarkdownEditor', {
+    tabId,
+    contentLength: content.length,
+    editorValueLength: editorValue.length,
+    extraExtensionsCount: extraExtensions.length,
+    fillHeight,
+  });
 
   // Listen for toc:toggle shortcut (only when this editor's tab is active)
   useEffect(() => {
@@ -213,6 +241,8 @@ export function MarkdownEditor({
     history(),
     keymap.of([...defaultKeymap, ...historyKeymap]),
     markdown({ extensions: GFM, codeLanguages: languages }),
+    EditorState.readOnly.of(readOnly),
+    EditorView.editable.of(!readOnly),
     cursorPlugin,
     perfPlugin,
     ...createLivePreviewPlugin(handleLinkClick),
@@ -220,14 +250,25 @@ export function MarkdownEditor({
     ...extraExtensions,
     syntaxHighlighting(codeHighlightStyle),
     EditorView.lineWrapping,
-  ], [cursorPlugin, extraExtensions, handleLinkClick, perfPlugin]);
+  ], [cursorPlugin, extraExtensions, handleLinkClick, perfPlugin, readOnly]);
+
+  useEffect(() => {
+    if (!perfDiagnosticsEnabled()) return;
+    emitPerfDiagnostic('MarkdownEditor.extensions', {
+      tabId,
+      extensionCount: extensions.length,
+      extraExtensionsCount: extraExtensions.length,
+      fillHeight,
+      contentLength: content.length,
+    });
+  }, [content.length, extensions, extraExtensions.length, fillHeight, tabId]);
 
   const theme = useMemo(() => {
     const bg = getCssColorAsHex('--surface-editor', isDark ? '#242424' : '#f5f5f5');
     const fg = getCssColorAsHex('--text-default', isDark ? '#d4d4d4' : '#1e1e1e');
     const cursor = getCssColorAsHex('--accent', isDark ? '#569cd6' : '#0078d4');
     const rootStyle: Record<string, string> = { backgroundColor: bg, color: fg, height: fillHeight ? '100%' : 'auto' };
-    if (!fillHeight) rootStyle.minHeight = '360px';
+    if (!fillHeight) rootStyle.minHeight = minHeight;
 
     return EditorView.theme({
       '&': rootStyle,
@@ -251,13 +292,14 @@ export function MarkdownEditor({
       },
       '.cm-activeLine': { backgroundColor: 'transparent' },
       '&.cm-focused': { outline: 'none' },
-      '&.cm-focused .cm-selectionBackground, ::selection': {
-        backgroundColor: isDark ? 'rgba(86, 156, 214, 0.3)' : 'rgba(0, 120, 212, 0.2)',
+      '&.cm-focused .cm-selectionBackground, & .cm-selectionBackground, & .cm-content ::selection': {
+        backgroundColor: 'color-mix(in srgb, var(--accent) 32%, transparent)',
       },
     });
-  }, [contentMaxWidth, contentPadding, fillHeight, isDark, themeRevision]);
+  }, [contentMaxWidth, contentPadding, fillHeight, isDark, minHeight, themeRevision]);
 
   const handleChange = useCallback((value: string) => {
+    if (readOnly) return;
     const startedAt = performance.now();
     onInputActivity?.();
     lastLocalChangeRef.current = value;
@@ -275,7 +317,7 @@ export function MarkdownEditor({
         length: value.length,
       });
     }
-  }, [onChange, onInputActivity, tabId]);
+  }, [onChange, onInputActivity, readOnly, tabId]);
 
   useEffect(() => {
     if (content === lastExternalContentRef.current) return;
@@ -289,8 +331,8 @@ export function MarkdownEditor({
     if (emitTimerRef.current) clearTimeout(emitTimerRef.current);
     if (cursorSaveTimerRef.current) clearTimeout(cursorSaveTimerRef.current);
     const latest = lastLocalChangeRef.current;
-    if (latest !== lastExternalContentRef.current) onChange(latest);
-  }, [onChange]);
+    if (!readOnly && latest !== lastExternalContentRef.current) onChange(latest);
+  }, [onChange, readOnly]);
 
   const lastInsertRequestIdRef = useRef<number | null>(null);
   const lastRefreshKeyRef = useRef<unknown>(undefined);
@@ -298,6 +340,12 @@ export function MarkdownEditor({
   useEffect(() => {
     if (refreshKey === undefined || Object.is(lastRefreshKeyRef.current, refreshKey)) return;
     lastRefreshKeyRef.current = refreshKey;
+    if (perfDiagnosticsEnabled()) {
+      emitPerfDiagnostic('MarkdownEditor.refreshKeyDispatch', {
+        tabId,
+        contentLength: content.length,
+      });
+    }
     cmRef.current?.view?.dispatch({});
   }, [refreshKey]);
 
@@ -308,14 +356,23 @@ export function MarkdownEditor({
 
     lastInsertRequestIdRef.current = insertTextRequest.id;
     const selection = view.state.selection.main;
-    const before = view.state.sliceDoc(Math.max(0, selection.from - 2), selection.from);
-    const after = view.state.sliceDoc(selection.to, Math.min(view.state.doc.length, selection.to + 2));
-    const prefix = insertTextRequest.block && before.trim().length > 0 ? '\n\n' : '';
-    const suffix = insertTextRequest.block && after.trim().length > 0 ? '\n\n' : '';
+    const replaceFrom = insertTextRequest.replaceFrom ?? selection.from;
+    const replaceTo = insertTextRequest.replaceTo ?? selection.to;
+    const isReplacement = insertTextRequest.replaceFrom !== undefined && insertTextRequest.replaceTo !== undefined;
+    const before = view.state.sliceDoc(Math.max(0, replaceFrom - 2), replaceFrom);
+    const after = view.state.sliceDoc(replaceTo, Math.min(view.state.doc.length, replaceTo + 2));
+    const prefix = !isReplacement && insertTextRequest.block && before.trim().length > 0 ? '\n\n' : '';
+    const suffix = insertTextRequest.block && (
+      !isReplacement || replaceTo >= view.state.doc.length
+    ) && !insertTextRequest.text.endsWith('\n')
+      ? '\n\n'
+      : !isReplacement && insertTextRequest.block && after.trim().length > 0
+        ? '\n\n'
+        : '';
     const insert = `${prefix}${insertTextRequest.text}${suffix}`;
     view.dispatch({
-      changes: { from: selection.from, to: selection.to, insert },
-      selection: { anchor: selection.from + insert.length },
+      changes: { from: replaceFrom, to: replaceTo, insert },
+      selection: { anchor: replaceFrom + insert.length },
     });
     view.focus();
   }, [insertTextRequest]);
@@ -350,9 +407,34 @@ export function MarkdownEditor({
     requestAnimationFrame(step);
   }, []);
 
+  const handleEditorSurfaceMouseDown = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
+    if (readOnly || event.button !== 0 || event.defaultPrevented) return;
+    const target = event.target instanceof Element ? event.target : null;
+    if (!target) return;
+    if (target.closest('.cm-line')) return;
+    const view = cmRef.current?.view;
+    if (!view || !target.closest('.cm-editor')) return;
+
+    window.requestAnimationFrame(() => {
+      const docText = view.state.doc.toString();
+      if (needsTrailingEditableLine?.(docText)) {
+        const end = view.state.doc.length;
+        view.dispatch({
+          changes: { from: end, insert: '\n' },
+          selection: { anchor: end + 1 },
+        });
+        view.focus();
+        return;
+      }
+      const pos = view.posAtCoords({ x: event.clientX, y: event.clientY }) ?? view.state.doc.length;
+      view.dispatch({ selection: { anchor: pos } });
+      view.focus();
+    });
+  }, [needsTrailingEditableLine, readOnly]);
+
   return (
-    <div ref={containerRef} className={fillHeight ? 'relative flex h-full' : 'relative flex min-h-[360px]'}>
-      {headings.length > 0 && (
+    <div ref={containerRef} className={fillHeight ? 'relative flex h-full' : 'relative flex'} style={fillHeight ? undefined : { minHeight }}>
+      {showToc && headings.length > 0 && (
         <MarkdownToc
           headings={headings}
           currentLine={currentLine}
@@ -362,7 +444,11 @@ export function MarkdownEditor({
         />
       )}
 
-      <div ref={scrollRef} className={fillHeight ? 'flex-1 overflow-auto' : 'min-w-0 flex-1 overflow-visible'}>
+      <div
+        ref={scrollRef}
+        className={fillHeight ? 'flex-1 overflow-auto' : 'min-w-0 flex-1 overflow-visible'}
+        onMouseDown={handleEditorSurfaceMouseDown}
+      >
         <CodeMirror
           ref={cmRef}
           value={editorValue}
@@ -371,10 +457,12 @@ export function MarkdownEditor({
           onChange={handleChange}
           height={fillHeight ? '100%' : 'auto'}
           onKeyDown={(event) => {
+            if (readOnly) return;
             lastInputStartedAtRef.current = performance.now();
             lastInputKindRef.current = `key:${event.key}`;
           }}
           onBeforeInput={(event) => {
+            if (readOnly) return;
             lastInputStartedAtRef.current = performance.now();
             lastInputKindRef.current = `beforeinput:${event.nativeEvent.inputType}`;
           }}

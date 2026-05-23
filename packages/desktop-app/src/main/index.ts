@@ -1,7 +1,7 @@
 import { app, shell, BrowserWindow, ipcMain, Menu, Notification, nativeImage, screen, session } from 'electron';
 import { basename, dirname, join } from 'path';
 import { electronApp, optimizer, is } from '@electron-toolkit/utils';
-import { mkdirSync, existsSync, readFileSync, unlinkSync, writeFileSync } from 'fs';
+import { appendFileSync, mkdirSync, existsSync, readFileSync, unlinkSync, writeFileSync } from 'fs';
 import { registerAllIpc } from './ipc';
 import { ptyManager } from './pty/pty-manager';
 import { stopNarreServer } from './process/narre-server-manager';
@@ -13,6 +13,7 @@ import { initMainLogging } from './logging';
 import {
   getNetiorServicePort,
   getRuntimeInstanceId,
+  getRuntimeLogsDir,
   getRuntimeScope,
   getRuntimeSessionDataDir,
   getSharedUserDataRoot,
@@ -486,6 +487,21 @@ app.whenReady().then(async () => {
   console.log('[netior-service] Startup enabled');
   configureBrowserSession();
   registerAllIpc();
+
+  ipcMain.on('diagnostics:perf', (_event, payload: unknown) => {
+    if (!is.dev) return;
+    try {
+      const logsDir = getRuntimeLogsDir();
+      mkdirSync(logsDir, { recursive: true });
+      appendFileSync(
+        join(logsDir, 'renderer-perf-diagnostics.ndjson'),
+        `${JSON.stringify({ ts: new Date().toISOString(), payload })}\n`,
+        'utf8',
+      );
+    } catch (error) {
+      console.warn('[diagnostics] Failed to write renderer perf event', error);
+    }
+  });
 
   // Window control IPC
   ipcMain.on('window:minimize', (event) => {

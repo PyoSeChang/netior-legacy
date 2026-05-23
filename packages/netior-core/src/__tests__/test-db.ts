@@ -52,6 +52,7 @@ import { migrate048 } from '../migrations/048-interactive-view-state';
 import { migrate049 } from '../migrations/049-interactive-view-templates';
 import { migrate050 } from '../migrations/050-interactive-view-inheritance';
 import { migrate051 } from '../migrations/051-interactive-view-user-authored-templates';
+import { migrate055 } from '../migrations/055-relation-model-target-kind';
 
 let testDb: Database.Database | null = null;
 
@@ -109,6 +110,7 @@ export function setupTestDb(): Database.Database {
   migrate049(testDb);
   migrate050(testDb);
   migrate051(testDb);
+  migrate055(testDb);
   testDb.pragma('foreign_keys = ON');
   return testDb;
 }

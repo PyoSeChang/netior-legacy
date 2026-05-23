@@ -323,17 +323,57 @@
         "label": "Approvable",
         "description": "Adds approval state and approval metadata."
       },
-      "contains_relation": {
+      "contains": {
         "label": "Contains",
         "description": "Represents containment, composition, or membership between two nodes."
       },
-      "entry_portal_relation": {
+      "entry_portal": {
         "label": "Entry Portal",
         "description": "Marks the node that should open as the entry point for a contained structure."
       },
-      "parent_relation": {
+      "parent": {
         "label": "Parent Relation",
         "description": "Represents a hierarchy parent-child relation between nodes."
+      },
+      "references": {
+        "label": "References",
+        "description": "Connects one object to another object it refers to."
+      },
+      "explains": {
+        "label": "Explains",
+        "description": "Connects an object to another object it clarifies or explains."
+      },
+      "evidence_for": {
+        "label": "Evidence For",
+        "description": "Connects supporting evidence to a claim, conclusion, or object."
+      },
+      "supports": {
+        "label": "Supports",
+        "description": "Connects an object to another object it positively supports."
+      },
+      "contradicts": {
+        "label": "Contradicts",
+        "description": "Connects an object to another object it challenges or conflicts with."
+      },
+      "causes": {
+        "label": "Causes",
+        "description": "Connects a cause to an effect or consequence."
+      },
+      "derived_from": {
+        "label": "Derived From",
+        "description": "Connects an object to the source object it was derived from."
+      },
+      "summarizes": {
+        "label": "Summarizes",
+        "description": "Connects a summary to the object or content it condenses."
+      },
+      "details": {
+        "label": "Details",
+        "description": "Connects an object to another object that provides additional detail."
+      },
+      "example_of": {
+        "label": "Example Of",
+        "description": "Connects a concrete example to the object or concept it illustrates."
       }
     },
     "meaning": {
@@ -674,7 +714,7 @@
     "targetKind": {
       "label": "Target",
       "object": "Object",
-      "edge": "Relation",
+      "relation": "Relation",
       "both": "Object and Relation"
     },
     "meanings": "Meanings",
@@ -808,6 +848,7 @@
     "embedAction": "Embed content, properties, or view",
     "mentionTitle": "Mention from Netior",
     "embedTitle": "Embed from Netior",
+    "editTitle": "Edit body relation",
     "searchInstances": "Search instances",
     "noInstances": "No instances",
     "target": "Target",
@@ -819,6 +860,9 @@
     "field": "Field",
     "view": "View",
     "projection": "Projection",
+    "relationshipModel": "Relationship model",
+    "noRelationshipModel": "No model",
+    "noRelationshipModels": "No relationship models available",
     "noFields": "No fields",
     "noViews": "No views",
     "schema": "schema",

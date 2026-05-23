@@ -50,6 +50,7 @@ import {
   NetworkObjectMetadataList,
 } from './NetworkObjectEditorShell';
 import { getFieldMeaningSlot } from '../../lib/field-meaning-bindings';
+import { useRenderPerfTrace } from '../../lib/perf-diagnostics';
 
 interface InstanceEditorProps {
   tab: EditorTab;
@@ -292,6 +293,17 @@ export function InstanceEditor({ tab }: InstanceEditorProps): JSX.Element {
   const [instanceVisualMode, setInstanceVisualMode] = useState<VisualMode>('icon');
 
   const instance = isDraft ? undefined : instances.find((c) => c.id === tab.targetId);
+  useRenderPerfTrace('InstanceEditor', {
+    tabId: tab.id,
+    targetId: tab.targetId,
+    isDraft,
+    instanceFound: Boolean(instance),
+    instancesCount: instances.length,
+    schemasCount: models.length,
+    currentNetworkId: currentNetwork?.id ?? null,
+    currentNetworkNodeCount: currentNetworkNodes.length,
+    currentNetworkEdgeCount: currentNetworkEdges.length,
+  });
   const nodeTypeOptions = useMemo<Array<{ value: NodeType; label: string }>>(() => ([
     { value: 'basic', label: t('instance.nodeRoleOptions.basic' as never) },
     { value: 'portal', label: t('instance.nodeRoleOptions.portal' as never) },

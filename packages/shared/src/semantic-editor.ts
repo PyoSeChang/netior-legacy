@@ -40,6 +40,7 @@ export interface SemanticEditorToken {
   projection?: TargetProjection;
   fieldLabels?: string[];
   relationshipId?: string;
+  modelId?: string;
 }
 
 export interface SerializedSemanticTarget {
@@ -48,6 +49,7 @@ export interface SerializedSemanticTarget {
   projection?: TargetProjection;
   fieldLabels?: string[];
   relationshipId?: string;
+  modelId?: string;
 }
 
 const MENTION_PATTERN = /\[\[target:([^[\]|]+)(?:\|([^\]]+))?\]\]/g;
@@ -136,30 +138,34 @@ export function serializeSemanticTarget(target: SemanticTarget): string {
   }
 }
 
-export function createMentionToken({ target, label, relationshipId }: SerializedSemanticTarget): string {
+export function createMentionToken({ target, label, relationshipId, modelId }: SerializedSemanticTarget): string {
   const rel = relationshipId ? `|rel:${relationshipId}` : '';
-  return `[[target:${target}${label ? `|${label}${rel}` : rel ? rel.slice(1) : ''}]]`;
+  const model = modelId ? `|model:${modelId}` : '';
+  return `[[target:${target}${label ? `|${label}${rel}${model}` : rel || model ? `${rel}${model}`.slice(1) : ''}]]`;
 }
 
-export function createEmbedToken({ target, projection, label, fieldLabels, relationshipId }: SerializedSemanticTarget): string {
+export function createEmbedToken({ target, projection, label, fieldLabels, relationshipId, modelId }: SerializedSemanticTarget): string {
   const attrs = [
     `target="${target}"`,
     projection ? `projection="${projection}"` : null,
     label ? `label="${label.replace(/"/g, '\\"')}"` : null,
     fieldLabels?.length ? `fieldLabels="${fieldLabels.map((item) => item.replace(/"/g, '\\"')).join('|')}"` : null,
     relationshipId ? `relationshipId="${relationshipId}"` : null,
+    modelId ? `modelId="${modelId}"` : null,
   ].filter(Boolean);
   return `::netior-embed{${attrs.join(' ')}}`;
 }
 
-function splitLabelAndRelationship(rawLabel: string | undefined): { label?: string; relationshipId?: string } {
+function splitMentionMetadata(rawLabel: string | undefined): { label?: string; relationshipId?: string; modelId?: string } {
   if (!rawLabel) return {};
   const parts = rawLabel.split('|');
   const relPart = parts.find((part) => part.startsWith('rel:'));
-  const label = parts.filter((part) => !part.startsWith('rel:')).join('|').trim();
+  const modelPart = parts.find((part) => part.startsWith('model:'));
+  const label = parts.filter((part) => !part.startsWith('rel:') && !part.startsWith('model:')).join('|').trim();
   return {
     label: label || undefined,
     relationshipId: relPart?.slice(4) || undefined,
+    modelId: modelPart?.slice(6) || undefined,
   };
 }
 
@@ -171,7 +177,7 @@ export function parseSemanticEditorTokens(content: string): SemanticEditorToken[
   while ((match = MENTION_PATTERN.exec(content)) !== null) {
     const target = parseSemanticTarget(match[1]);
     if (!target) continue;
-    const labelParts = splitLabelAndRelationship(match[2]);
+    const labelParts = splitMentionMetadata(match[2]);
     tokens.push({
       raw: match[0],
       from: match.index,
@@ -197,6 +203,7 @@ export function parseSemanticEditorTokens(content: string): SemanticEditorToken[
       projection: attrs.projection as TargetProjection | undefined,
       fieldLabels: attrs.fieldLabels?.split('|').map((item) => item.trim()).filter(Boolean),
       relationshipId: attrs.relationshipId || undefined,
+      modelId: attrs.modelId || undefined,
     });
   }
 

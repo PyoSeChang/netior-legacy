@@ -185,7 +185,7 @@ function serializeModelRecipe(recipe: ModelRecipe | undefined): string {
 function buildRecipeForBuiltInModel(
   definition: (typeof MODEL_DEFINITIONS)[number],
 ): ModelRecipe {
-  if ((definition.targetKind ?? 'object') === 'edge') {
+  if ((definition.targetKind ?? 'object') === 'relation') {
     return {
       meanings: [{
         id: definition.key,
@@ -445,6 +445,7 @@ export function createModel(data: ModelCreate): Model {
 export function listModels(projectId: string): Model[] {
   const db = getDatabase();
   db.transaction(() => {
+    seedBuiltInModelsForProjectDb(db, projectId);
     syncProjectOntologyForDb(db, projectId);
   })();
   const rows = db

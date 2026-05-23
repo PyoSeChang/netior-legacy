@@ -27,9 +27,9 @@ packages:
     impact: local
     contracts: []
   desktop-app:
-    version: "1.3.1"
+    version: "1.3.4"
     type: patch
-    summary: "프로덕션 Narre Claude 실행 경로를 안정화한 릴리스"
+    summary: "Narre 에이전트 스킬 격리와 모델링 패키징 릴리스"
     impact: local
     contracts: []
   narre-eval:

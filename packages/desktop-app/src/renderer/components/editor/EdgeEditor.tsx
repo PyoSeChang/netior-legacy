@@ -88,7 +88,7 @@ export function EdgeEditor({ tab }: EdgeEditorProps): JSX.Element {
   const modelOptions = useMemo(() => [
     { value: '', label: t('edge.noModel' as never) ?? 'No model' },
     ...models
-      .filter((model) => model.target_kind === 'edge' || model.target_kind === 'both')
+      .filter((model) => model.target_kind === 'relation' || model.target_kind === 'both')
       .map((model) => ({ value: model.id, label: display.modelName(model) })),
   ], [models, t]);
 

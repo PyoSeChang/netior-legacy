@@ -323,17 +323,57 @@
         "label": "승인",
         "description": "승인 상태와 승인 메타데이터를 기록할 수 있게 합니다."
       },
-      "contains_relation": {
+      "contains": {
         "label": "포함",
         "description": "포함, 구성, 소속처럼 한 노드가 다른 노드를 담는 관계를 표현합니다."
       },
-      "entry_portal_relation": {
+      "entry_portal": {
         "label": "진입점",
         "description": "포함된 구조에서 처음 열릴 노드를 진입점으로 표시합니다."
       },
-      "parent_relation": {
+      "parent": {
         "label": "부모-자식",
         "description": "부모와 자식 사이의 계층 관계를 표현합니다."
+      },
+      "references": {
+        "label": "참조",
+        "description": "한 객체가 다른 객체를 참조한다는 관계를 표현합니다."
+      },
+      "explains": {
+        "label": "설명",
+        "description": "한 객체가 다른 객체를 설명하거나 명확히 한다는 관계를 표현합니다."
+      },
+      "evidence_for": {
+        "label": "근거",
+        "description": "주장, 결론, 객체를 뒷받침하는 근거 관계를 표현합니다."
+      },
+      "supports": {
+        "label": "지지",
+        "description": "한 객체가 다른 객체를 긍정적으로 지지한다는 관계를 표현합니다."
+      },
+      "contradicts": {
+        "label": "반박",
+        "description": "한 객체가 다른 객체와 충돌하거나 반박한다는 관계를 표현합니다."
+      },
+      "causes": {
+        "label": "인과",
+        "description": "원인이 결과나 영향을 만든다는 관계를 표현합니다."
+      },
+      "derived_from": {
+        "label": "파생",
+        "description": "한 객체가 어떤 원천 객체에서 파생되었다는 관계를 표현합니다."
+      },
+      "summarizes": {
+        "label": "요약",
+        "description": "요약이 어떤 객체나 내용을 압축한다는 관계를 표현합니다."
+      },
+      "details": {
+        "label": "상세화",
+        "description": "한 객체가 다른 객체에 추가 세부 정보를 제공한다는 관계를 표현합니다."
+      },
+      "example_of": {
+        "label": "예시",
+        "description": "구체적인 예시가 어떤 객체나 개념을 보여준다는 관계를 표현합니다."
       }
     },
     "meaning": {
@@ -674,7 +714,7 @@
     "targetKind": {
       "label": "대상",
       "object": "객체",
-      "edge": "관계",
+      "relation": "관계",
       "both": "객체와 관계"
     },
     "meanings": "의미",
@@ -808,6 +848,7 @@
     "embedAction": "본문, 속성 또는 뷰 임베딩",
     "mentionTitle": "Netior에서 언급 삽입",
     "embedTitle": "Netior에서 임베딩 삽입",
+    "editTitle": "본문 관계 수정",
     "searchInstances": "인스턴스 검색",
     "noInstances": "인스턴스가 없습니다",
     "target": "대상",
@@ -819,6 +860,9 @@
     "field": "필드",
     "view": "뷰",
     "projection": "프로젝션",
+    "relationshipModel": "관계 모델",
+    "noRelationshipModel": "모델 없음",
+    "noRelationshipModels": "사용 가능한 관계 모델이 없습니다",
     "noFields": "필드가 없습니다",
     "noViews": "뷰가 없습니다",
     "schema": "스키마",

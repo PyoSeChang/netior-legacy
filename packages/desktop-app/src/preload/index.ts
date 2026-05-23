@@ -508,6 +508,9 @@ const electronAPI = {
   fonts: {
     listSystem: () => ipcRenderer.invoke('fonts:listSystem') as Promise<string[]>,
   },
+  diagnostics: {
+    perf: (payload: unknown) => ipcRenderer.send('diagnostics:perf', payload),
+  },
 };
 
 contextBridge.exposeInMainWorld('electron', electronAPI);
