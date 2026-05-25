@@ -78,11 +78,11 @@ export function NodeContextMenu({
         networkId: currentNetwork?.id,
         nodeId,
       });
-    } else if (objectType === 'model') {
+    } else if (objectType === 'meaning') {
       useEditorStore.getState().openTab({
-        type: 'model',
+        type: 'meaning',
         targetId: objectTargetId,
-        title: objectTitle ?? t('model.title'),
+        title: objectTitle ?? t('meaning.title'),
       });
     } else if (objectType === 'schema') {
       useEditorStore.getState().openTab({
@@ -110,11 +110,11 @@ export function NodeContextMenu({
   const canOpenEditor =
     !!objectType &&
     !!objectTargetId &&
-    ['network', 'project', 'instance', 'schema', 'model', 'context', 'file'].includes(objectType);
+    ['network', 'project', 'instance', 'schema', 'meaning', 'context', 'file'].includes(objectType);
   const canDeleteObject =
     !!objectType &&
     !!objectTargetId &&
-    ['instance', 'schema', 'model'].includes(objectType);
+    ['instance', 'schema', 'meaning'].includes(objectType);
 
   const handleOpenNetwork = useCallback(() => {
     if (networkId) onOpenNetwork?.(networkId);

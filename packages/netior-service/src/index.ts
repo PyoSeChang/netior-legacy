@@ -18,7 +18,7 @@ import {
   createEdgeType,
   createRelationship,
   createProject,
-  createModel,
+  createMeaning,
   deleteProject,
   deleteSchema,
   deleteInstance,
@@ -33,7 +33,7 @@ import {
   deleteEdgeType,
   deleteRelationship,
   deleteProperty,
-  deleteModel,
+  deleteSchemaMeaning,
   getContext,
   getContextMembers,
   getSchema,
@@ -63,7 +63,7 @@ import {
   getObjectByRef,
   getProjectOntologyNetwork,
   getProjectById,
-  getModel,
+  getMeaning,
   getSetting,
   getUniverseNetwork,
   getDatabase,
@@ -71,7 +71,7 @@ import {
   listSchemas,
   listContexts,
   listFields,
-  listMeanings,
+  listSchemaMeanings,
   listModuleDirectories,
   listModules,
   listNetworks,
@@ -81,8 +81,8 @@ import {
   listRelationships,
   listRelationshipOccurrences,
   listProjects,
-  listModels,
-  listModelCategories,
+  listMeanings,
+  listMeaningCategories,
   listInteractiveViewTemplates,
   parseFromAgent,
   removeEdgeVisual,
@@ -107,9 +107,9 @@ import {
   updateContext,
   updateEdge,
   updateField,
-  ensureMeaning,
-  updateMeaning,
-  updateMeaningSlotBinding,
+  ensureSchemaMeaning,
+  updateSchemaMeaning,
+  updateSchemaMeaningSlotBinding,
   updateFileEntity,
   updateLayout,
   updateModule,
@@ -122,7 +122,7 @@ import {
   updateRelationship,
   updateProject,
   updateProjectRootDir,
-  updateModel,
+  updateMeaning,
   updateInteractiveViewTemplate,
   deleteInteractiveViewTemplate,
   evaluateNetiorDsl,
@@ -173,11 +173,11 @@ import type {
   RelationshipUpdate,
   ProjectCreate,
   ProjectUpdate,
-  ModelCreate,
-  ModelUpdate,
+  MeaningCreate,
+  MeaningUpdate,
   NetiorServiceResponse,
   FieldMeaningBindingKey,
-  ModelKey,
+  MeaningKey,
   FieldMeaningKey,
   MeaningSlotKey,
 } from '@netior/shared/types';
@@ -493,13 +493,13 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
   if (pathname === '/schema-meanings') {
     if (method === 'GET') {
       const schemaId = getRequiredSearchParam(url, 'schemaId');
-      sendJson(res, 200, { ok: true, data: listMeanings(schemaId) });
+      sendJson(res, 200, { ok: true, data: listSchemaMeanings(schemaId) });
       return;
     }
 
     if (method === 'POST') {
       const body = await readJsonBody<SchemaMeaningCreate>(req);
-      sendJson(res, 200, { ok: true, data: ensureMeaning(body) });
+      sendJson(res, 200, { ok: true, data: ensureSchemaMeaning(body) });
       return;
     }
 
@@ -512,12 +512,12 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
 
     if (method === 'PATCH') {
       const body = await readJsonBody<SchemaMeaningUpdate>(req);
-      sendJson(res, 200, { ok: true, data: updateMeaning(id, body) });
+      sendJson(res, 200, { ok: true, data: updateSchemaMeaning(id, body) });
       return;
     }
 
     if (method === 'DELETE') {
-      sendJson(res, 200, { ok: true, data: deleteMeaning(id) });
+      sendJson(res, 200, { ok: true, data: deleteSchemaMeaning(id) });
       return;
     }
 
@@ -530,7 +530,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
 
     if (method === 'PATCH') {
       const body = await readJsonBody<SchemaMeaningSlotBindingUpdate>(req);
-      sendJson(res, 200, { ok: true, data: updateMeaningSlotBinding(id, body) });
+      sendJson(res, 200, { ok: true, data: updateSchemaMeaningSlotBinding(id, body) });
       return;
     }
 
@@ -556,16 +556,16 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
     return;
   }
 
-  if (pathname === '/models') {
+  if (pathname === '/meanings') {
     if (method === 'GET') {
       const projectId = getRequiredSearchParam(url, 'projectId');
-      sendJson(res, 200, { ok: true, data: listModels(projectId) });
+      sendJson(res, 200, { ok: true, data: listMeanings(projectId) });
       return;
     }
 
     if (method === 'POST') {
-      const body = await readJsonBody<ModelCreate>(req);
-      sendJson(res, 200, { ok: true, data: createModel(body) });
+      const body = await readJsonBody<MeaningCreate>(req);
+      sendJson(res, 200, { ok: true, data: createMeaning(body) });
       return;
     }
 
@@ -573,10 +573,10 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
     return;
   }
 
-  if (pathname === '/model-categories') {
+  if (pathname === '/meaning-categories') {
     if (method === 'GET') {
       const projectId = getRequiredSearchParam(url, 'projectId');
-      sendJson(res, 200, { ok: true, data: listModelCategories(projectId) });
+      sendJson(res, 200, { ok: true, data: listMeaningCategories(projectId) });
       return;
     }
 
@@ -584,24 +584,24 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
     return;
   }
 
-  if (pathname.startsWith('/models/')) {
-    const id = decodeURIComponent(pathname.slice('/models/'.length));
+  if (pathname.startsWith('/meanings/')) {
+    const id = decodeURIComponent(pathname.slice('/meanings/'.length));
 
     if (method === 'GET') {
-      sendJson(res, 200, { ok: true, data: getModel(id) });
+      sendJson(res, 200, { ok: true, data: getMeaning(id) });
       return;
     }
 
     if (method === 'PATCH') {
-      const body = await readJsonBody<ModelUpdate>(req);
-      sendJson(res, 200, { ok: true, data: updateModel(id, body) });
+      const body = await readJsonBody<MeaningUpdate>(req);
+      sendJson(res, 200, { ok: true, data: updateMeaning(id, body) });
       return;
     }
 
     if (method === 'DELETE') {
-      console.info('[ModelDelete][service-route] start', { id });
-      const deleted = deleteModel(id);
-      console.info('[ModelDelete][service-route] result', { id, deleted });
+      console.info('[MeaningDelete][service-route] start', { id });
+      const deleted = deleteMeaning(id);
+      console.info('[MeaningDelete][service-route] result', { id, deleted });
       sendJson(res, 200, { ok: true, data: deleted });
       return;
     }
@@ -1290,7 +1290,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
           project_id: projectId,
           source_object_id: url.searchParams.get('sourceObjectId') ?? undefined,
           target_object_id: url.searchParams.get('targetObjectId') ?? undefined,
-          model_id: url.searchParams.get('modelId') ?? undefined,
+          meaning_id: url.searchParams.get('meaningId') ?? undefined,
         }),
       });
       return;
@@ -1495,13 +1495,13 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
   sendJson(res, 404, { ok: false, error: `Route not found: ${method} ${pathname}` });
 }
 
-type SchemaRow = Omit<Schema, 'models'> & {
-  models: string | null;
+type SchemaRow = Omit<Schema, 'meanings'> & {
+  meanings: string | null;
 };
-type SchemaFieldRow = Omit<SchemaField, 'required' | 'slot_binding_locked' | 'generated_by_model' | 'meaning_bindings' | 'bindings'> & {
+type SchemaFieldRow = Omit<SchemaField, 'required' | 'slot_binding_locked' | 'generated_by_meaning' | 'meaning_bindings' | 'bindings'> & {
   required: number;
   slot_binding_locked: number;
-  generated_by_model?: number;
+  generated_by_meaning?: number;
   meaning_slot?: MeaningSlotKey | null;
   meaning_key?: FieldMeaningKey | null;
 };
@@ -1509,11 +1509,11 @@ type SchemaFieldBindingRow = Omit<SchemaField['bindings'][number], 'read_only'> 
   read_only: number;
 };
 
-function parseModels(raw: string | null | undefined): ModelKey[] {
+function parseModels(raw: string | null | undefined): MeaningKey[] {
   if (!raw) return [];
   try {
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed.filter((item): item is ModelKey => typeof item === 'string') : [];
+    return Array.isArray(parsed) ? parsed.filter((item): item is MeaningKey => typeof item === 'string') : [];
   } catch {
     return [];
   }
@@ -1522,7 +1522,7 @@ function parseModels(raw: string | null | undefined): ModelKey[] {
 function toSchema(row: SchemaRow): Schema {
   return {
     ...row,
-    models: parseModels(row.models),
+    meanings: parseModels(row.meanings),
   };
 }
 
@@ -1585,11 +1585,11 @@ function toSchemaField(
 ): SchemaField {
   const fieldMeaning = row.meaning_key ?? meaningSlotToFieldMeaning(row.meaning_slot);
   const bindings = normalizeMeaningBindings(meaningBindings, fieldMeaning);
-  const generatedByModel = Boolean(row.generated_by_model);
+  const generatedByModel = Boolean(row.generated_by_meaning);
   const {
     meaning_slot: _meaningSlot,
     meaning_key: _meaningKey,
-    generated_by_model: _generatedByModel,
+    generated_by_meaning: _generatedByModel,
     ...field
   } = row;
 
@@ -1599,7 +1599,7 @@ function toSchemaField(
     meaning_bindings: bindings,
     required: !!row.required,
     slot_binding_locked: !!row.slot_binding_locked,
-    generated_by_model: generatedByModel,
+    generated_by_meaning: generatedByModel,
   };
 }
 

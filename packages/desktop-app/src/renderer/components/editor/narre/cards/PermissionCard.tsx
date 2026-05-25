@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import * as LucideIcons from 'lucide-react';
 import { getFieldMeaningBindingDefinition } from '@netior/shared/constants';
-import type { NarrePermissionCard } from '@netior/shared/types';
+import type { NarreOperationPreviewItem, NarrePermissionCard } from '@netior/shared/types';
 import type { TranslationKey } from '@netior/shared/i18n';
 import { useI18n } from '../../../../hooks/useI18n';
 import { Badge } from '../../../ui/Badge';
@@ -124,16 +124,16 @@ function toPreviewLabelKey(label: string): string {
 function getDisplayPreviewItems(
   items: NonNullable<NarrePermissionCard['preview']>['items'] | undefined,
   toolKey?: string | null,
-): NonNullable<NarrePermissionCard['preview']>['items'] {
+): NarreOperationPreviewItem[] {
   if (!items) return [];
 
-  const hasResolvedModelList = items.some((item) => item.kind === 'model_list' && item.models?.length);
+  const hasResolvedMeaningList = items.some((item) => item.kind === 'meaning_list' && item.meanings?.length);
   const visibleItems = items.filter((item) => {
     const key = toPreviewLabelKey(item.label);
     if (key === 'schemaId' || key === 'groupId' || key === 'projectId') {
       return false;
     }
-    if (key === 'models' && hasResolvedModelList && !(item.kind === 'model_list' && item.models?.length)) {
+    if (key === 'meanings' && hasResolvedMeaningList && !(item.kind === 'meaning_list' && item.meanings?.length)) {
       return false;
     }
     return true;
@@ -322,23 +322,24 @@ function PreviewValue({
   t,
   display,
 }: {
-  item: NonNullable<NarrePermissionCard['preview']>['items'][number];
+  item: NarreOperationPreviewItem;
   t: ReturnType<typeof useI18n>['t'];
   display: ReturnType<typeof createOntologyDisplayResolver>;
 }): JSX.Element {
   const labelKey = toPreviewLabelKey(item.label);
 
-  if (item.kind === 'model_list' && item.models?.length) {
+  if (item.kind === 'meaning_list' && item.meanings?.length) {
     return (
       <span className="inline-flex flex-wrap gap-x-1.5 gap-y-1">
-        {item.models.map((model) => (
-          <span key={model.key} className="inline-flex items-center gap-1">
+        {item.meanings.map((meaning) => (
+          <span key={meaning.key} className="inline-flex items-center gap-1">
             <span>
-              {display.modelName({
-                key: model.key as never,
-                name: model.name,
-                description: model.description ?? null,
-                built_in: model.built_in === true,
+              {display.meaningName({
+                key: meaning.key as never,
+                name: meaning.name,
+                description: meaning.description ?? null,
+                source_kind: 'project',
+                source_ref: null,
               })}
             </span>
           </span>

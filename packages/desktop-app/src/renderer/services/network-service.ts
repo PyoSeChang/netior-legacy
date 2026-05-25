@@ -3,7 +3,7 @@
   NetworkNode, NetworkNodeCreate, NetworkNodeUpdate,
   Edge, EdgeCreate, EdgeUpdate,
   Relationship, RelationshipCreate, RelationshipListFilters, RelationshipUpdate,
-  ObjectRecord, Instance, FileEntity, Model, NetworkBreadcrumbItem,
+  ObjectRecord, Instance, FileEntity, Meaning, NetworkBreadcrumbItem,
   NetworkTreeNode, Layout,
 } from '@netior/shared/types';
 
@@ -25,7 +25,7 @@ export interface NetworkFullData {
     instance?: Instance;
     file?: FileEntity;
   })[];
-  edges: (Edge & { model?: Model; relationship?: Relationship & { model?: Model } })[];
+  edges: (Edge & { meaning?: Meaning; relationship?: Relationship & { meaning?: Meaning } })[];
   nodePositions: NodePosition[];
   edgeVisuals: EdgeVisual[];
 }

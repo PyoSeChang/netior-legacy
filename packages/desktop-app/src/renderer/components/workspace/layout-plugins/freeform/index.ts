@@ -2,7 +2,7 @@
 import type { RenderEdge } from '../../types';
 import type { WorkspaceLayoutPlugin, LayoutRenderNode } from '../types';
 import { extractNodeConfig } from '../../../../lib/node-config';
-import { CONTAINS_MODEL_KEY } from '../../../../lib/edge-models';
+import { CONTAINS_MEANING_KEY } from '../../../../lib/edge-meanings';
 import { getMeaningBindingValue } from '../semantic';
 import { FreeformBackground } from './FreeformBackground';
 
@@ -34,7 +34,7 @@ function debugOntologyLayout(stage: string, payload: unknown): void {
 }
 
 function isContainsRelationMeaning(value: string | null | undefined): boolean {
-  return value === 'structure.contains' || value === CONTAINS_MODEL_KEY;
+  return value === 'structure.contains' || value === CONTAINS_MEANING_KEY;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -55,7 +55,7 @@ function isOntologyCategoryContainmentEdge(
 ): boolean {
   if (!isManagedOntologyCategoryGroup(parent)) return true;
 
-  const childCategoryId = child.metadata.__modelCategoryInstanceId;
+  const childCategoryId = child.metadata.__meaningCategoryInstanceId;
   if (typeof childCategoryId !== 'string') return true;
 
   return parent.objectTargetId === childCategoryId;
@@ -110,7 +110,7 @@ function buildContainsMaps(nodes: LayoutRenderNode[], edges: RenderEdge[]): {
       targetLabel: child?.label,
       sourceObjectTargetId: parent?.objectTargetId,
       targetObjectTargetId: child?.objectTargetId,
-      targetCategoryInstanceId: child?.metadata.__modelCategoryInstanceId,
+      targetCategoryInstanceId: child?.metadata.__meaningCategoryInstanceId,
       accepted: false,
       reason: undefined as string | undefined,
     };
@@ -138,7 +138,7 @@ function buildContainsMaps(nodes: LayoutRenderNode[], edges: RenderEdge[]): {
   );
 
   for (const node of nodes) {
-    const categoryInstanceId = node.metadata.__modelCategoryInstanceId;
+    const categoryInstanceId = node.metadata.__meaningCategoryInstanceId;
     if (typeof categoryInstanceId !== 'string') continue;
     const inferredParentId = ontologyCategoryNodeByInstanceId.get(categoryInstanceId);
     if (!inferredParentId || inferredParentId === node.id) continue;
@@ -156,11 +156,11 @@ function buildContainsMaps(nodes: LayoutRenderNode[], edges: RenderEdge[]): {
         ontologyOrder: node.metadata.ontologyOrder,
         childIds: childrenByParent.get(node.id) ?? [],
       })),
-      modelNodes: nodes.filter((node) => node.objectType === 'model').map((node) => ({
+      meaningNodes: nodes.filter((node) => node.objectType === 'meaning').map((node) => ({
         id: node.id,
         label: node.label,
         objectTargetId: node.objectTargetId,
-        categoryInstanceId: node.metadata.__modelCategoryInstanceId,
+        categoryInstanceId: node.metadata.__meaningCategoryInstanceId,
         parentId: parentByChild.get(node.id) ?? null,
       })),
       containsEdges: containsEdgeDiagnostics,
@@ -233,7 +233,7 @@ function getGroupNodeConfig(node: LayoutRenderNode): NodeConfig | null {
 function isManagedOntologyCategoryGroup(node: LayoutRenderNode): boolean {
   return node.isGroup === true
     && node.metadata?.managedBy === 'ontology'
-    && node.metadata?.ontologyRole === 'model_category';
+    && node.metadata?.ontologyRole === 'meaning_category';
 }
 
 function getOntologyOrder(node: LayoutRenderNode): number | null {

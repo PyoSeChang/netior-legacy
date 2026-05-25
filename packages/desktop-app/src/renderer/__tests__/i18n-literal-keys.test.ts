@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { translate } from '../../../../shared/src/i18n';
+import { translate } from '@netior/shared/i18n';
 
 const testDir = dirname(fileURLToPath(import.meta.url));
 const rendererDir = join(testDir, '..');

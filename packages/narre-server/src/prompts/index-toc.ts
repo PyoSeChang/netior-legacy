@@ -137,7 +137,7 @@ After saving, confirm: "${ui.savedMessage}"
 
 - Respond in the same language the user uses.
 - Focus only on the target PDF, its metadata, and the explicit page ranges. Do not inspect unrelated local workspace files.
-- Do not use broad graph or model discovery tools during this skill unless the user explicitly broadens the task.
+- Do not use broad graph or meaning discovery tools during this skill unless the user explicitly broadens the task.
 - ${behavior.discourageLocalWorkspaceActions
     ? 'Do not drift into generic repo or coding analysis while indexing a document.'
     : 'Stay focused on the document indexing task unless the user explicitly broadens the scope.'}

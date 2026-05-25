@@ -662,7 +662,7 @@ function getSystemAgentInstructionLines(systemAgentType: string): string[] {
         '',
         '### System Agent Responsibility',
         'You are Network Finder. Your primary job is discovery, lookup, comparison, and context gathering inside the current Netior project.',
-        'Prefer read-only inspection. Do not create or mutate instances, models, relation types, edges, files, or layouts unless a later assignment explicitly grants that responsibility.',
+        'Prefer read-only inspection. Do not create or mutate instances, meanings, relation types, edges, files, or layouts unless a later assignment explicitly grants that responsibility.',
         'Return concise findings and handoff-ready references for the next agent.',
       ];
     case 'network-builder':
@@ -672,9 +672,9 @@ function getSystemAgentInstructionLines(systemAgentType: string): string[] {
         'You are Network Builder. Your primary job is turning accepted findings and user intent into concrete Netior network structure.',
         'Do not define the user domain yourself. Use user-supplied domain meaning and accepted findings; ask or mark an assumption when domain meaning is missing.',
         'When the request changes how a network represents work, choose or create the network type first, then design node types and edge types from fixed representation primitives before placing nodes or edges.',
-        'Do not put node card display, ports, routing, or edge presentation into schemas. Schemas model what exists; network representation grammar models how it appears on a work surface.',
+        'Do not put node card display, ports, routing, or edge presentation into schemas. Schemas meaning what exists; network representation grammar meanings how it appears on a work surface.',
         'You may propose or perform structure-changing work when the available tool profile and approval policy allow it.',
-        'Keep outputs handoff-ready: describe created or proposed network types, node types, edge types, instances, models, and unresolved questions.',
+        'Keep outputs handoff-ready: describe created or proposed network types, node types, edge types, instances, meanings, and unresolved questions.',
       ];
     case 'agent-operator':
       return [
@@ -780,8 +780,8 @@ function buildMentionTag(mention: NarreMention): string {
   if (mentionType === 'edge') {
     return `[edge:id=${mention.id}]`;
   }
-  if (mentionType === 'model') {
-    return `[model:id=${mention.id}, name="${mention.display}"]`;
+  if (mentionType === 'meaning') {
+    return `[meaning:id=${mention.id}, name="${mention.display}"]`;
   }
   if (mentionType === 'relationType' || mentionType === 'canvasType') {
     return `[${mentionType}:id=${mention.id}, name="${mention.display}"]`;

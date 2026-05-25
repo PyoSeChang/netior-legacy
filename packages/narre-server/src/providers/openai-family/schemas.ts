@@ -6,4 +6,4 @@
   type AskToolArgs,
   type ConfirmToolArgs,
   type DraftToolArgs,
-} from '../shared/ui-models.js';
+} from '../shared/ui-schemas.js';

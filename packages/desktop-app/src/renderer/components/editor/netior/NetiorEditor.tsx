@@ -11,7 +11,7 @@ import {
   type SemanticTarget,
   type TargetProjection,
 } from '@netior/shared/semantic-editor';
-import type { Instance, InstanceProperty, InteractiveViewTemplate, Model, SchemaField } from '@netior/shared/types';
+import type { Instance, InstanceProperty, InteractiveViewTemplate, Meaning, SchemaField } from '@netior/shared/types';
 import type { MentionResult } from '../../../services/narre-service';
 import { MarkdownEditor } from '../markdown/MarkdownEditor';
 import { createNetiorSemanticPreviewPlugin, NETIOR_EMBED_EDIT_EVENT } from './semantic-preview';
@@ -21,7 +21,7 @@ import { Modal } from '../../ui/Modal';
 import { Button } from '../../ui/Button';
 import { Checkbox } from '../../ui/Checkbox';
 import { Select } from '../../ui/Select';
-import { instanceService, interactiveViewTemplateService, modelService, schemaService } from '../../../services';
+import { instanceService, interactiveViewTemplateService, meaningService, schemaService } from '../../../services';
 import { useI18n } from '../../../hooks/useI18n';
 import { useInstanceStore } from '../../../stores/instance-store';
 import {
@@ -58,8 +58,8 @@ function isEmbeddableInstance(instance: Instance): boolean {
   return instance.source_kind === 'project' || instance.source_kind === 'imported';
 }
 
-function isRelationModel(model: Model): boolean {
-  const targetKind = model.target_kind as string;
+function isRelationMeaning(meaning: Meaning): boolean {
+  const targetKind = meaning.target_kind as string;
   return targetKind === 'relation' || targetKind === 'both';
 }
 
@@ -124,7 +124,7 @@ export function NetiorEditor({
   const [insertRequest, setInsertRequest] = useState<InsertRequest | null>(null);
   const [mode, setMode] = useState<InsertMode | null>(null);
   const [instances, setInstances] = useState<Instance[]>([]);
-  const [models, setModels] = useState<Model[]>([]);
+  const [meanings, setMeanings] = useState<Meaning[]>([]);
   const [fieldsBySchemaId, setFieldsBySchemaId] = useState<Record<string, SchemaField[]>>({});
   const [interactiveEmbedsPaused, setInteractiveEmbedsPaused] = useState(false);
   const interactiveEmbedsPausedRef = useRef(false);
@@ -306,7 +306,7 @@ export function NetiorEditor({
   const [selectedFieldId, setSelectedFieldId] = useState('');
   const [selectedPropertyFieldIds, setSelectedPropertyFieldIds] = useState<string[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState('');
-  const [selectedModelId, setSelectedModelId] = useState('');
+  const [selectedMeaningId, setSelectedMeaningId] = useState('');
   const [droppedMention, setDroppedMention] = useState<MentionResult | null>(null);
   const [editingToken, setEditingToken] = useState<EditingTokenState | null>(null);
   const selectedInstanceButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -361,7 +361,7 @@ export function NetiorEditor({
     setMode(token.occurrenceType === 'embed' ? 'embed' : 'mention');
     setScope(nextScope);
     setSelectedInstanceId(nextInstanceId);
-    setSelectedModelId(token.modelId ?? '');
+    setSelectedMeaningId(token.meaningId ?? '');
     setQuery('');
   };
 
@@ -425,12 +425,12 @@ export function NetiorEditor({
   useEffect(() => {
     if (!projectId || !mode) return;
     let cancelled = false;
-    void modelService.list(projectId).then((items) => {
+    void meaningService.list(projectId).then((items) => {
       if (cancelled) return;
-      const relationModels = items.filter(isRelationModel);
-      setModels(relationModels);
-      setSelectedModelId((current) => (
-        current && relationModels.some((model) => model.id === current) ? current : ''
+      const relationMeanings = items.filter(isRelationMeaning);
+      setMeanings(relationMeanings);
+      setSelectedMeaningId((current) => (
+        current && relationMeanings.some((meaning) => meaning.id === current) ? current : ''
       ));
     });
     return () => { cancelled = true; };
@@ -542,7 +542,7 @@ export function NetiorEditor({
     setEditingToken(null);
     setMode(nextMode);
     setScope(nextMode === 'embed' ? 'properties' : 'instance');
-    setSelectedModelId('');
+    setSelectedMeaningId('');
     setQuery('');
   };
 
@@ -575,7 +575,7 @@ export function NetiorEditor({
     setMode(nextMode);
     setScope(nextMode === 'embed' ? 'properties' : 'instance');
     setEditingToken(null);
-    setSelectedModelId('');
+    setSelectedMeaningId('');
     setQuery('');
     setDroppedMention(null);
   };
@@ -622,12 +622,12 @@ export function NetiorEditor({
         label,
         projection: projectionForScope(scope),
         fieldLabels: scope === 'properties' ? selectedPropertyFields.map((field) => field.name) : undefined,
-        modelId: selectedModelId || undefined,
+        meaningId: selectedMeaningId || undefined,
       })
       : createMentionToken({
         target: serializedTarget,
         label,
-        modelId: selectedModelId || undefined,
+        meaningId: selectedMeaningId || undefined,
       });
 
     setInsertRequest({
@@ -758,17 +758,17 @@ export function NetiorEditor({
               </div>
 
               <div>
-                <label className="mb-1 block text-xs font-medium text-secondary">{t('netiorEditor.relationshipModel')}</label>
+                <label className="mb-1 block text-xs font-medium text-secondary">{t('netiorEditor.relationshipMeaning')}</label>
                 <Select
                   selectSize="sm"
                   searchable
-                  value={selectedModelId}
-                  onChange={(event) => setSelectedModelId(event.target.value)}
+                  value={selectedMeaningId}
+                  onChange={(event) => setSelectedMeaningId(event.target.value)}
                   options={[
-                    { value: '', label: t('netiorEditor.noRelationshipModel') },
-                    ...models.map((model) => ({ value: model.id, label: display.modelName(model) })),
+                    { value: '', label: t('netiorEditor.noRelationshipMeaning') },
+                    ...meanings.map((meaning) => ({ value: meaning.id, label: display.meaningName(meaning) })),
                   ]}
-                  emptyMessage={t('netiorEditor.noRelationshipModels')}
+                  emptyMessage={t('netiorEditor.noRelationshipMeanings')}
                 />
               </div>
 

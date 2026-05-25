@@ -1,6 +1,6 @@
 import type {
   FieldType,
-  Model,
+  Meaning,
 } from '@netior/shared/types';
 
 export type AgentFieldType = FieldType;
@@ -13,8 +13,8 @@ export function fromAgentFieldType(fieldType: AgentFieldType): FieldType {
   return fieldType;
 }
 
-export function toAgentModel(model: Model) {
+export function toAgentMeaning(meaning: Meaning) {
   return {
-    ...model,
+    ...meaning,
   };
 }

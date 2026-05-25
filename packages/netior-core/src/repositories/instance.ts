@@ -12,28 +12,28 @@ import type {
   InstanceCreate,
   InstanceUpdate,
   FieldMeaningBindingKey,
-  ModelRefKey,
+  MeaningRefKey,
   FieldMeaningKey,
   MeaningSlotKey,
 } from '@netior/shared/types';
 import { renderTemplate, serializeToAgent } from '../services/instance-content-sync';
 
-type SchemaRow = Omit<Schema, 'models'> & {
-  models: string | null;
+type SchemaRow = Omit<Schema, 'meanings'> & {
+  meanings: string | null;
 };
-type SchemaFieldRow = Omit<SchemaField, 'required' | 'slot_binding_locked' | 'generated_by_model' | 'meaning_bindings'> & {
+type SchemaFieldRow = Omit<SchemaField, 'required' | 'slot_binding_locked' | 'generated_by_meaning' | 'meaning_bindings'> & {
   meaning_slot: MeaningSlotKey | null;
   meaning_key: FieldMeaningKey | null;
   required: number;
   slot_binding_locked: number;
-  generated_by_model: number;
+  generated_by_meaning: number;
 };
 
-function parseModels(raw: string | null | undefined): ModelRefKey[] {
+function parseModels(raw: string | null | undefined): MeaningRefKey[] {
   if (!raw) return [];
   try {
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed.filter((item): item is ModelRefKey => typeof item === 'string') : [];
+    return Array.isArray(parsed) ? parsed.filter((item): item is MeaningRefKey => typeof item === 'string') : [];
   } catch {
     return [];
   }
@@ -42,7 +42,7 @@ function parseModels(raw: string | null | undefined): ModelRefKey[] {
 function toSchema(row: SchemaRow): Schema {
   return {
     ...row,
-    models: parseModels(row.models),
+    meanings: parseModels(row.meanings),
   };
 }
 
@@ -80,7 +80,7 @@ function getFieldMeaningBindingsByFieldId(fieldIds: string[]): Map<string, Field
 function toField(row: SchemaFieldRow, meaningBindings?: readonly FieldMeaningBindingKey[]): SchemaField {
   const fieldMeaning = row.meaning_key ?? meaningSlotToFieldMeaning(row.meaning_slot);
   const bindings = normalizeMeaningBindings(meaningBindings, fieldMeaning);
-  const generatedByModel = Boolean(row.generated_by_model);
+  const generatedByModel = Boolean(row.generated_by_meaning);
   const {
     meaning_slot: _meaningSlot,
     meaning_key: _meaningKey,
@@ -92,7 +92,7 @@ function toField(row: SchemaFieldRow, meaningBindings?: readonly FieldMeaningBin
     meaning_bindings: bindings,
     required: !!row.required,
     slot_binding_locked: !!row.slot_binding_locked,
-    generated_by_model: generatedByModel,
+    generated_by_meaning: generatedByModel,
   };
 }
 

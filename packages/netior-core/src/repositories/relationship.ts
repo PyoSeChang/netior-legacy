@@ -33,9 +33,9 @@ export function listRelationships(filters: RelationshipListFilters): Relationshi
     where.push('target_object_id = ?');
     values.push(filters.target_object_id);
   }
-  if (filters.model_id) {
-    where.push('model_id = ?');
-    values.push(filters.model_id);
+  if (filters.meaning_id) {
+    where.push('meaning_id = ?');
+    values.push(filters.meaning_id);
   }
 
   return db.prepare(`
@@ -58,7 +58,7 @@ export function createRelationship(data: RelationshipCreate): Relationship {
 
   db.prepare(`
     INSERT INTO relationships (
-      id, project_id, source_object_id, target_object_id, model_id, description,
+      id, project_id, source_object_id, target_object_id, meaning_id, description,
       properties_json, source_kind, source_id, source_ref, source_version,
       created_at, updated_at
     )
@@ -68,7 +68,7 @@ export function createRelationship(data: RelationshipCreate): Relationship {
     data.project_id,
     data.source_object_id,
     data.target_object_id,
-    data.model_id ?? null,
+    data.meaning_id ?? null,
     data.description ?? null,
     propertiesJson,
     data.source_kind ?? 'project',
@@ -93,7 +93,7 @@ export function updateRelationship(id: string, data: RelationshipUpdate): Relati
 
   db.prepare(`
     UPDATE relationships
-       SET model_id = ?,
+       SET meaning_id = ?,
            description = ?,
            properties_json = ?,
            source_kind = ?,
@@ -103,7 +103,7 @@ export function updateRelationship(id: string, data: RelationshipUpdate): Relati
            updated_at = ?
      WHERE id = ?
   `).run(
-    data.model_id !== undefined ? data.model_id : existing.model_id,
+    data.meaning_id !== undefined ? data.meaning_id : existing.meaning_id,
     data.description !== undefined ? data.description : existing.description,
     nextPropertiesJson,
     data.source_kind !== undefined ? data.source_kind : existing.source_kind,

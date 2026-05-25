@@ -162,7 +162,7 @@ class EmbedWidget extends WidgetType {
     block.className = `netior-embed-block netior-embed-${projection.replace(/_/g, '-')}`;
     block.dataset.netiorOccurrenceType = this.token.occurrenceType;
     block.dataset.netiorRelationshipId = this.token.relationshipId ?? '';
-    block.dataset.netiorModelId = this.token.modelId ?? '';
+    block.dataset.netiorMeaningId = this.token.meaningId ?? '';
     block.dataset.netiorTokenFrom = String(this.token.from);
     block.dataset.netiorTokenTo = String(this.token.to);
 

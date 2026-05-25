@@ -6,7 +6,7 @@ import type {
   Instance,
   FieldType,
   ObjectRecord,
-  Model,
+  Meaning,
 } from '@netior/shared/types';
 
 export type AgentFieldType = FieldType;
@@ -42,7 +42,7 @@ export function toAgentSchemaField(field: SchemaField) {
   const {
     schema_id,
     slot_binding_locked: _slotBindingLocked,
-    generated_by_model: _generatedByModel,
+    generated_by_meaning: _generatedByMeaning,
     ...schemaField
   } = field;
 
@@ -68,7 +68,7 @@ export function toAgentMeaningSlot(slot: SchemaMeaningSlotBinding) {
 export function toAgentSchemaMeaning(meaning: SchemaMeaning) {
   const {
     schema_id,
-    source_model: _sourceModel,
+    source_meaning: _sourceMeaning,
     slots,
     ...schemaMeaning
   } = meaning;
@@ -99,12 +99,12 @@ export function toAgentObject(record: ObjectRecord) {
   };
 }
 
-export function toAgentModel(model: Model) {
+export function toAgentMeaning(meaning: Meaning) {
   return {
-    ...model,
+    ...meaning,
     recipe: {
-      ...model.recipe,
-      meanings: model.recipe.meanings.map((meaning) => ({
+      ...meaning.recipe,
+      meanings: meaning.recipe.meanings.map((meaning) => ({
         ...meaning,
         fields: meaning.fields.map((field) => ({
           ...field,

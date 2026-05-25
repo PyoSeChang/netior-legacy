@@ -12,7 +12,7 @@ import { registerInteractiveViewStateIpc } from './interactive-view-state-ipc';
 import { registerInstanceContentIpc } from './instance-content-ipc';
 import { registerPtyIpc } from './pty-ipc';
 import { registerConfigIpc } from './config-ipc';
-import { registerModelIpc } from './model-ipc';
+import { registerModelIpc } from './meaning-ipc';
 import { registerObjectIpc } from './object-ipc';
 import { registerNarreIpc } from './narre-ipc';
 import { registerContextIpc } from './context-ipc';

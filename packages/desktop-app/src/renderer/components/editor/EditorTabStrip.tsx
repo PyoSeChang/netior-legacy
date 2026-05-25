@@ -22,7 +22,7 @@ import { replaceDraftCache } from '../../hooks/useEditorSession';
 import { setKnownFileTabSignature } from '../../lib/file-tab-stale-registry';
 import { useI18n } from '../../hooks/useI18n';
 import { useInstanceStore } from '../../stores/instance-store';
-import { useModelStore } from '../../stores/model-store';
+import { useMeaningStore } from '../../stores/meaning-store';
 import { useSchemaStore } from '../../stores/schema-store';
 import { NodeVisual } from '../workspace/node-components/NodeVisual';
 
@@ -88,9 +88,9 @@ function TabIcon({ tab }: { tab: EditorTab }): JSX.Element {
       ? s.instances.find((instance) => instance.id === tab.targetId)?.icon ?? null
       : null
   ));
-  const modelIcon = useModelStore((s) => (
-    tab.type === 'model'
-      ? s.models.find((model) => model.id === tab.targetId)?.icon ?? null
+  const modelIcon = useMeaningStore((s) => (
+    tab.type === 'meaning'
+      ? s.meanings.find((meaning) => meaning.id === tab.targetId)?.icon ?? null
       : null
   ));
   const schemaIcon = useSchemaStore((s) => (
@@ -114,7 +114,7 @@ function TabIcon({ tab }: { tab: EditorTab }): JSX.Element {
       return <Terminal size={ICON_SIZE} style={{ flexShrink: 0 }} />;
     case 'instance':
       return <NodeVisual icon={instanceIcon ?? 'box'} size={ICON_SIZE} imageSize={16} className="shrink-0" />;
-    case 'model':
+    case 'meaning':
       return <NodeVisual icon={modelIcon ?? 'boxes'} size={ICON_SIZE} imageSize={16} className="shrink-0" />;
     case 'schema':
       return <NodeVisual icon={schemaIcon ?? 'diamond'} size={ICON_SIZE} imageSize={16} className="shrink-0" />;

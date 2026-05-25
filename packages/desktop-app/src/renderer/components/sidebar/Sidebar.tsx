@@ -12,7 +12,7 @@ import { ModuleSelector } from './ModuleSelector';
 import { ObjectPanel } from './ObjectPanel';
 import { BookmarkedNetworkSidebar } from './BookmarkedNetworkSidebar';
 import { useInstanceStore } from '../../stores/instance-store';
-import { useModelStore } from '../../stores/model-store';
+import { useMeaningStore } from '../../stores/meaning-store';
 import { ScrollArea } from '../ui/ScrollArea';
 import { Spinner } from '../ui/Spinner';
 import { Tooltip } from '../ui/Tooltip';
@@ -30,7 +30,7 @@ interface SidebarProps {
 
 const OBJECT_PANEL_TYPES = {
   instances: ['instance'],
-  models: ['model'],
+  meanings: ['meaning'],
   contexts: ['context'],
 } as const;
 
@@ -165,7 +165,7 @@ export function Sidebar({ project }: SidebarProps): JSX.Element {
   const { loadNetworks, loadNetworkTree } = useNetworkStore();
   const { loadModules, directories } = useModuleStore();
   const { loadByProject: loadInstances } = useInstanceStore();
-  const { loadByProject: loadModels } = useModelStore();
+  const { loadByProject: loadMeanings } = useMeaningStore();
 
   useEffect(() => {
     if (!project) return;
@@ -173,8 +173,8 @@ export function Sidebar({ project }: SidebarProps): JSX.Element {
     loadNetworkTree(project.id);
     loadModules(project.id);
     loadInstances(project.id);
-    loadModels(project.id);
-  }, [project?.id, loadNetworks, loadNetworkTree, loadModules, loadInstances, loadModels]);
+    loadMeanings(project.id);
+  }, [project?.id, loadNetworks, loadNetworkTree, loadModules, loadInstances, loadMeanings]);
 
   useEffect(() => {
     if (!project) return undefined;
@@ -251,7 +251,7 @@ export function Sidebar({ project }: SidebarProps): JSX.Element {
               </>
             )}
             {sidebarView === 'instances' && <ObjectPanel types={[...OBJECT_PANEL_TYPES.instances]} />}
-            {sidebarView === 'models' && <ObjectPanel types={[...OBJECT_PANEL_TYPES.models]} />}
+            {sidebarView === 'meanings' && <ObjectPanel types={[...OBJECT_PANEL_TYPES.meanings]} />}
             {sidebarView === 'contexts' && <ObjectPanel types={[...OBJECT_PANEL_TYPES.contexts]} />}
             {sidebarView === 'objects' && <ObjectPanel />}
             {sidebarView === 'sessions' && <AgentSessionPanel projectId={project.id} />}

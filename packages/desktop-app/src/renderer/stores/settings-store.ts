@@ -149,7 +149,6 @@ interface SettingsSyncState {
   terminalPresetId: TerminalPresetId;
   terminalAppearance: TerminalAppearanceConfig;
   browser: BrowserSettingsConfig;
-  browser: BrowserSettingsConfig;
 }
 
 const DEFAULT_TERMINAL_PRESET_ID: TerminalPresetId = 'hyper';
@@ -1236,6 +1235,7 @@ export interface SettingsStore {
   typography: TypographyConfig;
   terminalPresetId: TerminalPresetId;
   terminalAppearance: TerminalAppearanceConfig;
+  browser: BrowserSettingsConfig;
 
   setAppearanceMode: (mode: AppearanceMode) => void;
   setThemeFamily: (mode: ResolvedThemeMode, family: ThemeFamily) => void;

@@ -2,7 +2,7 @@
 import type { RenderNode, RenderEdge } from '../types';
 import type {
   FieldMeaningBindingKey,
-  ModelRefKey,
+  MeaningRefKey,
   MeaningSlotKey,
 } from '@netior/shared/types';
 import type { NetiorDslExpression } from '@netior/shared/dsl';
@@ -41,8 +41,8 @@ export interface LayoutSemanticSlotValue {
 }
 
 export interface LayoutSemanticProjection {
-  modelId?: string;
-  models: ModelRefKey[];
+  meaningId?: string;
+  meanings: MeaningRefKey[];
   meaningBindings: Partial<Record<FieldMeaningBindingKey, LayoutSemanticSlotValue[]>>;
   meaningFieldIds: Partial<Record<FieldMeaningBindingKey, string[]>>;
   meaningSlotFieldIds: Partial<Record<MeaningSlotKey, string>>;
@@ -52,7 +52,7 @@ export interface LayoutSemanticProjection {
 /** RenderNode extended with plugin metadata */
 export interface LayoutRenderNode extends RenderNode {
   metadata: Record<string, unknown>;
-  modelId?: string;
+  meaningId?: string;
   semantic?: LayoutSemanticProjection;
 }
 

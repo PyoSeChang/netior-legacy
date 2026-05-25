@@ -62,9 +62,9 @@ import type {
   Project,
   ProjectCreate,
   ProjectUpdate,
-  Model,
-  ModelCreate,
-  ModelUpdate,
+  Meaning,
+  MeaningCreate,
+  MeaningUpdate,
   Layout,
   NetiorServiceResponse,
 } from '@netior/shared/types';
@@ -387,30 +387,30 @@ export async function updateRemoteSchemaMeaningSlotBinding(
   });
 }
 
-export async function listRemoteModels(projectId: string): Promise<Model[]> {
-  return requestJson<Model[]>(`/models${toQueryString({ projectId })}`);
+export async function listRemoteModels(projectId: string): Promise<Meaning[]> {
+  return requestJson<Meaning[]>(`/meanings${toQueryString({ projectId })}`);
 }
 
-export async function createRemoteModel(data: ModelCreate): Promise<Model> {
-  return requestJson<Model>('/models', {
+export async function createRemoteModel(data: MeaningCreate): Promise<Meaning> {
+  return requestJson<Meaning>('/meanings', {
     method: 'POST',
     body: JSON.stringify(data),
   });
 }
 
-export async function getRemoteModel(id: string): Promise<Model | null> {
-  return requestJson<Model | null>(`/models/${encodeURIComponent(id)}`);
+export async function getRemoteModel(id: string): Promise<Meaning | null> {
+  return requestJson<Meaning | null>(`/meanings/${encodeURIComponent(id)}`);
 }
 
-export async function updateRemoteModel(id: string, data: ModelUpdate): Promise<Model | null> {
-  return requestJson<Model | null>(`/models/${encodeURIComponent(id)}`, {
+export async function updateRemoteModel(id: string, data: MeaningUpdate): Promise<Meaning | null> {
+  return requestJson<Meaning | null>(`/meanings/${encodeURIComponent(id)}`, {
     method: 'PATCH',
     body: JSON.stringify(data),
   });
 }
 
 export async function deleteRemoteModel(id: string): Promise<boolean> {
-  return requestJson<boolean>(`/models/${encodeURIComponent(id)}`, {
+  return requestJson<boolean>(`/meanings/${encodeURIComponent(id)}`, {
     method: 'DELETE',
   });
 }
@@ -639,7 +639,7 @@ export async function listRemoteRelationships(filters: RelationshipListFilters):
     projectId: filters.project_id,
     sourceObjectId: filters.source_object_id,
     targetObjectId: filters.target_object_id,
-    modelId: filters.model_id,
+    meaningId: filters.meaning_id,
   })}`);
 }
 

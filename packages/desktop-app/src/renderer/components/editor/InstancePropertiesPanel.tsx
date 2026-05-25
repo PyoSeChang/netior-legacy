@@ -35,7 +35,7 @@ import { getFieldMeaningSlot } from '../../lib/field-meaning-bindings';
 import { dslService } from '../../services/dsl-service';
 
 interface InstancePropertiesPanelProps {
-  modelId: string;
+  meaningId: string;
   instanceId?: string;
   projectId?: string;
   properties: Record<string, string | null>;
@@ -77,7 +77,7 @@ const FIELD_TYPE_LABEL_KEYS: Record<FieldType, TranslationKey> = {
   radio: 'typeSelector.radio',
   relation: 'typeSelector.relation',
   object: 'typeSelector.object',
-  model_ref: 'typeSelector.model_ref',
+  meaning_ref: 'typeSelector.meaning_ref',
   file: 'typeSelector.file',
   url: 'typeSelector.url',
   color: 'typeSelector.color',
@@ -244,20 +244,20 @@ function parseFieldBehaviorConfig(raw: string | null): NetiorDslFieldBehaviorCon
   }
 }
 
-export function InstancePropertiesPanel({ modelId, instanceId, projectId, properties, onChange }: InstancePropertiesPanelProps): JSX.Element {
-  const fields = useSchemaStore((s) => s.fields[modelId] ?? []);
+export function InstancePropertiesPanel({ meaningId, instanceId, projectId, properties, onChange }: InstancePropertiesPanelProps): JSX.Element {
+  const fields = useSchemaStore((s) => s.fields[meaningId] ?? []);
   const loadFields = useSchemaStore((s) => s.loadFields);
 
   useEffect(() => {
-    loadFields(modelId);
-  }, [modelId, loadFields]);
+    loadFields(meaningId);
+  }, [meaningId, loadFields]);
 
   if (fields.length === 0) return <></>;
 
   return (
     <InstancePropertyInputs
       fields={fields}
-      schemaId={modelId}
+      schemaId={meaningId}
       instanceId={instanceId}
       projectId={projectId}
       properties={properties}

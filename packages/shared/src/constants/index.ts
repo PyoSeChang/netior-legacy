@@ -6,8 +6,8 @@ import type {
   MeaningBindingKey,
   MeaningSlotKey,
   SemanticMeaningKey,
-  ModelKey,
-  ModelTargetKind,
+  MeaningKey,
+  MeaningTargetKind,
   EdgeLineStyle,
   FieldMeaningBindingKey,
   SlotConstraintLevel,
@@ -300,7 +300,7 @@ export const DEFAULTS = {
 } as const;
 
 // ============================================
-// Meaning Model
+// Meaning Meaning
 // ============================================
 
 export interface MeaningSlotDefinition {
@@ -345,10 +345,10 @@ export interface SemanticMeaningDefinition {
   fallbackSlots?: readonly MeaningSlotKey[];
 }
 
-export interface ModelDefinition {
-  key: ModelKey;
+export interface MeaningDefinition {
+  key: MeaningKey;
   category: SemanticCategoryKey;
-  targetKind?: ModelTargetKind;
+  targetKind?: MeaningTargetKind;
   label: string;
   description?: string;
   icon?: string;
@@ -371,12 +371,12 @@ export const SEMANTIC_CATEGORY_LABELS: Readonly<Record<SemanticCategoryKey, stri
 
 export const SYSTEM_ONTOLOGY_SOURCE_ID = 'netior.system' as const;
 export const SYSTEM_ONTOLOGY_SOURCE_VERSION = '1' as const;
-export const MODEL_CATEGORY_SCHEMA_SOURCE_REF = 'schema.model_category' as const;
+export const MEANING_CATEGORY_SCHEMA_SOURCE_REF = 'schema.meaning_category' as const;
 
-export const MODEL_CATEGORY_INSTANCE_DEFINITIONS = Object.entries(SEMANTIC_CATEGORY_LABELS).map(([key, label], index) => ({
+export const MEANING_CATEGORY_INSTANCE_DEFINITIONS = Object.entries(SEMANTIC_CATEGORY_LABELS).map(([key, label], index) => ({
   key: key as SemanticCategoryKey,
   title: label,
-  sourceRef: `model-category.${key}`,
+  sourceRef: `meaning-category.${key}`,
   sortOrder: index,
 })) as readonly {
   key: SemanticCategoryKey;
@@ -458,7 +458,7 @@ export const SEMANTIC_MEANING_DEFINITIONS: readonly SemanticMeaningDefinition[] 
   { key: 'approval', category: 'governance', label: 'Approval', coreSlots: ['approval_state'], optionalSlots: ['approved_by_ref', 'approved_at'] },
 ] as const;
 
-export const MODEL_DEFINITIONS: readonly ModelDefinition[] = [
+export const MEANING_DEFINITIONS: readonly MeaningDefinition[] = [
   { key: 'temporal', category: 'time', icon: 'calendar-clock', label: 'Temporal', description: 'Represents objects that occupy time with a start point and optional end context.', meanings: ['time_interval'], coreSlots: ['start_at'], optionalSlots: ['end_at', 'all_day', 'timezone'] },
   { key: 'dueable', category: 'time', icon: 'alarm-clock', label: 'Dueable', description: 'Represents objects that have one deadline or due point.', meanings: ['deadline'], coreSlots: ['due_at'], optionalSlots: [] },
   { key: 'recurring', category: 'time', icon: 'repeat-2', label: 'Recurring', description: 'Represents objects that repeat through frequency, interval, calendar constraints, and end conditions.', meanings: ['recurrence'], coreSlots: ['recurrence_frequency', 'recurrence_interval'], optionalSlots: ['recurrence_weekdays', 'recurrence_monthday', 'recurrence_until', 'recurrence_count'] },
@@ -626,8 +626,8 @@ export function meaningBindingToMeaningSlot(meaning: FieldMeaningBindingKey | nu
   return fieldMeaningToMeaningSlot(meaning as FieldMeaningKey | null | undefined);
 }
 
-export function getModelDefinition(model: ModelKey): ModelDefinition | undefined {
-  return MODEL_DEFINITIONS.find((definition) => definition.key === model);
+export function getMeaningDefinition(meaning: MeaningKey): MeaningDefinition | undefined {
+  return MEANING_DEFINITIONS.find((definition) => definition.key === meaning);
 }
 
 export function getSemanticCategoryLabelKey(category: SemanticCategoryKey): string {
@@ -638,20 +638,20 @@ export function getSemanticCategoryDescriptionKey(category: SemanticCategoryKey)
   return `semantic.category.${category}.description`;
 }
 
-export function getModelLabelKey(model: ModelKey): string {
-  return `semantic.model.${model}.label`;
-}
-
-export function getModelDescriptionKey(model: ModelKey): string {
-  return `semantic.model.${model}.description`;
-}
-
-export function getSemanticMeaningLabelKey(meaning: SemanticMeaningKey): string {
+export function getMeaningLabelKey(meaning: MeaningKey): string {
   return `semantic.meaning.${meaning}.label`;
 }
 
-export function getSemanticMeaningDescriptionKey(meaning: SemanticMeaningKey): string {
+export function getMeaningDescriptionKey(meaning: MeaningKey): string {
   return `semantic.meaning.${meaning}.description`;
+}
+
+export function getSemanticMeaningLabelKey(meaning: SemanticMeaningKey): string {
+  return `semantic.aspect.${meaning}.label`;
+}
+
+export function getSemanticMeaningDescriptionKey(meaning: SemanticMeaningKey): string {
+  return `semantic.aspect.${meaning}.description`;
 }
 
 export function getFieldMeaningLabelKey(fieldMeaning: FieldMeaningKey): string {

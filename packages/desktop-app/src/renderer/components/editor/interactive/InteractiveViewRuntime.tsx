@@ -211,7 +211,7 @@ export type InteractiveDslObjectsResult = NetiorDslObjectRef[] & InteractiveDslR
 
 type InteractiveIconName = 'chevron-left' | 'chevron-right' | 'x' | 'check' | 'plus' | 'minus';
 
-const INTERACTIVE_ICONS: Record<InteractiveIconName, React.ComponentType<{ size?: number; className?: string }>> = {
+const INTERACTIVE_ICONS: Record<InteractiveIconName, React.ElementType<{ size?: number | string; className?: string }>> = {
   'chevron-left': ChevronLeft,
   'chevron-right': ChevronRight,
   x: X,

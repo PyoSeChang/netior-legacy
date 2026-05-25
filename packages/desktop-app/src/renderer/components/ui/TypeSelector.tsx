@@ -78,7 +78,7 @@ const CATEGORIES: TypeCategory[] = [
     types: [
       { value: 'object', i18nKey: 'object', icon: Shapes },
       { value: 'file', i18nKey: 'file', icon: FileText },
-      { value: 'model_ref', i18nKey: 'model_ref', icon: Boxes },
+      { value: 'meaning_ref', i18nKey: 'meaning_ref', icon: Boxes },
     ],
   },
   {

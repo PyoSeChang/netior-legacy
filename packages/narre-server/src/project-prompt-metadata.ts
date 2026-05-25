@@ -1,4 +1,4 @@
-import type { NetworkTreeNode, Model, Schema, SchemaField, SchemaMeaning } from '@netior/shared/types';
+import type { NetworkTreeNode, Meaning, Schema, SchemaField, SchemaMeaning } from '@netior/shared/types';
 import type { SystemPromptParams } from './system-prompt.js';
 import {
   getProjectOntologyNetwork,
@@ -6,8 +6,8 @@ import {
   getProjectById,
   getUniverseNetwork,
   listNetworkTypes,
-  listModelCategories,
-  listModels,
+  listMeaningCategories,
+  listMeanings,
   listSchemaFields,
   listSchemaMeanings,
   listSchemas,
@@ -62,7 +62,7 @@ function mapSchemaFields(
       field_type: field.field_type,
       required: field.required,
       ...(field.meaning_bindings.length > 0 ? { meaning_bindings: field.meaning_bindings } : {}),
-      ...(field.generated_by_model ? { generated_by_model: true } : {}),
+      ...(field.generated_by_meaning ? { generated_by_meaning: true } : {}),
       ...(field.bindings.length > 0
         ? {
           bindings: field.bindings.map((binding) => ({
@@ -87,7 +87,7 @@ function mapSchemaMeanings(
     key: meaning.meaning_key,
     label: meaning.label,
     source: meaning.source,
-    source_model: meaning.source_model,
+    source_meaning: meaning.source_meaning,
     fields: meaning.slots
       .filter((slot) => slot.target_kind === 'field' && slot.field_id)
       .map((slot) => ({
@@ -108,7 +108,7 @@ function mapSchemas(
     id: schema.id,
     name: schema.name,
     description: schema.description,
-    models: schema.models,
+    meaning_refs: schema.meanings,
     icon: schema.icon,
     color: schema.color,
     fields: mapSchemaFields(schemaFieldsById.get(schema.id) ?? [], schemaNameMap),
@@ -116,25 +116,25 @@ function mapSchemas(
   }));
 }
 
-function mapModels(models: Model[]): SystemPromptParams['models'] {
-  return models.map((model) => ({
-    id: model.id,
-    key: model.key,
-    name: model.name,
-    description: model.description,
-    category_instance_id: model.category_instance_id,
-    category_instance_title: model.category_instance_title,
-    category_instance_source_ref: model.category_instance_source_ref,
-    target_kind: model.target_kind,
-    meaning_keys: model.meaning_keys,
-    line_style: model.line_style,
-    directed: model.directed,
-    built_in: model.built_in,
-    source_kind: model.source_kind,
-    source_id: model.source_id,
-    source_ref: model.source_ref,
-    source_version: model.source_version,
-    recipe_meanings: model.recipe.meanings.map((meaning) => ({
+function mapModels(meanings: Meaning[]): SystemPromptParams['meanings'] {
+  return meanings.map((meaning) => ({
+    id: meaning.id,
+    key: meaning.key,
+    name: meaning.name,
+    description: meaning.description,
+    category_instance_id: meaning.category_instance_id,
+    category_instance_title: meaning.category_instance_title,
+    category_instance_source_ref: meaning.category_instance_source_ref,
+    target_kind: meaning.target_kind,
+    meaning_keys: meaning.meaning_keys,
+    line_style: meaning.line_style,
+    directed: meaning.directed,
+    built_in: meaning.built_in,
+    source_kind: meaning.source_kind,
+    source_id: meaning.source_id,
+    source_ref: meaning.source_ref,
+    source_version: meaning.source_version,
+    recipe_meanings: meaning.recipe.meanings.map((meaning) => ({
       key: meaning.key,
       name: meaning.name,
       representation: meaning.representation,
@@ -148,7 +148,7 @@ function mapModels(models: Model[]): SystemPromptParams['models'] {
   }));
 }
 
-function mapModelCategories(categories: Awaited<ReturnType<typeof listModelCategories>>): SystemPromptParams['modelCategories'] {
+function mapMeaningCategories(categories: Awaited<ReturnType<typeof listMeaningCategories>>): SystemPromptParams['meaningCategories'] {
   return categories.map((category) => ({
     id: category.id,
     title: category.title,
@@ -166,16 +166,16 @@ export async function buildProjectPromptMetadata(projectId: string): Promise<Sys
   }
 
   const [
-    models,
-    modelCategories,
+    meanings,
+    meaningCategories,
     schemas,
     universeNetwork,
     ontologyNetwork,
     networkTree,
     networkTypes,
   ] = await Promise.all([
-    listModels(projectId),
-    listModelCategories(projectId),
+    listMeanings(projectId),
+    listMeaningCategories(projectId),
     listSchemas(projectId),
     getUniverseNetwork(),
     getProjectOntologyNetwork(projectId),
@@ -199,8 +199,8 @@ export async function buildProjectPromptMetadata(projectId: string): Promise<Sys
     projectName: project.name,
     projectRootDir: project.root_dir,
     schemas: mapSchemas(schemas, schemaFieldsById, schemaMeaningsById, schemaNameMap),
-    models: mapModels(models),
-    modelCategories: mapModelCategories(modelCategories),
+    meanings: mapModels(meanings),
+    meaningCategories: mapMeaningCategories(meaningCategories),
     universeNetwork: universeNetwork
       ? { id: universeNetwork.id, name: universeNetwork.name }
       : null,

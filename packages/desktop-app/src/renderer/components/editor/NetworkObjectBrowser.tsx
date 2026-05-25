@@ -18,7 +18,7 @@ export type NetworkBrowserObjectType =
   | 'project'
   | 'instance'
   | 'schema'
-  | 'model'
+  | 'meaning'
   | 'context'
   | 'file'
   | 'module'
@@ -55,7 +55,7 @@ const ICONS: Record<NetworkBrowserObjectType, React.ElementType> = {
   project: FolderOpen,
   instance: CircleDot,
   schema: Boxes,
-  model: Boxes,
+  meaning: Boxes,
   context: Layers3,
   file: FileText,
   module: FolderTree,

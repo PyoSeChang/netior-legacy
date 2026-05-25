@@ -5,10 +5,10 @@ import type { NarreToolCall, NarreToolCategory } from '@netior/shared/types';
 
 const COUNT_NOUNS: Record<string, { ko: string; en: string }> = {
   list_instances: { ko: 'instance', en: 'instance' },
-  list_models: { ko: 'model', en: 'model' },
+  list_meanings: { ko: 'meaning', en: 'meaning' },
   list_networks: { ko: 'network', en: 'network' },
   list_modules: { ko: 'module', en: 'module' },
-  list_model_fields: { ko: 'field', en: 'field' },
+  list_schema_fields: { ko: 'field', en: 'field' },
   glob_files: { ko: 'file', en: 'file' },
   grep_files: { ko: 'match', en: 'match' },
   list_directory: { ko: 'entry', en: 'entry' },

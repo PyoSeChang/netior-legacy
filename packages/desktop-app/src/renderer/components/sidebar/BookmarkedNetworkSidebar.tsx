@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Context, NetworkObjectType } from '@netior/shared/types';
 import { contextService, networkService } from '../../services';
 import type { NetworkFullData } from '../../services/network-service';
-import { useSchemaStore as useModelStore } from '../../stores/schema-store';
+import { useMeaningStore } from '../../stores/meaning-store';
 import { useContextStore } from '../../stores/context-store';
 import { useEditorStore } from '../../stores/editor-store';
 import { useNetworkStore } from '../../stores/network-store';
@@ -23,7 +23,7 @@ interface BookmarkedNetworkSidebarProps {
 
 type SupportedSidebarObjectType = Extract<
   NetworkObjectType,
-  'project' | 'network' | 'instance' | 'model' | 'context' | 'file'
+  'project' | 'network' | 'instance' | 'meaning' | 'context' | 'file'
 >;
 
 interface BookmarkedSidebarItem extends NetworkBrowserItem {
@@ -36,7 +36,7 @@ const SECTION_ORDER: SupportedSidebarObjectType[] = [
   'network',
   'instance',
   'file',
-  'model',
+  'meaning',
   'context',
 ];
 
@@ -45,7 +45,7 @@ function isSupportedSidebarObjectType(type: NetworkObjectType): type is Supporte
     type === 'project'
     || type === 'network'
     || type === 'instance'
-    || type === 'model'
+    || type === 'meaning'
     || type === 'context'
     || type === 'file'
   );
@@ -71,7 +71,7 @@ export function BookmarkedNetworkSidebar({ networkId }: BookmarkedNetworkSidebar
   const openNetwork = useNetworkStore((state) => state.openNetwork);
   const networks = useNetworkStore((state) => state.networks);
   const projects = useProjectStore((state) => state.projects);
-  const models = useModelStore((state) => state.models);
+  const meanings = useMeaningStore((state) => state.meanings);
 
   useEffect(() => {
     let cancelled = false;
@@ -116,9 +116,9 @@ export function BookmarkedNetworkSidebar({ networkId }: BookmarkedNetworkSidebar
     () => new Map(projects.map((project) => [project.id, project])),
     [projects],
   );
-  const modelsById = useMemo(
-    () => new Map(models.map((model) => [model.id, model])),
-    [models],
+  const meaningsById = useMemo(
+    () => new Map(meanings.map((meaning) => [meaning.id, meaning])),
+    [meanings],
   );
   const contextsById = useMemo(
     () => new Map(contexts.map((context) => [context.id, context])),
@@ -131,7 +131,7 @@ export function BookmarkedNetworkSidebar({ networkId }: BookmarkedNetworkSidebar
       network: t('sidebar.networks'),
       instance: t('objectPanel.instance' as never),
       file: t('sidebar.files'),
-      model: t('model.title' as never),
+      meaning: t('meaning.title' as never),
       context: t('context.title'),
     }),
     [t],
@@ -181,17 +181,17 @@ export function BookmarkedNetworkSidebar({ networkId }: BookmarkedNetworkSidebar
         }
         case 'instance': {
           const instance = node.instance;
-          const modelName = instance?.schema_id
+          const meaningName = instance?.schema_id
             ? (() => {
-              const model = modelsById.get(instance.schema_id);
-              return model ? display.modelName(model) : null;
+              const meaning = meaningsById.get(instance.schema_id);
+              return meaning ? display.meaningName(meaning) : null;
             })()
             : null;
           nextItems.push({
             id: object.ref_id,
             objectType: 'instance',
             title: instance?.title ?? object.ref_id,
-            subtitle: modelName ?? t('objectPanel.instance' as never),
+            subtitle: meaningName ?? t('objectPanel.instance' as never),
           });
           break;
         }
@@ -206,13 +206,13 @@ export function BookmarkedNetworkSidebar({ networkId }: BookmarkedNetworkSidebar
           });
           break;
         }
-        case 'model': {
-          const model = modelsById.get(object.ref_id);
+        case 'meaning': {
+          const meaning = meaningsById.get(object.ref_id);
           nextItems.push({
             id: object.ref_id,
-            objectType: 'model',
-            title: model ? display.modelName(model) : object.ref_id,
-            subtitle: model ? display.modelDescription(model) ?? t('model.title' as never) : t('model.title' as never),
+            objectType: 'meaning',
+            title: meaning ? display.meaningName(meaning) : object.ref_id,
+            subtitle: meaning ? display.meaningDescription(meaning) ?? t('meaning.title' as never) : t('meaning.title' as never),
           });
           break;
         }
@@ -232,7 +232,7 @@ export function BookmarkedNetworkSidebar({ networkId }: BookmarkedNetworkSidebar
     return nextItems;
   }, [
     display,
-    modelsById,
+    meaningsById,
     contextsById,
     fullData,
     networksById,
@@ -285,8 +285,8 @@ export function BookmarkedNetworkSidebar({ networkId }: BookmarkedNetworkSidebar
           await openFileTab({ filePath: item.filePath });
         }
         return;
-      case 'model':
-        await useEditorStore.getState().openTab({ type: 'model', targetId: item.id, title: item.title });
+      case 'meaning':
+        await useEditorStore.getState().openTab({ type: 'meaning', targetId: item.id, title: item.title });
         return;
       case 'context':
         await openNetwork(networkId);

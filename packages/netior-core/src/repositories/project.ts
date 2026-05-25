@@ -2,8 +2,8 @@ import { randomUUID } from 'crypto';
 import { getDatabase } from '../connection';
 import { createObject, deleteObjectByRef } from './objects';
 import { ensureProjectNodeInUniverseForDb, ensureProjectOntologyNetworkForDb } from './system-networks';
-import { seedBuiltInModelsForProjectDb } from './model';
-import { ensureModelCategoryTaxonomyForProjectDb } from './model-category';
+import { seedBuiltInMeaningsForProjectDb } from './meaning';
+import { ensureMeaningCategoryTaxonomyForProjectDb } from './meaning-category';
 import type { Project, ProjectCreate, ProjectUpdate } from '@netior/shared/types';
 
 export const PROJECT_ROOT_DIR_DUPLICATE_ERROR = 'PROJECT_ROOT_DIR_DUPLICATE';
@@ -29,8 +29,8 @@ export function createProject(data: ProjectCreate): Project {
     ).run(id, data.name, data.root_dir, now, now);
 
     createObject('project', 'app', null, id);
-    ensureModelCategoryTaxonomyForProjectDb(db, id);
-    seedBuiltInModelsForProjectDb(db, id);
+    ensureMeaningCategoryTaxonomyForProjectDb(db, id);
+    seedBuiltInMeaningsForProjectDb(db, id);
     ensureProjectOntologyNetworkForDb(db, id);
     ensureProjectNodeInUniverseForDb(db, id);
   })();

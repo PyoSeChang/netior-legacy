@@ -5,14 +5,14 @@ import type {
   EditorTab,
   SemanticCategoryRefKey,
   SemanticMeaningKey,
-  ModelKey,
-  ModelRefKey,
+  MeaningKey,
+  MeaningRefKey,
   MeaningSlotKey,
 } from '@netior/shared/types';
 import {
-  MODEL_DEFINITIONS,
-  getModelDescriptionKey,
-  getModelLabelKey,
+  MEANING_DEFINITIONS,
+  getMeaningDescriptionKey,
+  getMeaningLabelKey,
   getMeaningSlotDefinition,
   getMeaningSlotLabelKey,
   fieldMeaningToMeaningBindings,
@@ -20,7 +20,7 @@ import {
 import { createOntologyDisplayResolver } from '@netior/shared';
 import { useSchemaStore } from '../../stores/schema-store';
 import { useEditorStore } from '../../stores/editor-store';
-import { useModelStore } from '../../stores/model-store';
+import { useMeaningStore } from '../../stores/meaning-store';
 import { useEditorSession } from '../../hooks/useEditorSession';
 import { useI18n } from '../../hooks/useI18n';
 import { Input } from '../ui/Input';
@@ -31,7 +31,7 @@ import { RadioGroup } from '../ui/RadioGroup';
 import { FilePicker } from '../ui/FilePicker';
 import { ColorPicker } from '../ui/ColorPicker';
 import { ScrollArea } from '../ui/ScrollArea';
-import { SchemaSlotDesigner, type ModelCategoryOption, type ModelOptionDefinition } from './SchemaSlotDesigner';
+import { SchemaSlotDesigner, type MeaningCategoryOption, type MeaningOptionDefinition } from './SchemaSlotDesigner';
 import { useSettingsStore } from '../../stores/settings-store';
 import { useUIStore } from '../../stores/ui-store';
 import { stringifySchemaFieldOptions } from '../../lib/schema-field-options';
@@ -54,7 +54,7 @@ interface SchemaState {
   icon: string | null;
   color: string | null;
   file_template: string | null;
-  models: ModelRefKey[];
+  meanings: MeaningRefKey[];
 }
 
 const EMPTY_SCHEMA_STATE: SchemaState = {
@@ -63,7 +63,7 @@ const EMPTY_SCHEMA_STATE: SchemaState = {
   icon: null,
   color: null,
   file_template: null,
-  models: [],
+  meanings: [],
 };
 
 const EMPTY_LIST: never[] = [];
@@ -73,16 +73,16 @@ const IMAGE_FILE_FILTERS = [
 
 type VisualMode = 'icon' | 'image';
 
-function normalizeModelRefs(value: unknown): ModelRefKey[] {
+function normalizeMeaningRefs(value: unknown): MeaningRefKey[] {
   if (Array.isArray(value)) {
-    return value.filter((item): item is ModelRefKey => typeof item === 'string');
+    return value.filter((item): item is MeaningRefKey => typeof item === 'string');
   }
 
   if (typeof value === 'string') {
     try {
-      return normalizeModelRefs(JSON.parse(value));
+      return normalizeMeaningRefs(JSON.parse(value));
     } catch {
-      return value.trim() ? [value as ModelRefKey] : [];
+      return value.trim() ? [value as MeaningRefKey] : [];
     }
   }
 
@@ -90,7 +90,7 @@ function normalizeModelRefs(value: unknown): ModelRefKey[] {
 }
 
 function getCategoryKeyFromModelSource(sourceRef?: string | null): SemanticCategoryRefKey {
-  const prefix = 'model-category.';
+  const prefix = 'meaning-category.';
   if (sourceRef?.startsWith(prefix)) {
     return sourceRef.slice(prefix.length) as SemanticCategoryRefKey;
   }
@@ -121,8 +121,8 @@ export function SchemaEditor({ tab }: SchemaEditorProps): JSX.Element {
   const rawSchemas = useSchemaStore((s) => s.schemas);
   const rawFields = useSchemaStore((s) => s.fields[schemaId]);
   const rawMeanings = useSchemaStore((s) => s.meanings[schemaId]);
-  const rawProjectModels = useModelStore((s) => s.models);
-  const loadModels = useModelStore((s) => s.loadByProject);
+  const rawProjectMeanings = useMeaningStore((s) => s.meanings);
+  const loadProjectMeanings = useMeaningStore((s) => s.loadByProject);
   const {
     loadFields,
     loadMeanings,
@@ -142,7 +142,7 @@ export function SchemaEditor({ tab }: SchemaEditorProps): JSX.Element {
   const schemas = Array.isArray(rawSchemas) ? rawSchemas : EMPTY_LIST;
   const fields = Array.isArray(rawFields) ? rawFields : EMPTY_LIST;
   const meanings = Array.isArray(rawMeanings) ? rawMeanings : EMPTY_LIST;
-  const projectModels = Array.isArray(rawProjectModels) ? rawProjectModels : EMPTY_LIST;
+  const projectMeanings = Array.isArray(rawProjectMeanings) ? rawProjectMeanings : EMPTY_LIST;
 
   const schema = schemas.find((a) => a.id === schemaId);
 
@@ -153,9 +153,9 @@ export function SchemaEditor({ tab }: SchemaEditorProps): JSX.Element {
 
   useEffect(() => {
     if (schema?.project_id) {
-      void loadModels(schema.project_id);
+      void loadProjectMeanings(schema.project_id);
     }
-  }, [schema?.project_id, loadModels]);
+  }, [schema?.project_id, loadProjectMeanings]);
 
   const session = useEditorSession<SchemaState>({
     tabId: tab.id,
@@ -169,13 +169,13 @@ export function SchemaEditor({ tab }: SchemaEditorProps): JSX.Element {
         icon: a.icon,
         color: a.color,
         file_template: a.file_template,
-        models: normalizeModelRefs(a.models),
+        meanings: normalizeMeaningRefs(a.meanings),
       };
     },
     save: async (state) => {
       await updateSchema(schemaId, {
         ...state,
-        models: normalizeModelRefs(state.models),
+        meanings: normalizeMeaningRefs(state.meanings),
       });
       useEditorStore.getState().updateTitle(tab.id, state.name);
     },
@@ -189,76 +189,76 @@ export function SchemaEditor({ tab }: SchemaEditorProps): JSX.Element {
       setVisualMode('icon');
     }
   }, [editorState.icon]);
-  const selectedModels = useMemo(
-    () => normalizeModelRefs(editorState.models),
-    [editorState.models],
+  const selectedMeanings = useMemo(
+    () => normalizeMeaningRefs(editorState.meanings),
+    [editorState.meanings],
   );
-  const modelDefinitions = useMemo<readonly ModelOptionDefinition[]>(() => {
-    const schemaModels = projectModels.filter((model) => (
-      model.target_kind === 'object' || model.target_kind === 'both'
+  const meaningDefinitions = useMemo<readonly MeaningOptionDefinition[]>(() => {
+    const schemaModels = projectMeanings.filter((meaning) => (
+      meaning.target_kind === 'object' || meaning.target_kind === 'both'
     ));
     if (schemaModels.length > 0) {
-      return schemaModels.map((model) => ({
-        key: model.key,
-        category: getCategoryKeyFromModelSource(model.category_instance_source_ref),
-        label: model.built_in ? t(getModelLabelKey(model.key as ModelKey) as never) : model.name,
-        description: model.built_in ? t(getModelDescriptionKey(model.key as ModelKey) as never) : model.description,
-        meanings: model.meaning_keys,
-        coreSlots: model.core_slots,
-        optionalSlots: model.optional_slots,
-        builtIn: model.built_in,
+      return schemaModels.map((meaning) => ({
+        key: meaning.key,
+        category: getCategoryKeyFromModelSource(meaning.category_instance_source_ref),
+        label: meaning.built_in ? t(getMeaningLabelKey(meaning.key as MeaningKey) as never) : meaning.name,
+        description: meaning.built_in ? t(getMeaningDescriptionKey(meaning.key as MeaningKey) as never) : meaning.description,
+        meanings: meaning.meaning_keys,
+        coreSlots: meaning.core_slots,
+        optionalSlots: meaning.optional_slots,
+        builtIn: meaning.built_in,
       }));
     }
 
-    return MODEL_DEFINITIONS.filter((definition) => (
+    return MEANING_DEFINITIONS.filter((definition) => (
       (definition.targetKind ?? 'object') === 'object' || definition.targetKind === 'both'
     )).map((definition) => ({
       key: definition.key,
       category: definition.category,
-      label: t(getModelLabelKey(definition.key) as never),
-      description: t(getModelDescriptionKey(definition.key) as never),
+      label: t(getMeaningLabelKey(definition.key) as never),
+      description: t(getMeaningDescriptionKey(definition.key) as never),
       meanings: definition.meanings,
       coreSlots: definition.coreSlots,
       optionalSlots: definition.optionalSlots,
       builtIn: true,
     }));
-  }, [projectModels, t]);
-  const modelCategories = useMemo<readonly ModelCategoryOption[]>(() => {
-    const categoryByKey = new Map<SemanticCategoryRefKey, ModelCategoryOption>();
-    const getCategoryOption = (key: SemanticCategoryRefKey, fallbackLabel: string): ModelCategoryOption => {
+  }, [projectMeanings, t]);
+  const meaningCategories = useMemo<readonly MeaningCategoryOption[]>(() => {
+    const categoryByKey = new Map<SemanticCategoryRefKey, MeaningCategoryOption>();
+    const getCategoryOption = (key: SemanticCategoryRefKey, fallbackLabel: string): MeaningCategoryOption => {
       return {
         key,
         label: display.name({
           kind: 'instance',
           title: fallbackLabel,
-          source_ref: `model-category.${key}`,
+          source_ref: `meaning-category.${key}`,
         }),
         description: display.description({
           kind: 'instance',
           title: fallbackLabel,
-          source_ref: `model-category.${key}`,
+          source_ref: `meaning-category.${key}`,
         }) ?? undefined,
       };
     };
 
-    for (const definition of modelDefinitions) {
+    for (const definition of meaningDefinitions) {
       if (!categoryByKey.has(definition.category)) {
         categoryByKey.set(definition.category, getCategoryOption(definition.category, definition.category));
       }
     }
 
-    for (const model of projectModels) {
-      const categoryKey = getCategoryKeyFromModelSource(model.category_instance_source_ref);
-      if ((model.target_kind === 'object' || model.target_kind === 'both') && !categoryByKey.has(categoryKey)) {
-        categoryByKey.set(categoryKey, getCategoryOption(categoryKey, model.category_instance_title ?? categoryKey));
+    for (const meaning of projectMeanings) {
+      const categoryKey = getCategoryKeyFromModelSource(meaning.category_instance_source_ref);
+      if ((meaning.target_kind === 'object' || meaning.target_kind === 'both') && !categoryByKey.has(categoryKey)) {
+        categoryByKey.set(categoryKey, getCategoryOption(categoryKey, meaning.category_instance_title ?? categoryKey));
       }
     }
 
     return [...categoryByKey.values()];
-  }, [display, modelDefinitions, projectModels]);
-  const modelDefinitionByKey = useMemo(
-    () => new Map(modelDefinitions.map((definition) => [definition.key, definition])),
-    [modelDefinitions],
+  }, [display, meaningDefinitions, projectMeanings]);
+  const meaningDefinitionByKey = useMemo(
+    () => new Map(meaningDefinitions.map((definition) => [definition.key, definition])),
+    [meaningDefinitions],
   );
   const creatingSlotRef = useRef(new Set<string>());
 
@@ -280,20 +280,20 @@ export function SchemaEditor({ tab }: SchemaEditorProps): JSX.Element {
 
   const handleEnsureMeaning = useCallback(async (
     meaning: SemanticMeaningKey,
-    options: { sourceModel?: ModelRefKey | null } = {},
+    options: { sourceMeaning?: MeaningRefKey | null } = {},
   ) => {
     useEditorStore.getState().setDirty(tab.id, true);
     await ensureMeaning({
       schema_id: schemaId,
       meaning_key: meaning,
-      source: options.sourceModel ? 'model' : 'manual',
-      source_model: options.sourceModel ?? null,
+      source: options.sourceMeaning ? 'meaning' : 'manual',
+      source_meaning: options.sourceMeaning ?? null,
     });
   }, [schemaId, ensureMeaning, tab.id]);
 
   const handleCreateFieldForSlot = useCallback(async (
     binding: SchemaMeaningSlotBinding,
-    meaning: { source: string; source_model?: ModelRefKey | null },
+    meaning: { source: string; source_meaning?: MeaningRefKey | null },
     options: { markEditorDirty?: boolean } = {},
   ) => {
     const slot = binding.slot_key;
@@ -332,7 +332,7 @@ export function SchemaEditor({ tab }: SchemaEditorProps): JSX.Element {
         meaning_key: slotDefinition.fieldMeaning,
         meaning_bindings: fieldMeaningToMeaningBindings(slotDefinition.fieldMeaning),
         slot_binding_locked: true,
-        generated_by_model: meaning.source === 'model' || Boolean(meaning.source_model),
+        generated_by_meaning: meaning.source === 'meaning' || Boolean(meaning.source_meaning),
       });
       await updateMeaningSlot(binding.id, schemaId, {
         target_kind: 'field',
@@ -355,7 +355,7 @@ export function SchemaEditor({ tab }: SchemaEditorProps): JSX.Element {
       required: false,
       meaning_bindings: [],
       slot_binding_locked: false,
-      generated_by_model: false,
+      generated_by_meaning: false,
     });
   }, [schemaId, createField, t, tab.id]);
 
@@ -396,28 +396,28 @@ export function SchemaEditor({ tab }: SchemaEditorProps): JSX.Element {
     useEditorStore.getState().closeTab(tab.id);
   }, [deleteSchema, schemaId, tab.id]);
 
-  const handleToggleModel = useCallback(async (model: ModelRefKey, checked: boolean) => {
-    const nextModels = checked
-      ? [...new Set([...selectedModels, model])]
-      : selectedModels.filter((item) => item !== model);
+  const handleToggleMeaning = useCallback(async (meaning: MeaningRefKey, checked: boolean) => {
+    const nextMeanings = checked
+      ? [...new Set([...selectedMeanings, meaning])]
+      : selectedMeanings.filter((item) => item !== meaning);
 
     useEditorStore.getState().setDirty(tab.id, true);
-    session.setState((prev) => ({ ...prev, models: nextModels }));
+    session.setState((prev) => ({ ...prev, meanings: nextMeanings }));
 
     if (!checked) return;
 
-    const modelDefinition = modelDefinitionByKey.get(model);
-    if (!modelDefinition) return;
+    const meaningDefinition = meaningDefinitionByKey.get(meaning);
+    if (!meaningDefinition) return;
 
-    for (const meaningKey of modelDefinition.meanings) {
+    for (const meaningKey of meaningDefinition.meanings) {
       await ensureMeaning({
         schema_id: schemaId,
         meaning_key: meaningKey,
-        source: 'model',
-        source_model: model,
+        source: 'meaning',
+        source_meaning: meaning,
       });
     }
-  }, [schemaId, ensureMeaning, modelDefinitionByKey, selectedModels, session, tab.id]);
+  }, [schemaId, ensureMeaning, meaningDefinitionByKey, selectedMeanings, session, tab.id]);
 
   if (!schema) {
     return (
@@ -506,13 +506,13 @@ export function SchemaEditor({ tab }: SchemaEditorProps): JSX.Element {
             tabId={tab.id}
             fields={fields}
             meanings={meanings}
-            selectedModels={selectedModels}
-            modelDefinitions={modelDefinitions}
-            modelCategories={modelCategories}
+            selectedMeanings={selectedMeanings}
+            meaningDefinitions={meaningDefinitions}
+            meaningCategories={meaningCategories}
             activeCategory={activeSemanticCategory}
             fieldComplexityLevel={fieldComplexityLevel}
             onActiveCategoryChange={setActiveSemanticCategory}
-            onToggleModel={handleToggleModel}
+            onToggleMeaning={handleToggleMeaning}
             onEnsureMeaning={handleEnsureMeaning}
             onCreateFieldForSlot={handleCreateFieldForSlot}
             onBindFieldToSlot={handleBindFieldToSlot}

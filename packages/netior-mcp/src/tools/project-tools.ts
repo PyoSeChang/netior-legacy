@@ -8,7 +8,7 @@ import {
   getNetworkTree,
   listSchemaFields,
   listSchemas,
-  listModels,
+  listMeanings,
   getInstancesByProject,
   listNetworkTypes,
   listNetworks,
@@ -112,7 +112,7 @@ export function registerProjectTools(server: McpServer): void {
 
         const [
           schemas,
-          models,
+          meanings,
           instances,
           networks,
           networkTypes,
@@ -122,7 +122,7 @@ export function registerProjectTools(server: McpServer): void {
           networkTree,
         ] = await Promise.all([
           listSchemas(targetProjectId),
-          listModels(targetProjectId),
+          listMeanings(targetProjectId),
           getInstancesByProject(targetProjectId),
           listNetworks(targetProjectId),
           listNetworkTypes(targetProjectId),
@@ -137,7 +137,7 @@ export function registerProjectTools(server: McpServer): void {
             schemas.map(async (schema) => [schema.id, await listSchemaFields(schema.id)] as const),
           ),
         );
-        const edgeModels = models.filter((model) => model.target_kind === 'edge' || model.target_kind === 'both');
+        const relationMeanings = meanings.filter((meaning) => meaning.target_kind === 'relation' || meaning.target_kind === 'both');
 
         const summary = {
           project: {
@@ -156,16 +156,16 @@ export function registerProjectTools(server: McpServer): void {
               fields: mapSchemaFields(schemaFieldsById.get(schema.id) ?? [], schemaNameMap),
             })),
           },
-          edge_models: {
-            count: edgeModels.length,
-            items: edgeModels.map((model) => ({
-              id: model.id,
-              key: model.key,
-              name: model.name,
-              directed: model.directed,
-              line_style: model.line_style,
-              color: model.color,
-              description: model.description,
+          relation_meanings: {
+            count: relationMeanings.length,
+            items: relationMeanings.map((meaning) => ({
+              id: meaning.id,
+              key: meaning.key,
+              name: meaning.name,
+              directed: meaning.directed,
+              line_style: meaning.line_style,
+              color: meaning.color,
+              description: meaning.description,
             })),
           },
           instances: {
@@ -201,7 +201,7 @@ export function registerProjectTools(server: McpServer): void {
               id: relationship.id,
               source_object_id: relationship.source_object_id,
               target_object_id: relationship.target_object_id,
-              model_id: relationship.model_id,
+              meaning_id: relationship.meaning_id,
               description: relationship.description,
             })),
           },

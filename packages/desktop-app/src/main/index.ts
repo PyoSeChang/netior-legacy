@@ -116,7 +116,7 @@ function clearBrowserPermissionDecisions(): void {
 
 function sendBrowserDownloadEvent(payload: BrowserDownloadEvent): void {
   const targets = [mainWindow, ...detachedWindows.values()].filter(
-    (win): win is BrowserWindow => Boolean(win) && !win.isDestroyed(),
+    (win): win is BrowserWindow => win != null && !win.isDestroyed(),
   );
   for (const win of targets) {
     win.webContents.send('browser:download-event', payload);
@@ -130,7 +130,7 @@ function sendBrowserPermissionRequest(
   callback: (allowed: boolean) => void,
 ): void {
   const targets = [mainWindow, ...detachedWindows.values()].filter(
-    (win): win is BrowserWindow => Boolean(win) && !win.isDestroyed(),
+    (win): win is BrowserWindow => win != null && !win.isDestroyed(),
   );
   const target = targets.find((win) => win.webContents.id === webContentsId) ?? mainWindow;
 

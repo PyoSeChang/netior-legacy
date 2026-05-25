@@ -1,11 +1,11 @@
 import { randomUUID } from 'crypto';
 import type Database from 'better-sqlite3';
 import type { Network, NetworkNode, NetworkObjectType, ObjectRecord } from '@netior/shared/types';
-import { listModelCategoriesForProjectDb } from './model-category';
+import { listMeaningCategoriesForProjectDb } from './meaning-category';
 
 type NetworkScope = 'app' | 'project';
 type SystemNetworkKind = 'universe' | 'ontology';
-type OntologyObjectRole = 'model' | 'model_category';
+type OntologyObjectRole = 'meaning' | 'meaning_category';
 
 const DEFAULT_NETWORK_TYPE_ID = 'network-type-default';
 const DEFAULT_BASIC_NODE_TYPE_ID = 'node-type-default-basic';
@@ -363,16 +363,16 @@ export function ensureProjectNodeInUniverseForDb(db: Database.Database, projectI
 }
 
 function ensureOntologyObjectRecordsForDb(db: Database.Database, projectId: string): void {
-  const categories = listModelCategoriesForProjectDb(db, projectId);
+  const categories = listMeaningCategoriesForProjectDb(db, projectId);
   for (const category of categories) {
     ensureObjectForDb(db, 'instance', 'project', projectId, category.id, category.created_at);
   }
 
-  const models = db.prepare(
-    'SELECT id, project_id, created_at FROM models WHERE project_id = ?',
+  const meanings = db.prepare(
+    'SELECT id, project_id, created_at FROM meanings WHERE project_id = ?',
   ).all(projectId) as { id: string; project_id: string; created_at: string }[];
-  for (const model of models) {
-    ensureObjectForDb(db, 'model', 'project', model.project_id, model.id, model.created_at);
+  for (const meaning of meanings) {
+    ensureObjectForDb(db, 'meaning', 'project', meaning.project_id, meaning.id, meaning.created_at);
   }
 }
 
@@ -386,15 +386,15 @@ function listOntologyObjectsForDb(
   category_instance_id?: string | null;
 }> {
   return db.prepare(`
-    SELECT o.*, 'model_category' AS ontology_role,
+    SELECT o.*, 'meaning_category' AS ontology_role,
            CASE c.source_ref
-             WHEN 'model-category.time' THEN 0
-             WHEN 'model-category.workflow' THEN 1
-             WHEN 'model-category.structure' THEN 2
-             WHEN 'model-category.knowledge' THEN 3
-             WHEN 'model-category.space' THEN 4
-             WHEN 'model-category.quant' THEN 5
-             WHEN 'model-category.governance' THEN 6
+             WHEN 'meaning-category.time' THEN 0
+             WHEN 'meaning-category.workflow' THEN 1
+             WHEN 'meaning-category.structure' THEN 2
+             WHEN 'meaning-category.knowledge' THEN 3
+             WHEN 'meaning-category.space' THEN 4
+             WHEN 'meaning-category.quant' THEN 5
+             WHEN 'meaning-category.governance' THEN 6
              ELSE 99
            END AS sort_order,
            c.created_at AS sort_created_at,
@@ -403,11 +403,11 @@ function listOntologyObjectsForDb(
       JOIN instances c ON o.object_type = 'instance' AND o.ref_id = c.id
       JOIN schemas s ON c.schema_id = s.id
      WHERE c.project_id = ?
-       AND s.source_ref = 'schema.model_category'
+       AND s.source_ref = 'schema.meaning_category'
     UNION ALL
-    SELECT o.*, 'model' AS ontology_role, 1000 AS sort_order, sm.created_at AS sort_created_at, sm.category_instance_id AS category_instance_id
+    SELECT o.*, 'meaning' AS ontology_role, 1000 AS sort_order, sm.created_at AS sort_created_at, sm.category_instance_id AS category_instance_id
       FROM objects o
-      JOIN models sm ON o.object_type = 'model' AND o.ref_id = sm.id
+      JOIN meanings sm ON o.object_type = 'meaning' AND o.ref_id = sm.id
      WHERE sm.project_id = ?
      ORDER BY sort_order, sort_created_at
   `).all(projectId, projectId) as Array<ObjectRecord & {
@@ -420,8 +420,8 @@ function listOntologyObjectsForDb(
 
 function getDefaultOntologyNodePosition(role: OntologyObjectRole, index: number): string {
   const laneX: Record<OntologyObjectRole, number> = {
-    model_category: -260,
-    model: 40,
+    meaning_category: -260,
+    meaning: 40,
   };
   return JSON.stringify({
     x: laneX[role],
@@ -434,7 +434,7 @@ function getOntologyNodeMetadata(role: OntologyObjectRole, order: number): strin
     managedBy: 'ontology',
     ontologyRole: role,
     ontologyOrder: order,
-    ...(role === 'model_category'
+    ...(role === 'meaning_category'
       ? {
           nodeConfig: {
             kind: 'grid',
@@ -455,31 +455,31 @@ function ensureOntologyContainsEdge(
   db: Database.Database,
   data: { networkId: string; sourceNodeId: string; targetNodeId: string; projectId: string },
 ): void {
-  const modelId = `model-${data.projectId}-contains`;
+  const meaningId = `meaning-${data.projectId}-contains`;
   const existing = db.prepare(
     `SELECT id FROM edges
       WHERE network_id = ?
         AND source_node_id = ?
         AND target_node_id = ?
-        AND model_id = ?`,
-  ).get(data.networkId, data.sourceNodeId, data.targetNodeId, modelId);
+        AND meaning_id = ?`,
+  ).get(data.networkId, data.sourceNodeId, data.targetNodeId, meaningId);
   if (existing) return;
 
   db.prepare(
-    `INSERT INTO edges (id, network_id, source_node_id, target_node_id, model_id, description, created_at)
+    `INSERT INTO edges (id, network_id, source_node_id, target_node_id, meaning_id, description, created_at)
      VALUES (?, ?, ?, ?, ?, NULL, ?)`,
-  ).run(randomUUID(), data.networkId, data.sourceNodeId, data.targetNodeId, modelId, new Date().toISOString());
+  ).run(randomUUID(), data.networkId, data.sourceNodeId, data.targetNodeId, meaningId, new Date().toISOString());
 }
 
 function removeManagedOntologyContainsEdges(
   db: Database.Database,
   data: { networkId: string; projectId: string },
 ): void {
-  const modelId = `model-${data.projectId}-contains`;
+  const meaningId = `meaning-${data.projectId}-contains`;
   db.prepare(
     `DELETE FROM edges
       WHERE network_id = ?
-        AND model_id = ?
+        AND meaning_id = ?
         AND source_node_id IN (
           SELECT id FROM network_nodes
            WHERE network_id = ?
@@ -490,7 +490,7 @@ function removeManagedOntologyContainsEdges(
            WHERE network_id = ?
              AND metadata LIKE '%managedBy%ontology%'
         )`,
-  ).run(data.networkId, modelId, data.networkId, data.networkId);
+  ).run(data.networkId, meaningId, data.networkId, data.networkId);
 }
 
 function removeStaleManagedOntologyNodes(
@@ -534,8 +534,8 @@ export function syncProjectOntologyForDb(db: Database.Database, projectId: strin
   removeManagedOntologyContainsEdges(db, { networkId: ontology.id, projectId });
 
   const roleIndexes: Record<OntologyObjectRole, number> = {
-    model_category: 0,
-    model: 0,
+    meaning_category: 0,
+    meaning: 0,
   };
   const nodeByObjectId = new Map<string, NetworkNode>();
   const categoryNodeByInstanceId = new Map<string, NetworkNode>();
@@ -545,25 +545,25 @@ export function syncProjectOntologyForDb(db: Database.Database, projectId: strin
     const node = ensureObjectNodeInNetworkForDb(db, {
       networkId: ontology.id,
       objectId: object.id,
-      nodeType: object.ontology_role === 'model_category' ? 'group' : 'basic',
+      nodeType: object.ontology_role === 'meaning_category' ? 'group' : 'basic',
       metadata: getOntologyNodeMetadata(object.ontology_role, index),
       positionJson: getDefaultOntologyNodePosition(object.ontology_role, index),
     });
     nodeByObjectId.set(object.id, node);
-    if (object.ontology_role === 'model_category') {
+    if (object.ontology_role === 'meaning_category') {
       categoryNodeByInstanceId.set(object.ref_id, node);
     }
   }
 
   for (const object of objects) {
-    if (object.ontology_role !== 'model' || !object.category_instance_id) continue;
-    const modelNode = nodeByObjectId.get(object.id);
+    if (object.ontology_role !== 'meaning' || !object.category_instance_id) continue;
+    const meaningNode = nodeByObjectId.get(object.id);
     const categoryNode = categoryNodeByInstanceId.get(object.category_instance_id);
-    if (!modelNode || !categoryNode) continue;
+    if (!meaningNode || !categoryNode) continue;
     ensureOntologyContainsEdge(db, {
       networkId: ontology.id,
       sourceNodeId: categoryNode.id,
-      targetNodeId: modelNode.id,
+      targetNodeId: meaningNode.id,
       projectId,
     });
   }

@@ -53,9 +53,9 @@ import type {
   NetworkObjectType,
   ObjectRecord,
   Project,
-  Model,
-  ModelCreate,
-  ModelUpdate,
+  Meaning,
+  MeaningCreate,
+  MeaningUpdate,
   NetiorServiceResponse,
 } from '@netior/shared/types';
 import type { NetiorDslEvaluateRequest, NetiorDslEvalResult } from '@netior/shared/dsl';
@@ -225,8 +225,8 @@ export async function deleteSchema(id: string): Promise<boolean> {
   });
 }
 
-export async function listModels(projectId: string): Promise<Model[]> {
-  return requestJson<Model[]>(`/models${toQueryString({ projectId })}`);
+export async function listMeanings(projectId: string): Promise<Meaning[]> {
+  return requestJson<Meaning[]>(`/meanings${toQueryString({ projectId })}`);
 }
 
 export async function evaluateDsl(data: NetiorDslEvaluateRequest): Promise<NetiorDslEvalResult> {
@@ -236,30 +236,30 @@ export async function evaluateDsl(data: NetiorDslEvaluateRequest): Promise<Netio
   });
 }
 
-export async function listModelCategories(projectId: string): Promise<Instance[]> {
-  return requestJson<Instance[]>(`/model-categories${toQueryString({ projectId })}`);
+export async function listMeaningCategories(projectId: string): Promise<Instance[]> {
+  return requestJson<Instance[]>(`/meaning-categories${toQueryString({ projectId })}`);
 }
 
-export async function createModel(data: ModelCreate): Promise<Model> {
-  return requestJson<Model>('/models', {
+export async function createMeaning(data: MeaningCreate): Promise<Meaning> {
+  return requestJson<Meaning>('/meanings', {
     method: 'POST',
     body: JSON.stringify(data),
   });
 }
 
-export async function getModel(id: string): Promise<Model | null> {
-  return requestJson<Model | null>(`/models/${encodeURIComponent(id)}`);
+export async function getMeaning(id: string): Promise<Meaning | null> {
+  return requestJson<Meaning | null>(`/meanings/${encodeURIComponent(id)}`);
 }
 
-export async function updateModel(id: string, data: ModelUpdate): Promise<Model | null> {
-  return requestJson<Model | null>(`/models/${encodeURIComponent(id)}`, {
+export async function updateMeaning(id: string, data: MeaningUpdate): Promise<Meaning | null> {
+  return requestJson<Meaning | null>(`/meanings/${encodeURIComponent(id)}`, {
     method: 'PATCH',
     body: JSON.stringify(data),
   });
 }
 
-export async function deleteModel(id: string): Promise<boolean> {
-  return requestJson<boolean>(`/models/${encodeURIComponent(id)}`, {
+export async function deleteMeaning(id: string): Promise<boolean> {
+  return requestJson<boolean>(`/meanings/${encodeURIComponent(id)}`, {
     method: 'DELETE',
   });
 }
@@ -428,7 +428,7 @@ export async function listRelationships(query: {
   projectId: string;
   sourceObjectId?: string;
   targetObjectId?: string;
-  modelId?: string;
+  meaningId?: string;
 }): Promise<Relationship[]> {
   return requestJson<Relationship[]>(`/relationships${toQueryString(query)}`);
 }

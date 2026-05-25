@@ -4,7 +4,7 @@ import {
 import type {
   SchemaField,
   FieldMeaningBindingKey,
-  ModelRefKey,
+  MeaningRefKey,
   FieldMeaningKey,
   MeaningSlotKey,
 } from '@netior/shared/types';
@@ -27,8 +27,8 @@ interface ParsedDateTimeParts {
 
 interface ApplyInstanceSemanticProjectionInput {
   metadata: Record<string, unknown>;
-  modelId?: string;
-  models?: ModelRefKey[];
+  meaningId?: string;
+  meanings?: MeaningRefKey[];
   fields: SchemaField[];
   propertyValues: Map<string, string | null>;
 }
@@ -214,15 +214,15 @@ function getPrimarySystemMeaning(bindings: readonly FieldMeaningBindingKey[]): F
 
 export function applyInstanceSemanticProjection({
   metadata,
-  modelId,
-  models,
+  meaningId,
+  meanings,
   fields,
   propertyValues,
 }: ApplyInstanceSemanticProjectionInput): LayoutSemanticProjection {
-  const selectedModels = models ?? [];
+  const selectedMeanings = meanings ?? [];
   const semantic: LayoutSemanticProjection = {
-    modelId,
-    models: selectedModels,
+    meaningId,
+    meanings: selectedMeanings,
     meaningBindings: {},
     meaningFieldIds: {},
     meaningSlotFieldIds: {},

@@ -1,18 +1,18 @@
 import type { TranslationKey } from './i18n';
 import type {
-  Model,
-  ModelKey,
+  Meaning,
+  MeaningKey,
   OntologySourceKind,
   SemanticCategoryKey,
 } from './types';
 import {
-  getModelDescriptionKey,
-  getModelLabelKey,
+  getMeaningDescriptionKey,
+  getMeaningLabelKey,
   getSemanticCategoryDescriptionKey,
   getSemanticCategoryLabelKey,
 } from './constants';
 
-export type OntologyDisplayKind = 'model' | 'schema' | 'instance' | 'mcp_tool' | 'agent';
+export type OntologyDisplayKind = 'meaning' | 'schema' | 'instance' | 'mcp_tool' | 'agent';
 
 export type Translate = (key: TranslationKey, params?: Record<string, string | number>) => string;
 
@@ -38,8 +38,8 @@ export interface OntologyDisplayOption {
   description: string | null;
 }
 
-export type ModelDisplaySource = Pick<
-  Model,
+export type MeaningDisplaySource = Pick<
+  Meaning,
   'key' | 'name' | 'description' | 'source_kind' | 'source_ref'
 >;
 
@@ -51,30 +51,30 @@ function normalizeToolRef(source: OntologyDisplaySource): string | null {
   return source.source_ref ?? source.key ?? null;
 }
 
-export function toModelDisplaySource(model: ModelDisplaySource): OntologyDisplaySource {
+export function toMeaningDisplaySource(meaning: MeaningDisplaySource): OntologyDisplaySource {
   return {
-    kind: 'model',
-    key: model.key,
-    name: model.name,
-    description: model.description,
-    source_kind: model.source_kind,
-    source_ref: model.source_ref,
+    kind: 'meaning',
+    key: meaning.key,
+    name: meaning.name,
+    description: meaning.description,
+    source_kind: meaning.source_kind,
+    source_ref: meaning.source_ref,
   };
 }
 
 export function getOntologyDisplayLabelKey(source: OntologyDisplaySource): string | null {
-  if (source.kind === 'model') {
-    const modelKey = sourceRefTail(source.source_ref ?? '', 'model.') ?? source.key;
-    return modelKey ? getModelLabelKey(modelKey as ModelKey) : null;
+  if (source.kind === 'meaning') {
+    const meaningKey = sourceRefTail(source.source_ref ?? '', 'meaning.') ?? source.key;
+    return meaningKey ? getMeaningLabelKey(meaningKey as MeaningKey) : null;
   }
 
   if (source.kind === 'instance') {
-    const categoryKey = sourceRefTail(source.source_ref ?? '', 'model-category.');
+    const categoryKey = sourceRefTail(source.source_ref ?? '', 'meaning-category.');
     return categoryKey ? getSemanticCategoryLabelKey(categoryKey as SemanticCategoryKey) : null;
   }
 
-  if (source.kind === 'schema' && source.source_ref === 'schema.model_category') {
-    return 'modelCategory.schema.label';
+  if (source.kind === 'schema' && source.source_ref === 'schema.meaning_category') {
+    return 'meaningCategory.schema.label';
   }
 
   if (source.kind === 'mcp_tool') {
@@ -91,18 +91,18 @@ export function getOntologyDisplayLabelKey(source: OntologyDisplaySource): strin
 }
 
 export function getOntologyDisplayDescriptionKey(source: OntologyDisplaySource): string | null {
-  if (source.kind === 'model') {
-    const modelKey = sourceRefTail(source.source_ref ?? '', 'model.') ?? source.key;
-    return modelKey ? getModelDescriptionKey(modelKey as ModelKey) : null;
+  if (source.kind === 'meaning') {
+    const meaningKey = sourceRefTail(source.source_ref ?? '', 'meaning.') ?? source.key;
+    return meaningKey ? getMeaningDescriptionKey(meaningKey as MeaningKey) : null;
   }
 
   if (source.kind === 'instance') {
-    const categoryKey = sourceRefTail(source.source_ref ?? '', 'model-category.');
+    const categoryKey = sourceRefTail(source.source_ref ?? '', 'meaning-category.');
     return categoryKey ? getSemanticCategoryDescriptionKey(categoryKey as SemanticCategoryKey) : null;
   }
 
-  if (source.kind === 'schema' && source.source_ref === 'schema.model_category') {
-    return 'modelCategory.schema.description';
+  if (source.kind === 'schema' && source.source_ref === 'schema.meaning_category') {
+    return 'meaningCategory.schema.description';
   }
 
   if (source.kind === 'mcp_tool') {
@@ -161,13 +161,13 @@ export function createOntologyDisplayResolver(t: Translate) {
       label: getOntologyDisplayName(source, t),
       description: getOntologyDisplayDescription(source, t),
     }),
-    modelName: (model: ModelDisplaySource): string => getOntologyDisplayName(toModelDisplaySource(model), t),
-    modelDescription: (model: ModelDisplaySource): string | null => getOntologyDisplayDescription(toModelDisplaySource(model), t),
-    modelText: (model: ModelDisplaySource): OntologyDisplayText => getOntologyDisplayText(toModelDisplaySource(model), t),
-    modelOption: (model: ModelDisplaySource & { id: string }): OntologyDisplayOption => ({
-      value: model.id,
-      label: getOntologyDisplayName(toModelDisplaySource(model), t),
-      description: getOntologyDisplayDescription(toModelDisplaySource(model), t),
+    meaningName: (meaning: MeaningDisplaySource): string => getOntologyDisplayName(toMeaningDisplaySource(meaning), t),
+    meaningDescription: (meaning: MeaningDisplaySource): string | null => getOntologyDisplayDescription(toMeaningDisplaySource(meaning), t),
+    meaningText: (meaning: MeaningDisplaySource): OntologyDisplayText => getOntologyDisplayText(toMeaningDisplaySource(meaning), t),
+    meaningOption: (meaning: MeaningDisplaySource & { id: string }): OntologyDisplayOption => ({
+      value: meaning.id,
+      label: getOntologyDisplayName(toMeaningDisplaySource(meaning), t),
+      description: getOntologyDisplayDescription(toMeaningDisplaySource(meaning), t),
     }),
   };
 }

@@ -1,4 +1,4 @@
-export type SemanticObjectType = 'instance' | 'file' | 'network' | 'schema' | 'model' | 'project' | 'agent' | 'context';
+export type SemanticObjectType = 'instance' | 'file' | 'network' | 'schema' | 'meaning' | 'project' | 'agent' | 'context';
 
 export interface ContentAnchor {
   kind: 'heading' | 'block' | 'text-range';
@@ -40,7 +40,7 @@ export interface SemanticEditorToken {
   projection?: TargetProjection;
   fieldLabels?: string[];
   relationshipId?: string;
-  modelId?: string;
+  meaningId?: string;
 }
 
 export interface SerializedSemanticTarget {
@@ -49,7 +49,7 @@ export interface SerializedSemanticTarget {
   projection?: TargetProjection;
   fieldLabels?: string[];
   relationshipId?: string;
-  modelId?: string;
+  meaningId?: string;
 }
 
 const MENTION_PATTERN = /\[\[target:([^[\]|]+)(?:\|([^\]]+))?\]\]/g;
@@ -70,7 +70,7 @@ export function parseSemanticTarget(value: string): SemanticTarget | null {
   const parts = head.split(':');
   const kind = parts[0];
 
-  if (kind === 'instance' || kind === 'file' || kind === 'network' || kind === 'schema' || kind === 'model' || kind === 'project' || kind === 'agent' || kind === 'context') {
+  if (kind === 'instance' || kind === 'file' || kind === 'network' || kind === 'schema' || kind === 'meaning' || kind === 'project' || kind === 'agent' || kind === 'context') {
     const objectId = parts[1];
     if (!objectId) return null;
     return { kind: 'object', objectType: kind, objectId };
@@ -138,34 +138,34 @@ export function serializeSemanticTarget(target: SemanticTarget): string {
   }
 }
 
-export function createMentionToken({ target, label, relationshipId, modelId }: SerializedSemanticTarget): string {
+export function createMentionToken({ target, label, relationshipId, meaningId }: SerializedSemanticTarget): string {
   const rel = relationshipId ? `|rel:${relationshipId}` : '';
-  const model = modelId ? `|model:${modelId}` : '';
-  return `[[target:${target}${label ? `|${label}${rel}${model}` : rel || model ? `${rel}${model}`.slice(1) : ''}]]`;
+  const meaning = meaningId ? `|meaning:${meaningId}` : '';
+  return `[[target:${target}${label ? `|${label}${rel}${meaning}` : rel || meaning ? `${rel}${meaning}`.slice(1) : ''}]]`;
 }
 
-export function createEmbedToken({ target, projection, label, fieldLabels, relationshipId, modelId }: SerializedSemanticTarget): string {
+export function createEmbedToken({ target, projection, label, fieldLabels, relationshipId, meaningId }: SerializedSemanticTarget): string {
   const attrs = [
     `target="${target}"`,
     projection ? `projection="${projection}"` : null,
     label ? `label="${label.replace(/"/g, '\\"')}"` : null,
     fieldLabels?.length ? `fieldLabels="${fieldLabels.map((item) => item.replace(/"/g, '\\"')).join('|')}"` : null,
     relationshipId ? `relationshipId="${relationshipId}"` : null,
-    modelId ? `modelId="${modelId}"` : null,
+    meaningId ? `meaningId="${meaningId}"` : null,
   ].filter(Boolean);
   return `::netior-embed{${attrs.join(' ')}}`;
 }
 
-function splitMentionMetadata(rawLabel: string | undefined): { label?: string; relationshipId?: string; modelId?: string } {
+function splitMentionMetadata(rawLabel: string | undefined): { label?: string; relationshipId?: string; meaningId?: string } {
   if (!rawLabel) return {};
   const parts = rawLabel.split('|');
   const relPart = parts.find((part) => part.startsWith('rel:'));
-  const modelPart = parts.find((part) => part.startsWith('model:'));
-  const label = parts.filter((part) => !part.startsWith('rel:') && !part.startsWith('model:')).join('|').trim();
+  const meaningPart = parts.find((part) => part.startsWith('meaning:'));
+  const label = parts.filter((part) => !part.startsWith('rel:') && !part.startsWith('meaning:')).join('|').trim();
   return {
     label: label || undefined,
     relationshipId: relPart?.slice(4) || undefined,
-    modelId: modelPart?.slice(6) || undefined,
+    meaningId: meaningPart?.slice(8) || undefined,
   };
 }
 
@@ -203,7 +203,7 @@ export function parseSemanticEditorTokens(content: string): SemanticEditorToken[
       projection: attrs.projection as TargetProjection | undefined,
       fieldLabels: attrs.fieldLabels?.split('|').map((item) => item.trim()).filter(Boolean),
       relationshipId: attrs.relationshipId || undefined,
-      modelId: attrs.modelId || undefined,
+      meaningId: attrs.meaningId || undefined,
     });
   }
 

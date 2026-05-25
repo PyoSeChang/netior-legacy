@@ -4,9 +4,9 @@ import {
   validateNetiorDslExpression,
   validateNetiorDslFieldBehaviorConfig,
 } from '@netior/shared/dsl';
-import { listModels, evaluateDsl } from '../netior-service-client.js';
+import { listMeanings, evaluateDsl } from '../netior-service-client.js';
 import { projectIdSchema, registerNetiorTool, resolveProjectId } from './shared-tool-registry.js';
-import { toAgentModel } from './model-surface.js';
+import { toAgentMeaning } from './meaning-surface.js';
 
 const jsonObject = z.record(z.string(), z.unknown());
 
@@ -56,14 +56,14 @@ export function registerDslTools(server: McpServer): void {
 
   registerNetiorTool(
     server,
-    'list_model_catalog',
+    'list_meaning_catalog',
     { project_id: projectIdSchema() },
     async ({ project_id }) => {
       try {
-        const models = await listModels(resolveProjectId(project_id));
-        const result = models
-          .filter((model) => model.built_in || model.source_kind === 'system' || model.source_kind === 'package')
-          .map(toAgentModel);
+        const meanings = await listMeanings(resolveProjectId(project_id));
+        const result = meanings
+          .filter((meaning) => meaning.built_in || meaning.source_kind === 'system' || meaning.source_kind === 'package')
+          .map(toAgentMeaning);
         return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] };
       } catch (error) {
         return {

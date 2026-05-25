@@ -8,7 +8,7 @@ export type { StashedDeleteResult } from './fs-service';
 export { moduleService } from './module-service';
 export { editorPrefsService } from './editor-prefs-service';
 export { schemaService } from './schema-service';
-export { modelService } from './model-service';
+export { meaningService } from './meaning-service';
 export { instancePropertyService } from './instance-property-service';
 export { instanceContentService } from './instance-content-service';
 export { interactiveViewStateService } from './interactive-view-state-service';

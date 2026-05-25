@@ -236,13 +236,13 @@ const electronAPI = {
     updateMeaningSlot: (id: string, data: Record<string, unknown>) =>
       ipcRenderer.invoke('schemaMeaningSlot:update', id, data),
   },
-  model: {
-    create: (data: Record<string, unknown>) => ipcRenderer.invoke('model:create', data),
-    list: (projectId: string) => ipcRenderer.invoke('model:list', projectId),
-    get: (id: string) => ipcRenderer.invoke('model:get', id),
+  meaning: {
+    create: (data: Record<string, unknown>) => ipcRenderer.invoke('meaning:create', data),
+    list: (projectId: string) => ipcRenderer.invoke('meaning:list', projectId),
+    get: (id: string) => ipcRenderer.invoke('meaning:get', id),
     update: (id: string, data: Record<string, unknown>) =>
-      ipcRenderer.invoke('model:update', id, data),
-    delete: (id: string) => ipcRenderer.invoke('model:delete', id),
+      ipcRenderer.invoke('meaning:update', id, data),
+    delete: (id: string) => ipcRenderer.invoke('meaning:delete', id),
   },
   dsl: {
     evaluate: (data: Record<string, unknown>) => ipcRenderer.invoke('dsl:evaluate', data),

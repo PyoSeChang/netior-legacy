@@ -109,7 +109,7 @@ export interface NetiorDslFieldObjectExpression {
 export interface NetiorDslRelatedExpression {
   op: 'related';
   from: NetiorDslExpression;
-  model?: string;
+  meaning?: string;
   networkId?: string;
 }
 
@@ -166,7 +166,7 @@ export interface NetiorDslDiscoverSchemasExpression {
 
 export interface NetiorDslDiscoveryRequirement {
   fieldMeaning?: FieldMeaningBindingKey;
-  model?: string;
+  meaning?: string;
 }
 
 export interface NetiorDslFieldSelector {
@@ -276,8 +276,8 @@ function validateExpression(
       break;
     case 'related':
       validateExpression(input.from, `${path}.from`, errors);
-      if (input.model != null && typeof input.model !== 'string') {
-        errors.push({ path: `${path}.model`, message: 'model must be a string' });
+      if (input.meaning != null && typeof input.meaning !== 'string') {
+        errors.push({ path: `${path}.meaning`, message: 'meaning must be a string' });
       }
       break;
     case 'filter':
@@ -356,8 +356,8 @@ function validateDiscoveryRequirements(
   input.forEach((item, index) => {
     if (!isRecord(item)) {
       errors.push({ path: `${path}[${index}]`, message: 'Expected an object' });
-    } else if (typeof item.fieldMeaning !== 'string' && typeof item.model !== 'string') {
-      errors.push({ path: `${path}[${index}]`, message: 'Expected fieldMeaning or model' });
+    } else if (typeof item.fieldMeaning !== 'string' && typeof item.meaning !== 'string') {
+      errors.push({ path: `${path}[${index}]`, message: 'Expected fieldMeaning or meaning' });
     }
   });
 }

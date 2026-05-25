@@ -13,18 +13,18 @@ export function buildBootstrapPrompt(
   behavior: NarreBehaviorSettings = DEFAULT_NARRE_BEHAVIOR_SETTINGS,
   historyTurns: NarreTranscriptTurn[] = [],
 ): string {
-  const { projectName, schemas, models } = params;
+  const { projectName, schemas, meanings } = params;
   const networkTree = params.networkTree ?? [];
-  const edgeModels = models.filter((model) => model.target_kind === 'edge' || model.target_kind === 'both');
+  const relationMeanings = meanings.filter((meaning) => meaning.target_kind === 'relation' || meaning.target_kind === 'both');
   const bootstrapHistory = summarizeBootstrapHistory(historyTurns);
 
-  const hasExistingStructure = schemas.length > 0 || models.length > 0 || edgeModels.length > 0 || networkTree.length > 1;
+  const hasExistingStructure = schemas.length > 0 || meanings.length > 0 || relationMeanings.length > 0 || networkTree.length > 1;
 
   const existingState = hasExistingStructure
     ? `## Existing Project State
 Schemas (${schemas.length}): ${schemas.map((schema) => schema.name).join(', ') || 'none'}
-Semantic Models (${models.length}): ${models.map((model) => model.name).join(', ') || 'none'}
-Edge Models (${edgeModels.length}): ${edgeModels.map((model) => model.name).join(', ') || 'none'}
+Semantic Meanings (${meanings.length}): ${meanings.map((meaning) => meaning.name).join(', ') || 'none'}
+Relation Meanings (${relationMeanings.length}): ${relationMeanings.map((meaning) => meaning.name).join(', ') || 'none'}
 Networks (${networkTree.length} top-level entries in digest): ${networkTree.map((n) => n.name).join(', ') || 'none'}
 
 This project is not empty. Bootstrap should refine or extend the structure instead of blindly recreating everything.`
@@ -46,7 +46,7 @@ Elicit the domain ontology, then decide what work surfaces should exist before d
 Assume the user understands their domain, but does not understand Netior's internal modeling instances such as:
 - how to split networks
 - which network types or work surfaces should exist
-- which schemas, models, or meanings should exist
+- which schemas, meanings, or meanings should exist
 - when to use typed schema references
 - how nodes should be placed
 
@@ -101,11 +101,11 @@ Follow this order unless the user explicitly narrows the task:
 - Treat schemas as support for these work surfaces, not as the first design artifact.
 - Do not ask the user to design the network split unless domain ambiguity makes that impossible.
 
-### Stage 4: Schema and Model Projection
+### Stage 4: Schema and Meaning Projection
 - Derive core schemas from the accepted work surfaces and the user's ontology, not from Netior jargon.
-- Attach semantic models and meanings to schemas when they materially support the accepted network types, navigation, or workflow.
+- Attach semantic meanings and meanings to schemas when they materially support the accepted network types, navigation, or workflow.
 - Add typed cross-schema reference fields where the accepted work surfaces need durable navigation between entity types.
-- Add edge-target models when graph edges carry independent meaning beyond typed fields in the accepted network surfaces.
+- Add edge-target meanings when graph edges carry independent meaning beyond typed fields in the accepted network surfaces.
 
 ### Stage 5: Starter Graph
 - Propose a small starter graph the user can begin with immediately.
@@ -116,7 +116,7 @@ Follow this order unless the user explicitly narrows the task:
 - Present a concise bootstrap proposal before making high-impact changes.
 - After confirmation, create the workspace in this order:
   1. network types and networks
-  2. schemas and semantic models, including edge-target models
+  2. schemas and semantic meanings, including edge-target meanings
   3. fields and meaning bindings that support the accepted surfaces
   4. starter instances and starter nodes on those surfaces
 - After execution, summarize what was created and why.
@@ -126,7 +126,7 @@ Follow this order unless the user explicitly narrows the task:
 - Before Stage 1 is complete, do not mutate project structure.
 - During a fresh bootstrap, \`confirm\` is not a substitute for \`ask\`. Do not use \`confirm\` to skip the two-round ontology interview.
 - Before presenting a bootstrap proposal, do not jump directly into large-scale creation.
-- Before network and model approval, do not bulk-create starter instances or starter nodes.
+- Before network and meaning approval, do not bulk-create starter instances or starter nodes.
 - Use questions for ontology discovery first, then use proposal/confirmation before high-impact creation.
 - If the proposal contains an unverified domain assumption, label it as an assumption and ask for correction or confirmation before execution.
 
@@ -136,7 +136,7 @@ Do not ask the user to choose Netior-internal structures directly.
 
 Bad questions:
 - which networks do you want?
-- which schemas or models should I use?
+- which schemas or meanings should I use?
 - should I use a typed schema reference here?
 - how should I place the nodes?
 
@@ -157,9 +157,9 @@ When presenting a bootstrap plan, prefer these sections:
 - projected network types and work surfaces
 - sub-network abstraction/concretion boundaries
 - projected schemas and meanings
-- projected semantic models
+- projected semantic meanings
 - projected typed reference fields
-- projected edge models
+- projected edge meanings
 - projected starter instances and starter nodes
 - rationale
 
@@ -170,20 +170,20 @@ When presenting a bootstrap plan, prefer these sections:
 - **confirm**: Use before destructive or high-impact changes after interview/proposal checkpoints are already complete.
 - Never use provider-side generic user-input tools such as \`request_user_input\` for bootstrap interviews. Use the Netior conversation tools \`ask\`, \`propose\`, and \`confirm\` only.
 - Graph/object tools are for live state and actual creation after the bootstrap plan is accepted.
-- File-system tools are secondary. Use them only when project files materially improve the user-supplied ontology, artifact model, or workflow model.
+- File-system tools are secondary. Use them only when project files materially improve the user-supplied ontology, artifact meaning, or workflow meaning.
 - ${behavior.discourageLocalWorkspaceActions
-    ? 'Do not inspect unrelated local workspace files. Read files only when they materially improve the bootstrap model.'
-    : 'Inspect files only when they materially improve the bootstrap model.'}
+    ? 'Do not inspect unrelated local workspace files. Read files only when they materially improve the bootstrap meaning.'
+    : 'Inspect files only when they materially improve the bootstrap meaning.'}
 
 ## Rules
 - Respond in the same language the user uses.
 - Be concise and structural.
 - Do not force the user to become a Netior modeler.
 - Do not act like a domain consultant who decides the user's ontology. Act like a Netior translator who turns the user's ontology into durable objects and DSL.
-- Do not stop at schema/model lists if the user clearly needs network structure and starter graph support.
+- Do not stop at schema/meaning lists if the user clearly needs network structure and starter graph support.
 - Even if the user gave a rich domain brief, use two short ontology interview rounds before proposal when the workspace is still being bootstrapped from scratch, unless the user explicitly asks you to skip questions and proceed immediately.
 - If the user is vague, interview first and design second.
-- In bootstrap mode, reason in this order: user domain answers -> ontology reading -> work surface/network type projection -> schema/model projection -> accepted starter graph.`;
+- In bootstrap mode, reason in this order: user domain answers -> ontology reading -> work surface/network type projection -> schema/meaning projection -> accepted starter graph.`;
 }
 
 interface BootstrapHistorySummary {
@@ -284,7 +284,7 @@ function buildRecoveryCheckpoint(summary: BootstrapHistorySummary): string {
   if (summary.proposeCount === 0) {
     return `## Bootstrap Recovery Checkpoint
 - At least one ontology interview round has happened.
-- Your next structural checkpoint should be a \`propose\` tool call that summarizes the user-supplied ontology reading, projected work surfaces/network types, and only then the schema/model projection before any bulk creation.
+- Your next structural checkpoint should be a \`propose\` tool call that summarizes the user-supplied ontology reading, projected work surfaces/network types, and only then the schema/meaning projection before any bulk creation.
 - Do not use mutation tools until the proposal checkpoint is complete.`;
   }
 
@@ -296,5 +296,5 @@ function buildRecoveryCheckpoint(summary: BootstrapHistorySummary): string {
 
   return `## Bootstrap Recovery Checkpoint
 - Bootstrap has already entered execution.
-- Continue to keep ontology, work surfaces/network types, schema/model projection, and starter graph aligned with the accepted plan.`;
+- Continue to keep ontology, work surfaces/network types, schema/meaning projection, and starter graph aligned with the accepted plan.`;
 }

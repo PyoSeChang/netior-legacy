@@ -3,12 +3,12 @@ import {
   createOntologyDisplayResolver,
   getOntologyDisplayDescriptionKey,
   getOntologyDisplayLabelKey,
-  toModelDisplaySource,
+  toMeaningDisplaySource,
 } from '../display';
 
 const translations: Record<string, string> = {
-  'semantic.model.contains.label': 'Contains',
-  'semantic.model.contains.description': 'Shows containment',
+  'semantic.meaning.contains.label': 'Contains',
+  'semantic.meaning.contains.description': 'Shows containment',
   'semantic.category.time.label': 'Time',
   'semantic.category.time.description': 'Temporal category',
   'narre.tools.create_schema.name': 'Create Schema',
@@ -18,34 +18,34 @@ const translations: Record<string, string> = {
 const t = (key: string) => translations[key] ?? key;
 
 describe('ontology display resolver', () => {
-  it('resolves built-in model display text from source metadata', () => {
+  it('resolves built-in meaning display text from source metadata', () => {
     const display = createOntologyDisplayResolver(t);
-    const model = {
+    const meaning = {
       id: 'm1',
       key: 'contains',
       name: 'Fallback Contains',
       description: 'Fallback description',
       source_kind: 'system' as const,
-      source_ref: 'model.contains',
+      source_ref: 'meaning.contains',
     };
 
-    expect(display.modelName(model)).toBe('Contains');
-    expect(display.modelDescription(model)).toBe('Shows containment');
-    expect(display.modelOption(model)).toEqual({
+    expect(display.meaningName(meaning)).toBe('Contains');
+    expect(display.meaningDescription(meaning)).toBe('Shows containment');
+    expect(display.meaningOption(meaning)).toEqual({
       value: 'm1',
       label: 'Contains',
       description: 'Shows containment',
     });
   });
 
-  it('uses instance source_ref for model category instances', () => {
+  it('uses instance source_ref for meaning category instances', () => {
     const display = createOntologyDisplayResolver(t);
     const source = {
       kind: 'instance' as const,
       title: 'Fallback Time',
       description: 'Fallback description',
       source_kind: 'system' as const,
-      source_ref: 'model-category.time',
+      source_ref: 'meaning-category.time',
     };
 
     expect(getOntologyDisplayLabelKey(source)).toBe('semantic.category.time.label');
@@ -56,16 +56,16 @@ describe('ontology display resolver', () => {
 
   it('falls back to stored text when localization is missing', () => {
     const display = createOntologyDisplayResolver(t);
-    const source = toModelDisplaySource({
-      key: 'custom.model',
-      name: 'Custom Model',
-      description: 'Project-owned model',
+    const source = toMeaningDisplaySource({
+      key: 'custom.meaning',
+      name: 'Custom Meaning',
+      description: 'Project-owned meaning',
       source_kind: 'project',
       source_ref: null,
     });
 
-    expect(display.name(source)).toBe('Custom Model');
-    expect(display.description(source)).toBe('Project-owned model');
+    expect(display.name(source)).toBe('Custom Meaning');
+    expect(display.description(source)).toBe('Project-owned meaning');
   });
 
   it('resolves MCP tool display text through the shared Narre tool namespace', () => {

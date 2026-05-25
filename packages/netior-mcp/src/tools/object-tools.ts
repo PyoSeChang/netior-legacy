@@ -9,7 +9,7 @@ const objectTypeSchema = z.enum([
   'network',
   'project',
   'schema',
-  'model',
+  'meaning',
   'agent',
   'context',
   'file',

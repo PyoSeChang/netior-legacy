@@ -20,7 +20,7 @@ import { narreService, type MentionResult } from '../../../services/narre-servic
 import { useI18n } from '../../../hooks/useI18n';
 import { Spinner } from '../../ui/Spinner';
 import type { TranslationKey } from '@netior/shared/i18n';
-import type { Model, ModelKey } from '@netior/shared/types';
+import type { Meaning, MeaningRefKey } from '@netior/shared/types';
 import { logShortcut } from '../../../shortcuts/shortcut-utils';
 import { createOntologyDisplayResolver } from '@netior/shared';
 
@@ -39,7 +39,7 @@ const MENTION_CATEGORIES = [
   { key: 'instance', i18nKey: 'narre.mentionInstance' },
   { key: 'network', i18nKey: 'narre.mentionNetwork' },
   { key: 'schema', i18nKey: 'narre.mentionSchema' },
-  { key: 'model', i18nKey: 'narre.mentionModel' },
+  { key: 'meaning', i18nKey: 'narre.mentionMeaning' },
   { key: 'file', i18nKey: 'narre.mentionFile' },
   { key: 'agent', i18nKey: 'narre.mentionAgent' },
 ] as const;
@@ -53,13 +53,13 @@ const ICONS = {
   paperclip: Paperclip,
   link: LinkIcon,
   instance: Lightbulb,
-  model: Boxes,
+  meaning: Boxes,
   schema: Shapes,
   network: Network,
   file: FileText,
 } as const;
 
-type LucideIconComponent = React.ComponentType<{ size?: number; className?: string }>;
+type LucideIconComponent = React.ElementType<{ size?: number | string; className?: string }>;
 
 function toLucideExportName(value: string): string {
   return value
@@ -103,14 +103,14 @@ function stringMeta(meta: Record<string, unknown> | undefined, key: string): str
   return typeof value === 'string' ? value : null;
 }
 
-function toModelDisplaySource(item: MentionResult): Pick<Model, 'key' | 'name' | 'description' | 'source_kind' | 'source_ref'> | null {
+function toMeaningDisplaySource(item: MentionResult): Pick<Meaning, 'key' | 'name' | 'description' | 'source_kind' | 'source_ref'> | null {
   const name = stringMeta(item.meta, 'name') ?? item.display;
   const key = stringMeta(item.meta, 'key') ?? name;
   return {
-    key: key as ModelKey,
+    key: key as MeaningRefKey,
     name,
     description: item.description ?? null,
-    source_kind: stringMeta(item.meta, 'sourceKind') as Model['source_kind'] ?? 'project',
+    source_kind: stringMeta(item.meta, 'sourceKind') as Meaning['source_kind'] ?? 'project',
     source_ref: stringMeta(item.meta, 'sourceRef'),
   };
 }
@@ -119,29 +119,40 @@ function localizeMentionResult(
   item: MentionResult,
   display: ReturnType<typeof createOntologyDisplayResolver>,
 ): MentionResult {
-  if (item.type === 'model') {
-    const model = toModelDisplaySource(item);
-    if (!model) return item;
+  if (item.type === 'meaning') {
+    const meaning = toMeaningDisplaySource(item);
+    if (!meaning) return item;
     return {
       ...item,
-      display: display.modelName(model),
-      description: display.modelDescription(model),
+      display: display.meaningName(meaning),
+      description: display.meaningDescription(meaning),
     };
   }
 
-  if (item.type === 'instance' && stringMeta(item.meta, 'model')) {
-    const model = {
-      key: (stringMeta(item.meta, 'modelKey') ?? stringMeta(item.meta, 'model') ?? '') as ModelKey,
-      name: stringMeta(item.meta, 'model') ?? '',
-      description: stringMeta(item.meta, 'modelDescription'),
-      source_kind: stringMeta(item.meta, 'modelSourceKind') as Model['source_kind'] ?? 'project',
-      source_ref: stringMeta(item.meta, 'modelSourceRef'),
+  if (item.type === 'instance' && stringMeta(item.meta, 'schema')) {
+    const schemaName = stringMeta(item.meta, 'schema') ?? '';
+    return {
+      ...item,
+      meta: {
+        ...item.meta,
+        schema: schemaName,
+      },
+    };
+  }
+
+  if (item.type === 'instance' && stringMeta(item.meta, 'meaning')) {
+    const meaning = {
+      key: (stringMeta(item.meta, 'meaningKey') ?? stringMeta(item.meta, 'meaning') ?? '') as MeaningRefKey,
+      name: stringMeta(item.meta, 'meaning') ?? '',
+      description: stringMeta(item.meta, 'meaningDescription'),
+      source_kind: stringMeta(item.meta, 'meaningSourceKind') as Meaning['source_kind'] ?? 'project',
+      source_ref: stringMeta(item.meta, 'meaningSourceRef'),
     };
     return {
       ...item,
       meta: {
         ...item.meta,
-        model: display.modelName(model),
+        meaning: display.meaningName(meaning),
       },
     };
   }
@@ -151,9 +162,10 @@ function localizeMentionResult(
 
 function PreviewPanel({ item, t }: { item: MentionResult; t: (key: TranslationKey) => string }): JSX.Element {
   const catLabel = MENTION_CATEGORIES.find((c) => c.key === item.type)?.i18nKey;
-  const instanceModel = item.type === 'instance' && typeof item.meta?.model === 'string' ? item.meta.model : null;
-  const modelDirected = item.type === 'model' && typeof item.meta?.directed === 'boolean' ? item.meta.directed : null;
-  const modelLineStyle = item.type === 'model' && typeof item.meta?.lineStyle === 'string' ? item.meta.lineStyle : null;
+  const instanceSchema = item.type === 'instance' && typeof item.meta?.schema === 'string' ? item.meta.schema : null;
+  const instanceMeaning = item.type === 'instance' && typeof item.meta?.meaning === 'string' ? item.meta.meaning : null;
+  const meaningDirected = item.type === 'meaning' && typeof item.meta?.directed === 'boolean' ? item.meta.directed : null;
+  const meaningLineStyle = item.type === 'meaning' && typeof item.meta?.lineStyle === 'string' ? item.meta.lineStyle : null;
   const filePath = item.type === 'file' && typeof item.meta?.path === 'string' ? item.meta.path : null;
 
   return (
@@ -180,24 +192,30 @@ function PreviewPanel({ item, t }: { item: MentionResult; t: (key: TranslationKe
       {/* Type-specific meta */}
       {item.meta && (
         <div className="flex flex-col gap-1 text-[10px] text-muted">
-          {instanceModel && (
+          {instanceSchema && (
             <div className="flex items-center gap-1">
-              <span className="text-secondary">Model:</span>
-              <span className="text-default">{instanceModel}</span>
+              <span className="text-secondary">Schema:</span>
+              <span className="text-default">{instanceSchema}</span>
             </div>
           )}
-          {item.type === 'model' && (
+          {instanceMeaning && (
+            <div className="flex items-center gap-1">
+              <span className="text-secondary">Meaning:</span>
+              <span className="text-default">{instanceMeaning}</span>
+            </div>
+          )}
+          {item.type === 'meaning' && (
             <>
-              {modelDirected !== null && (
+              {meaningDirected !== null && (
                 <div className="flex items-center gap-1.5">
-                  {modelDirected ? <ArrowRight size={10} /> : <Minus size={10} />}
-                  <span>{modelDirected ? 'Directed' : 'Undirected'}</span>
+                  {meaningDirected ? <ArrowRight size={10} /> : <Minus size={10} />}
+                  <span>{meaningDirected ? 'Directed' : 'Undirected'}</span>
                 </div>
               )}
-              {modelLineStyle && (
+              {meaningLineStyle && (
                 <div className="flex items-center gap-1">
                   <span className="text-secondary">Style:</span>
-                  <span className="text-default">{modelLineStyle}</span>
+                  <span className="text-default">{meaningLineStyle}</span>
                 </div>
               )}
             </>

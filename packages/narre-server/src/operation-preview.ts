@@ -3,7 +3,7 @@ import { validateInteractiveViewSource } from '@netior/shared/interactive-view';
 import type { NarreOperationPreview } from '@netior/shared/types';
 import {
   getNetworkTree,
-  listModels,
+  listMeanings,
   listSchemaFields,
   listSchemas,
 } from './netior-service-client.js';
@@ -77,25 +77,25 @@ async function appendSchemaContext(
   const existing = requestedName
     ? schemas.find((schema) => schema.name.toLowerCase() === requestedName.toLowerCase())
     : null;
-  const modelKeys = asStringList(input.models);
+  const modelKeys = asStringList(input.meanings);
 
   preview.items = (preview.items ?? []).filter((item) => {
     const normalizedLabel = item.label.toLowerCase();
     return normalizedLabel !== 'schema id'
       && normalizedLabel !== 'schema_id'
-      && normalizedLabel !== 'models';
+      && normalizedLabel !== 'meanings';
   });
 
   if (modelKeys.length > 0) {
-    const models = await listModels(context.projectId);
+    const meanings = await listMeanings(context.projectId);
     const previewModels = modelKeys.map((key) => {
-      const model = models.find((candidate) => candidate.key === key || candidate.id === key);
-      return model
+      const meaning = meanings.find((candidate) => candidate.key === key || candidate.id === key);
+      return meaning
         ? {
-          key: String(model.key),
-          name: model.name,
-          description: model.description,
-          built_in: model.built_in,
+          key: String(meaning.key),
+          name: meaning.name,
+          description: meaning.description,
+          built_in: meaning.built_in,
         }
         : {
           key,
@@ -104,12 +104,12 @@ async function appendSchemaContext(
         };
     });
     preview.items = [
-      ...(preview.items ?? []).filter((item) => item.label.toLowerCase() !== 'models'),
+      ...(preview.items ?? []).filter((item) => item.label.toLowerCase() !== 'meanings'),
       {
-        label: 'Models',
-        value: previewModels.map((model) => model.name).join(', '),
-        kind: 'model_list',
-        models: previewModels,
+        label: 'Meanings',
+        value: previewModels.map((meaning) => meaning.name).join(', '),
+        kind: 'meaning_list',
+        meanings: previewModels,
       },
     ];
   }
@@ -216,7 +216,7 @@ async function appendNetworkContext(
 function flattenNetworkTree(nodes: Awaited<ReturnType<typeof getNetworkTree>>): Array<{ id: string; name: string }> {
   const result: Array<{ id: string; name: string }> = [];
   const visit = (node: Awaited<ReturnType<typeof getNetworkTree>>[number]): void => {
-    result.push({ id: node.id, name: node.name });
+    result.push({ id: node.network.id, name: node.network.name });
     for (const child of node.children ?? []) {
       visit(child);
     }
@@ -260,26 +260,26 @@ export async function buildNarreOperationPreview(
   switch (normalizedToolName) {
     case 'create_schema': {
       const name = asString(input.name) ?? 'Untitled schema';
-      const models = asStringList(input.models);
+      const meanings = asStringList(input.meanings);
       const items: NarreOperationPreview['items'] = [
         { label: 'Name', value: name },
         ...(asString(input.description) ? [{ label: 'Description', value: asString(input.description)! }] : []),
         ...(asString(input.icon) ? [{ label: 'Icon', value: asString(input.icon)!, kind: 'icon' as const }] : []),
         ...(asString(input.color) ? [{ label: 'Color', value: asString(input.color)!, kind: 'color' as const }] : []),
-        ...(models.length > 0 ? [{ label: 'Models', value: models.join(', '), kind: 'model_list' as const }] : []),
+        ...(meanings.length > 0 ? [{ label: 'Meanings', value: meanings.join(', '), kind: 'meaning_list' as const }] : []),
         ...(input.file_template !== undefined ? [{ label: 'File template', value: formatOptional(input.file_template) ?? 'set' }] : []),
       ];
       return withContext(context, normalizedToolName, input, createPreview(normalizedToolName, {
         title: `Create schema: ${name}`,
-        summary: models.length > 0
-          ? `createSchemaWithModels:${models.length}`
+        summary: meanings.length > 0
+          ? `createSchemaWithMeanings:${meanings.length}`
           : 'createSchema',
         items,
       }));
     }
 
     case 'update_schema': {
-      const changes = ['name', 'description', 'icon', 'color', 'file_template', 'models']
+      const changes = ['name', 'description', 'icon', 'color', 'file_template', 'meanings']
         .filter((key) => input[key] !== undefined);
       return withContext(context, normalizedToolName, input, createPreview(normalizedToolName, {
         title: `Update schema${asString(input.name) ? `: ${asString(input.name)}` : ''}`,
@@ -291,7 +291,7 @@ export async function buildNarreOperationPreview(
             value: Array.isArray(input[key])
               ? input[key].join(', ')
               : formatOptional(input[key]) ?? JSON.stringify(input[key]),
-            ...(key === 'models' ? { kind: 'model_list' as const } : {}),
+            ...(key === 'meanings' ? { kind: 'meaning_list' as const } : {}),
             ...(key === 'icon' ? { kind: 'icon' as const } : {}),
             ...(key === 'color' ? { kind: 'color' as const } : {}),
           })),
@@ -324,12 +324,12 @@ export async function buildNarreOperationPreview(
       }));
     }
 
-    case 'create_model': {
-      const name = asString(input.name) ?? asString(input.key) ?? 'Untitled model';
+    case 'create_meaning': {
+      const name = asString(input.name) ?? asString(input.key) ?? 'Untitled meaning';
       const meanings = asStringList(input.meaning_keys);
       return withContext(context, normalizedToolName, input, createPreview(normalizedToolName, {
-        title: `Create model: ${name}`,
-        summary: 'createModel',
+        title: `Create meaning: ${name}`,
+        summary: 'createMeaning',
         items: [
           ...(asString(input.key) ? [{ label: 'Key', value: asString(input.key)! }] : []),
           ...(asString(input.category_instance_id) ? [{ label: 'Category instance ID', value: asString(input.category_instance_id)! }] : []),

@@ -125,7 +125,7 @@ function evaluateExpression(
     case 'related':
       return getRelatedObjects(
         requireObjectRef(evaluateExpression(expression.from, context, frame), 'related.from'),
-        expression.model,
+        expression.meaning,
         expression.networkId ?? context.currentNetworkId,
         context.projectId,
       );
@@ -271,7 +271,7 @@ function getFieldObject(
 
 function getRelatedObjects(
   from: NetiorDslObjectRef,
-  model: string | undefined,
+  meaning: string | undefined,
   networkId: string | undefined,
   projectId: string,
 ): NetiorDslObjectRef[] {
@@ -279,10 +279,10 @@ function getRelatedObjects(
   const sourceObject = getObjectByRef(from.objectType, from.refId);
   if (!sourceObject) throw new DslError('not_found', 'Source object is not in the object table');
 
-  const modelIds = model ? resolveModelIds(projectId, model) : [];
-  const modelFilter = modelIds.length > 0 ? `AND e.model_id IN (${modelIds.map(() => '?').join(',')})` : '';
+  const meaningIds = meaning ? resolveModelIds(projectId, meaning) : [];
+  const modelFilter = meaningIds.length > 0 ? `AND e.meaning_id IN (${meaningIds.map(() => '?').join(',')})` : '';
   const networkFilter = networkId ? 'AND e.network_id = ?' : '';
-  const params: unknown[] = [sourceObject.id, ...modelIds];
+  const params: unknown[] = [sourceObject.id, ...meaningIds];
   if (networkId) params.push(networkId);
 
   const rows = db.prepare(`
@@ -352,8 +352,8 @@ function getRelativeObject(
 
 function discoverSchemas(
   projectId: string,
-  requires: Array<{ fieldMeaning?: string; model?: string }>,
-  optional: Array<{ fieldMeaning?: string; model?: string }>,
+  requires: Array<{ fieldMeaning?: string; meaning?: string }>,
+  optional: Array<{ fieldMeaning?: string; meaning?: string }>,
 ): NetiorDslObjectRef[] {
   const db = getDatabase();
   const schemas = db.prepare('SELECT id, project_id, name FROM schemas WHERE project_id = ? ORDER BY name, id')
@@ -418,7 +418,7 @@ function getFieldMeanings(fieldId: string): string[] {
 function resolveModelIds(projectId: string, selector: string): string[] {
   const rows = getDatabase().prepare(`
     SELECT id, key, source_ref, meaning_keys
-    FROM models
+    FROM meanings
     WHERE project_id = ?
       AND (
         key = ?
@@ -426,8 +426,8 @@ function resolveModelIds(projectId: string, selector: string): string[] {
         OR source_ref = ?
         OR meaning_keys LIKE ?
       )
-  `).all(projectId, selector, selector, `model.${selector}`, `%"${selector}"%`) as ModelRow[];
-  if (rows.length === 0) throw new DslError('not_found', `Model not found: ${selector}`);
+  `).all(projectId, selector, selector, `meaning.${selector}`, `%"${selector}"%`) as ModelRow[];
+  if (rows.length === 0) throw new DslError('not_found', `Meaning not found: ${selector}`);
   return rows.map((row) => row.id);
 }
 

@@ -180,7 +180,7 @@ export class CodexTransport implements OpenAIFamilyTransport {
 
       console.log(
         `[narre:${this.name}] trace=${traceId} Starting run session=${context.sessionId} project=${context.projectId} ` +
-        `thread=${threadId} resume=${context.isResume ? 'yes' : 'no'} model=${this.resolveModel(runtimeSettings) ?? 'default'}`,
+        `thread=${threadId} resume=${context.isResume ? 'yes' : 'no'} meaning=${this.resolveModel(runtimeSettings) ?? 'default'}`,
       );
 
       client.onTextDelta = async (delta) => {
@@ -985,12 +985,12 @@ function extractRequestedMcpToolName(message: string): string | null {
   return match?.[1]?.trim() || null;
 }
 
-function buildDefaultElicitationContent(model: unknown): unknown {
-  if (!model || typeof model !== 'object' || Array.isArray(model)) {
+function buildDefaultElicitationContent(meaning: unknown): unknown {
+  if (!meaning || typeof meaning !== 'object' || Array.isArray(meaning)) {
     return {};
   }
 
-  const source = model as Record<string, unknown>;
+  const source = meaning as Record<string, unknown>;
 
   if ('default' in source) {
     return source.default;
@@ -1046,7 +1046,7 @@ function buildDynamicToolSpecs(): Array<Record<string, unknown>> {
   return [
     {
       name: 'propose',
-      description: 'Present an editable draft block to the user. Use this when suggesting models, models, instances, or any structured plan that benefits from inline revision.',
+      description: 'Present an editable draft block to the user. Use this when suggesting meanings, meanings, instances, or any structured plan that benefits from inline revision.',
       inputSchema: {
         type: 'object',
         additionalProperties: false,

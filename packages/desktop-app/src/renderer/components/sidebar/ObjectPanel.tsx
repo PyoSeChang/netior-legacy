@@ -19,7 +19,7 @@ import { useAnchoredDropdown } from '../../hooks/useAnchoredDropdown';
 import { useProjectStore } from '../../stores/project-store';
 import { useInstanceStore } from '../../stores/instance-store';
 import { useNetworkStore } from '../../stores/network-store';
-import { useModelStore } from '../../stores/model-store';
+import { useMeaningStore } from '../../stores/meaning-store';
 import { useContextStore } from '../../stores/context-store';
 import { useEditorStore } from '../../stores/editor-store';
 import { useNetworkObjectSelectionStore } from '../../stores/network-object-selection-store';
@@ -31,7 +31,7 @@ import { NodeVisual } from '../workspace/node-components/NodeVisual';
 import { openNetworkViewerTab } from '../../lib/open-network-viewer-tab';
 import { createOntologyDisplayResolver } from '@netior/shared';
 
-type PanelObjectType = 'instance' | 'network' | 'model' | 'context';
+type PanelObjectType = 'instance' | 'network' | 'meaning' | 'context';
 
 interface ObjectPanelProps {
   types?: PanelObjectType[];
@@ -72,7 +72,7 @@ type ContextMenuState = {
 const FILTERS: Array<{ key: PanelObjectType; icon: React.ElementType; labelKey: TranslationKey | string }> = [
   { key: 'instance', icon: CircleDot, labelKey: 'objectPanel.instance' },
   { key: 'network', icon: Waypoints, labelKey: 'sidebar.networks' },
-  { key: 'model', icon: Boxes, labelKey: 'model.title' },
+  { key: 'meaning', icon: Boxes, labelKey: 'meaning.title' },
   { key: 'context', icon: Layers3, labelKey: 'context.title' },
 ];
 
@@ -219,15 +219,15 @@ export function ObjectPanel({ types }: ObjectPanelProps = {}): JSX.Element {
   const currentNetwork = useNetworkStore((state) => state.currentNetwork);
   const networks = useNetworkStore((state) => state.networks);
   const instances = useInstanceStore((state) => state.instances);
-  const models = useModelStore((state) => state.models);
+  const meanings = useMeaningStore((state) => state.meanings);
   const contexts = useContextStore((state) => state.contexts);
   const activeContextId = useContextStore((state) => state.activeContextId);
   const loadContexts = useContextStore((state) => state.loadContexts);
   const createContext = useContextStore((state) => state.createContext);
   const deleteContext = useContextStore((state) => state.deleteContext);
   const setActiveContext = useContextStore((state) => state.setActiveContext);
-  const createModel = useModelStore((state) => state.createModel);
-  const deleteModel = useModelStore((state) => state.deleteModel);
+  const createMeaning = useMeaningStore((state) => state.createMeaning);
+  const deleteMeaning = useMeaningStore((state) => state.deleteMeaning);
   const deleteInstance = useInstanceStore((state) => state.deleteInstance);
   const createNetwork = useNetworkStore((state) => state.createNetwork);
   const deleteNetwork = useNetworkStore((state) => state.deleteNetwork);
@@ -269,15 +269,15 @@ export function ObjectPanel({ types }: ObjectPanelProps = {}): JSX.Element {
         title: instance.title,
         subtitle: instance.schema_id
           ? (() => {
-            const model = models.find((item) => item.id === instance.schema_id);
-            return model ? display.modelName(model) : t('objectPanel.instance' as TranslationKey);
+            const meaning = meanings.find((item) => item.id === instance.schema_id);
+            return meaning ? display.meaningName(meaning) : t('objectPanel.instance' as TranslationKey);
           })()
           : t('objectPanel.instance' as TranslationKey),
         color: instance.color,
         iconName: instance.icon,
       },
     }))
-  ), [instances, models]);
+  ), [instances, meanings]);
 
   const networkRows = useMemo<PanelRow[]>(() => (
     [...networks].sort((a, b) => a.name.localeCompare(b.name)).map((network) => ({
@@ -297,24 +297,24 @@ export function ObjectPanel({ types }: ObjectPanelProps = {}): JSX.Element {
 
   const modelRows = useMemo<PanelRow[]>(() => (
     buildObjectRows(
-      'model',
-      [...models].sort((a, b) => display.modelName(a).localeCompare(display.modelName(b))),
-      (model) => ({
-        title: display.modelName(model),
-        subtitle: display.modelDescription(model)
-          ?? (model.category_instance_source_ref
+      'meaning',
+      [...meanings].sort((a, b) => display.meaningName(a).localeCompare(display.meaningName(b))),
+      (meaning) => ({
+        title: display.meaningName(meaning),
+        subtitle: display.meaningDescription(meaning)
+          ?? (meaning.category_instance_source_ref
             ? display.name({
               kind: 'instance',
-              title: model.category_instance_title ?? model.category_instance_source_ref,
-              source_ref: model.category_instance_source_ref,
+              title: meaning.category_instance_title ?? meaning.category_instance_source_ref,
+              source_ref: meaning.category_instance_source_ref,
             })
-            : model.category_instance_title)
-          ?? t('model.title' as TranslationKey),
-        color: model.color,
-        iconName: model.icon,
+            : meaning.category_instance_title)
+          ?? t('meaning.title' as TranslationKey),
+        color: meaning.color,
+        iconName: meaning.icon,
       }),
     )
-  ), [display, models, t]);
+  ), [display, meanings, t]);
 
   const contextRows = useMemo<PanelRow[]>(() => (
     [...contexts].sort((a, b) => a.name.localeCompare(b.name)).map((context) => ({
@@ -336,7 +336,7 @@ export function ObjectPanel({ types }: ObjectPanelProps = {}): JSX.Element {
     const rowsByType: Record<PanelObjectType, PanelRow[]> = {
       instance: instanceRows,
       network: networkRows,
-      model: modelRows,
+      meaning: modelRows,
       context: contextRows,
     };
 
@@ -441,8 +441,8 @@ export function ObjectPanel({ types }: ObjectPanelProps = {}): JSX.Element {
         await openNetwork(item.id);
         await openNetworkViewerTab({ networkId: item.id, title: item.title, projectId: currentProject?.id ?? null });
         break;
-      case 'model':
-        await useEditorStore.getState().openTab({ type: 'model', targetId: item.id, title: item.title, projectId: currentProject?.id });
+      case 'meaning':
+        await useEditorStore.getState().openTab({ type: 'meaning', targetId: item.id, title: item.title, projectId: currentProject?.id });
         break;
       case 'context':
         await useEditorStore.getState().openTab({ type: 'context', targetId: item.id, title: item.title });
@@ -497,9 +497,9 @@ export function ObjectPanel({ types }: ObjectPanelProps = {}): JSX.Element {
         });
         break;
       }
-      case 'model': {
-        const created = await createModel({ project_id: currentProject.id, name: t('model.newDefault' as never) });
-        await useEditorStore.getState().openTab({ type: 'model', targetId: created.id, title: created.name, projectId: currentProject.id, isDirty: true });
+      case 'meaning': {
+        const created = await createMeaning({ project_id: currentProject.id, name: t('meaning.newDefault' as never) });
+        await useEditorStore.getState().openTab({ type: 'meaning', targetId: created.id, title: created.name, projectId: currentProject.id, isDirty: true });
         break;
       }
       case 'context': {
@@ -519,8 +519,8 @@ export function ObjectPanel({ types }: ObjectPanelProps = {}): JSX.Element {
         await deleteNetwork(item.id);
         if (currentProject) await loadNetworkTree(currentProject.id);
         break;
-      case 'model':
-        await deleteModel(item.id);
+      case 'meaning':
+        await deleteMeaning(item.id);
         break;
       case 'context':
         await deleteContext(item.id);
@@ -639,7 +639,7 @@ export function ObjectPanel({ types }: ObjectPanelProps = {}): JSX.Element {
     if (row.item.objectType === 'instance' && row.item.iconName) {
       return <NodeVisual icon={row.item.iconName} size={14} imageSize={18} className="shrink-0" />;
     }
-    if (row.item.objectType === 'model' && row.item.iconName) {
+    if (row.item.objectType === 'meaning' && row.item.iconName) {
       return <NodeVisual icon={row.item.iconName} size={14} imageSize={18} className="shrink-0" />;
     }
     if (row.item.color) {
@@ -653,7 +653,7 @@ export function ObjectPanel({ types }: ObjectPanelProps = {}): JSX.Element {
           return <Boxes size={14} className="shrink-0 text-secondary" />;
         }
         return <Waypoints size={14} className="shrink-0 text-secondary" />;
-      case 'model':
+      case 'meaning':
         return <Boxes size={14} className="shrink-0 text-secondary" />;
       case 'context':
         return <Layers3 size={14} className="shrink-0 text-secondary" />;

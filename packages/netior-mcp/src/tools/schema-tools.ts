@@ -1,6 +1,6 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
-import type { ModelRefKey } from '@netior/shared/types';
+import type { MeaningRefKey } from '@netior/shared/types';
 import {
   listSchemas,
   createSchema,
@@ -13,7 +13,7 @@ import { toAgentSchema } from './schema-surface.js';
 
 const modelKeySchema = z.string().regex(
   /^[a-z][a-z0-9_]*$/,
-  'Model keys must be lowercase snake_case, such as task_flow',
+  'Meaning keys must be lowercase snake_case, such as task_flow',
 );
 const modelKeysSchema = z.array(modelKeySchema);
 
@@ -47,9 +47,9 @@ export function registerSchemaTools(server: McpServer): void {
       color: z.string().optional().describe('Color value'),
       description: z.string().optional().describe('Schema description'),
       file_template: z.string().nullable().optional().describe('Optional file template for new instances'),
-      models: modelKeysSchema.optional().describe('Model keys attached to this schema'),
+      meanings: modelKeysSchema.optional().describe('Meaning keys attached to this schema'),
     },
-    async ({ project_id, name, icon, color, description, file_template, models }) => {
+    async ({ project_id, name, icon, color, description, file_template, meanings }) => {
       try {
         const result = await createSchema({
           project_id: resolveProjectId(project_id),
@@ -58,7 +58,7 @@ export function registerSchemaTools(server: McpServer): void {
           color,
           description,
           file_template: file_template ?? undefined,
-          models: models as ModelRefKey[] | undefined,
+          meanings: meanings as MeaningRefKey[] | undefined,
         });
         emitChange({ type: 'schema', action: 'create', id: result.id });
         return {
@@ -83,9 +83,9 @@ export function registerSchemaTools(server: McpServer): void {
       color: z.string().optional().describe('New color value'),
       description: z.string().optional().describe('New description'),
       file_template: z.string().nullable().optional().describe('New file template or null'),
-      models: modelKeysSchema.optional().describe('New model keys attached to this schema'),
+      meanings: modelKeysSchema.optional().describe('New meaning keys attached to this schema'),
     },
-    async ({ schema_id, name, icon, color, description, file_template, models }) => {
+    async ({ schema_id, name, icon, color, description, file_template, meanings }) => {
       try {
         const result = await updateSchema(schema_id, {
           name,
@@ -93,7 +93,7 @@ export function registerSchemaTools(server: McpServer): void {
           color,
           description,
           file_template,
-          models: models as ModelRefKey[] | undefined,
+          meanings: meanings as MeaningRefKey[] | undefined,
         });
         if (!result) {
           return {

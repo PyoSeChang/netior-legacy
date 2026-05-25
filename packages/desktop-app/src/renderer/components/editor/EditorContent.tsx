@@ -3,7 +3,7 @@ import type { EditorTab } from '@netior/shared/types';
 import { InstanceEditor } from './InstanceEditor';
 import { FileEditor } from './FileEditor';
 import { SchemaEditor } from './SchemaEditor';
-import { ModelEditor } from './ModelEditor';
+import { MeaningEditor } from './MeaningEditor';
 import { TerminalEditor } from './TerminalEditor';
 import { EdgeEditor } from './EdgeEditor';
 import { NetworkEditor } from './NetworkEditor';
@@ -65,8 +65,8 @@ export function EditorContent({ tab }: EditorContentProps): JSX.Element {
       content = <FileEditor tab={tab} />; break;
     case 'schema':
       content = <SchemaEditor tab={tab} />; break;
-    case 'model':
-      content = <ModelEditor tab={tab} />; break;
+    case 'meaning':
+      content = <MeaningEditor tab={tab} />; break;
     case 'terminal':
       content = <TerminalEditor tab={tab} />; break;
     case 'edge':

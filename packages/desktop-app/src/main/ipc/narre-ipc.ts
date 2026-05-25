@@ -749,25 +749,26 @@ export function registerNarreIpc(): void {
       );
       const take = <T>(items: T[]): T[] => items.slice(0, categoryLimit);
 
-      const models = await listRemoteModels(projectId);
-      const modelMap = new Map(models.map((a) => [a.id, a]));
+      const meanings = await listRemoteModels(projectId);
+      const meaningMap = new Map(meanings.map((a) => [a.id, a]));
+      const schemas = await listRemoteSchemas(projectId);
+      const schemaMap = new Map(schemas.map((schema) => [schema.id, schema]));
       const instances = lowerQuery.length === 0
         ? await listRemoteInstancesByProject(projectId)
         : await searchRemoteInstances(projectId, query);
 
       for (const c of take(instances)) {
-        const arch = c.model_id ? modelMap.get(c.model_id) : null;
+        const schema = c.schema_id ? schemaMap.get(c.schema_id) : null;
         results.push({
           type: 'instance', id: c.id, display: c.title, color: c.color, icon: c.icon,
-          meta: arch
+          meta: schema
             ? {
-              model: arch.name,
-              modelKey: arch.key,
-              modelSourceKind: arch.source_kind,
-              modelSourceRef: arch.source_ref,
-              modelDescription: arch.description,
+              schema: schema.name,
+              schemaId: schema.id,
+              meaningRefs: schema.meanings,
+              meaningDescription: schema.description,
             }
-            : { model: null },
+            : { schema: null },
         });
       }
 
@@ -782,7 +783,6 @@ export function registerNarreIpc(): void {
       }
 
       // Search schemas
-      const schemas = await listRemoteSchemas(projectId);
       for (const schema of take(schemas.filter((schema) => matches([schema.name, schema.description])))) {
         results.push({
           type: 'schema',
@@ -791,14 +791,14 @@ export function registerNarreIpc(): void {
           color: schema.color,
           icon: schema.icon,
           description: schema.description,
-          meta: { models: schema.models },
+          meta: { meaningRefs: schema.meanings },
         });
       }
 
-      // Search models
-      for (const a of take(Array.from(modelMap.values()).filter((a) => matches([a.name, a.description, a.key])))) {
+      // Search meanings
+      for (const a of take(Array.from(meaningMap.values()).filter((a) => matches([a.name, a.description, a.key])))) {
         results.push({
-          type: 'model', id: a.id, display: a.name, color: a.color, icon: a.icon,
+          type: 'meaning', id: a.id, display: a.name, color: a.color, icon: a.icon,
           description: a.description,
           meta: {
             key: a.key,

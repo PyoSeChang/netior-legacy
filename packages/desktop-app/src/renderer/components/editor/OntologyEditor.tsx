@@ -6,7 +6,7 @@ import { useContextStore } from '../../stores/context-store';
 import { useEditorStore } from '../../stores/editor-store';
 import { useNetworkStore } from '../../stores/network-store';
 import { useProjectStore } from '../../stores/project-store';
-import { useModelStore } from '../../stores/model-store';
+import { useMeaningStore } from '../../stores/meaning-store';
 import { useSchemaStore } from '../../stores/schema-store';
 import { useI18n } from '../../hooks/useI18n';
 import { createOntologyDisplayResolver } from '@netior/shared';
@@ -27,7 +27,7 @@ function getNetworkKindLabel(kind: string): string {
   return 'Network';
 }
 
-type CreatableOntologyType = 'network' | 'instance' | 'schema' | 'model' | 'context';
+type CreatableOntologyType = 'network' | 'instance' | 'schema' | 'meaning' | 'context';
 
 const EMPTY_LIST: never[] = [];
 
@@ -51,16 +51,16 @@ export function OntologyEditor({ tab }: OntologyEditorProps): JSX.Element {
   const rawSchemas = useSchemaStore((s) => s.schemas);
   const loadSchemas = useSchemaStore((s) => s.loadByProject);
   const createSchema = useSchemaStore((s) => s.createSchema);
-  const rawModels = useModelStore((s) => s.models);
-  const loadModels = useModelStore((s) => s.loadByProject);
-  const createModel = useModelStore((s) => s.createModel);
+  const rawModels = useMeaningStore((s) => s.meanings);
+  const loadMeanings = useMeaningStore((s) => s.loadByProject);
+  const createMeaning = useMeaningStore((s) => s.createMeaning);
   const rawContexts = useContextStore((s) => s.contexts);
   const loadContexts = useContextStore((s) => s.loadContexts);
   const createContext = useContextStore((s) => s.createContext);
   const networks = Array.isArray(rawNetworks) ? rawNetworks : EMPTY_LIST;
   const instances = Array.isArray(rawInstances) ? rawInstances : EMPTY_LIST;
   const schemas = Array.isArray(rawSchemas) ? rawSchemas : EMPTY_LIST;
-  const models = Array.isArray(rawModels) ? rawModels : EMPTY_LIST;
+  const meanings = Array.isArray(rawModels) ? rawModels : EMPTY_LIST;
   const contexts = Array.isArray(rawContexts) ? rawContexts : EMPTY_LIST;
 
   const projectId = tab.projectId
@@ -84,10 +84,10 @@ export function OntologyEditor({ tab }: OntologyEditorProps): JSX.Element {
     void loadNetworkTree(projectId);
     void loadInstances(projectId);
     void loadSchemas(projectId);
-    void loadModels(projectId);
+    void loadMeanings(projectId);
   }, [
     loadInstances,
-    loadModels,
+    loadMeanings,
     loadNetworks,
     loadNetworkTree,
     loadSchemas,
@@ -177,15 +177,15 @@ export function OntologyEditor({ tab }: OntologyEditorProps): JSX.Element {
         });
         break;
       }
-      case 'model': {
-        const created = await createModel({
+      case 'meaning': {
+        const created = await createMeaning({
           project_id: projectId,
-          name: tr('model.newDefault', 'New Model'),
+          name: tr('meaning.newDefault', 'New Meaning'),
         });
         await openEditorTab({
-          type: 'model',
+          type: 'meaning',
           targetId: created.id,
-          title: display.modelName(created),
+          title: display.meaningName(created),
           projectId,
           isDirty: true,
         });
@@ -214,7 +214,7 @@ export function OntologyEditor({ tab }: OntologyEditorProps): JSX.Element {
     }
   }, [
     createContext,
-    createModel,
+    createMeaning,
     createSchema,
     createNetwork,
     currentNetwork?.id,
@@ -239,7 +239,7 @@ export function OntologyEditor({ tab }: OntologyEditorProps): JSX.Element {
     { key: 'network', label: t('sidebar.networks'), icon: Waypoints },
     { key: 'instance', label: t('objectPanel.instance' as never), icon: CircleDot },
     { key: 'schema', label: t('schema.title'), icon: Boxes },
-    { key: 'model', label: t('model.title' as never), icon: Boxes },
+    { key: 'meaning', label: t('meaning.title' as never), icon: Boxes },
     { key: 'context', label: t('context.title'), icon: Layers3 },
   ], [t]);
 
@@ -294,15 +294,15 @@ export function OntologyEditor({ tab }: OntologyEditorProps): JSX.Element {
           })),
       },
       {
-        key: 'model' as const,
-        label: t('model.title' as never),
-        items: [...models]
-          .sort((a, b) => display.modelName(a).localeCompare(display.modelName(b)))
+        key: 'meaning' as const,
+        label: t('meaning.title' as never),
+        items: [...meanings]
+          .sort((a, b) => display.meaningName(a).localeCompare(display.meaningName(b)))
           .map((item) => ({
             id: item.id,
-            objectType: 'model' as const,
-            title: display.modelName(item),
-            subtitle: display.modelDescription(item) ?? t('model.title' as never),
+            objectType: 'meaning' as const,
+            title: display.meaningName(item),
+            subtitle: display.meaningDescription(item) ?? t('meaning.title' as never),
           })),
       },
       {
@@ -325,7 +325,7 @@ export function OntologyEditor({ tab }: OntologyEditorProps): JSX.Element {
     contexts,
     currentNetwork?.id,
     currentProject?.id,
-    models,
+    meanings,
     networks,
     projectId,
     projects,
@@ -356,8 +356,8 @@ export function OntologyEditor({ tab }: OntologyEditorProps): JSX.Element {
       case 'schema':
         await openEditorTab({ type: 'schema', targetId: item.id, title: item.title, projectId: projectId ?? undefined });
         break;
-      case 'model':
-        await openEditorTab({ type: 'model', targetId: item.id, title: item.title, projectId: projectId ?? undefined });
+      case 'meaning':
+        await openEditorTab({ type: 'meaning', targetId: item.id, title: item.title, projectId: projectId ?? undefined });
         break;
       case 'context':
         await openEditorTab({ type: 'context', targetId: item.id, title: item.title });

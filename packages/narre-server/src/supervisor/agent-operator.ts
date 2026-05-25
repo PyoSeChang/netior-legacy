@@ -54,7 +54,7 @@ export class AgentOperator {
           runId,
           title: 'Discover relevant project context',
           input: [
-            'Find relevant instances, networks, files, models, relation types, and unresolved context for the user request.',
+            'Find relevant instances, networks, files, meanings, relation types, and unresolved context for the user request.',
             'Return concise findings with stable references and avoid mutations.',
           ].join('\n'),
           agentKey: finderKey,
@@ -68,7 +68,7 @@ export class AgentOperator {
           title: 'Build or propose Netior structure',
           input: [
             'Use the user request and upstream findings to build or propose the needed Netior structure.',
-            'Keep the output explicit about created/proposed instances, models, relation types, edges, and questions.',
+            'Keep the output explicit about created/proposed instances, meanings, relation types, edges, and questions.',
           ].join('\n'),
           agentKey: builderKey,
           dependsOnTaskIds: createdTasks.map((task) => task.id),
@@ -302,7 +302,7 @@ function buildPlannerPrompt(snapshot: OrchestrationSnapshot, agents: readonly Ag
     'Create an execution plan for this Netior multi-agent orchestration run.',
     'Return JSON only. Do not include Markdown fences or commentary.',
     '',
-    'Model:',
+    'Meaning:',
     '{"tasks":[{"title":"short task title","input":"full instruction for the assigned agent","agent":"agent key from available agents","skills":["skill-id"],"dependsOn":[0]}]}',
     '',
     'Rules:',

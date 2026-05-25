@@ -35,8 +35,8 @@ export const confirmToolModel = z.object({
       label: z.string(),
       value: z.string().optional(),
       detail: z.string().optional(),
-      kind: z.enum(['text', 'icon', 'color', 'model_list']).optional(),
-      models: z.array(z.object({
+      kind: z.enum(['text', 'icon', 'color', 'meaning_list']).optional(),
+      meanings: z.array(z.object({
         key: z.string(),
         name: z.string(),
         description: z.string().nullable().optional(),

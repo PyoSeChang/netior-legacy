@@ -327,7 +327,7 @@ export interface ContextMember {
 // ============================================
 
 export type NetworkObjectType =
-  | 'instance' | 'network' | 'project' | 'schema' | 'model'
+  | 'instance' | 'network' | 'project' | 'schema' | 'meaning'
   | 'agent' | 'context'
   | 'file' | 'module' | 'folder';
 
@@ -426,7 +426,7 @@ export interface Edge {
   source_node_id: string;
   target_node_id: string;
   relationship_id: string | null;
-  model_id: string | null;
+  meaning_id: string | null;
   edge_type_id: string | null;
   source_port_key: string | null;
   target_port_key: string | null;
@@ -440,7 +440,7 @@ export interface EdgeCreate {
   source_node_id: string;
   target_node_id: string;
   relationship_id?: string | null;
-  model_id?: string | null;
+  meaning_id?: string | null;
   edge_type_id?: string | null;
   source_port_key?: string | null;
   target_port_key?: string | null;
@@ -450,7 +450,7 @@ export interface EdgeCreate {
 
 export interface EdgeUpdate {
   relationship_id?: string | null;
-  model_id?: string | null;
+  meaning_id?: string | null;
   edge_type_id?: string | null;
   source_port_key?: string | null;
   target_port_key?: string | null;
@@ -467,7 +467,7 @@ export interface Relationship {
   project_id: string;
   source_object_id: string;
   target_object_id: string;
-  model_id: string | null;
+  meaning_id: string | null;
   description: string | null;
   properties_json: string | null;
   source_kind: OntologySourceKind;
@@ -482,7 +482,7 @@ export interface RelationshipCreate {
   project_id: string;
   source_object_id: string;
   target_object_id: string;
-  model_id?: string | null;
+  meaning_id?: string | null;
   description?: string | null;
   properties_json?: string | null;
   source_kind?: OntologySourceKind;
@@ -492,7 +492,7 @@ export interface RelationshipCreate {
 }
 
 export interface RelationshipUpdate {
-  model_id?: string | null;
+  meaning_id?: string | null;
   description?: string | null;
   properties_json?: string | null;
   source_kind?: OntologySourceKind;
@@ -505,11 +505,11 @@ export interface RelationshipListFilters {
   project_id: string;
   source_object_id?: string;
   target_object_id?: string;
-  model_id?: string;
+  meaning_id?: string;
 }
 
 // ============================================
-// Meaning Model
+// Meaning Meaning
 // ============================================
 
 export type SemanticCategoryKey =
@@ -523,7 +523,7 @@ export type SemanticCategoryKey =
 
 export type SemanticCategoryRefKey = SemanticCategoryKey | (string & {});
 
-export type ModelKey =
+export type MeaningKey =
   | 'temporal'
   | 'dueable'
   | 'recurring'
@@ -565,7 +565,7 @@ export type ModelKey =
   | 'details'
   | 'example_of';
 
-export type ModelRefKey = ModelKey | (string & {});
+export type MeaningRefKey = MeaningKey | (string & {});
 
 export type SemanticMeaningKey =
   | 'time_interval'
@@ -688,15 +688,15 @@ export type FieldMeaningKey =
   | 'governance.approved_at';
 
 export type FieldMeaningBindingKey = FieldMeaningKey | `${string}.${string}`;
-export type FieldMeaningBindingSource = 'manual' | 'model' | 'migration' | 'system';
+export type FieldMeaningBindingSource = 'manual' | 'meaning' | 'migration' | 'system';
 export type MeaningBindingKey = FieldMeaningBindingKey;
-export type MeaningSourceKind = 'manual' | 'model' | 'migration' | 'system';
+export type MeaningSourceKind = 'manual' | 'meaning' | 'migration' | 'system';
 export type SlotBindingTargetKind = 'field' | 'edge' | 'derived';
 
 export type SlotConstraintLevel = 'strict' | 'constrained' | 'loose';
 
-export type ModelRepresentationKind = 'single_field' | 'field_group' | 'relation' | 'computed';
-export type ModelTargetKind = 'object' | 'relation' | 'both';
+export type MeaningRepresentationKind = 'single_field' | 'field_group' | 'relation' | 'computed';
+export type MeaningTargetKind = 'object' | 'relation' | 'both';
 export type SchemaFieldBindingKind =
   | 'instance_select'
   | 'instance_multi_select'
@@ -708,7 +708,7 @@ export type SchemaFieldBindingKind =
 export type SchemaFieldBindingCardinality = 'none' | 'one' | 'many' | 'object';
 export type EdgeLineStyle = 'solid' | 'dashed' | 'dotted';
 
-export interface ModelFieldRecipe {
+export interface MeaningFieldRecipe {
   id: string;
   key: string;
   name: string;
@@ -718,39 +718,39 @@ export interface ModelFieldRecipe {
   options?: string | null;
 }
 
-export interface ModelMeaningRecipe {
+export interface MeaningAspectRecipe {
   id: string;
   key: string;
   name: string;
   description?: string | null;
-  representation: ModelRepresentationKind;
-  fields: ModelFieldRecipe[];
+  representation: MeaningRepresentationKind;
+  fields: MeaningFieldRecipe[];
 }
 
-export interface ModelRuleRecipe {
+export interface MeaningRuleRecipe {
   id: string;
   description: string;
 }
 
-export interface ModelRecipe {
-  meanings: ModelMeaningRecipe[];
-  rules: ModelRuleRecipe[];
+export interface MeaningContract {
+  meanings: MeaningAspectRecipe[];
+  rules: MeaningRuleRecipe[];
 }
 
-export interface Model {
+export interface Meaning {
   id: string;
   project_id: string;
-  key: ModelRefKey;
+  key: MeaningRefKey;
   name: string;
   description: string | null;
   category_instance_id: string | null;
   category_instance_title?: string | null;
   category_instance_source_ref?: string | null;
-  target_kind: ModelTargetKind;
+  target_kind: MeaningTargetKind;
   meaning_keys: SemanticMeaningKey[];
   core_slots: MeaningSlotKey[];
   optional_slots: MeaningSlotKey[];
-  recipe: ModelRecipe;
+  recipe: MeaningContract;
   color: string | null;
   icon: string | null;
   line_style: EdgeLineStyle | null;
@@ -764,17 +764,17 @@ export interface Model {
   updated_at: string;
 }
 
-export interface ModelCreate {
+export interface MeaningCreate {
   project_id: string;
-  key?: ModelRefKey;
+  key?: MeaningRefKey;
   name: string;
   description?: string | null;
   category_instance_id?: string | null;
-  target_kind?: ModelTargetKind;
+  target_kind?: MeaningTargetKind;
   meaning_keys?: SemanticMeaningKey[];
   core_slots?: MeaningSlotKey[];
   optional_slots?: MeaningSlotKey[];
-  recipe?: ModelRecipe;
+  recipe?: MeaningContract;
   color?: string | null;
   icon?: string | null;
   line_style?: EdgeLineStyle | null;
@@ -786,16 +786,16 @@ export interface ModelCreate {
   source_version?: string | null;
 }
 
-export interface ModelUpdate {
-  key?: ModelRefKey;
+export interface MeaningUpdate {
+  key?: MeaningRefKey;
   name?: string;
   description?: string | null;
   category_instance_id?: string | null;
-  target_kind?: ModelTargetKind;
+  target_kind?: MeaningTargetKind;
   meaning_keys?: SemanticMeaningKey[];
   core_slots?: MeaningSlotKey[];
   optional_slots?: MeaningSlotKey[];
-  recipe?: ModelRecipe;
+  recipe?: MeaningContract;
   color?: string | null;
   icon?: string | null;
   line_style?: EdgeLineStyle | null;
@@ -867,8 +867,8 @@ export interface NetworkFullData {
     representationType?: NetworkNodeType;
   })[];
   edges: (Edge & {
-    model?: Model;
-    relationship?: Relationship & { model?: Model };
+    meaning?: Meaning;
+    relationship?: Relationship & { meaning?: Meaning };
     representationType?: NetworkEdgeType;
   })[];
   nodeTypes?: NetworkNodeType[];
@@ -959,7 +959,7 @@ export interface Schema {
   icon: string | null;
   color: string | null;
   file_template: string | null;
-  models: ModelRefKey[];
+  meanings: MeaningRefKey[];
   source_kind: OntologySourceKind;
   source_id: string | null;
   source_ref: string | null;
@@ -975,7 +975,7 @@ export interface SchemaCreate {
   icon?: string;
   color?: string;
   file_template?: string;
-  models?: ModelRefKey[];
+  meanings?: MeaningRefKey[];
   source_kind?: OntologySourceKind;
   source_id?: string | null;
   source_ref?: string | null;
@@ -988,7 +988,7 @@ export interface SchemaUpdate {
   icon?: string | null;
   color?: string | null;
   file_template?: string | null;
-  models?: ModelRefKey[];
+  meanings?: MeaningRefKey[];
   source_kind?: OntologySourceKind;
   source_id?: string | null;
   source_ref?: string | null;
@@ -1016,12 +1016,12 @@ export type FieldType =
   | 'color'
   | 'rating'
   | 'tags'
-  | 'model_ref';
+  | 'meaning_ref';
 
 export interface SchemaFieldBinding {
   id: string;
   field_id: string;
-  model_id: string | null;
+  meaning_id: string | null;
   binding_kind: SchemaFieldBindingKind;
   source_schema_id: string | null;
   source_field_id: string | null;
@@ -1039,7 +1039,7 @@ export interface SchemaFieldBinding {
 
 export interface SchemaFieldBindingCreate {
   field_id?: string;
-  model_id?: string | null;
+  meaning_id?: string | null;
   binding_kind: SchemaFieldBindingKind;
   source_schema_id?: string | null;
   source_field_id?: string | null;
@@ -1054,7 +1054,7 @@ export interface SchemaFieldBindingCreate {
 }
 
 export interface SchemaFieldBindingUpdate {
-  model_id?: string | null;
+  meaning_id?: string | null;
   binding_kind?: SchemaFieldBindingKind;
   source_schema_id?: string | null;
   source_field_id?: string | null;
@@ -1080,7 +1080,7 @@ export interface SchemaField {
   bindings: SchemaFieldBinding[];
   meaning_bindings: FieldMeaningBindingKey[];
   slot_binding_locked: boolean;
-  generated_by_model: boolean;
+  generated_by_meaning: boolean;
   source_kind: OntologySourceKind;
   source_id: string | null;
   source_ref: string | null;
@@ -1101,7 +1101,7 @@ export interface SchemaFieldCreate {
   meaning_key?: FieldMeaningKey | null;
   meaning_bindings?: FieldMeaningBindingKey[];
   slot_binding_locked?: boolean;
-  generated_by_model?: boolean;
+  generated_by_meaning?: boolean;
   source_kind?: OntologySourceKind;
   source_id?: string | null;
   source_ref?: string | null;
@@ -1120,7 +1120,7 @@ export interface SchemaFieldUpdate {
   meaning_key?: FieldMeaningKey | null;
   meaning_bindings?: FieldMeaningBindingKey[];
   slot_binding_locked?: boolean;
-  generated_by_model?: boolean;
+  generated_by_meaning?: boolean;
   source_kind?: OntologySourceKind;
   source_id?: string | null;
   source_ref?: string | null;
@@ -1144,7 +1144,7 @@ export interface SchemaMeaning {
   meaning_key: SemanticMeaningKey;
   label: string | null;
   source: MeaningSourceKind;
-  source_model: ModelRefKey | null;
+  source_meaning: MeaningRefKey | null;
   sort_order: number;
   slots: SchemaMeaningSlotBinding[];
   source_kind: OntologySourceKind;
@@ -1160,7 +1160,7 @@ export interface SchemaMeaningCreate {
   meaning_key: SemanticMeaningKey;
   label?: string | null;
   source?: MeaningSourceKind;
-  source_model?: ModelRefKey | null;
+  source_meaning?: MeaningRefKey | null;
   sort_order?: number;
   source_kind?: OntologySourceKind;
   source_id?: string | null;
@@ -1222,7 +1222,7 @@ export interface NetworkBreadcrumbItem {
 // ============================================
 
 export type EditorViewMode = 'float' | 'full' | 'side' | 'detached';
-export type EditorTabType = 'instance' | 'file' | 'schema' | 'model' | 'terminal' | 'edge' | 'network' | 'networkViewer' | 'ontology' | 'project' | 'narre' | 'agent' | 'fileMetadata' | 'context' | 'browser';
+export type EditorTabType = 'instance' | 'file' | 'schema' | 'meaning' | 'terminal' | 'edge' | 'network' | 'networkViewer' | 'ontology' | 'project' | 'narre' | 'agent' | 'fileMetadata' | 'context' | 'browser';
 
 /** Identifies a window that hosts editor tabs (main window or detached window) */
 export interface EditorHostState {
@@ -1298,7 +1298,7 @@ export interface EditorTab {
     slotIndex?: number;
     positionX?: number;
     positionY?: number;
-    allowedModelIds?: string[];
+    allowedMeaningIds?: string[];
     allowedSchemaIds?: string[];
   };
   /** Whether the user manually renamed this tab (prevents auto-title updates) */
@@ -1474,7 +1474,7 @@ export interface NarreMessage {
 }
 
 export interface NarreMention {
-  type: 'instance' | 'network' | 'edge' | 'schema' | 'model' | 'module' | 'file' | 'agent';
+  type: 'instance' | 'network' | 'edge' | 'schema' | 'meaning' | 'module' | 'file' | 'agent';
   id?: string;
   path?: string;
   display: string;
@@ -1760,12 +1760,14 @@ export interface NarreOperationPreviewItem {
   label: string;
   value?: string;
   detail?: string;
-  kind?: 'text' | 'icon' | 'color' | 'model_list';
-  models?: Array<{
+  kind?: 'text' | 'icon' | 'color' | 'meaning_list';
+  meanings?: Array<{
     key: string;
     name: string;
     description?: string | null;
     built_in?: boolean;
+    source_kind?: OntologySourceKind;
+    source_ref?: string | null;
   }>;
 }
 
@@ -1824,7 +1826,7 @@ export type NarreCard =
   | NarreSummaryCard;
 
 export interface NetiorChangeEvent {
-  type: 'schemas' | 'models' | 'instances' | 'relationTypes' | 'relationships' | 'networks' | 'edges' | 'layouts' | 'contexts';
+  type: 'schemas' | 'meanings' | 'instances' | 'relationTypes' | 'relationships' | 'networks' | 'edges' | 'layouts' | 'contexts';
   action: 'created' | 'updated' | 'deleted';
   id: string;
 }

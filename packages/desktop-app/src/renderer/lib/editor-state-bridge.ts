@@ -20,8 +20,8 @@
 import { useEditorStore } from '../stores/editor-store';
 import { useProjectStore } from '../stores/project-store';
 import { useInstanceStore } from '../stores/instance-store';
-import { useSchemaStore as useModelStore } from '../stores/schema-store';
-import { useModelStore } from '../stores/model-store';
+import { useSchemaStore } from '../stores/schema-store';
+import { useMeaningStore } from '../stores/meaning-store';
 import { useNetworkStore } from '../stores/network-store';
 import { useModuleStore } from '../stores/module-store';
 import type { EditorTab, Project, SplitNode } from '@netior/shared/types';
@@ -86,8 +86,8 @@ function bootstrapWorkspaceStores(project: Project): void {
 
   const pid = project.id;
   useInstanceStore.getState().loadByProject(pid);
-  useModelStore.getState().loadByProject(pid);
-  useModelStore.getState().loadByProject(pid);
+  useSchemaStore.getState().loadByProject(pid);
+  useMeaningStore.getState().loadByProject(pid);
   useNetworkStore.getState().loadNetworks(pid);
   useModuleStore.getState().loadModules(pid);
 }

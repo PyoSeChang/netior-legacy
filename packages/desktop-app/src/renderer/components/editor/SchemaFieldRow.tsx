@@ -58,7 +58,7 @@ const STANDARD_FIELD_TYPES: SchemaField['field_type'][] = [
   'color',
   'rating',
   'tags',
-  'model_ref',
+  'meaning_ref',
 ];
 
 const VALUE_FIELD_TYPES: SchemaField['field_type'][] = [
@@ -73,7 +73,7 @@ const VALUE_FIELD_TYPES: SchemaField['field_type'][] = [
   'color',
   'rating',
   'tags',
-  'model_ref',
+  'meaning_ref',
 ];
 
 const COMPUTED_FIELD_TYPES: SchemaField['field_type'][] = [
@@ -107,7 +107,7 @@ function getFieldBehavior(field: SchemaField): FieldBehavior {
     || item.binding_kind === 'computed_field'
     || item.binding_kind === 'derived_collection'
   ));
-  return binding?.binding_kind ?? 'none';
+  return (binding?.binding_kind as FieldBehavior | undefined) ?? 'none';
 }
 
 function createBehaviorBinding(
@@ -292,9 +292,9 @@ export function SchemaFieldRow({
           <div className="flex min-w-0 items-center gap-1.5 overflow-hidden text-[11px] text-secondary sm:basis-full">
             <Link2 size={12} className="shrink-0 text-accent" />
             <span className="truncate font-medium text-default">{slotLabel}</span>
-            {(field.generated_by_model ?? field.generated_by_model) && (
+            {(field.generated_by_meaning ?? field.generated_by_meaning) && (
               <span className="shrink-0 rounded bg-accent-muted px-1.5 py-0.5 text-[10px] text-accent">
-                {t('semantic.ui.fromModel' as never)}
+                {t('semantic.ui.fromMeaning' as never)}
               </span>
             )}
             {field.slot_binding_locked && (

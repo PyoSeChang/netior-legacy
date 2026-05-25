@@ -111,18 +111,18 @@ function resolveRelationshipLines(relationshipId: string | undefined): ResolvedL
   if (!tableExists(db, 'relationships')) return [{ label: 'id', value: relationshipId }];
 
   const relationship = db.prepare(`
-    SELECT r.id, r.model_id, r.description, r.properties_json, m.name AS model_name, m.key AS model_key
+    SELECT r.id, r.meaning_id, r.description, r.properties_json, m.name AS meaning_name, m.key AS meaning_key
       FROM relationships r
-      LEFT JOIN models m ON m.id = r.model_id
+      LEFT JOIN meanings m ON m.id = r.meaning_id
      WHERE r.id = ?
   `).get(relationshipId) as Record<string, unknown> | undefined;
 
   if (!relationship) return [{ label: 'id', value: `${relationshipId} (missing)` }];
 
   const lines: ResolvedLine[] = [{ label: 'id', value: relationshipId }];
-  const modelName = rowValue(relationship, 'model_name');
-  const modelKey = rowValue(relationship, 'model_key');
-  if (modelName || modelKey) lines.push({ label: 'model', value: modelKey ? `${modelName ?? modelKey} (${modelKey})` : modelName as string });
+  const meaningName = rowValue(relationship, 'meaning_name');
+  const meaningKey = rowValue(relationship, 'meaning_key');
+  if (meaningName || meaningKey) lines.push({ label: 'meaning', value: meaningKey ? `${meaningName ?? meaningKey} (${meaningKey})` : meaningName as string });
   const description = rowValue(relationship, 'description');
   if (description) lines.push({ label: 'description', value: description });
   const properties = jsonPreview(rowValue(relationship, 'properties_json'));
@@ -138,7 +138,7 @@ function resolveSemanticTargetLines(token: SemanticEditorToken): ResolvedLine[] 
     const tableByType: Partial<Record<typeof target.objectType, { table: string; labelColumn: string; kindLabel: string }>> = {
       instance: { table: 'instances', labelColumn: 'title', kindLabel: 'instance' },
       schema: { table: 'schemas', labelColumn: 'name', kindLabel: 'schema' },
-      model: { table: 'models', labelColumn: 'name', kindLabel: 'model' },
+      meaning: { table: 'meanings', labelColumn: 'name', kindLabel: 'meaning' },
       network: { table: 'networks', labelColumn: 'name', kindLabel: 'network' },
       project: { table: 'projects', labelColumn: 'name', kindLabel: 'project' },
       file: { table: 'files', labelColumn: 'path', kindLabel: 'file' },

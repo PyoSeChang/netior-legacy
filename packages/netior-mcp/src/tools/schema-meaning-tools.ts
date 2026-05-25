@@ -1,7 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { SEMANTIC_MEANING_DEFINITIONS } from '@netior/shared/constants';
-import type { MeaningSourceKind, SemanticMeaningKey, ModelRefKey, SlotBindingTargetKind } from '@netior/shared/types';
+import type { MeaningSourceKind, SemanticMeaningKey, MeaningRefKey, SlotBindingTargetKind } from '@netior/shared/types';
 import {
   deleteSchemaMeaning,
   ensureSchemaMeaning,
@@ -18,7 +18,7 @@ const meaningKeySchema = z.string().refine(
   (value) => meaningKeySet.has(value as never),
   'Unknown built-in meaning key',
 );
-const meaningSourceSchema = z.enum(['manual', 'model', 'migration', 'system']);
+const meaningSourceSchema = z.enum(['manual', 'meaning', 'migration', 'system']);
 const targetKindSchema = z.enum(['field', 'edge', 'derived']);
 
 export function registerSchemaMeaningTools(server: McpServer): void {
@@ -47,17 +47,17 @@ export function registerSchemaMeaningTools(server: McpServer): void {
       meaning_key: meaningKeySchema.describe('Meaning to attach to the schema'),
       label: z.string().nullable().optional().describe('Optional project-local label for the meaning'),
       source: meaningSourceSchema.optional().describe('Where this meaning came from'),
-      source_model: z.string().nullable().optional().describe('Model key that contributed this meaning'),
+      source_meaning: z.string().nullable().optional().describe('Meaning key that contributed this meaning'),
       sort_order: z.number().optional().describe('Meaning order within the schema'),
     },
-    async ({ schema_id, meaning_key, label, source, source_model, sort_order }) => {
+    async ({ schema_id, meaning_key, label, source, source_meaning, sort_order }) => {
       try {
         const result = await ensureSchemaMeaning({
           schema_id: schema_id,
           meaning_key: meaning_key as SemanticMeaningKey,
           label,
           source: source as MeaningSourceKind | undefined,
-          source_model: source_model as ModelRefKey | null | undefined,
+          source_meaning: source_meaning as MeaningRefKey | null | undefined,
           sort_order,
         });
         if (!result) {

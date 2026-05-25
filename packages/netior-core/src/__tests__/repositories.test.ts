@@ -34,9 +34,8 @@ import {
   updateModule,
 } from '../repositories/module';
 import { getEditorPrefs, upsertEditorPrefs } from '../repositories/editor-prefs';
-import { createModel, deleteModel, getModel, listModels, updateModel } from '../repositories/model';
-import { listModelCategories } from '../repositories/model-category';
-import { createRelationType, listRelationTypes, getRelationType, updateRelationType, deleteRelationType } from '../repositories/relation-type';
+import { createMeaning, deleteMeaning, getMeaning, listMeanings, updateMeaning } from '../repositories/meaning';
+import { listMeaningCategories } from '../repositories/meaning-category';
 import { createObject, getObject, getObjectByRef, deleteObject, deleteObjectByRef } from '../repositories/objects';
 import { createContext, listContexts, getContext, updateContext, deleteContext, addContextMember, removeContextMember, getContextMembers } from '../repositories/context';
 import {
@@ -44,11 +43,11 @@ import {
   deleteSchema,
   createField,
   getSchema,
-  ensureMeaning,
+  ensureSchemaMeaning,
   listFields,
-  listMeanings,
+  listSchemaMeanings,
   updateField,
-  updateMeaningSlotBinding,
+  updateSchemaMeaningSlotBinding,
 } from '../repositories/schema';
 
 describe('Repositories', () => {
@@ -385,8 +384,9 @@ describe('Repositories', () => {
       expect(updated?.description).toBe('modified');
     });
 
-    it('should persist relation meanings on edges', () => {
+    it('should persist meanings on edges', () => {
       const network = createNetwork({ project_id: projectId, name: 'N' });
+      const meaning = createMeaning({ project_id: projectId, name: 'Contains', target_kind: 'relation' });
       const c1 = createInstance({ project_id: projectId, title: 'A' });
       const c2 = createInstance({ project_id: projectId, title: 'B' });
       const obj1 = getObjectByRef('instance', c1.id)!;
@@ -398,14 +398,15 @@ describe('Repositories', () => {
         network_id: network.id,
         source_node_id: n1.id,
         target_node_id: n2.id,
-        relation_meaning: 'structure.contains',
+        meaning_id: meaning.id,
       });
 
-      expect(edge.relation_meaning).toBe('structure.contains');
-      expect(getEdge(edge.id)?.relation_meaning).toBe('structure.contains');
+      expect(edge.meaning_id).toBe(meaning.id);
+      expect(getEdge(edge.id)?.meaning_id).toBe(meaning.id);
 
-      const updated = updateEdge(edge.id, { relation_meaning: 'structure.entry_portal' });
-      expect(updated?.relation_meaning).toBe('structure.entry_portal');
+      const entryPortal = createMeaning({ project_id: projectId, name: 'Entry Portal', target_kind: 'relation' });
+      const updated = updateEdge(edge.id, { meaning_id: entryPortal.id });
+      expect(updated?.meaning_id).toBe(entryPortal.id);
     });
 
     it('should return undefined when updating nonexistent edge', () => {
@@ -849,41 +850,41 @@ describe('Repositories', () => {
     });
   });
 
-  describe('Model', () => {
+  describe('Meaning', () => {
     let projectId: string;
 
     beforeEach(() => {
-      const project = createProject({ name: 'Test', root_dir: '/model-test' });
+      const project = createProject({ name: 'Test', root_dir: '/meaning-test' });
       projectId = project.id;
     });
 
-    it('should seed built-in models for new projects', () => {
-      const models = listModels(projectId);
-      const temporal = models.find((model) => model.key === 'temporal');
+    it('should seed built-in meanings for new projects', () => {
+      const meanings = listMeanings(projectId);
+      const temporal = meanings.find((meaning) => meaning.key === 'temporal');
 
-      expect(models.length).toBeGreaterThan(0);
+      expect(meanings.length).toBeGreaterThan(0);
       expect(temporal).toBeDefined();
       expect(temporal?.built_in).toBe(true);
       expect(temporal?.description).toContain('occupy time');
       expect(temporal?.recipe.meanings[0]?.fields[0]?.name).toBe('Start At');
 
-      const obj = getObjectByRef('model', temporal!.id);
+      const obj = getObjectByRef('meaning', temporal!.id);
       expect(obj).toBeDefined();
-      expect(obj!.object_type).toBe('model');
+      expect(obj!.object_type).toBe('meaning');
       expect(obj!.project_id).toBe(projectId);
     });
 
-    it('should create, update, and delete custom models', () => {
-      const categorySchemaId = listModelCategories(projectId)[0]?.schema_id;
+    it('should create, update, and delete custom meanings', () => {
+      const categorySchemaId = listMeaningCategories(projectId)[0]?.schema_id;
       expect(categorySchemaId).toBeDefined();
       const experimentCategory = createInstance({
         project_id: projectId,
         schema_id: categorySchemaId!,
         title: 'Experiment',
         source_kind: 'project',
-        source_ref: 'model-category.experiment',
+        source_ref: 'meaning-category.experiment',
       });
-      const model = createModel({
+      const meaning = createMeaning({
         project_id: projectId,
         name: 'Experiment Rhythm',
         category_instance_id: experimentCategory.id,
@@ -905,33 +906,33 @@ describe('Repositories', () => {
         },
       });
 
-      expect(model.key).toBe('experiment_rhythm');
-      expect(model.category_instance_id).toBe(experimentCategory.id);
-      expect(model.category_instance_title).toBe('Experiment');
-      expect(model.recipe.meanings[0]?.fields[0]?.name).toBe('Frequency');
-      expect(model.recipe.meanings[0]?.fields[0]?.field_types).toEqual(['select', 'text']);
-      expect(getObjectByRef('model', model.id)).toBeDefined();
+      expect(meaning.key).toBe('experiment_rhythm');
+      expect(meaning.category_instance_id).toBe(experimentCategory.id);
+      expect(meaning.category_instance_title).toBe('Experiment');
+      expect(meaning.recipe.meanings[0]?.fields[0]?.name).toBe('Frequency');
+      expect(meaning.recipe.meanings[0]?.fields[0]?.field_types).toEqual(['select', 'text']);
+      expect(getObjectByRef('meaning', meaning.id)).toBeDefined();
 
-      const updated = updateModel(model.id, {
+      const updated = updateMeaning(meaning.id, {
         name: 'Experiment Cadence',
         recipe: {
-          ...model.recipe,
+          ...meaning.recipe,
           rules: [{ id: 'cadence-required', description: 'Frequency and interval are required.' }],
         },
       });
 
       expect(updated?.name).toBe('Experiment Cadence');
       expect(updated?.recipe.rules[0]?.description).toContain('interval');
-      expect(getModel(model.id)?.name).toBe('Experiment Cadence');
+      expect(getMeaning(meaning.id)?.name).toBe('Experiment Cadence');
 
-      expect(deleteModel(model.id)).toBe(true);
-      expect(getModel(model.id)).toBeUndefined();
-      expect(getObjectByRef('model', model.id)).toBeUndefined();
+      expect(deleteMeaning(meaning.id)).toBe(true);
+      expect(getMeaning(meaning.id)).toBeUndefined();
+      expect(getObjectByRef('meaning', meaning.id)).toBeUndefined();
     });
 
-    it('should keep schema model references aligned when a custom model key changes', () => {
-      const knowledgeCategory = listModelCategories(projectId).find((category) => category.source_ref === 'model-category.knowledge');
-      const model = createModel({
+    it('should keep schema meaning references aligned when a custom meaning key changes', () => {
+      const knowledgeCategory = listMeaningCategories(projectId).find((category) => category.source_ref === 'meaning-category.knowledge');
+      const meaning = createMeaning({
         project_id: projectId,
         name: 'Evidence Lifecycle',
         category_instance_id: knowledgeCategory?.id ?? null,
@@ -940,110 +941,31 @@ describe('Repositories', () => {
       const schema = createSchema({
         project_id: projectId,
         name: 'Evidence',
-        models: [model.key],
+        meanings: [meaning.key],
       });
 
-      const updated = updateModel(model.id, { key: 'evidence_state' });
+      const updated = updateMeaning(meaning.id, { key: 'evidence_state' });
 
       expect(updated?.key).toBe('evidence_state');
-      expect(getSchema(schema.id)?.models).toEqual(['evidence_state']);
+      expect(getSchema(schema.id)?.meanings).toEqual(['evidence_state']);
     });
 
-    it('should remove deleted custom model keys from schemas', () => {
-      const model = createModel({
+    it('should remove deleted custom meaning keys from schemas', () => {
+      const meaning = createMeaning({
         project_id: projectId,
         name: 'Evidence Lifecycle',
-        category: 'knowledge',
         meaning_keys: ['versioning'],
       });
       const schema = createSchema({
         project_id: projectId,
         name: 'Evidence',
-        models: [model.key],
+        meanings: [meaning.key],
       });
 
-      expect(schema.models).toEqual([model.key]);
+      expect(schema.meanings).toEqual([meaning.key]);
 
-      expect(deleteModel(model.id)).toBe(true);
-      expect(getSchema(schema.id)?.models).toEqual([]);
-    });
-  });
-
-  describe('RelationType', () => {
-    let projectId: string;
-
-    beforeEach(() => {
-      const project = createProject({ name: 'Test', root_dir: '/rt-test' });
-      projectId = project.id;
-    });
-
-    it('should create and list relation types', () => {
-      const rt = createRelationType({ project_id: projectId, name: 'Antagonist' });
-      expect(rt.name).toBe('Antagonist');
-      expect(rt.line_style).toBe('solid');
-      expect(rt.directed).toBe(false);
-      const list = listRelationTypes(projectId);
-      expect(list).toHaveLength(1);
-      expect(list[0].id).toBe(rt.id);
-    });
-
-    it('should get single relation type', () => {
-      const rt = createRelationType({ project_id: projectId, name: 'Ally' });
-      expect(getRelationType(rt.id)?.name).toBe('Ally');
-      expect(getRelationType('nonexistent')).toBeUndefined();
-    });
-
-    it('should update relation type', () => {
-      const rt = createRelationType({ project_id: projectId, name: 'Old' });
-      const updated = updateRelationType(rt.id, { name: 'New', color: '#ff0000', line_style: 'dashed', directed: true });
-      expect(updated?.name).toBe('New');
-      expect(updated?.color).toBe('#ff0000');
-      expect(updated?.line_style).toBe('dashed');
-      expect(updated?.directed).toBe(true);
-    });
-
-    it('should delete relation type', () => {
-      const rt = createRelationType({ project_id: projectId, name: 'ToDelete' });
-      expect(deleteRelationType(rt.id)).toBe(true);
-      expect(listRelationTypes(projectId)).toHaveLength(0);
-    });
-
-    it('should cascade delete when project is deleted', () => {
-      createRelationType({ project_id: projectId, name: 'CascadeTest' });
-      deleteProject(projectId);
-      expect(listRelationTypes(projectId)).toHaveLength(0);
-    });
-
-    it('should handle directed boolean conversion', () => {
-      const rt = createRelationType({ project_id: projectId, name: 'Directed', directed: true });
-      expect(typeof rt.directed).toBe('boolean');
-      expect(rt.directed).toBe(true);
-
-      const fetched = getRelationType(rt.id);
-      expect(typeof fetched?.directed).toBe('boolean');
-    });
-
-    it('should use default values when optional fields omitted', () => {
-      const rt = createRelationType({ project_id: projectId, name: 'Minimal' });
-      expect(rt.line_style).toBe('solid');
-      expect(rt.directed).toBe(false);
-      expect(rt.description).toBeNull();
-      expect(rt.color).toBeNull();
-    });
-
-    it('should create object record when creating relation type', () => {
-      const rt = createRelationType({ project_id: projectId, name: 'Object relation' });
-      const obj = getObjectByRef('relation_type', rt.id);
-      expect(obj).toBeDefined();
-      expect(obj!.object_type).toBe('relation_type');
-      expect(obj!.project_id).toBe(projectId);
-    });
-
-    it('should delete object record when deleting relation type', () => {
-      const rt = createRelationType({ project_id: projectId, name: 'Object relation' });
-      expect(getObjectByRef('relation_type', rt.id)).toBeDefined();
-      expect(deleteRelationType(rt.id)).toBe(true);
-      expect(getObjectByRef('relation_type', rt.id)).toBeUndefined();
+      expect(deleteMeaning(meaning.id)).toBe(true);
+      expect(getSchema(schema.id)?.meanings).toEqual([]);
     });
   });
 
@@ -1140,112 +1062,6 @@ describe('Repositories', () => {
     });
   });
 
-  describe('Edge expansion', () => {
-    let projectId: string;
-    let networkId: string;
-    let n1Id: string;
-    let n2Id: string;
-
-    beforeEach(() => {
-      const project = createProject({ name: 'Test', root_dir: '/edge-test' });
-      projectId = project.id;
-      networkId = createNetwork({ project_id: projectId, name: 'Network' }).id;
-      const c1 = createInstance({ project_id: projectId, title: 'A' });
-      const c2 = createInstance({ project_id: projectId, title: 'B' });
-      const obj1 = getObjectByRef('instance', c1.id)!;
-      const obj2 = getObjectByRef('instance', c2.id)!;
-      n1Id = addNetworkNode({ network_id: networkId, object_id: obj1.id }).id;
-      n2Id = addNetworkNode({ network_id: networkId, object_id: obj2.id }).id;
-    });
-
-    it('should create edge with relation_type_id', () => {
-      const rt = createRelationType({ project_id: projectId, name: 'Ally' });
-      const edge = createEdge({ network_id: networkId, source_node_id: n1Id, target_node_id: n2Id, relation_type_id: rt.id });
-      expect(edge.relation_type_id).toBe(rt.id);
-    });
-
-    it('should create edge without relation_type_id', () => {
-      const edge = createEdge({ network_id: networkId, source_node_id: n1Id, target_node_id: n2Id });
-      expect(edge.relation_type_id).toBeNull();
-      expect(edge.relation_meaning).toBeNull();
-    });
-
-    it('should create edge with relation_meaning', () => {
-      const edge = createEdge({
-        network_id: networkId,
-        source_node_id: n1Id,
-        target_node_id: n2Id,
-        relation_meaning: 'structure.contains',
-      });
-      expect(edge.relation_meaning).toBe('structure.contains');
-    });
-
-    it('should get edge by id', () => {
-      const edge = createEdge({ network_id: networkId, source_node_id: n1Id, target_node_id: n2Id });
-      const fetched = getEdge(edge.id);
-      expect(fetched?.id).toBe(edge.id);
-    });
-
-    it('should update edge relation_type_id', () => {
-      const rt = createRelationType({ project_id: projectId, name: 'Enemy' });
-      const edge = createEdge({ network_id: networkId, source_node_id: n1Id, target_node_id: n2Id });
-      const updated = updateEdge(edge.id, { relation_type_id: rt.id });
-      expect(updated?.relation_type_id).toBe(rt.id);
-    });
-
-    it('should update edge relation_meaning', () => {
-      const edge = createEdge({ network_id: networkId, source_node_id: n1Id, target_node_id: n2Id });
-      const updated = updateEdge(edge.id, { relation_meaning: 'structure.entry_portal' });
-      expect(updated?.relation_meaning).toBe('structure.entry_portal');
-    });
-
-    it('should SET NULL when relation type deleted', () => {
-      const rt = createRelationType({ project_id: projectId, name: 'Temp' });
-      const edge = createEdge({ network_id: networkId, source_node_id: n1Id, target_node_id: n2Id, relation_type_id: rt.id });
-      deleteRelationType(rt.id);
-      const fetched = getEdge(edge.id);
-      expect(fetched?.relation_type_id).toBeNull();
-    });
-
-    it('should include relation_type in getNetworkFull', () => {
-      const rt = createRelationType({ project_id: projectId, name: 'Ally', color: '#00ff00', directed: true });
-      createEdge({ network_id: networkId, source_node_id: n1Id, target_node_id: n2Id, relation_type_id: rt.id });
-      const full = getNetworkFull(networkId)!;
-      expect(full.edges).toHaveLength(1);
-      expect(full.edges[0].relation_type?.name).toBe('Ally');
-      expect(full.edges[0].relation_type?.directed).toBe(true);
-    });
-
-    it('should include relation_meaning in getNetworkFull', () => {
-      createEdge({
-        network_id: networkId,
-        source_node_id: n1Id,
-        target_node_id: n2Id,
-        relation_meaning: 'structure.contains',
-      });
-      const full = getNetworkFull(networkId)!;
-      expect(full.edges[0].relation_meaning).toBe('structure.contains');
-    });
-
-    it('should store edge visuals in layout layer', () => {
-      const edge = createEdge({ network_id: networkId, source_node_id: n1Id, target_node_id: n2Id });
-      const layout = getLayoutByNetwork(networkId)!;
-      setEdgeVisual(layout.id, edge.id, JSON.stringify({ color: '#ff0000', lineStyle: 'dashed' }));
-
-      const full = getNetworkFull(networkId)!;
-      expect(full.edgeVisuals).toHaveLength(1);
-      expect(JSON.parse(full.edgeVisuals[0].visualJson).color).toBe('#ff0000');
-    });
-
-    it('should not include relation_type for edge without relation_type_id', () => {
-      const edge = createEdge({ network_id: networkId, source_node_id: n1Id, target_node_id: n2Id });
-      const full = getNetworkFull(networkId)!;
-      expect(full.edges).toHaveLength(1);
-      expect(full.edges[0].relation_type).toBeUndefined();
-      expect(full.edges[0].relation_type_id).toBeNull();
-    });
-  });
-
   // --- getNetworkFull Integration ---
 
   describe('getNetworkFull integration', () => {
@@ -1261,13 +1077,13 @@ describe('Repositories', () => {
       const n1 = addNetworkNode({ network_id: network.id, object_id: instanceObj.id });
       const n2 = addNetworkNode({ network_id: network.id, object_id: fileObj.id });
 
-      // Create edge with relation type
-      const rt = createRelationType({ project_id: project.id, name: 'References', directed: true });
+      // Create edge with meaning
+      const meaning = createMeaning({ project_id: project.id, name: 'References', target_kind: 'relation', directed: true });
       const edge = createEdge({
         network_id: network.id,
         source_node_id: n1.id,
         target_node_id: n2.id,
-        relation_type_id: rt.id,
+        meaning_id: meaning.id,
         description: 'instance references file',
       });
 
@@ -1297,9 +1113,9 @@ describe('Repositories', () => {
       expect(fileNode.file?.path).toBe('test.md');
       expect(fileNode.instance).toBeUndefined();
 
-      // Verify edge has relation_type
-      expect(full.edges[0].relation_type?.name).toBe('References');
-      expect(full.edges[0].relation_type?.directed).toBe(true);
+      // Verify edge has meaning
+      expect(full.edges[0].meaning?.name).toBe('References');
+      expect(full.edges[0].meaning?.directed).toBe(true);
       expect(full.edges[0].description).toBe('instance references file');
 
       // Verify node positions
@@ -1442,22 +1258,22 @@ describe('Repositories', () => {
       projectId = createProject({ name: 'Semantic', root_dir: '/semantic-test' }).id;
     });
 
-    it('should attach models to schema on create/update', () => {
+    it('should attach meanings to schema on create/update', () => {
       const schema = createSchema({
         project_id: projectId,
         name: 'Event',
-        models: ['temporal'],
+        meanings: ['temporal'],
       });
 
-      expect(schema.models).toEqual(['temporal']);
+      expect(schema.meanings).toEqual(['temporal']);
 
       const updated = createSchema({
         project_id: projectId,
         name: 'Task',
-        models: ['dueable'],
+        meanings: ['dueable'],
       });
 
-      expect(updated.models).toEqual(['dueable']);
+      expect(updated.meanings).toEqual(['dueable']);
     });
 
     it('should bind fields to meanings and read legacy semantic annotations', () => {
@@ -1496,7 +1312,7 @@ describe('Repositories', () => {
 
     it('should create meanings with slot bindings and bind them to fields', () => {
       const schema = createSchema({ project_id: projectId, name: 'Recurring Task' });
-      const meaning = ensureMeaning({
+      const meaning = ensureSchemaMeaning({
         schema_id: schema.id,
         meaning_key: 'recurrence',
         source: 'manual',
@@ -1519,7 +1335,7 @@ describe('Repositories', () => {
         sort_order: 0,
         meaning_bindings: ['time.recurrence_frequency'],
       });
-      const frequencyBinding = listMeanings(schema.id)
+      const frequencyBinding = listSchemaMeanings(schema.id)
         .find((item) => item.meaning_key === 'recurrence')
         ?.slots.find((slot) => slot.slot_key === 'recurrence_frequency');
 
@@ -1532,12 +1348,12 @@ describe('Repositories', () => {
         sort_order: 1,
       });
       const untilBinding = meaning!.slots.find((slot) => slot.slot_key === 'recurrence_until')!;
-      updateMeaningSlotBinding(untilBinding.id, {
+      updateSchemaMeaningSlotBinding(untilBinding.id, {
         target_kind: 'field',
         field_id: untilField.id,
       });
 
-      const recurring = listMeanings(schema.id).find((item) => item.meaning_key === 'recurrence');
+      const recurring = listSchemaMeanings(schema.id).find((item) => item.meaning_key === 'recurrence');
       expect(recurring?.slots.find((slot) => slot.slot_key === 'recurrence_until')?.field_id).toBe(untilField.id);
       expect(listFields(schema.id).find((field) => field.id === untilField.id)?.meaning_bindings).toContain('time.recurrence_until');
     });
@@ -1550,11 +1366,11 @@ describe('Repositories', () => {
       const fieldId = 'legacy-recurrence-rule-field';
 
       db.prepare(`
-        INSERT INTO schema_fields (id, schema_id, name, field_type, sort_order, required, meaning_slot, meaning_key, slot_binding_locked, generated_by_model, created_at)
+        INSERT INTO schema_fields (id, schema_id, name, field_type, sort_order, required, meaning_slot, meaning_key, slot_binding_locked, generated_by_meaning, created_at)
         VALUES (?, ?, 'Repeat rule', 'text', 0, 1, 'recurrence_rule', 'time.recurrence_rule', 1, 1, ?)
       `).run(fieldId, schema.id, now);
       db.prepare(`
-        INSERT INTO schema_meanings (id, schema_id, meaning_key, label, source, source_model, sort_order, created_at, updated_at)
+        INSERT INTO schema_meanings (id, schema_id, meaning_key, label, source, source_meaning, sort_order, created_at, updated_at)
         VALUES (?, ?, 'recurrence', NULL, 'migration', NULL, 0, ?, ?)
       `).run(meaningId, schema.id, now, now);
       db.prepare(`
@@ -1562,7 +1378,7 @@ describe('Repositories', () => {
         VALUES ('legacy-recurrence-rule-binding', ?, 'recurrence_rule', 'field', ?, 1, 0, ?)
       `).run(meaningId, fieldId, now);
 
-      const recurrence = listMeanings(schema.id).find((item) => item.meaning_key === 'recurrence');
+      const recurrence = listSchemaMeanings(schema.id).find((item) => item.meaning_key === 'recurrence');
 
       expect(recurrence?.slots.map((slot) => slot.slot_key)).toEqual([
         'recurrence_frequency',

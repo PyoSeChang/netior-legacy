@@ -22,7 +22,7 @@ export const FIELD_TYPE_MIN_LEVEL: Record<FieldType, FieldComplexityLevel> = {
   color: 'standard',
   rating: 'standard',
   tags: 'standard',
-  model_ref: 'standard',
+  meaning_ref: 'standard',
   relation: 'advanced',
   object: 'advanced',
 };

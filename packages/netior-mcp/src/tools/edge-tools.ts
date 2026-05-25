@@ -18,21 +18,21 @@ export function registerEdgeTools(server: McpServer): void {
       source_node_id: z.string().describe('Source node ID'),
       target_node_id: z.string().describe('Target node ID'),
       relationship_id: z.string().nullable().optional().describe('Optional relationship ID represented by this network edge'),
-      model_id: z.string().optional().describe('Optional edge model ID'),
+      meaning_id: z.string().optional().describe('Optional edge meaning ID'),
       edge_type_id: z.string().optional().describe('Representation edge type ID'),
       source_port_key: z.string().nullable().optional().describe('Optional source port key'),
       target_port_key: z.string().nullable().optional().describe('Optional target port key'),
       route_json: z.string().nullable().optional().describe('Optional edge route JSON'),
       description: z.string().optional().describe('Optional edge description'),
     },
-    async ({ network_id, source_node_id, target_node_id, relationship_id, model_id, edge_type_id, source_port_key, target_port_key, route_json, description }) => {
+    async ({ network_id, source_node_id, target_node_id, relationship_id, meaning_id, edge_type_id, source_port_key, target_port_key, route_json, description }) => {
       try {
         const result = await createEdge({
           network_id,
           source_node_id,
           target_node_id,
           relationship_id,
-          model_id,
+          meaning_id,
           edge_type_id,
           source_port_key,
           target_port_key,
@@ -83,18 +83,18 @@ export function registerEdgeTools(server: McpServer): void {
     {
       edge_id: z.string().describe('The edge ID'),
       relationship_id: z.string().nullable().optional().describe('Relationship ID or null'),
-      model_id: z.string().nullable().optional().describe('Edge model ID or null'),
+      meaning_id: z.string().nullable().optional().describe('Edge meaning ID or null'),
       edge_type_id: z.string().nullable().optional().describe('Representation edge type ID or null'),
       source_port_key: z.string().nullable().optional().describe('Source port key or null'),
       target_port_key: z.string().nullable().optional().describe('Target port key or null'),
       route_json: z.string().nullable().optional().describe('Edge route JSON or null'),
       description: z.string().nullable().optional().describe('Edge description or null'),
     },
-    async ({ edge_id, relationship_id, model_id, edge_type_id, source_port_key, target_port_key, route_json, description }) => {
+    async ({ edge_id, relationship_id, meaning_id, edge_type_id, source_port_key, target_port_key, route_json, description }) => {
       try {
         const result = await updateEdge(edge_id, {
           relationship_id,
-          model_id,
+          meaning_id,
           edge_type_id,
           source_port_key,
           target_port_key,

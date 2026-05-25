@@ -30,22 +30,22 @@ import type {
   FieldMeaningBindingKey,
   FieldMeaningBindingSource,
   MeaningSourceKind,
-  ModelRefKey,
+  MeaningRefKey,
   SemanticMeaningKey,
   SlotBindingTargetKind,
   FieldMeaningKey,
   MeaningSlotKey,
 } from '@netior/shared/types';
 
-type SchemaRow = Omit<Schema, 'models'> & {
-  models: string | null;
+type SchemaRow = Omit<Schema, 'meanings'> & {
+  meanings: string | null;
 };
-type SchemaFieldRow = Omit<SchemaField, 'required' | 'slot_binding_locked' | 'generated_by_model' | 'meaning_bindings' | 'bindings'> & {
+type SchemaFieldRow = Omit<SchemaField, 'required' | 'slot_binding_locked' | 'generated_by_meaning' | 'meaning_bindings' | 'bindings'> & {
   meaning_slot: MeaningSlotKey | null;
   meaning_key: FieldMeaningKey | null;
   required: number;
   slot_binding_locked: number;
-  generated_by_model: number;
+  generated_by_meaning: number;
 };
 type SchemaFieldBindingRow = Omit<SchemaFieldBinding, 'read_only'> & {
   read_only: number;
@@ -55,24 +55,24 @@ type SchemaMeaningSlotBindingRow = Omit<SchemaMeaningSlotBinding, 'required'> & 
   required: number;
 };
 
-function parseModels(raw: string | null | undefined): ModelRefKey[] {
+function parseMeaningRefs(raw: string | null | undefined): MeaningRefKey[] {
   if (!raw) return [];
   try {
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed.filter((item): item is ModelRefKey => typeof item === 'string') : [];
+    return Array.isArray(parsed) ? parsed.filter((item): item is MeaningRefKey => typeof item === 'string') : [];
   } catch {
     return [];
   }
 }
 
-function serializeModels(models: readonly ModelRefKey[] | undefined): string {
-  return JSON.stringify(models ?? []);
+function serializeMeaningRefs(meanings: readonly MeaningRefKey[] | undefined): string {
+  return JSON.stringify(meanings ?? []);
 }
 
 function toSchema(row: SchemaRow): Schema {
   return {
     ...row,
-    models: parseModels(row.models),
+    meanings: parseMeaningRefs(row.meanings),
   };
 }
 
@@ -219,7 +219,7 @@ function replaceFieldBindings(
 
   const insert = db.prepare(
     `INSERT INTO schema_field_bindings (
-      id, field_id, model_id, binding_kind, source_schema_id, source_field_id,
+      id, field_id, meaning_id, binding_kind, source_schema_id, source_field_id,
       cardinality, read_only, config, sort_order,
       source_kind, source_id, source_ref, source_version, created_at, updated_at
     )
@@ -231,7 +231,7 @@ function replaceFieldBindings(
     insert.run(
       randomUUID(),
       fieldId,
-      binding.model_id ?? null,
+      binding.meaning_id ?? null,
       bindingKind,
       binding.source_schema_id ?? null,
       binding.source_field_id ?? null,
@@ -302,7 +302,7 @@ function toMeaning(row: SchemaMeaningRow, slots: readonly SchemaMeaningSlotBindi
     ...row,
     meaning_key: row.meaning_key as SemanticMeaningKey,
     source: row.source as MeaningSourceKind,
-    source_model: row.source_model ?? null,
+    source_meaning: row.source_meaning ?? null,
     slots: [...slots],
   };
 }
@@ -347,7 +347,7 @@ function ensureMeaningForDb(
   options: {
     label?: string | null;
     source?: MeaningSourceKind;
-    sourceModel?: SchemaMeaning['source_model'];
+    sourceMeaning?: SchemaMeaning['source_meaning'];
     sortOrder?: number;
   } = {},
 ): SchemaMeaning | null {
@@ -366,7 +366,7 @@ function ensureMeaningForDb(
 
   db.prepare(
     `INSERT OR IGNORE INTO schema_meanings (
-      id, schema_id, meaning_key, label, source, source_model, sort_order,
+      id, schema_id, meaning_key, label, source, source_meaning, sort_order,
       source_kind, source_id, source_ref, source_version, created_at, updated_at
     )
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -375,8 +375,8 @@ function ensureMeaningForDb(
     schemaId,
     meaningKey,
     options.label ?? null,
-    options.source ?? (options.sourceModel ? 'model' : 'manual'),
-    options.sourceModel ?? null,
+    options.source ?? (options.sourceMeaning ? 'meaning' : 'manual'),
+    options.sourceMeaning ?? null,
     sortOrder,
     'project',
     null,
@@ -421,7 +421,7 @@ function toField(
 ): SchemaField {
   const fieldMeaning = row.meaning_key ?? meaningSlotToFieldMeaning(row.meaning_slot);
   const bindings = normalizeMeaningBindings(meaningBindings, fieldMeaning);
-  const generatedByModel = Boolean(row.generated_by_model);
+  const generatedByModel = Boolean(row.generated_by_meaning);
   const {
     meaning_slot: _meaningSlot,
     meaning_key: _meaningKey,
@@ -434,7 +434,7 @@ function toField(
     meaning_bindings: bindings,
     required: !!row.required,
     slot_binding_locked: !!row.slot_binding_locked,
-    generated_by_model: generatedByModel,
+    generated_by_meaning: generatedByModel,
   };
 }
 
@@ -487,11 +487,11 @@ export function createSchema(data: SchemaCreate): Schema {
   const db = getDatabase();
   const id = randomUUID();
   const now = new Date().toISOString();
-  const models = data.models ?? [];
+  const meanings = data.meanings ?? [];
 
   db.prepare(
     `INSERT INTO schemas (
-      id, project_id, name, description, icon, color, file_template, models,
+      id, project_id, name, description, icon, color, file_template, meanings,
       source_kind, source_id, source_ref, source_version, created_at, updated_at
     )
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -503,7 +503,7 @@ export function createSchema(data: SchemaCreate): Schema {
     data.icon ?? null,
     data.color ?? null,
     data.file_template ?? null,
-    serializeModels(models),
+    serializeMeaningRefs(meanings),
     data.source_kind ?? 'project',
     data.source_id ?? null,
     data.source_ref ?? null,
@@ -539,13 +539,13 @@ export function updateSchema(id: string, data: SchemaUpdate): Schema | undefined
   if (!existing) return undefined;
 
   const now = new Date().toISOString();
-  const nextModels = data.models !== undefined
-    ? serializeModels(data.models)
-    : existing.models;
+  const nextMeanings = data.meanings !== undefined
+    ? serializeMeaningRefs(data.meanings)
+    : existing.meanings;
 
   db.prepare(
     `UPDATE schemas
-        SET name = ?, description = ?, icon = ?, color = ?, file_template = ?, models = ?,
+        SET name = ?, description = ?, icon = ?, color = ?, file_template = ?, meanings = ?,
             source_kind = ?, source_id = ?, source_ref = ?, source_version = ?, updated_at = ?
       WHERE id = ?`,
   ).run(
@@ -554,7 +554,7 @@ export function updateSchema(id: string, data: SchemaUpdate): Schema | undefined
     data.icon !== undefined ? data.icon : existing.icon,
     data.color !== undefined ? data.color : existing.color,
     data.file_template !== undefined ? data.file_template : existing.file_template,
-    nextModels,
+    nextMeanings,
     data.source_kind !== undefined ? data.source_kind : existing.source_kind,
     data.source_id !== undefined ? data.source_id : existing.source_id,
     data.source_ref !== undefined ? data.source_ref : existing.source_ref,
@@ -581,7 +581,7 @@ export function deleteSchema(id: string): boolean {
 // Schema Meaning CRUD
 // ============================================
 
-export function listMeanings(schemaId: string): SchemaMeaning[] {
+export function listSchemaMeanings(schemaId: string): SchemaMeaning[] {
   const db = getDatabase();
   const rows = db
     .prepare('SELECT * FROM schema_meanings WHERE schema_id = ? ORDER BY sort_order, created_at')
@@ -593,17 +593,17 @@ export function listMeanings(schemaId: string): SchemaMeaning[] {
   return rows.map((row) => toMeaning(row, slotsByMeaningId.get(row.id) ?? []));
 }
 
-export function ensureMeaning(data: SchemaMeaningCreate): SchemaMeaning | null {
+export function ensureSchemaMeaning(data: SchemaMeaningCreate): SchemaMeaning | null {
   const db = getDatabase();
   return ensureMeaningForDb(db, data.schema_id, data.meaning_key, {
     label: data.label,
     source: data.source,
-    sourceModel: data.source_model,
+    sourceMeaning: data.source_meaning,
     sortOrder: data.sort_order,
   });
 }
 
-export function updateMeaning(id: string, data: SchemaMeaningUpdate): SchemaMeaning | null {
+export function updateSchemaMeaning(id: string, data: SchemaMeaningUpdate): SchemaMeaning | null {
   const db = getDatabase();
   const existing = db.prepare('SELECT * FROM schema_meanings WHERE id = ?').get(id) as SchemaMeaningRow | undefined;
   if (!existing) return null;
@@ -620,13 +620,13 @@ export function updateMeaning(id: string, data: SchemaMeaningUpdate): SchemaMean
   return toMeaning(row, getMeaningSlotBindingsByMeaningId(db, [id]).get(id) ?? []);
 }
 
-export function deleteMeaning(id: string): boolean {
+export function deleteSchemaMeaning(id: string): boolean {
   const db = getDatabase();
   const result = db.prepare('DELETE FROM schema_meanings WHERE id = ?').run(id);
   return result.changes > 0;
 }
 
-export function updateMeaningSlotBinding(
+export function updateSchemaMeaningSlotBinding(
   id: string,
   data: SchemaMeaningSlotBindingUpdate,
 ): SchemaMeaningSlotBinding | null {
@@ -684,12 +684,12 @@ export function createField(data: SchemaFieldCreate): SchemaField {
     ?? getMeaningSlotForMeaningBindings(requestedBindings)
     ?? fieldMeaningToMeaningSlot(fieldMeaning);
   const meaningBindings = normalizeMeaningBindings(requestedBindings, fieldMeaning);
-  const generatedByModel = data.generated_by_model ?? false;
+  const generatedByModel = data.generated_by_meaning ?? false;
 
   db.prepare(
     `INSERT INTO schema_fields (
       id, schema_id, name, field_type, options, sort_order, required, default_value,
-      meaning_slot, meaning_key, slot_binding_locked, generated_by_model,
+      meaning_slot, meaning_key, slot_binding_locked, generated_by_meaning,
       source_kind, source_id, source_ref, source_version, created_at
     )
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -719,7 +719,7 @@ export function createField(data: SchemaFieldCreate): SchemaField {
     meaningBindings,
     data.meaning_bindings !== undefined || meaningInput.meaning_bindings !== undefined
       ? 'manual'
-      : generatedByModel ? 'model' : 'system',
+      : generatedByModel ? 'meaning' : 'system',
   );
   replaceFieldBindings(db, id, data.bindings ?? [], {
     fieldType: data.field_type,
@@ -733,7 +733,7 @@ export function createField(data: SchemaFieldCreate): SchemaField {
     data.schema_id,
     meaningSlot,
     id,
-    generatedByModel ? 'model' : 'system',
+    generatedByModel ? 'meaning' : 'system',
   );
 
   const row = db.prepare('SELECT * FROM schema_fields WHERE id = ?').get(id) as SchemaFieldRow;
@@ -786,7 +786,7 @@ export function updateField(id: string, data: SchemaFieldUpdate): SchemaField | 
   db.prepare(
     `UPDATE schema_fields
         SET name = ?, field_type = ?, options = ?, sort_order = ?, required = ?, default_value = ?,
-            meaning_slot = ?, meaning_key = ?, slot_binding_locked = ?, generated_by_model = ?,
+            meaning_slot = ?, meaning_key = ?, slot_binding_locked = ?, generated_by_meaning = ?,
             source_kind = ?, source_id = ?, source_ref = ?, source_version = ?
       WHERE id = ?`,
   ).run(
@@ -799,9 +799,9 @@ export function updateField(id: string, data: SchemaFieldUpdate): SchemaField | 
     nextMeaningSlot ?? null,
     nextFieldMeaning ?? null,
     data.slot_binding_locked !== undefined ? (data.slot_binding_locked ? 1 : 0) : existing.slot_binding_locked,
-    data.generated_by_model !== undefined
-      ? (data.generated_by_model ? 1 : 0)
-      : existing.generated_by_model,
+    data.generated_by_meaning !== undefined
+      ? (data.generated_by_meaning ? 1 : 0)
+      : existing.generated_by_meaning,
     data.source_kind !== undefined ? data.source_kind : existing.source_kind,
     data.source_id !== undefined ? data.source_id : existing.source_id,
     data.source_ref !== undefined ? data.source_ref : existing.source_ref,

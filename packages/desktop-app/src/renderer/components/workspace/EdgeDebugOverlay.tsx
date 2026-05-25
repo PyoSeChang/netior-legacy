@@ -1,6 +1,6 @@
 ﻿import React from 'react';
 import type { RenderEdge, RenderEdgeAnchor, RenderNode, RenderPoint } from './types';
-import { HIERARCHY_PARENT_MODEL_KEY } from '../../lib/edge-models';
+import { HIERARCHY_PARENT_MEANING_KEY } from '../../lib/edge-meanings';
 
 interface EdgeDebugOverlayProps {
   edges: RenderEdge[];
@@ -166,7 +166,7 @@ export const EdgeDebugOverlay: React.FC<EdgeDebugOverlayProps> = ({
             );
           const pathPoints = [sourcePoint, ...routePoints, targetPoint];
           const pointString = pathPoints.map((point) => `${point.x},${point.y}`).join(' ');
-          const isHierarchyStructure = edge.relationMeaning === HIERARCHY_PARENT_MODEL_KEY;
+          const isHierarchyStructure = edge.relationMeaning === HIERARCHY_PARENT_MEANING_KEY;
 
           return (
             <g key={`debug-edge-${edge.id}`}>

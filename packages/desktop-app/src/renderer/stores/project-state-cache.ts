@@ -1,9 +1,9 @@
-import { useNetworkStore, type NetworkNodeWithObject, type NetworkEdgeWithModel } from './network-store';
+import { useNetworkStore, type NetworkNodeWithObject, type NetworkEdgeWithMeaning } from './network-store';
 import { useEditorStore } from './editor-store';
 import { useModuleStore } from './module-store';
 import { useInstanceStore } from './instance-store';
 import { useSchemaStore } from './schema-store';
-import { useModelStore } from './model-store';
+import { useMeaningStore } from './meaning-store';
 import { useFileStore, type OpenFile, type ClipboardAction, type ClipboardState } from './file-store';
 import type {
   Network, NetworkNode, Edge, Instance,
@@ -11,7 +11,7 @@ import type {
   EditorTab, SplitNode,
   Module, ModuleDirectory,
   InstanceProperty,
-  Model, SchemaField,
+  Meaning, Schema, SchemaField,
   FileTreeNode,
 } from '@netior/shared/types';
 
@@ -19,7 +19,7 @@ interface NetworkSnapshot {
   networks: Network[];
   currentNetwork: Network | null;
   nodes: NetworkNodeWithObject[];
-  edges: NetworkEdgeWithModel[];
+  edges: NetworkEdgeWithMeaning[];
   breadcrumbs: NetworkBreadcrumbItem[];
   networkHistory: string[];
   networkTree: NetworkTreeNode[];
@@ -48,12 +48,12 @@ interface InstanceSnapshot {
 }
 
 interface SchemaStructureSnapshot {
-  schemas: Model[];
+  schemas: Schema[];
   fields: Record<string, SchemaField[]>;
 }
 
-interface ModelSnapshot {
-  models: Model[];
+interface MeaningSnapshot {
+  meanings: Meaning[];
   loading: boolean;
 }
 
@@ -71,7 +71,7 @@ interface WorkspaceSnapshot {
   module: ModuleSnapshot;
   instance: InstanceSnapshot;
   schemaStructure: SchemaStructureSnapshot;
-  model: ModelSnapshot;
+  meaning: MeaningSnapshot;
   file: FileSnapshot;
 }
 
@@ -112,7 +112,7 @@ function capture(): WorkspaceSnapshot {
   const module = useModuleStore.getState();
   const instance = useInstanceStore.getState();
   const schemaStructure = useSchemaStore.getState();
-  const model = useModelStore.getState();
+  const meaning = useMeaningStore.getState();
   const file = useFileStore.getState();
 
   return {
@@ -148,9 +148,9 @@ function capture(): WorkspaceSnapshot {
       schemas: schemaStructure.schemas,
       fields: schemaStructure.fields,
     },
-    model: {
-      models: model.models,
-      loading: model.loading,
+    meaning: {
+      meanings: meaning.meanings,
+      loading: meaning.loading,
     },
     file: {
       fileTree: file.fileTree,
@@ -168,7 +168,7 @@ function restore(snapshot: WorkspaceSnapshot): void {
   useModuleStore.setState(snapshot.module);
   useInstanceStore.setState(snapshot.instance);
   useSchemaStore.setState(snapshot.schemaStructure);
-  useModelStore.setState(snapshot.model);
+  useMeaningStore.setState(snapshot.meaning);
   useFileStore.setState(snapshot.file);
 }
 
@@ -178,7 +178,7 @@ export function clearAllProjectStores(): void {
   useModuleStore.getState().clear();
   useInstanceStore.getState().clear();
   useSchemaStore.getState().clear();
-  useModelStore.getState().clear();
+  useMeaningStore.getState().clear();
   useFileStore.getState().clear();
 }
 

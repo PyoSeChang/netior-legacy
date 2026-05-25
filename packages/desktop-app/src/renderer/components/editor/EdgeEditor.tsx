@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo } from 'react';
 import type { EditorTab } from '@netior/shared/types';
 import { useNetworkStore } from '../../stores/network-store';
-import { useModelStore } from '../../stores/model-store';
+import { useMeaningStore } from '../../stores/meaning-store';
 import { useEditorStore } from '../../stores/editor-store';
 import { useEditorSession } from '../../hooks/useEditorSession';
 import { networkService } from '../../services';
@@ -12,7 +12,7 @@ import { ColorPicker } from '../ui/ColorPicker';
 import { Toggle } from '../ui/Toggle';
 import { Button } from '../ui/Button';
 import { ScrollArea } from '../ui/ScrollArea';
-import { isHierarchyParentEdge } from '../../lib/edge-models';
+import { isHierarchyParentEdge } from '../../lib/edge-meanings';
 import { createOntologyDisplayResolver } from '@netior/shared';
 
 interface EdgeEditorProps {
@@ -26,7 +26,7 @@ interface EdgeVisualState {
 }
 
 interface EdgeState {
-  model_id: string | null;
+  meaning_id: string | null;
   description: string | null;
   visual: EdgeVisualState;
 }
@@ -38,7 +38,7 @@ export function EdgeEditor({ tab }: EdgeEditorProps): JSX.Element {
   const edges = useNetworkStore((s) => s.edges);
   const nodes = useNetworkStore((s) => s.nodes);
   const { removeEdge, openNetwork, currentNetwork } = useNetworkStore();
-  const models = useModelStore((s) => s.models);
+  const meanings = useMeaningStore((s) => s.meanings);
 
   const edge = edges.find((e) => e.id === edgeId);
   const edgeVisuals = useNetworkStore((s) => s.edgeVisuals);
@@ -48,11 +48,11 @@ export function EdgeEditor({ tab }: EdgeEditorProps): JSX.Element {
     tabId: tab.id,
     load: () => {
       const e = useNetworkStore.getState().edges.find((ed) => ed.id === edgeId);
-      if (!e) return { model_id: null, description: null, visual: { color: null, line_style: null, directed: null } };
+      if (!e) return { meaning_id: null, description: null, visual: { color: null, line_style: null, directed: null } };
       const ev = useNetworkStore.getState().edgeVisuals.find((v) => v.edgeId === edgeId);
       const parsed: EdgeVisualState = ev ? JSON.parse(ev.visualJson) : { color: null, line_style: null, directed: null };
       return {
-        model_id: e.relationship?.model_id ?? e.model_id,
+        meaning_id: e.relationship?.meaning_id ?? e.meaning_id,
         description: e.relationship?.description ?? e.description,
         visual: parsed,
       };
@@ -61,12 +61,12 @@ export function EdgeEditor({ tab }: EdgeEditorProps): JSX.Element {
       const e = useNetworkStore.getState().edges.find((ed) => ed.id === edgeId);
       if (e?.relationship_id) {
         await networkService.relationship.update(e.relationship_id, {
-          model_id: state.model_id,
+          meaning_id: state.meaning_id,
           description: state.description,
         });
       } else {
         await networkService.edge.update(edgeId, {
-          model_id: state.model_id,
+          meaning_id: state.meaning_id,
           description: state.description,
         });
       }
@@ -85,12 +85,12 @@ export function EdgeEditor({ tab }: EdgeEditorProps): JSX.Element {
   const targetLabel = targetNode?.instance?.title ?? targetNode?.file?.path?.replace(/\\/g, '/').split('/').pop() ?? '?';
   const isHierarchyMeaning = edge ? isHierarchyParentEdge(edge) : false;
 
-  const modelOptions = useMemo(() => [
-    { value: '', label: t('edge.noModel' as never) ?? 'No model' },
-    ...models
-      .filter((model) => model.target_kind === 'relation' || model.target_kind === 'both')
-      .map((model) => ({ value: model.id, label: display.modelName(model) })),
-  ], [models, t]);
+  const meaningOptions = useMemo(() => [
+    { value: '', label: t('edge.noMeaning' as never) ?? 'No meaning' },
+    ...meanings
+      .filter((meaning) => meaning.target_kind === 'relation' || meaning.target_kind === 'both')
+      .map((meaning) => ({ value: meaning.id, label: display.meaningName(meaning) })),
+  ], [meanings, t]);
 
   const lineStyleOptions = [
     { value: '', label: t('edge.inheritFromType') ?? 'Inherit' },
@@ -122,9 +122,9 @@ export function EdgeEditor({ tab }: EdgeEditorProps): JSX.Element {
     session.setState((prev) => ({ ...prev, visual: { ...prev.visual, ...patch } }));
   };
 
-  // Resolve effective values for display (edge override > model default)
-  const selectedModel = models.find((model) => model.id === session.state.model_id) ?? edge.relationship?.model ?? edge.model;
-  const effectiveDirected = session.state.visual.directed != null ? session.state.visual.directed : (selectedModel?.directed ?? false);
+  // Resolve effective values for display (edge override > meaning default)
+  const selectedMeaning = meanings.find((meaning) => meaning.id === session.state.meaning_id) ?? edge.relationship?.meaning ?? edge.meaning;
+  const effectiveDirected = session.state.visual.directed != null ? session.state.visual.directed : (selectedMeaning?.directed ?? false);
 
   return (
     <ScrollArea>
@@ -156,11 +156,11 @@ export function EdgeEditor({ tab }: EdgeEditorProps): JSX.Element {
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-secondary">{t('model.title')}</label>
+            <label className="text-xs font-medium text-secondary">{t('meaning.title')}</label>
             <Select
-              options={modelOptions}
-              value={session.state.model_id ?? ''}
-              onChange={(e) => update({ model_id: e.target.value || null })}
+              options={meaningOptions}
+              value={session.state.meaning_id ?? ''}
+              onChange={(e) => update({ meaning_id: e.target.value || null })}
               selectSize="sm"
             />
           </div>

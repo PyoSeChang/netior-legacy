@@ -5,7 +5,7 @@
   NetworkTreeNode,
   Project,
   Instance,
-  Model,
+  Meaning,
   Schema,
   SchemaField,
   SchemaMeaning,
@@ -74,12 +74,12 @@ export async function listSchemaMeanings(schemaId: string): Promise<SchemaMeanin
   return requestJson<SchemaMeaning[]>(`/schema-meanings${toQueryString({ schemaId })}`);
 }
 
-export async function listModels(projectId: string): Promise<Model[]> {
-  return requestJson<Model[]>(`/models${toQueryString({ projectId })}`);
+export async function listMeanings(projectId: string): Promise<Meaning[]> {
+  return requestJson<Meaning[]>(`/meanings${toQueryString({ projectId })}`);
 }
 
-export async function listModelCategories(projectId: string): Promise<Instance[]> {
-  return requestJson<Instance[]>(`/model-categories${toQueryString({ projectId })}`);
+export async function listMeaningCategories(projectId: string): Promise<Instance[]> {
+  return requestJson<Instance[]>(`/meaning-categories${toQueryString({ projectId })}`);
 }
 
 export async function getUniverseNetwork(): Promise<Network | null> {

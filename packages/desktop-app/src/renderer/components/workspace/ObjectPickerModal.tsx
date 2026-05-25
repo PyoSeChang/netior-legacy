@@ -5,7 +5,7 @@ import { Input } from '../ui/Input';
 import { Button } from '../ui/Button';
 import { useInstanceStore } from '../../stores/instance-store';
 import { useNetworkStore } from '../../stores/network-store';
-import { useModelStore } from '../../stores/model-store';
+import { useMeaningStore } from '../../stores/meaning-store';
 import { useSchemaStore } from '../../stores/schema-store';
 import { useContextStore } from '../../stores/context-store';
 import { useProjectStore } from '../../stores/project-store';
@@ -21,9 +21,9 @@ interface ObjectPickerModalProps {
   allowedTabs?: PickerTab[];
 }
 
-type PickerTab = 'instance' | 'network' | 'project' | 'schema' | 'model' | 'context';
+type PickerTab = 'instance' | 'network' | 'project' | 'schema' | 'meaning' | 'context';
 
-const TABS: PickerTab[] = ['instance', 'network', 'project', 'schema', 'model', 'context'];
+const TABS: PickerTab[] = ['instance', 'network', 'project', 'schema', 'meaning', 'context'];
 
 export function ObjectPickerModal({
   open,
@@ -47,7 +47,7 @@ export function ObjectPickerModal({
   const currentNetwork = useNetworkStore((s) => s.currentNetwork);
   const projects = useProjectStore((s) => s.projects);
   const schemas = useSchemaStore((s) => s.schemas);
-  const models = useModelStore((s) => s.models);
+  const meanings = useMeaningStore((s) => s.meanings);
   const contexts = useContextStore((s) => s.contexts);
 
   const tabLabels: Record<PickerTab, string> = {
@@ -55,7 +55,7 @@ export function ObjectPickerModal({
     network: t('sidebar.networks' as never),
     project: t('project.title' as never) ?? 'Projects',
     schema: t('schema.title' as never),
-    model: t('model.title' as never),
+    meaning: t('meaning.title' as never),
     context: t('context.title'),
   };
 
@@ -73,7 +73,7 @@ export function ObjectPickerModal({
       case 'instance':
         return instances
           .filter((instance) => !query || matches(instance.title))
-          .map((instance) => ({ id: instance.id, title: instance.title, subtitle: t('instance.model'), icon: instance.icon }));
+          .map((instance) => ({ id: instance.id, title: instance.title, subtitle: t('instance.schema' as never), icon: instance.icon }));
       case 'network':
         return networks
           .filter((network) => network.id !== currentNetwork?.id)
@@ -92,18 +92,18 @@ export function ObjectPickerModal({
             subtitle: schema.description ?? t('schema.title' as never),
             icon: schema.icon,
           }));
-      case 'model':
-        return models
-          .filter((model) => {
-            const title = display.modelName(model);
-            const description = display.modelDescription(model);
-            return !query || matches(title) || matches(model.key) || (description ? matches(description) : false);
+      case 'meaning':
+        return meanings
+          .filter((meaning) => {
+            const title = display.meaningName(meaning);
+            const description = display.meaningDescription(meaning);
+            return !query || matches(title) || matches(meaning.key) || (description ? matches(description) : false);
           })
-          .map((model) => ({
-            id: model.id,
-            title: display.modelName(model),
-            subtitle: display.modelDescription(model) ?? t('model.title' as never),
-            icon: model.icon,
+          .map((meaning) => ({
+            id: meaning.id,
+            title: display.meaningName(meaning),
+            subtitle: display.meaningDescription(meaning) ?? t('meaning.title' as never),
+            icon: meaning.icon,
           }));
       case 'context':
         return contexts
@@ -112,7 +112,7 @@ export function ObjectPickerModal({
       default:
         return [];
     }
-  }, [activeTab, display, instances, contexts, currentNetwork?.id, models, networks, projects, schemas, search, t]);
+  }, [activeTab, display, instances, contexts, currentNetwork?.id, meanings, networks, projects, schemas, search, t]);
 
   const handleSelect = (refId: string) => {
     onSelect(activeTab, refId);

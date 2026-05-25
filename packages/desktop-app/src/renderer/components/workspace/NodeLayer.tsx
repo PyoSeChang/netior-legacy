@@ -72,9 +72,9 @@ function buildNarreMentionForNode(node: RenderNode): MentionResult | null {
       };
     }
 
-    if (node.objectType === 'model') {
+    if (node.objectType === 'meaning') {
       return {
-        type: 'model',
+        type: 'meaning',
         id: node.objectTargetId ?? node.id,
         display: node.label,
         icon: node.icon,

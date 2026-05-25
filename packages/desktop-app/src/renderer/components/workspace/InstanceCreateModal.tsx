@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
@@ -9,7 +9,6 @@ import { IconSelector } from '../ui/IconSelector';
 import { useI18n } from '../../hooks/useI18n';
 import { useSchemaStore } from '../../stores/schema-store';
 import { isImageSourceValue } from './node-components/node-visual-utils';
-import { createOntologyDisplayResolver } from '@netior/shared';
 
 const INSTANCE_COLORS = [
   '#ef4444', '#f97316', '#eab308', '#22c55e', '#06b6d4',
@@ -30,18 +29,17 @@ interface InstanceCreateModalProps {
 
 export function InstanceCreateModal({ open, onClose, onCreate }: InstanceCreateModalProps): JSX.Element {
   const { t } = useI18n();
-  const display = useMemo(() => createOntologyDisplayResolver(t), [t]);
   const [title, setTitle] = useState('');
   const [color, setColor] = useState<string | undefined>(undefined);
   const [icon, setIcon] = useState('');
   const [visualMode, setVisualMode] = useState<VisualMode>('icon');
-  const [modelId, setModelId] = useState<string | undefined>(undefined);
-  const models = useSchemaStore((s) => s.schemas);
+  const [schemaId, setSchemaId] = useState<string | undefined>(undefined);
+  const schemas = useSchemaStore((s) => s.schemas);
 
-  // Apply model defaults when selected
+  // Apply schema defaults when selected
   useEffect(() => {
-    if (modelId) {
-      const arch = models.find((a) => a.id === modelId);
+    if (schemaId) {
+      const arch = schemas.find((a) => a.id === schemaId);
       if (arch) {
         if (arch.color && !color) setColor(arch.color);
         if (arch.icon && !icon) {
@@ -50,7 +48,7 @@ export function InstanceCreateModal({ open, onClose, onCreate }: InstanceCreateM
         }
       }
     }
-  }, [modelId]);
+  }, [schemaId]);
 
   const handleSubmit = () => {
     if (!title.trim()) return;
@@ -58,13 +56,13 @@ export function InstanceCreateModal({ open, onClose, onCreate }: InstanceCreateM
       title: title.trim(),
       color: color || undefined,
       icon: icon.trim() || undefined,
-      schema_id: modelId || undefined,
+      schema_id: schemaId || undefined,
     });
     setTitle('');
     setColor(undefined);
     setIcon('');
     setVisualMode('icon');
-    setModelId(undefined);
+    setSchemaId(undefined);
     onClose();
   };
 
@@ -73,7 +71,7 @@ export function InstanceCreateModal({ open, onClose, onCreate }: InstanceCreateM
     setColor(undefined);
     setIcon('');
     setVisualMode('icon');
-    setModelId(undefined);
+    setSchemaId(undefined);
     onClose();
   };
 
@@ -95,16 +93,16 @@ export function InstanceCreateModal({ open, onClose, onCreate }: InstanceCreateM
       }
     >
       <div className="flex flex-col gap-4">
-        {models.length > 0 && (
+        {schemas.length > 0 && (
           <div>
-            <label className="mb-1 block text-xs font-medium text-secondary">{t('instance.model')}</label>
+            <label className="mb-1 block text-xs font-medium text-secondary">{t('instance.schema' as never)}</label>
             <Select
               options={[
                 { value: '', label: t('common.none') },
-                ...models.map((a) => ({ value: a.id, label: display.modelName(a) })),
+                ...schemas.map((a) => ({ value: a.id, label: a.name })),
               ]}
-              value={modelId ?? ''}
-              onChange={(e) => setModelId(e.target.value || undefined)}
+              value={schemaId ?? ''}
+              onChange={(e) => setSchemaId(e.target.value || undefined)}
               selectSize="sm"
             />
           </div>

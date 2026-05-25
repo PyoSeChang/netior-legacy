@@ -23,7 +23,7 @@ const nodeSortConfigModel = z.discriminatedUnion('kind', [
   }),
   z.object({
     kind: z.literal('property'),
-    fieldId: z.string().describe('Model field ID to sort by'),
+    fieldId: z.string().describe('Schema field ID to sort by'),
     direction: nodeSortDirectionModel.optional().describe('Sort direction'),
     emptyPlacement: nodeSortEmptyPlacementModel.optional().describe('Where empty values should be placed'),
   }),

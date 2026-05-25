@@ -15,7 +15,7 @@ import type {
   ObjectRecord,
   Instance,
   FileEntity,
-  Model,
+  Meaning,
   EdgeLineStyle,
   NetworkBreadcrumbItem,
   NetworkFullData,
@@ -23,10 +23,10 @@ import type {
   NetworkNodeType,
   NetworkEdgeType,
   Relationship,
-  ModelRefKey,
+  MeaningRefKey,
   SemanticMeaningKey,
   MeaningSlotKey,
-  ModelTargetKind,
+  MeaningTargetKind,
   OntologySourceKind,
 } from '@netior/shared/types';
 
@@ -205,7 +205,7 @@ export function ensureProjectOntologyNetwork(projectId: string): Network {
 
 // ── Network Full Data ──
 
-type ModelRow = Omit<Model, 'meaning_keys' | 'core_slots' | 'optional_slots' | 'recipe' | 'built_in' | 'directed'> & {
+type ModelRow = Omit<Meaning, 'meaning_keys' | 'core_slots' | 'optional_slots' | 'recipe' | 'built_in' | 'directed'> & {
   meaning_keys: string | null;
   core_slots: string | null;
   optional_slots: string | null;
@@ -228,10 +228,10 @@ function parseStringArray<T extends string>(raw: string | null | undefined): T[]
   }
 }
 
-function parseModelRecipe(raw: string | null | undefined): Model['recipe'] {
+function parseMeaningContract(raw: string | null | undefined): Meaning['recipe'] {
   if (!raw) return { meanings: [], rules: [] };
   try {
-    const parsed = JSON.parse(raw) as Model['recipe'];
+    const parsed = JSON.parse(raw) as Meaning['recipe'];
     return {
       meanings: Array.isArray(parsed.meanings) ? parsed.meanings : [],
       rules: Array.isArray(parsed.rules) ? parsed.rules : [],
@@ -241,18 +241,18 @@ function parseModelRecipe(raw: string | null | undefined): Model['recipe'] {
   }
 }
 
-function toModel(row: ModelRow): Model {
+function toMeaning(row: ModelRow): Meaning {
   return {
     ...row,
-    key: row.key as ModelRefKey,
+    key: row.key as MeaningRefKey,
     category_instance_id: row.category_instance_id ?? null,
     category_instance_title: row.category_instance_title ?? null,
     category_instance_source_ref: row.category_instance_source_ref ?? null,
-    target_kind: (row.target_kind ?? 'object') as ModelTargetKind,
+    target_kind: (row.target_kind ?? 'object') as MeaningTargetKind,
     meaning_keys: parseStringArray<SemanticMeaningKey>(row.meaning_keys),
     core_slots: parseStringArray<MeaningSlotKey>(row.core_slots),
     optional_slots: parseStringArray<MeaningSlotKey>(row.optional_slots),
-    recipe: parseModelRecipe(row.recipe_json),
+    recipe: parseMeaningContract(row.recipe_json),
     line_style: (row.line_style ?? null) as EdgeLineStyle | null,
     directed: row.directed == null ? null : !!row.directed,
     built_in: !!row.built_in,
@@ -376,7 +376,7 @@ export function getNetworkFull(networkId: string): NetworkFullData | undefined {
             m.created_at as m_created_at, m.updated_at as m_updated_at,
             r.id as r_id, r.project_id as r_project_id,
             r.source_object_id as r_source_object_id, r.target_object_id as r_target_object_id,
-            r.model_id as r_model_id, r.description as r_description,
+            r.meaning_id as r_meaning_id, r.description as r_description,
             r.properties_json as r_properties_json,
             r.source_kind as r_source_kind, r.source_id as r_source_id,
             r.source_ref as r_source_ref, r.source_version as r_source_version,
@@ -399,25 +399,25 @@ export function getNetworkFull(networkId: string): NetworkFullData | undefined {
             rm.source_version as rm_source_version,
             rm.created_at as rm_created_at, rm.updated_at as rm_updated_at
      FROM edges e
-     LEFT JOIN models m ON e.model_id = m.id
+     LEFT JOIN meanings m ON e.meaning_id = m.id
      LEFT JOIN instances mc ON mc.id = m.category_instance_id
      LEFT JOIN relationships r ON e.relationship_id = r.id
-     LEFT JOIN models rm ON r.model_id = rm.id
+     LEFT JOIN meanings rm ON r.meaning_id = rm.id
      LEFT JOIN instances rmc ON rmc.id = rm.category_instance_id
      WHERE e.network_id = ?`,
   ).all(network.id) as (Record<string, unknown>)[];
 
   const edges = edgeRows.map((row) => {
-    const hasModel = row.m_id != null;
+    const hasMeaning = row.m_id != null;
     const hasRelationship = row.r_id != null;
-    const hasRelationshipModel = row.rm_id != null;
+    const hasRelationshipMeaning = row.rm_id != null;
     return {
       id: row.id as string,
       network_id: row.network_id as string,
       source_node_id: row.source_node_id as string,
       target_node_id: row.target_node_id as string,
       relationship_id: (row.relationship_id as string | null) ?? null,
-      model_id: (row.model_id as string | null) ?? null,
+      meaning_id: (row.meaning_id as string | null) ?? null,
       edge_type_id: (row.edge_type_id as string | null) ?? null,
       source_port_key: (row.source_port_key as string | null) ?? null,
       target_port_key: (row.target_port_key as string | null) ?? null,
@@ -433,7 +433,7 @@ export function getNetworkFull(networkId: string): NetworkFullData | undefined {
           project_id: row.r_project_id as string,
           source_object_id: row.r_source_object_id as string,
           target_object_id: row.r_target_object_id as string,
-          model_id: (row.r_model_id as string | null) ?? null,
+          meaning_id: (row.r_meaning_id as string | null) ?? null,
           description: (row.r_description as string | null) ?? null,
           properties_json: (row.r_properties_json as string | null) ?? null,
           source_kind: ((row.r_source_kind as string | null) ?? 'project') as RelationshipRow['source_kind'],
@@ -442,8 +442,8 @@ export function getNetworkFull(networkId: string): NetworkFullData | undefined {
           source_version: (row.r_source_version as string | null) ?? null,
           created_at: row.r_created_at as string,
           updated_at: row.r_updated_at as string,
-          ...(hasRelationshipModel ? {
-            model: toModel({
+          ...(hasRelationshipMeaning ? {
+            meaning: toMeaning({
               id: row.rm_id as string,
               project_id: row.rm_project_id as string,
               key: row.rm_key as string,
@@ -452,7 +452,7 @@ export function getNetworkFull(networkId: string): NetworkFullData | undefined {
               category_instance_id: (row.rm_category_instance_id as string | null) ?? null,
               category_instance_title: (row.rm_category_instance_title as string | null) ?? null,
               category_instance_source_ref: (row.rm_category_instance_source_ref as string | null) ?? null,
-              target_kind: ((row.rm_target_kind as string | null) ?? 'object') as ModelTargetKind,
+              target_kind: ((row.rm_target_kind as string | null) ?? 'object') as MeaningTargetKind,
               meaning_keys: (row.rm_meaning_keys as string | null) ?? null,
               core_slots: (row.rm_core_slots as string | null) ?? null,
               optional_slots: (row.rm_optional_slots as string | null) ?? null,
@@ -472,8 +472,8 @@ export function getNetworkFull(networkId: string): NetworkFullData | undefined {
           } : {}),
         },
       } : {}),
-      ...(hasModel ? {
-        model: toModel({
+      ...(hasMeaning ? {
+        meaning: toMeaning({
           id: row.m_id as string,
           project_id: row.m_project_id as string,
           key: row.m_key as string,
@@ -482,7 +482,7 @@ export function getNetworkFull(networkId: string): NetworkFullData | undefined {
           category_instance_id: (row.m_category_instance_id as string | null) ?? null,
           category_instance_title: (row.m_category_instance_title as string | null) ?? null,
           category_instance_source_ref: (row.m_category_instance_source_ref as string | null) ?? null,
-          target_kind: ((row.m_target_kind as string | null) ?? 'object') as ModelTargetKind,
+          target_kind: ((row.m_target_kind as string | null) ?? 'object') as MeaningTargetKind,
           meaning_keys: (row.m_meaning_keys as string | null) ?? null,
           core_slots: (row.m_core_slots as string | null) ?? null,
           optional_slots: (row.m_optional_slots as string | null) ?? null,
@@ -600,14 +600,14 @@ export function createEdge(data: EdgeCreate): Edge {
 
   db.prepare(
     `INSERT INTO edges (
-      id, network_id, source_node_id, target_node_id, relationship_id, model_id, edge_type_id,
+      id, network_id, source_node_id, target_node_id, relationship_id, meaning_id, edge_type_id,
       source_port_key, target_port_key, route_json, description, created_at
     )
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     id, data.network_id, data.source_node_id, data.target_node_id,
     data.relationship_id ?? null,
-    data.model_id ?? null,
+    data.meaning_id ?? null,
     data.edge_type_id ?? DEFAULT_BASIC_EDGE_TYPE_ID,
     data.source_port_key ?? null,
     data.target_port_key ?? null,
@@ -631,7 +631,7 @@ export function updateEdge(id: string, data: EdgeUpdate): Edge | undefined {
 
   db.prepare(`
     UPDATE edges
-       SET model_id = ?,
+       SET meaning_id = ?,
            relationship_id = ?,
            edge_type_id = ?,
            source_port_key = ?,
@@ -640,7 +640,7 @@ export function updateEdge(id: string, data: EdgeUpdate): Edge | undefined {
            description = ?
      WHERE id = ?
   `).run(
-    data.model_id !== undefined ? data.model_id : existingRow.model_id,
+    data.meaning_id !== undefined ? data.meaning_id : existingRow.meaning_id,
     data.relationship_id !== undefined ? data.relationship_id : existingRow.relationship_id,
     data.edge_type_id !== undefined ? data.edge_type_id : existingRow.edge_type_id,
     data.source_port_key !== undefined ? data.source_port_key : existingRow.source_port_key,

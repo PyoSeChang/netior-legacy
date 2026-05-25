@@ -3,22 +3,22 @@ import { z } from 'zod';
 import { SEMANTIC_MEANING_DEFINITIONS } from '@netior/shared/constants';
 import type {
   FieldType,
-  ModelFieldRecipe,
-  ModelMeaningRecipe,
-  ModelRecipe,
-  ModelRefKey,
+  MeaningFieldRecipe,
+  MeaningAspectRecipe,
+  MeaningContract,
+  MeaningRefKey,
 } from '@netior/shared/types';
 import {
-  createModel,
-  deleteModel,
-  getModel,
-  listModelCategories,
-  listModels,
-  updateModel,
+  createMeaning,
+  deleteMeaning,
+  getMeaning,
+  listMeaningCategories,
+  listMeanings,
+  updateMeaning,
 } from '../netior-service-client.js';
 import { emitChange } from '../events.js';
 import { projectIdSchema, registerNetiorTool, resolveProjectId } from './shared-tool-registry.js';
-import { fromAgentFieldType, toAgentModel, type AgentFieldType } from './model-surface.js';
+import { fromAgentFieldType, toAgentMeaning, type AgentFieldType } from './meaning-surface.js';
 
 const fieldTypeModel = z.enum([
   'text',
@@ -36,12 +36,12 @@ const fieldTypeModel = z.enum([
   'color',
   'rating',
   'tags',
-  'model_ref',
+  'meaning_ref',
 ]);
 
 const modelKeyModel = z.string().regex(
   /^[a-z][a-z0-9_]*$/,
-  'Model keys must be lowercase snake_case, such as task_flow',
+  'Meaning keys must be lowercase snake_case, such as task_flow',
 );
 const meaningKeySet = new Set(SEMANTIC_MEANING_DEFINITIONS.map((definition) => definition.key));
 const builtInMeaningKeyModel = z.string().refine(
@@ -49,7 +49,7 @@ const builtInMeaningKeyModel = z.string().refine(
   'Unknown built-in meaning key',
 );
 const representationModel = z.enum(['single_field', 'field_group', 'relation', 'computed']);
-const targetKindModel = z.enum(['object', 'edge', 'both']);
+const targetKindModel = z.enum(['object', 'relation', 'both']);
 const lineStyleModel = z.enum(['solid', 'dashed', 'dotted']);
 
 const modelFieldRecipeModel = z.object({
@@ -72,16 +72,16 @@ const modelMeaningRecipeModel = z.object({
 });
 
 const modelRecipeModel = z.object({
-  meanings: z.array(modelMeaningRecipeModel).optional().describe('Meanings this model contributes'),
+  meanings: z.array(modelMeaningRecipeModel).optional().describe('Meanings this meaning contributes'),
   rules: z.array(z.object({
     id: z.string().optional().describe('Stable rule ID. Omit to derive from index.'),
     description: z.string().describe('Natural-language modeling rule'),
   })).optional().describe('Modeling rules or constraints'),
 });
 
-type ModelRecipeInput = z.infer<typeof modelRecipeModel>;
-type ModelMeaningRecipeInput = z.infer<typeof modelMeaningRecipeModel>;
-type ModelFieldRecipeInput = z.infer<typeof modelFieldRecipeModel>;
+type MeaningContractInput = z.infer<typeof modelRecipeModel>;
+type MeaningAspectRecipeInput = z.infer<typeof modelMeaningRecipeModel>;
+type MeaningFieldRecipeInput = z.infer<typeof modelFieldRecipeModel>;
 
 function normalizeRecipeKey(value: string): string {
   return value
@@ -91,7 +91,7 @@ function normalizeRecipeKey(value: string): string {
     .replace(/^_+|_+$/g, '') || 'item';
 }
 
-function normalizeFieldRecipe(input: ModelFieldRecipeInput, index: number): ModelFieldRecipe {
+function normalizeFieldRecipe(input: MeaningFieldRecipeInput, index: number): MeaningFieldRecipe {
   const key = normalizeRecipeKey(input.key || input.name);
   return {
     id: input.id?.trim() || key || `field-${index + 1}`,
@@ -106,7 +106,7 @@ function normalizeFieldRecipe(input: ModelFieldRecipeInput, index: number): Mode
   };
 }
 
-function normalizeMeaningRecipe(input: ModelMeaningRecipeInput, index: number): ModelMeaningRecipe {
+function normalizeMeaningRecipe(input: MeaningAspectRecipeInput, index: number): MeaningAspectRecipe {
   const key = normalizeRecipeKey(input.key || input.name);
   const fields = (input.fields ?? []).map(normalizeFieldRecipe);
   return {
@@ -119,7 +119,7 @@ function normalizeMeaningRecipe(input: ModelMeaningRecipeInput, index: number): 
   };
 }
 
-function normalizeRecipe(input: ModelRecipeInput | undefined): ModelRecipe | undefined {
+function normalizeRecipe(input: MeaningContractInput | undefined): MeaningContract | undefined {
   if (!input) return undefined;
   return {
     meanings: (input.meanings ?? []).map(normalizeMeaningRecipe),
@@ -133,11 +133,11 @@ function normalizeRecipe(input: ModelRecipeInput | undefined): ModelRecipe | und
 export function registerModelTools(server: McpServer): void {
   registerNetiorTool(
     server,
-    'list_models',
+    'list_meanings',
     { project_id: projectIdSchema() },
     async ({ project_id }) => {
       try {
-        const result = (await listModels(resolveProjectId(project_id))).map(toAgentModel);
+        const result = (await listMeanings(resolveProjectId(project_id))).map(toAgentMeaning);
         return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] };
       } catch (error) {
         return {
@@ -150,11 +150,11 @@ export function registerModelTools(server: McpServer): void {
 
   registerNetiorTool(
     server,
-    'list_model_categories',
+    'list_meaning_categories',
     { project_id: projectIdSchema() },
     async ({ project_id }) => {
       try {
-        const result = await listModelCategories(resolveProjectId(project_id));
+        const result = await listMeaningCategories(resolveProjectId(project_id));
         return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] };
       } catch (error) {
         return {
@@ -167,18 +167,18 @@ export function registerModelTools(server: McpServer): void {
 
   registerNetiorTool(
     server,
-    'get_model',
-    { model_id: z.string().describe('The model ID') },
-    async ({ model_id }) => {
+    'get_meaning',
+    { meaning_id: z.string().describe('The meaning ID') },
+    async ({ meaning_id }) => {
       try {
-        const result = await getModel(model_id);
+        const result = await getMeaning(meaning_id);
         if (!result) {
           return {
-            content: [{ type: 'text' as const, text: `Error: Model not found: ${model_id}` }],
+            content: [{ type: 'text' as const, text: `Error: Meaning not found: ${meaning_id}` }],
             isError: true,
           };
         }
-        return { content: [{ type: 'text' as const, text: JSON.stringify(toAgentModel(result), null, 2) }] };
+        return { content: [{ type: 'text' as const, text: JSON.stringify(toAgentMeaning(result), null, 2) }] };
       } catch (error) {
         return {
           content: [{ type: 'text' as const, text: `Error: ${(error as Error).message}` }],
@@ -190,16 +190,16 @@ export function registerModelTools(server: McpServer): void {
 
   registerNetiorTool(
     server,
-    'create_model',
+    'create_meaning',
     {
       project_id: projectIdSchema(),
-      key: modelKeyModel.optional().describe('Optional stable model key. Omit to derive from name.'),
-      name: z.string().describe('Model name'),
-      description: z.string().nullable().optional().describe('What this model means and when to use it'),
-      category_instance_id: z.string().nullable().optional().describe('Model Category instance ID. Use list_model_categories before assigning.'),
-      target_kind: targetKindModel.optional().describe('Whether this model describes objects, edges, or both'),
-      meaning_keys: z.array(builtInMeaningKeyModel).optional().describe('Built-in meanings this model includes'),
-      recipe: modelRecipeModel.optional().describe('Advanced custom meaning and field recipe. Prefer existing built-in/curated models first.'),
+      key: modelKeyModel.optional().describe('Optional stable meaning key. Omit to derive from name.'),
+      name: z.string().describe('Meaning name'),
+      description: z.string().nullable().optional().describe('What this meaning means and when to use it'),
+      category_instance_id: z.string().nullable().optional().describe('Meaning Category instance ID. Use list_meaning_categories before assigning.'),
+      target_kind: targetKindModel.optional().describe('Whether this meaning describes objects, edges, or both'),
+      meaning_keys: z.array(builtInMeaningKeyModel).optional().describe('Built-in meanings this meaning includes'),
+      recipe: modelRecipeModel.optional().describe('Advanced custom meaning and field recipe. Prefer existing built-in/curated meanings first.'),
       color: z.string().nullable().optional().describe('Optional color value'),
       icon: z.string().nullable().optional().describe('Optional icon identifier'),
       line_style: lineStyleModel.nullable().optional().describe('Default edge line style when target_kind includes edge'),
@@ -207,9 +207,9 @@ export function registerModelTools(server: McpServer): void {
     },
     async ({ project_id, key, name, description, category_instance_id, target_kind, meaning_keys, recipe, color, icon, line_style, directed }) => {
       try {
-        const result = await createModel({
+        const result = await createMeaning({
           project_id: resolveProjectId(project_id),
-          key: key as ModelRefKey | undefined,
+          key: key as MeaningRefKey | undefined,
           name,
           description,
           category_instance_id,
@@ -221,8 +221,8 @@ export function registerModelTools(server: McpServer): void {
           line_style,
           directed,
         });
-        emitChange({ type: 'model', action: 'create', id: result.id });
-        return { content: [{ type: 'text' as const, text: JSON.stringify(toAgentModel(result), null, 2) }] };
+        emitChange({ type: 'meaning', action: 'create', id: result.id });
+        return { content: [{ type: 'text' as const, text: JSON.stringify(toAgentMeaning(result), null, 2) }] };
       } catch (error) {
         return {
           content: [{ type: 'text' as const, text: `Error: ${(error as Error).message}` }],
@@ -234,25 +234,25 @@ export function registerModelTools(server: McpServer): void {
 
   registerNetiorTool(
     server,
-    'update_model',
+    'update_meaning',
     {
-      model_id: z.string().describe('The model ID to update'),
-      key: modelKeyModel.optional().describe('New stable model key'),
-      name: z.string().optional().describe('New model name'),
-      description: z.string().nullable().optional().describe('New model description'),
-      category_instance_id: z.string().nullable().optional().describe('New Model Category instance ID. Use list_model_categories before assigning.'),
-      target_kind: targetKindModel.optional().describe('Whether this model describes objects, edges, or both'),
-      meaning_keys: z.array(builtInMeaningKeyModel).optional().describe('Built-in meanings this model includes'),
-      recipe: modelRecipeModel.optional().describe('Custom meaning and field recipe for this model'),
+      meaning_id: z.string().describe('The meaning ID to update'),
+      key: modelKeyModel.optional().describe('New stable meaning key'),
+      name: z.string().optional().describe('New meaning name'),
+      description: z.string().nullable().optional().describe('New meaning description'),
+      category_instance_id: z.string().nullable().optional().describe('New Meaning Category instance ID. Use list_meaning_categories before assigning.'),
+      target_kind: targetKindModel.optional().describe('Whether this meaning describes objects, edges, or both'),
+      meaning_keys: z.array(builtInMeaningKeyModel).optional().describe('Built-in meanings this meaning includes'),
+      recipe: modelRecipeModel.optional().describe('Custom meaning and field recipe for this meaning'),
       color: z.string().nullable().optional().describe('New color value'),
       icon: z.string().nullable().optional().describe('New icon identifier'),
       line_style: lineStyleModel.nullable().optional().describe('Default edge line style when target_kind includes edge'),
       directed: z.boolean().nullable().optional().describe('Default edge direction when target_kind includes edge'),
     },
-    async ({ model_id, key, name, description, category_instance_id, target_kind, meaning_keys, recipe, color, icon, line_style, directed }) => {
+    async ({ meaning_id, key, name, description, category_instance_id, target_kind, meaning_keys, recipe, color, icon, line_style, directed }) => {
       try {
-        const result = await updateModel(model_id, {
-          key: key as ModelRefKey | undefined,
+        const result = await updateMeaning(meaning_id, {
+          key: key as MeaningRefKey | undefined,
           name,
           description,
           category_instance_id,
@@ -266,12 +266,12 @@ export function registerModelTools(server: McpServer): void {
         });
         if (!result) {
           return {
-            content: [{ type: 'text' as const, text: `Error: Model not found: ${model_id}` }],
+            content: [{ type: 'text' as const, text: `Error: Meaning not found: ${meaning_id}` }],
             isError: true,
           };
         }
-        emitChange({ type: 'model', action: 'update', id: model_id });
-        return { content: [{ type: 'text' as const, text: JSON.stringify(toAgentModel(result), null, 2) }] };
+        emitChange({ type: 'meaning', action: 'update', id: meaning_id });
+        return { content: [{ type: 'text' as const, text: JSON.stringify(toAgentMeaning(result), null, 2) }] };
       } catch (error) {
         return {
           content: [{ type: 'text' as const, text: `Error: ${(error as Error).message}` }],
@@ -283,19 +283,19 @@ export function registerModelTools(server: McpServer): void {
 
   registerNetiorTool(
     server,
-    'delete_model',
-    { model_id: z.string().describe('The model ID to delete') },
-    async ({ model_id }) => {
+    'delete_meaning',
+    { meaning_id: z.string().describe('The meaning ID to delete') },
+    async ({ meaning_id }) => {
       try {
-        const deleted = await deleteModel(model_id);
+        const deleted = await deleteMeaning(meaning_id);
         if (!deleted) {
           return {
-            content: [{ type: 'text' as const, text: `Error: Model not found: ${model_id}` }],
+            content: [{ type: 'text' as const, text: `Error: Meaning not found: ${meaning_id}` }],
             isError: true,
           };
         }
-        emitChange({ type: 'model', action: 'delete', id: model_id });
-        return { content: [{ type: 'text' as const, text: JSON.stringify({ success: true, id: model_id }) }] };
+        emitChange({ type: 'meaning', action: 'delete', id: meaning_id });
+        return { content: [{ type: 'text' as const, text: JSON.stringify({ success: true, id: meaning_id }) }] };
       } catch (error) {
         return {
           content: [{ type: 'text' as const, text: `Error: ${(error as Error).message}` }],

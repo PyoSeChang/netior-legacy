@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import type { ContextMember } from '@netior/shared/types';
 import { X } from 'lucide-react';
-import { useNetworkStore, type NetworkNodeWithObject, type NetworkEdgeWithModel } from '../../stores/network-store';
+import { useNetworkStore, type NetworkNodeWithObject, type NetworkEdgeWithMeaning } from '../../stores/network-store';
 import { Input } from '../ui/Input';
 import { Badge } from '../ui/Badge';
 import { useI18n } from '../../hooks/useI18n';
@@ -20,7 +20,7 @@ function getNodeLabel(node: NetworkNodeWithObject): string {
 }
 
 function getEdgeLabel(
-  edge: NetworkEdgeWithModel,
+  edge: NetworkEdgeWithMeaning,
   nodes: NetworkNodeWithObject[],
   display: ReturnType<typeof createOntologyDisplayResolver>,
 ): string {
@@ -28,8 +28,8 @@ function getEdgeLabel(
   const targetNode = nodes.find((node) => node.id === edge.target_node_id);
   const sourceLabel = sourceNode ? getNodeLabel(sourceNode) : '?';
   const targetLabel = targetNode ? getNodeLabel(targetNode) : '?';
-  return edge.model
-    ? `${sourceLabel} -[${display.modelName(edge.model)}]-> ${targetLabel}`
+  return edge.meaning
+    ? `${sourceLabel} -[${display.meaningName(edge.meaning)}]-> ${targetLabel}`
     : `${sourceLabel} -> ${targetLabel}`;
 }
 

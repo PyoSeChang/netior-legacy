@@ -15,7 +15,7 @@ import { registerProjectTools } from './project-tools.js';
 import { registerFilesystemTools } from './filesystem-tools.js';
 import { registerPdfTools } from './pdf-tools.js';
 import { registerModuleTools } from './module-tools.js';
-import { registerModelTools } from './model-tools.js';
+import { registerModelTools } from './meaning-tools.js';
 import { registerInteractiveViewTools } from './interactive-view-tools.js';
 import { registerDslTools } from './dsl-tools.js';
 

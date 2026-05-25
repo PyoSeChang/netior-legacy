@@ -30,11 +30,11 @@ import { InstanceAgentView } from './InstanceAgentView';
 import { InteractiveViewPanel } from './interactive/InteractiveViewPanel';
 import { useI18n } from '../../hooks/useI18n';
 import {
-  CONTAINS_MODEL_KEY,
-  HIERARCHY_PARENT_MODEL_KEY,
+  CONTAINS_MEANING_KEY,
+  HIERARCHY_PARENT_MEANING_KEY,
   isContainsEdge,
-  systemEdgeModelId,
-} from '../../lib/edge-models';
+  systemEdgeMeaningId,
+} from '../../lib/edge-meanings';
 import { isImageSourceValue } from '../workspace/node-components/node-visual-utils';
 import { NodeVisual } from '../workspace/node-components/NodeVisual';
 import {
@@ -58,7 +58,7 @@ interface InstanceEditorProps {
 
 interface InstanceEditorState {
   title: string;
-  modelId: string | null;
+  meaningId: string | null;
   icon: string | null;
   color: string | null;
   content: string | null;
@@ -258,7 +258,7 @@ function areNodeOccurrencesEqual(
 
 function areInstanceEditorStatesEqual(a: InstanceEditorState, b: InstanceEditorState): boolean {
   return a.title === b.title
-    && a.modelId === b.modelId
+    && a.meaningId === b.meaningId
     && a.icon === b.icon
     && a.color === b.color
     && a.content === b.content
@@ -279,7 +279,7 @@ export function InstanceEditor({ tab }: InstanceEditorProps): JSX.Element {
     upsertProperty,
     deleteProperty: deleteInstanceProperty,
   } = useInstanceStore();
-  const models = useSchemaStore((s) => Array.isArray(s.schemas) ? s.schemas : []);
+  const meanings = useSchemaStore((s) => Array.isArray(s.schemas) ? s.schemas : []);
   const fields = useSchemaStore((s) => s.fields);
   const loadSchemasByProject = useSchemaStore((s) => s.loadByProject);
   const loadFields = useSchemaStore((s) => s.loadFields);
@@ -299,7 +299,7 @@ export function InstanceEditor({ tab }: InstanceEditorProps): JSX.Element {
     isDraft,
     instanceFound: Boolean(instance),
     instancesCount: instances.length,
-    schemasCount: models.length,
+    schemasCount: meanings.length,
     currentNetworkId: currentNetwork?.id ?? null,
     currentNetworkNodeCount: currentNetworkNodes.length,
     currentNetworkEdgeCount: currentNetworkEdges.length,
@@ -354,9 +354,9 @@ export function InstanceEditor({ tab }: InstanceEditorProps): JSX.Element {
     state: InstanceEditorState,
   ) => {
     const liveInstance = useInstanceStore.getState().instances.find((item) => item.id === instanceId);
-    if (!liveInstance?.recurrence_source_instance_id || !state.modelId) return;
+    if (!liveInstance?.recurrence_source_instance_id || !state.meaningId) return;
 
-    const activeFields = useSchemaStore.getState().fields[state.modelId] ?? [];
+    const activeFields = useSchemaStore.getState().fields[state.meaningId] ?? [];
     const recurrenceFrequencyField = activeFields.find((field) => getFieldMeaningSlot(field) === 'recurrence_frequency');
     const fallbackRecurrenceRuleField = activeFields.find((field) => getFieldMeaningSlot(field) === 'recurrence_rule');
     const startAtField = activeFields.find((field) => getFieldMeaningSlot(field) === 'start_at');
@@ -372,7 +372,7 @@ export function InstanceEditor({ tab }: InstanceEditorProps): JSX.Element {
     let recurrenceUntilField = activeFields.find((field) => getFieldMeaningSlot(field) === 'recurrence_until');
     if (!recurrenceUntilField) {
       recurrenceUntilField = await createField({
-        schema_id: state.modelId,
+        schema_id: state.meaningId,
         name: t(getMeaningSlotLabelKey('recurrence_until') as never),
         field_type: startAtField?.field_type === 'datetime' && !isAllDay ? 'datetime' : 'date',
         sort_order: activeFields.length,
@@ -381,7 +381,7 @@ export function InstanceEditor({ tab }: InstanceEditorProps): JSX.Element {
         meaning_key: 'time.recurrence_until',
         meaning_bindings: fieldMeaningToMeaningBindings('time.recurrence_until'),
         slot_binding_locked: true,
-        generated_by_model: true,
+        generated_by_meaning: true,
       });
     }
 
@@ -417,7 +417,7 @@ export function InstanceEditor({ tab }: InstanceEditorProps): JSX.Element {
     load: isDraft
       ? () => ({
           title: tab.title,
-          modelId: null,
+          meaningId: null,
           icon: null,
           color: null,
           content: null,
@@ -436,7 +436,7 @@ export function InstanceEditor({ tab }: InstanceEditorProps): JSX.Element {
             : { nodeOccurrences: [] };
           return {
             title: c?.title ?? '',
-            modelId: c?.schema_id ?? null,
+            meaningId: c?.schema_id ?? null,
             icon: c?.icon ?? null,
             color: c?.color ?? null,
             content: c?.content ?? null,
@@ -451,12 +451,12 @@ export function InstanceEditor({ tab }: InstanceEditorProps): JSX.Element {
           const newInstance = await createInstance({
             project_id: currentProject.id,
             title: state.title.trim(),
-            schema_id: state.modelId || undefined,
+            schema_id: state.meaningId || undefined,
             icon: state.icon || undefined,
             color: state.color || undefined,
             content: state.content || undefined,
           });
-          await syncInstanceProperties(newInstance.id, state.modelId, state.properties);
+          await syncInstanceProperties(newInstance.id, state.meaningId, state.properties);
           if (draft?.networkId) {
             const instanceObj = await objectService.getByRef('instance', newInstance.id);
             if (instanceObj) {
@@ -472,14 +472,14 @@ export function InstanceEditor({ tab }: InstanceEditorProps): JSX.Element {
                   network_id: draft.networkId,
                   source_node_id: draft.parentGroupNodeId,
                   target_node_id: node.id,
-                  model_id: systemEdgeModelId(currentProject.id, CONTAINS_MODEL_KEY),
+                  meaning_id: systemEdgeMeaningId(currentProject.id, CONTAINS_MEANING_KEY),
                 });
                 if (parentGroupNode?.node_type === 'hierarchy') {
                   await networkService.edge.create({
                     network_id: draft.networkId,
                     source_node_id: draft.parentGroupNodeId,
                     target_node_id: node.id,
-                    model_id: systemEdgeModelId(currentProject.id, HIERARCHY_PARENT_MODEL_KEY),
+                    meaning_id: systemEdgeMeaningId(currentProject.id, HIERARCHY_PARENT_MEANING_KEY),
                   });
                 }
               }
@@ -509,12 +509,12 @@ export function InstanceEditor({ tab }: InstanceEditorProps): JSX.Element {
           const instanceId = tab.targetId;
           await updateInstance(instanceId, {
             title: state.title,
-            schema_id: state.modelId,
+            schema_id: state.meaningId,
             icon: state.icon,
             color: state.color,
             content: state.content,
           });
-          await syncInstanceProperties(instanceId, state.modelId, state.properties);
+          await syncInstanceProperties(instanceId, state.meaningId, state.properties);
           await maybePromoteOccurrenceToSeries(instanceId, state);
           await Promise.all(state.nodeOccurrences.map(async (occurrence) => {
             const nextMetadata = occurrence.metadata.trim() ? occurrence.metadata : null;
@@ -542,16 +542,16 @@ export function InstanceEditor({ tab }: InstanceEditorProps): JSX.Element {
     setInstanceVisualMode(resolveVisualMode(session.state?.icon));
   }, [session.isLoading, session.state?.icon]);
 
-  const currentModelId = session.state?.modelId;
+  const currentMeaningId = session.state?.meaningId;
   useEffect(() => {
-    if (currentModelId && !fields[currentModelId]) {
-      loadFields(currentModelId);
+    if (currentMeaningId && !fields[currentMeaningId]) {
+      loadFields(currentMeaningId);
     }
-  }, [currentModelId, fields, loadFields]);
+  }, [currentMeaningId, fields, loadFields]);
 
   useEffect(() => {
-    if (!isDraft || !currentModelId) return;
-    const arch = models.find((a) => a.id === currentModelId);
+    if (!isDraft || !currentMeaningId) return;
+    const arch = meanings.find((a) => a.id === currentMeaningId);
     if (arch) {
       session.setState((prev) => ({
         ...prev,
@@ -559,26 +559,26 @@ export function InstanceEditor({ tab }: InstanceEditorProps): JSX.Element {
         color: prev.color || arch.color || null,
       }));
     }
-  }, [isDraft, currentModelId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isDraft, currentMeaningId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const allowedIds = tab.draftData?.allowedModelIds;
-  const filteredModels = allowedIds
-    ? models.filter((a) => allowedIds.includes(a.id))
-    : models;
+  const allowedIds = tab.draftData?.allowedMeaningIds;
+  const filteredMeanings = allowedIds
+    ? meanings.filter((a) => allowedIds.includes(a.id))
+    : meanings;
 
   useEffect(() => {
-    if (isDraft && allowedIds && !currentModelId && filteredModels.length > 0) {
-      session.setState((prev) => ({ ...prev, modelId: filteredModels[0].id }));
+    if (isDraft && allowedIds && !currentMeaningId && filteredMeanings.length > 0) {
+      session.setState((prev) => ({ ...prev, meaningId: filteredMeanings[0].id }));
     }
-  }, [isDraft, allowedIds, currentModelId, filteredModels]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isDraft, allowedIds, currentMeaningId, filteredMeanings]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const modelOptions = useMemo(() => [
+  const meaningOptions = useMemo(() => [
     ...(allowedIds ? [] : [{ value: '', label: t('common.none') ?? 'None' }]),
-    ...filteredModels.map((a) => ({ value: a.id, label: a.name })),
-  ], [filteredModels, allowedIds, t]);
+    ...filteredMeanings.map((a) => ({ value: a.id, label: a.name })),
+  ], [filteredMeanings, allowedIds, t]);
 
-  const modelFields = currentModelId
-      ? (fields[currentModelId] ?? []).filter((field) => getFieldMeaningSlot(field) !== 'recurrence_rule')
+  const meaningFields = currentMeaningId
+      ? (fields[currentMeaningId] ?? []).filter((field) => getFieldMeaningSlot(field) !== 'recurrence_rule')
     : [];
 
   const nodeOccurrences = session.state?.nodeOccurrences ?? [];
@@ -657,7 +657,7 @@ export function InstanceEditor({ tab }: InstanceEditorProps): JSX.Element {
     ));
   }, [directChildIds, selectedOccurrenceNetworkData]);
 
-  const sortableModelIds = useMemo(() => (
+  const sortableMeaningIds = useMemo(() => (
     Array.from(new Set(
       sortableInstanceNodes
         .map((node) => node.instance?.schema_id)
@@ -666,12 +666,12 @@ export function InstanceEditor({ tab }: InstanceEditorProps): JSX.Element {
   ), [sortableInstanceNodes]);
 
   useEffect(() => {
-    for (const modelId of sortableModelIds) {
-      if (!fields[modelId]) {
-        void loadFields(modelId);
+    for (const meaningId of sortableMeaningIds) {
+      if (!fields[meaningId]) {
+        void loadFields(meaningId);
       }
     }
-  }, [fields, loadFields, sortableModelIds]);
+  }, [fields, loadFields, sortableMeaningIds]);
 
   const meaningSortOptions = useMemo(() => (
     MEANING_SLOT_DEFINITIONS.map((definition) => ({
@@ -683,18 +683,18 @@ export function InstanceEditor({ tab }: InstanceEditorProps): JSX.Element {
   const propertySortOptions = useMemo(() => {
     const deduped = new Map<string, { value: string; label: string }>();
 
-    for (const modelId of sortableModelIds) {
-      const model = models.find((item) => item.id === modelId);
-      for (const field of fields[modelId] ?? []) {
+    for (const meaningId of sortableMeaningIds) {
+      const meaning = meanings.find((item) => item.id === meaningId);
+      for (const field of fields[meaningId] ?? []) {
         deduped.set(field.id, {
           value: field.id,
-          label: model ? `${field.name} - ${model.name}` : field.name,
+          label: meaning ? `${field.name} - ${meaning.name}` : field.name,
         });
       }
     }
 
     return Array.from(deduped.values()).sort((left, right) => left.label.localeCompare(right.label));
-  }, [models, fields, sortableModelIds, t]);
+  }, [meanings, fields, sortableMeaningIds, t]);
 
   const canEditNodeConfig = !!selectedNodeOccurrence && parsedNodeMetadataDraft !== null;
 
@@ -792,9 +792,9 @@ export function InstanceEditor({ tab }: InstanceEditorProps): JSX.Element {
     useEditorStore.getState().closeTab(tab.id);
   };
 
-  const selectedModelName = session.state.modelId ? (() => {
-    const model = models.find((a) => a.id === session.state.modelId);
-    return model ? model.name : null;
+  const selectedMeaningName = session.state.meaningId ? (() => {
+    const meaning = meanings.find((a) => a.id === session.state.meaningId);
+    return meaning ? meaning.name : null;
   })() : null;
 
   return (
@@ -804,7 +804,7 @@ export function InstanceEditor({ tab }: InstanceEditorProps): JSX.Element {
           badge={t('objectPanel.instance' as never)}
           title={session.state.title || tab.title || t('instance.defaultTitle')}
           subtitle={isDraft ? t('instance.create') : t('editorShell.networkObject' as never)}
-          description={selectedModelName}
+          description={selectedMeaningName}
           leadingVisual={<NodeVisual icon={session.state.icon ?? 'box'} size={24} imageSize={56} className="shrink-0" />}
           initialViewMode={tab.objectViewMode ?? 'body'}
         >
@@ -847,14 +847,14 @@ export function InstanceEditor({ tab }: InstanceEditorProps): JSX.Element {
                 <div className="mt-1 text-[11px] text-muted">{t('instance.visualHint' as never)}</div>
               </div>
 
-              {models.length > 0 && (
+              {meanings.length > 0 && (
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-secondary">{t('instance.model') ?? 'Model'}</label>
+                  <label className="mb-1 block text-xs font-medium text-secondary">{t('instance.schema' as never)}</label>
                   <Select
-                    options={modelOptions}
-                    value={session.state.modelId ?? ''}
+                    options={meaningOptions}
+                    value={session.state.meaningId ?? ''}
                     onChange={(e) => {
-                      update({ modelId: e.target.value || null, properties: {} });
+                      update({ meaningId: e.target.value || null, properties: {} });
                     }}
                     selectSize="sm"
                   />
@@ -862,12 +862,12 @@ export function InstanceEditor({ tab }: InstanceEditorProps): JSX.Element {
               )}
             </NetworkObjectEditorSection>
 
-            {session.state.modelId && (
+            {session.state.meaningId && (
               <NetworkObjectEditorSection title={t('instance.properties')} viewMode="body">
                 {isDraft ? (
-                  modelFields.length > 0 ? (
+                  meaningFields.length > 0 ? (
                     <InstancePropertyInputs
-                      fields={modelFields}
+                      fields={meaningFields}
                       properties={session.state.properties}
                       onChange={(fieldId, value) => update({
                         properties: { ...session.state.properties, [fieldId]: value },
@@ -876,7 +876,7 @@ export function InstanceEditor({ tab }: InstanceEditorProps): JSX.Element {
                   ) : null
                 ) : (
                   <InstancePropertiesPanel
-                    modelId={session.state.modelId}
+                    meaningId={session.state.meaningId}
                     projectId={currentProject?.id}
                     instanceId={tab.targetId}
                     properties={session.state.properties}
@@ -888,14 +888,14 @@ export function InstanceEditor({ tab }: InstanceEditorProps): JSX.Element {
               </NetworkObjectEditorSection>
             )}
 
-            {!isDraft && currentProject && session.state.modelId && (
+            {!isDraft && currentProject && session.state.meaningId && (
               <NetworkObjectEditorSection title={t('editorShell.interactiveView' as never)} viewMode="interactive">
                 <InteractiveViewPanel
                   tabId={tab.id}
                   projectId={currentProject.id}
-                  schemaId={session.state.modelId}
+                  schemaId={session.state.meaningId}
                   instanceId={tab.targetId}
-                  fields={modelFields}
+                  fields={meaningFields}
                   properties={session.state.properties}
                   content={session.state.content}
                   onFieldChange={(fieldId, value) => update({
@@ -1266,13 +1266,13 @@ export function InstanceEditor({ tab }: InstanceEditorProps): JSX.Element {
               </NetworkObjectEditorSection>
             )}
 
-            {!isDraft && currentProject && session.state.modelId && (
+            {!isDraft && currentProject && session.state.meaningId && (
               <NetworkObjectEditorSection title={t('interactiveView.configure' as never)} viewMode="details">
                 <InteractiveViewPanel
                   projectId={currentProject.id}
-                  schemaId={session.state.modelId}
+                  schemaId={session.state.meaningId}
                   instanceId={tab.targetId}
-                  fields={modelFields}
+                  fields={meaningFields}
                   properties={session.state.properties}
                   content={session.state.content}
                   onFieldChange={(fieldId, value) => update({
@@ -1296,7 +1296,7 @@ export function InstanceEditor({ tab }: InstanceEditorProps): JSX.Element {
                 <NetworkObjectMetadataList
                   items={[
                     { label: t('editorShell.objectId' as never), value: <code className="font-mono text-xs">{instance.id}</code> },
-                    { label: t('instance.model'), value: selectedModelName ?? t('common.none') },
+                    { label: t('instance.schema' as never), value: selectedMeaningName ?? t('common.none') },
                   ]}
                 />
               </NetworkObjectEditorSection>

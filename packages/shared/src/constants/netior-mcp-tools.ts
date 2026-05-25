@@ -15,7 +15,7 @@ type NetiorMcpToolSpecEntry = Omit<NetiorMcpToolSpec, 'key' | 'isMutation' | 'ap
 
 export const NETIOR_MCP_TOOL_SPECS = {
   list_schemas: {
-    description: 'List all schemas for a project, including attached models',
+    description: 'List all schemas for a project, including attached meanings',
     category: 'types',
     kind: 'query',
     profiles: ['discovery'],
@@ -23,14 +23,14 @@ export const NETIOR_MCP_TOOL_SPECS = {
     defaultProjectBinding: true,
   },
   create_schema: {
-    description: 'Create a new schema for a project, including file template and attached models',
+    description: 'Create a new schema for a project, including file template and attached meanings',
     category: 'types',
     kind: 'mutation',
     scope: 'project',
     defaultProjectBinding: true,
   },
   update_schema: {
-    description: 'Update an existing schema, including file template and attached models',
+    description: 'Update an existing schema, including file template and attached meanings',
     category: 'types',
     kind: 'mutation',
   },
@@ -50,7 +50,7 @@ export const NETIOR_MCP_TOOL_SPECS = {
     kind: 'mutation',
   },
   update_schema_field: {
-    description: 'Update a schema field, including meaning bindings and model-generated flags. Use set_field_behavior_dsl for advanced behavior.',
+    description: 'Update a schema field, including meaning bindings and meaning-generated flags. Use set_field_behavior_dsl for advanced behavior.',
     category: 'types',
     kind: 'mutation',
   },
@@ -101,46 +101,46 @@ export const NETIOR_MCP_TOOL_SPECS = {
     category: 'types',
     kind: 'mutation',
   },
-  list_models: {
-    description: 'List models for a project',
+  list_meanings: {
+    description: 'List meanings for a project',
     category: 'types',
     kind: 'query',
     profiles: ['discovery', 'bootstrap-execution'],
     scope: 'project',
     defaultProjectBinding: true,
   },
-  list_model_categories: {
-    description: 'List Model Category instances for a project. Model categories are schema-backed instances, not model string fields.',
+  list_meaning_categories: {
+    description: 'List Meaning Category instances for a project. Meaning categories are schema-backed instances, not meaning string fields.',
     category: 'types',
     kind: 'query',
     profiles: ['discovery', 'bootstrap-execution'],
     scope: 'project',
     defaultProjectBinding: true,
   },
-  get_model: {
-    description: 'Get a model by ID',
+  get_meaning: {
+    description: 'Get a meaning by ID',
     category: 'types',
     kind: 'query',
   },
-  create_model: {
-    description: 'Create an advanced custom model only after built-in and curated models are insufficient',
+  create_meaning: {
+    description: 'Create an advanced custom meaning only after built-in and curated meanings are insufficient',
     category: 'types',
     kind: 'mutation',
     scope: 'project',
     defaultProjectBinding: true,
   },
-  update_model: {
-    description: 'Update a model. Do not mutate built-in/curated model meaning unless explicitly requested',
+  update_meaning: {
+    description: 'Update a meaning. Do not mutate built-in/curated meaning meaning unless explicitly requested',
     category: 'types',
     kind: 'mutation',
   },
-  delete_model: {
-    description: 'Delete a model and detach it from schemas',
+  delete_meaning: {
+    description: 'Delete a meaning and detach it from schemas',
     category: 'types',
     kind: 'mutation',
   },
-  list_model_catalog: {
-    description: 'List built-in and curated models that Narre should prefer before creating custom models',
+  list_meaning_catalog: {
+    description: 'List built-in and curated meanings that Narre should prefer before creating custom meanings',
     category: 'types',
     kind: 'query',
     profiles: ['discovery', 'bootstrap-execution'],
@@ -253,7 +253,7 @@ export const NETIOR_MCP_TOOL_SPECS = {
     kind: 'query',
   },
   update_edge: {
-    description: 'Update an edge model binding or description',
+    description: 'Update an edge meaning binding or description',
     category: 'graph',
     kind: 'mutation',
   },
@@ -562,7 +562,7 @@ export const NETIOR_MCP_TOOL_SPECS = {
   },
   get_project_summary: {
     displayName: 'Project Summary',
-    description: 'Get a summary of a project including schema, model, instance, and network context',
+    description: 'Get a summary of a project including schema, meaning, instance, and network context',
     category: 'project',
     kind: 'analysis',
     profiles: ['discovery'],
@@ -583,7 +583,7 @@ function humanizeToolName(toolName: string): string {
 }
 
 function inferToolCategory(toolName: string): NarreToolCategory {
-  if (toolName.includes('schema') || toolName.includes('model') || toolName.includes('field')) {
+  if (toolName.includes('schema') || toolName.includes('meaning') || toolName.includes('field')) {
     return 'types';
   }
   if (toolName.includes('instance')) {
@@ -633,7 +633,7 @@ function inferToolScope(toolName: string): NetiorMcpToolScope {
   if (
     toolName.includes('project')
     || toolName.includes('schema')
-    || toolName.includes('model')
+    || toolName.includes('meaning')
     || toolName.includes('instance')
     || toolName.includes('module')
   ) {

@@ -8,18 +8,18 @@ import type {
   SemanticCategoryKey,
   SemanticCategoryRefKey,
   SemanticMeaningKey,
-  ModelKey,
-  ModelRefKey,
+  MeaningKey,
+  MeaningRefKey,
   MeaningSlotKey,
 } from '@netior/shared/types';
 import {
   SEMANTIC_CATEGORY_LABELS,
   SEMANTIC_MEANING_DEFINITIONS,
-  MODEL_DEFINITIONS,
+  MEANING_DEFINITIONS,
   getSemanticMeaningDescriptionKey,
   getSemanticMeaningLabelKey,
-  getModelDescriptionKey,
-  getModelLabelKey,
+  getMeaningDescriptionKey,
+  getMeaningLabelKey,
   getMeaningSlotDefinition,
   getMeaningSlotDescriptionKey,
   getMeaningSlotLabelKey,
@@ -48,15 +48,15 @@ interface SchemaSlotDesignerProps {
   tabId: string;
   fields: SchemaField[];
   meanings: SchemaMeaning[];
-  selectedModels: ModelRefKey[];
-  modelDefinitions?: readonly ModelOptionDefinition[];
+  selectedMeanings: MeaningRefKey[];
+  meaningDefinitions?: readonly MeaningOptionDefinition[];
   activeCategory: SemanticCategoryRefKey;
   fieldComplexityLevel: string;
   onActiveCategoryChange: (category: SemanticCategoryRefKey) => void;
-  onToggleModel: (model: ModelRefKey, checked: boolean) => void | Promise<void>;
+  onToggleMeaning: (meaning: MeaningRefKey, checked: boolean) => void | Promise<void>;
   onEnsureMeaning: (
     meaning: SemanticMeaningKey,
-    options?: { sourceModel?: ModelRefKey | null },
+    options?: { sourceMeaning?: MeaningRefKey | null },
   ) => void | Promise<void>;
   onCreateFieldForSlot: (
     binding: SchemaMeaningSlotBinding,
@@ -71,13 +71,13 @@ interface SchemaSlotDesignerProps {
   onUpdateField: (id: string, data: SchemaFieldUpdate) => void;
   onDeleteField: (id: string) => void;
   onOpenSettings: () => void;
-  modelCategories?: readonly ModelCategoryOption[];
+  meaningCategories?: readonly MeaningCategoryOption[];
 }
 
 const CATEGORY_KEYS = Object.keys(SEMANTIC_CATEGORY_LABELS) as SemanticCategoryKey[];
 
-export interface ModelOptionDefinition {
-  key: ModelRefKey;
+export interface MeaningOptionDefinition {
+  key: MeaningRefKey;
   category: SemanticCategoryRefKey;
   label: string;
   description?: string | null;
@@ -87,7 +87,7 @@ export interface ModelOptionDefinition {
   builtIn?: boolean;
 }
 
-export interface ModelCategoryOption {
+export interface MeaningCategoryOption {
   key: SemanticCategoryRefKey;
   label: string;
   description?: string;
@@ -105,7 +105,7 @@ const FIELD_TYPE_LABEL_KEYS: Record<FieldType, TranslationKey> = {
   radio: 'typeSelector.radio',
   relation: 'typeSelector.relation',
   object: 'typeSelector.object',
-  model_ref: 'typeSelector.model_ref',
+  meaning_ref: 'typeSelector.meaning_ref',
   file: 'typeSelector.file',
   url: 'typeSelector.url',
   color: 'typeSelector.color',
@@ -118,7 +118,7 @@ function sortFields(fields: SchemaField[]): SchemaField[] {
 }
 
 function sourceLabelKey(source: SchemaMeaning['source']): TranslationKey {
-  if (source === 'model') return 'semantic.ui.sourceModel' as TranslationKey;
+  if (source === 'meaning') return 'semantic.ui.sourceMeaning' as TranslationKey;
   if (source === 'migration') return 'semantic.ui.sourceMigration' as TranslationKey;
   if (source === 'system') return 'semantic.ui.sourceSystem' as TranslationKey;
   return 'semantic.ui.sourceManual' as TranslationKey;
@@ -128,12 +128,12 @@ export function SchemaSlotDesigner({
   tabId,
   fields,
   meanings,
-  selectedModels,
-  modelDefinitions,
+  selectedMeanings,
+  meaningDefinitions,
   activeCategory,
   fieldComplexityLevel,
   onActiveCategoryChange,
-  onToggleModel,
+  onToggleMeaning,
   onEnsureMeaning,
   onCreateFieldForSlot,
   onBindFieldToSlot,
@@ -142,7 +142,7 @@ export function SchemaSlotDesigner({
   onUpdateField,
   onDeleteField,
   onOpenSettings,
-  modelCategories = [],
+  meaningCategories = [],
 }: SchemaSlotDesignerProps): JSX.Element {
   const { t } = useI18n();
   const display = useMemo(() => createOntologyDisplayResolver(t), [t]);
@@ -166,8 +166,8 @@ export function SchemaSlotDesigner({
   const meaningByKey = useMemo(() => (
     new Map(meanings.map((meaning) => [meaning.meaning_key, meaning]))
   ), [meanings]);
-  const availableModelDefinitions = useMemo<readonly ModelOptionDefinition[]>(
-    () => modelDefinitions ?? MODEL_DEFINITIONS.map((definition) => ({
+  const availableMeaningDefinitions = useMemo<readonly MeaningOptionDefinition[]>(
+    () => meaningDefinitions ?? MEANING_DEFINITIONS.map((definition) => ({
       key: definition.key,
       category: definition.category,
       label: definition.label,
@@ -176,21 +176,21 @@ export function SchemaSlotDesigner({
       optionalSlots: definition.optionalSlots,
       builtIn: true,
     })),
-    [modelDefinitions],
+    [meaningDefinitions],
   );
 
-  const getModelLabel = (definition: ModelOptionDefinition): string => {
+  const getModelLabel = (definition: MeaningOptionDefinition): string => {
     if (definition.builtIn) {
-      const key = getModelLabelKey(definition.key as ModelKey);
+      const key = getMeaningLabelKey(definition.key as MeaningKey);
       const label = t(key as never);
       return label === key ? definition.label : label;
     }
     return definition.label;
   };
 
-  const getModelDescription = (definition: ModelOptionDefinition): string => {
+  const getModelDescription = (definition: MeaningOptionDefinition): string => {
     if (definition.builtIn) {
-      const key = getModelDescriptionKey(definition.key as ModelKey);
+      const key = getMeaningDescriptionKey(definition.key as MeaningKey);
       const description = t(key as never);
       return description === key ? definition.description ?? '' : description;
     }
@@ -198,39 +198,36 @@ export function SchemaSlotDesigner({
   };
 
   const categoryModels = useMemo(() => {
-    const categoryOptionByKey = new Map(modelCategories.map((category) => [category.key, category]));
-    const categoryKeys = modelCategories.map((category) => category.key);
+    const categoryOptionByKey = new Map(meaningCategories.map((category) => [category.key, category]));
+    const categoryKeys = meaningCategories.map((category) => category.key);
 
     return categoryKeys.map((categoryKey) => {
-      const categoryModelDefinitions = availableModelDefinitions.filter((definition) => definition.category === categoryKey);
-      const isSystemCategory = CATEGORY_KEYS.includes(categoryKey as SemanticCategoryKey);
+      const categoryMeaningDefinitions = availableMeaningDefinitions.filter((definition) => definition.category === categoryKey);
       const categoryOption = categoryOptionByKey.get(categoryKey);
-      const meaningDefinitions = isSystemCategory
-        ? SEMANTIC_MEANING_DEFINITIONS.filter((definition) => definition.category === categoryKey)
-        : [];
-      const activeMeanings = meaningDefinitions.filter((definition) => meaningByKey.has(definition.key));
+      const semanticMeaningDefinitions = SEMANTIC_MEANING_DEFINITIONS.filter((definition) => definition.category === categoryKey);
+      const activeMeanings = semanticMeaningDefinitions.filter((definition) => meaningByKey.has(definition.key));
       return {
         categoryKey,
         categoryLabel: categoryOption?.label ?? (
           display.name({
             kind: 'instance',
             title: categoryKey,
-            source_ref: `model-category.${categoryKey}`,
+            source_ref: `meaning-category.${categoryKey}`,
           })
         ),
         categoryDescription: categoryOption?.description ?? (
           display.description({
             kind: 'instance',
             title: categoryKey,
-            source_ref: `model-category.${categoryKey}`,
+            source_ref: `meaning-category.${categoryKey}`,
           }) ?? ''
         ),
-        modelDefinitions: categoryModelDefinitions,
-        meaningDefinitions,
+        meaningDefinitions: categoryMeaningDefinitions,
+        semanticMeaningDefinitions,
         activeMeanings,
       };
     });
-  }, [availableModelDefinitions, display, meaningByKey, modelCategories]);
+  }, [availableMeaningDefinitions, display, meaningByKey, meaningCategories]);
 
   const activeModel = categoryModels.find((category) => category.categoryKey === activeCategory) ?? categoryModels[0];
 
@@ -331,7 +328,7 @@ export function SchemaSlotDesigner({
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-2 text-xs font-medium text-secondary">
             <Sparkles size={14} />
-            {t('semantic.ui.meaningModel' as never)}
+            {t('semantic.ui.meaningLayer' as never)}
           </div>
           <div className="grid gap-1">
             {categoryModels.map((category) => {
@@ -378,7 +375,7 @@ export function SchemaSlotDesigner({
                 {`${activeModel.activeMeanings.length} ${t('semantic.ui.activeMeanings' as never)}`}
               </span>
               <span className="rounded-md bg-surface-editor px-2 py-1">
-                {`${selectedModels.length} ${t('semantic.ui.selectedModels' as never)}`}
+                {`${selectedMeanings.length} ${t('semantic.ui.selectedMeanings' as never)}`}
               </span>
             </div>
           </div>
@@ -386,34 +383,34 @@ export function SchemaSlotDesigner({
           <div className="mb-5">
             <div className="mb-2 flex items-center gap-2 text-xs font-medium text-default">
               <Layers3 size={14} />
-              {t('semantic.ui.modelPresets' as never)}
+              {t('semantic.ui.meaningPresets' as never)}
             </div>
             <div className="grid gap-2 md:grid-cols-2">
-              {activeModel.modelDefinitions.length === 0 ? (
+              {activeModel.semanticMeaningDefinitions.length === 0 ? (
                 <div className="rounded-lg border border-dashed border-subtle bg-surface-editor px-3 py-4 text-xs leading-relaxed text-secondary md:col-span-2">
-                  {t('semantic.ui.noModelsInCategory' as never)}
+                  {t('semantic.ui.noMeaningsInCategory' as never)}
                 </div>
               ) : (
-                activeModel.modelDefinitions.map((modelDefinition) => {
-                  const enabled = selectedModels.includes(modelDefinition.key);
+                activeModel.meaningDefinitions.map((meaningDefinition) => {
+                  const enabled = selectedMeanings.includes(meaningDefinition.key);
                   return (
                     <div
-                      key={modelDefinition.key}
+                      key={meaningDefinition.key}
                       className={`rounded-lg border px-3 py-3 transition-colors ${
                         enabled ? 'border-accent/40 bg-accent-muted/20' : 'border-subtle bg-surface-card'
                       }`}
                     >
                       <Checkbox
                         checked={enabled}
-                        onChange={(checked) => { void onToggleModel(modelDefinition.key, checked); }}
-                        label={getModelLabel(modelDefinition)}
+                        onChange={(checked) => { void onToggleMeaning(meaningDefinition.key, checked); }}
+                        label={getModelLabel(meaningDefinition)}
                       />
                       <div className="mt-2 text-xs leading-relaxed text-secondary">
-                        {getModelDescription(modelDefinition)}
+                        {getModelDescription(meaningDefinition)}
                       </div>
                       <div className="mt-2 flex flex-wrap gap-1">
-                        {modelDefinition.meanings.map((meaning) => (
-                          <span key={`${modelDefinition.key}:${meaning}`} className="rounded bg-surface-editor px-2 py-0.5 text-[11px] text-secondary">
+                        {meaningDefinition.meanings.map((meaning) => (
+                          <span key={`${meaningDefinition.key}:${meaning}`} className="rounded bg-surface-editor px-2 py-0.5 text-[11px] text-secondary">
                             {t(getSemanticMeaningLabelKey(meaning) as never)}
                           </span>
                         ))}
@@ -436,7 +433,7 @@ export function SchemaSlotDesigner({
                   {t('semantic.ui.noMeaningsInCategory' as never)}
                 </div>
               ) : (
-                activeModel.meaningDefinitions.map((definition) => {
+                activeModel.semanticMeaningDefinitions.map((definition) => {
                   const meaning = meaningByKey.get(definition.key);
                   const isActive = Boolean(meaning);
                   return (
