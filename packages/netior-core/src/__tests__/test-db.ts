@@ -55,6 +55,8 @@ import { migrate051 } from '../migrations/051-interactive-view-user-authored-tem
 import { migrate055 } from '../migrations/055-relation-model-target-kind';
 import { migrate056 } from '../migrations/056-meaning-domain-rename';
 import { migrate057 } from '../migrations/057-meaning-ontology-node-metadata';
+import { migrate058 } from '../migrations/058-remove-field-behavior-meanings';
+import { migrate059 } from '../migrations/059-add-dependency-meaning';
 
 let testDb: Database.Database | null = null;
 
@@ -115,6 +117,8 @@ export function setupTestDb(): Database.Database {
   migrate055(testDb);
   migrate056(testDb);
   migrate057(testDb);
+  migrate058(testDb);
+  migrate059(testDb);
   testDb.pragma('foreign_keys = ON');
   return testDb;
 }

@@ -358,6 +358,10 @@
         "label": "Causes",
         "description": "Connects a cause to an effect or consequence."
       },
+      "depends_on": {
+        "label": "Depends On",
+        "description": "Connects an object to another object it depends on before it can proceed."
+      },
       "derived_from": {
         "label": "Derived From",
         "description": "Connects an object to the source object it was derived from."

@@ -861,12 +861,18 @@ describe('Repositories', () => {
     it('should seed built-in meanings for new projects', () => {
       const meanings = listMeanings(projectId);
       const temporal = meanings.find((meaning) => meaning.key === 'temporal');
+      const dependency = meanings.find((meaning) => meaning.key === 'depends_on');
 
       expect(meanings.length).toBeGreaterThan(0);
       expect(temporal).toBeDefined();
+      expect(dependency).toBeDefined();
+      expect(dependency?.target_kind).toBe('relation');
+      expect(dependency?.directed).toBe(true);
       expect(temporal?.built_in).toBe(true);
       expect(temporal?.description).toContain('occupy time');
       expect(temporal?.recipe.meanings[0]?.fields[0]?.name).toBe('Start At');
+      expect(meanings.find((meaning) => meaning.key === 'instance_multi_select')).toBeUndefined();
+      expect(meanings.find((meaning) => meaning.key === 'computed_field')).toBeUndefined();
 
       const obj = getObjectByRef('meaning', temporal!.id);
       expect(obj).toBeDefined();

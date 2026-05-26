@@ -57,6 +57,8 @@ import { migrate054 } from './migrations/054-relationships';
 import { migrate055 } from './migrations/055-relation-model-target-kind';
 import { migrate056 } from './migrations/056-meaning-domain-rename';
 import { migrate057 } from './migrations/057-meaning-ontology-node-metadata';
+import { migrate058 } from './migrations/058-remove-field-behavior-meanings';
+import { migrate059 } from './migrations/059-add-dependency-meaning';
 import {
   ensureProjectNodeInUniverseForDb,
   ensureProjectOntologyNetworkForDb,
@@ -127,6 +129,8 @@ const migrations: Migration[] = [
   { version: 55, migrate: migrate055 },
   { version: 56, migrate: migrate056 },
   { version: 57, migrate: migrate057 },
+  { version: 58, migrate: migrate058 },
+  { version: 59, migrate: migrate059 },
 ];
 
 export function hasColumn(db: Database.Database, table: string, column: string): boolean {
