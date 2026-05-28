@@ -89,6 +89,7 @@ function getBrowserPermissionPath(): string {
 function collectOpenFileArgs(argv: string[]): string[] {
   const seen = new Set<string>();
   const filePaths: string[] = [];
+  const executablePath = resolve(process.execPath).toLowerCase();
 
   for (const arg of argv) {
     if (!arg || arg.startsWith('--')) continue;
@@ -99,6 +100,7 @@ function collectOpenFileArgs(argv: string[]): string[] {
       if (!stats.isFile()) continue;
       const filePath = resolve(arg);
       const key = filePath.toLowerCase();
+      if (key === executablePath) continue;
       if (seen.has(key)) continue;
       seen.add(key);
       filePaths.push(filePath);
