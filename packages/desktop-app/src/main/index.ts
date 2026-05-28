@@ -1,5 +1,6 @@
 import { app, shell, BrowserWindow, ipcMain, Menu, Notification, nativeImage, screen, session } from 'electron';
 import { basename, dirname, join, resolve } from 'path';
+import { createServer, request as httpRequest, type Server } from 'http';
 import { electronApp, optimizer, is } from '@electron-toolkit/utils';
 import { appendFileSync, mkdirSync, existsSync, readFileSync, statSync, unlinkSync, writeFileSync } from 'fs';
 import { registerAllIpc } from './ipc';
@@ -19,9 +20,11 @@ import {
   getSharedUserDataRoot,
 } from './runtime/runtime-paths';
 import {
+  listDesktopRuntimeInstances,
   registerDesktopRuntimeInstance,
   unregisterDesktopRuntimeInstance,
   updateDesktopRuntimeProjectContext,
+  updateDesktopRuntimeRelayPort,
 } from './runtime/runtime-coordination';
 import { listSystemFonts } from './system-fonts';
 
@@ -57,6 +60,7 @@ let mainWindow: BrowserWindow | null = null;
 const detachedWindows = new Map<string, BrowserWindow>();
 const browserPartition = 'persist:netior-browser';
 const browserPermissionDecisions = new Map<string, boolean>();
+let openFileRelayServer: Server | null = null;
 let pendingOpenFilePaths = collectOpenFileArgs(process.argv);
 
 interface BrowserDownloadEvent {
@@ -110,6 +114,147 @@ function collectOpenFileArgs(argv: string[]): string[] {
   }
 
   return filePaths;
+}
+
+function normalizeComparablePath(filePath: string): string {
+  return resolve(filePath).replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase();
+}
+
+function isPathInsideRoot(filePath: string, rootDir: string): boolean {
+  const file = normalizeComparablePath(filePath);
+  const root = normalizeComparablePath(rootDir);
+  return file === root || file.startsWith(`${root}/`);
+}
+
+function findOpenFileRelayTarget(filePaths: string[]): { relayPort: number; projectRoot: string | null } | null {
+  if (filePaths.length === 0) return null;
+
+  const currentInstanceId = getRuntimeInstanceId();
+  const candidates = listDesktopRuntimeInstances()
+    .filter((record) => (
+      record.instanceId !== currentInstanceId
+      && typeof record.relayPort === 'number'
+      && record.relayPort > 0
+    ));
+
+  let bestProjectMatch: { relayPort: number; projectRoot: string } | null = null;
+  for (const candidate of candidates) {
+    if (!candidate.projectRoot) continue;
+    if (!filePaths.some((filePath) => isPathInsideRoot(filePath, candidate.projectRoot!))) continue;
+    if (
+      !bestProjectMatch
+      || normalizeComparablePath(candidate.projectRoot).length > normalizeComparablePath(bestProjectMatch.projectRoot).length
+    ) {
+      bestProjectMatch = { relayPort: candidate.relayPort!, projectRoot: candidate.projectRoot };
+    }
+  }
+
+  if (bestProjectMatch) return bestProjectMatch;
+
+  const projectlessMatch = candidates.find((candidate) => !candidate.projectRoot);
+  return projectlessMatch?.relayPort
+    ? { relayPort: projectlessMatch.relayPort, projectRoot: null }
+    : null;
+}
+
+function postOpenFilesToRelay(relayPort: number, filePaths: string[]): Promise<boolean> {
+  return new Promise((resolveRelay) => {
+    const payload = JSON.stringify({ filePaths });
+    const req = httpRequest({
+      hostname: '127.0.0.1',
+      port: relayPort,
+      path: '/open-files',
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'content-length': Buffer.byteLength(payload),
+      },
+      timeout: 1500,
+    }, (res) => {
+      res.resume();
+      res.on('end', () => resolveRelay((res.statusCode ?? 500) >= 200 && (res.statusCode ?? 500) < 300));
+    });
+
+    req.on('timeout', () => {
+      req.destroy();
+      resolveRelay(false);
+    });
+    req.on('error', () => resolveRelay(false));
+    req.end(payload);
+  });
+}
+
+async function forwardOpenFilesToExistingInstance(filePaths: string[]): Promise<boolean> {
+  const target = findOpenFileRelayTarget(filePaths);
+  if (!target) return false;
+
+  const forwarded = await postOpenFilesToRelay(target.relayPort, filePaths);
+  if (forwarded) {
+    console.log('[open-files] Forwarded to existing runtime instance', {
+      relayPort: target.relayPort,
+      projectRoot: target.projectRoot,
+      fileCount: filePaths.length,
+    });
+  }
+  return forwarded;
+}
+
+function startOpenFileRelayServer(): Promise<void> {
+  if (openFileRelayServer) return Promise.resolve();
+
+  return new Promise((resolveServer, rejectServer) => {
+    const server = createServer((req, res) => {
+      if (req.method !== 'POST' || req.url !== '/open-files') {
+        res.writeHead(404);
+        res.end();
+        return;
+      }
+
+      let body = '';
+      req.setEncoding('utf8');
+      req.on('data', (chunk) => {
+        body += chunk;
+        if (body.length > 1024 * 1024) {
+          req.destroy();
+        }
+      });
+      req.on('end', () => {
+        try {
+          const parsed = JSON.parse(body) as { filePaths?: unknown };
+          const filePaths = Array.isArray(parsed.filePaths)
+            ? parsed.filePaths.filter((filePath): filePath is string => typeof filePath === 'string')
+            : [];
+          if (filePaths.length > 0) {
+            pendingOpenFilePaths.push(...filePaths);
+            flushPendingOpenFilePaths();
+          }
+          res.writeHead(204);
+          res.end();
+        } catch {
+          res.writeHead(400);
+          res.end();
+        }
+      });
+    });
+
+    server.once('error', rejectServer);
+    server.listen(0, '127.0.0.1', () => {
+      server.off('error', rejectServer);
+      openFileRelayServer = server;
+      const address = server.address();
+      const relayPort = typeof address === 'object' && address ? address.port : null;
+      updateDesktopRuntimeRelayPort(relayPort);
+      console.log(`[open-files] Relay server listening on 127.0.0.1:${relayPort ?? 'unknown'}`);
+      resolveServer();
+    });
+  });
+}
+
+function stopOpenFileRelayServer(): void {
+  updateDesktopRuntimeRelayPort(null);
+  if (!openFileRelayServer) return;
+  openFileRelayServer.close();
+  openFileRelayServer = null;
 }
 
 function sendOpenFilePaths(filePaths: string[]): void {
@@ -514,6 +659,15 @@ app.whenReady().then(async () => {
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window);
   });
+
+  if (pendingOpenFilePaths.length > 0 && await forwardOpenFilesToExistingInstance(pendingOpenFilePaths)) {
+    pendingOpenFilePaths = [];
+    unregisterDesktopRuntimeInstance();
+    app.quit();
+    return;
+  }
+
+  await startOpenFileRelayServer();
 
   const dbDir = join(app.getPath('userData'), 'data');
   mkdirSync(dbDir, { recursive: true });
@@ -920,6 +1074,7 @@ function clamp(value: number, min: number, max: number): number {
 app.on('window-all-closed', () => {
   ptyManager.killAll();
   agentRuntimeManager.stop();
+  stopOpenFileRelayServer();
   unregisterDesktopRuntimeInstance();
   stopNarreServer();
   stopNetiorService();
@@ -935,6 +1090,7 @@ app.on('open-file', (event, filePath) => {
 });
 
 app.on('will-quit', () => {
+  stopOpenFileRelayServer();
   unregisterDesktopRuntimeInstance();
 });
 

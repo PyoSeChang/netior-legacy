@@ -12,13 +12,14 @@ const DESKTOP_INSTANCE_MARKER_FILENAME = 'instance.json';
 
 export type SharedSidecarName = 'netior-service' | 'narre-server';
 
-interface DesktopRuntimeInstanceRecord {
+export interface DesktopRuntimeInstanceRecord {
   instanceId: string;
   pid: number;
   startedAt: string;
   updatedAt?: string;
   projectId?: string | null;
   projectRoot?: string | null;
+  relayPort?: number | null;
 }
 
 interface SharedSidecarStateRecord {
@@ -68,8 +69,52 @@ export function updateDesktopRuntimeProjectContext(context: {
   );
 }
 
+export function updateDesktopRuntimeRelayPort(relayPort: number | null): void {
+  mkdirSync(getRuntimeInstanceDir(), { recursive: true });
+
+  const current = readDesktopRuntimeInstance(getRuntimeInstanceId()) ?? {
+    instanceId: getRuntimeInstanceId(),
+    pid: process.pid,
+    startedAt: new Date().toISOString(),
+  };
+  const record: DesktopRuntimeInstanceRecord = {
+    ...current,
+    relayPort,
+    updatedAt: new Date().toISOString(),
+  };
+
+  writeFileSync(
+    getDesktopInstanceMarkerPath(),
+    JSON.stringify(record, null, 2),
+    'utf8',
+  );
+}
+
 export function unregisterDesktopRuntimeInstance(): void {
   removeRuntimeInstanceArtifacts(getRuntimeInstanceId());
+}
+
+export function listDesktopRuntimeInstances(): DesktopRuntimeInstanceRecord[] {
+  cleanupStaleRuntimeInstances();
+
+  const instancesDir = getRuntimeInstancesDir();
+  if (!existsSync(instancesDir)) {
+    return [];
+  }
+
+  const records: DesktopRuntimeInstanceRecord[] = [];
+  for (const entry of readdirSync(instancesDir, { withFileTypes: true })) {
+    if (!entry.isDirectory()) {
+      continue;
+    }
+
+    const record = readDesktopRuntimeInstance(entry.name);
+    if (record) {
+      records.push(record);
+    }
+  }
+
+  return records;
 }
 
 export function hasOtherDesktopRuntimeInstances(): boolean {
@@ -218,6 +263,7 @@ function readDesktopRuntimeInstance(instanceId: string): DesktopRuntimeInstanceR
       updatedAt: typeof parsed.updatedAt === 'string' ? parsed.updatedAt : undefined,
       projectId: typeof parsed.projectId === 'string' || parsed.projectId === null ? parsed.projectId : undefined,
       projectRoot: typeof parsed.projectRoot === 'string' || parsed.projectRoot === null ? parsed.projectRoot : undefined,
+      relayPort: typeof parsed.relayPort === 'number' || parsed.relayPort === null ? parsed.relayPort : undefined,
     };
   } catch {
     removeRuntimeInstanceArtifacts(instanceId);
