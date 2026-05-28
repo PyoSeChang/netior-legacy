@@ -51,6 +51,14 @@ function getWorktreeLabel(): string {
 const electronAPI = {
   app: {
     worktreeLabel: getWorktreeLabel(),
+    readyForOpenFiles: () => ipcRenderer.send('app:renderer-ready-for-open-files'),
+    updateProjectContext: (context: { projectId?: string | null; projectRoot?: string | null }) =>
+      ipcRenderer.send('app:update-project-context', context),
+    onOpenFiles: (callback: (filePaths: string[]) => void) => {
+      const handler = (_event: IpcRendererEvent, filePaths: string[]) => callback(filePaths);
+      ipcRenderer.on('app:open-files', handler);
+      return () => { ipcRenderer.removeListener('app:open-files', handler); };
+    },
   },
   window: {
     minimize: () => ipcRenderer.send('window:minimize'),

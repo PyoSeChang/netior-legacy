@@ -63,6 +63,24 @@
     "productName": "Netior",
     "icon": "build/icons/netior-app-icon.png",
     "npmRebuild": false,
+    "fileAssociations": [
+      {
+        "ext": [
+          "md",
+          "txt",
+          "json",
+          "yaml",
+          "yml",
+          "pdf",
+          "png",
+          "jpg",
+          "jpeg"
+        ],
+        "name": "Netior-supported file",
+        "description": "Open with Netior",
+        "role": "Editor"
+      }
+    ],
     "directories": {
       "output": "release"
     },

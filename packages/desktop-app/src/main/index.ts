@@ -1,7 +1,7 @@
 import { app, shell, BrowserWindow, ipcMain, Menu, Notification, nativeImage, screen, session } from 'electron';
-import { basename, dirname, join } from 'path';
+import { basename, dirname, join, resolve } from 'path';
 import { electronApp, optimizer, is } from '@electron-toolkit/utils';
-import { appendFileSync, mkdirSync, existsSync, readFileSync, unlinkSync, writeFileSync } from 'fs';
+import { appendFileSync, mkdirSync, existsSync, readFileSync, statSync, unlinkSync, writeFileSync } from 'fs';
 import { registerAllIpc } from './ipc';
 import { ptyManager } from './pty/pty-manager';
 import { stopNarreServer } from './process/narre-server-manager';
@@ -21,6 +21,7 @@ import {
 import {
   registerDesktopRuntimeInstance,
   unregisterDesktopRuntimeInstance,
+  updateDesktopRuntimeProjectContext,
 } from './runtime/runtime-coordination';
 import { listSystemFonts } from './system-fonts';
 
@@ -56,6 +57,7 @@ let mainWindow: BrowserWindow | null = null;
 const detachedWindows = new Map<string, BrowserWindow>();
 const browserPartition = 'persist:netior-browser';
 const browserPermissionDecisions = new Map<string, boolean>();
+let pendingOpenFilePaths = collectOpenFileArgs(process.argv);
 
 interface BrowserDownloadEvent {
   id: string;
@@ -82,6 +84,43 @@ const pendingBrowserPermissions = new Map<string, {
 
 function getBrowserPermissionPath(): string {
   return join(app.getPath('userData'), 'data', 'browser-permissions.json');
+}
+
+function collectOpenFileArgs(argv: string[]): string[] {
+  const seen = new Set<string>();
+  const filePaths: string[] = [];
+
+  for (const arg of argv) {
+    if (!arg || arg.startsWith('--')) continue;
+
+    try {
+      if (!existsSync(arg)) continue;
+      const stats = statSync(arg);
+      if (!stats.isFile()) continue;
+      const filePath = resolve(arg);
+      const key = filePath.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      filePaths.push(filePath);
+    } catch {
+      // Ignore argv entries that are not filesystem paths.
+    }
+  }
+
+  return filePaths;
+}
+
+function sendOpenFilePaths(filePaths: string[]): void {
+  if (filePaths.length === 0 || !mainWindow || mainWindow.isDestroyed()) return;
+  focusMainWindow('open-files');
+  mainWindow.webContents.send('app:open-files', filePaths);
+}
+
+function flushPendingOpenFilePaths(): void {
+  if (pendingOpenFilePaths.length === 0) return;
+  const filePaths = pendingOpenFilePaths;
+  pendingOpenFilePaths = [];
+  sendOpenFilePaths(filePaths);
 }
 
 function loadBrowserPermissionDecisions(): void {
@@ -542,6 +581,15 @@ app.whenReady().then(async () => {
     shell.showItemInFolder(savePath);
     return true;
   });
+  ipcMain.on('app:renderer-ready-for-open-files', () => {
+    flushPendingOpenFilePaths();
+  });
+  ipcMain.on('app:update-project-context', (_event, context: { projectId?: string | null; projectRoot?: string | null }) => {
+    updateDesktopRuntimeProjectContext({
+      projectId: context.projectId ?? null,
+      projectRoot: context.projectRoot ?? null,
+    });
+  });
   ipcMain.on('browser:permission-response', (_event, payload: { id: string; allowed: boolean }) => {
     const pending = pendingBrowserPermissions.get(payload.id);
     if (!pending) return;
@@ -874,6 +922,14 @@ app.on('window-all-closed', () => {
   stopNarreServer();
   stopNetiorService();
   if (process.platform !== 'darwin') app.quit();
+});
+
+app.on('open-file', (event, filePath) => {
+  event.preventDefault();
+  const openFiles = collectOpenFileArgs([filePath]);
+  if (openFiles.length === 0) return;
+  pendingOpenFilePaths.push(...openFiles);
+  flushPendingOpenFilePaths();
 });
 
 app.on('will-quit', () => {

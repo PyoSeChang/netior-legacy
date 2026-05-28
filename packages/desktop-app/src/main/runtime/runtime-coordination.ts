@@ -16,6 +16,9 @@ interface DesktopRuntimeInstanceRecord {
   instanceId: string;
   pid: number;
   startedAt: string;
+  updatedAt?: string;
+  projectId?: string | null;
+  projectRoot?: string | null;
 }
 
 interface SharedSidecarStateRecord {
@@ -31,7 +34,33 @@ export function registerDesktopRuntimeInstance(): void {
     instanceId: getRuntimeInstanceId(),
     pid: process.pid,
     startedAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   };
+  writeFileSync(
+    getDesktopInstanceMarkerPath(),
+    JSON.stringify(record, null, 2),
+    'utf8',
+  );
+}
+
+export function updateDesktopRuntimeProjectContext(context: {
+  projectId: string | null;
+  projectRoot: string | null;
+}): void {
+  mkdirSync(getRuntimeInstanceDir(), { recursive: true });
+
+  const current = readDesktopRuntimeInstance(getRuntimeInstanceId()) ?? {
+    instanceId: getRuntimeInstanceId(),
+    pid: process.pid,
+    startedAt: new Date().toISOString(),
+  };
+  const record: DesktopRuntimeInstanceRecord = {
+    ...current,
+    projectId: context.projectId,
+    projectRoot: context.projectRoot,
+    updatedAt: new Date().toISOString(),
+  };
+
   writeFileSync(
     getDesktopInstanceMarkerPath(),
     JSON.stringify(record, null, 2),
@@ -186,6 +215,9 @@ function readDesktopRuntimeInstance(instanceId: string): DesktopRuntimeInstanceR
       instanceId,
       pid: parsed.pid,
       startedAt: parsed.startedAt,
+      updatedAt: typeof parsed.updatedAt === 'string' ? parsed.updatedAt : undefined,
+      projectId: typeof parsed.projectId === 'string' || parsed.projectId === null ? parsed.projectId : undefined,
+      projectRoot: typeof parsed.projectRoot === 'string' || parsed.projectRoot === null ? parsed.projectRoot : undefined,
     };
   } catch {
     removeRuntimeInstanceArtifacts(instanceId);
