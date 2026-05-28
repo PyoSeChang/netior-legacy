@@ -62,6 +62,7 @@ export function updateDesktopRuntimeProjectContext(context: {
     updatedAt: new Date().toISOString(),
   };
 
+  mkdirSync(getRuntimeInstanceDir(), { recursive: true });
   writeFileSync(
     getDesktopInstanceMarkerPath(),
     JSON.stringify(record, null, 2),
@@ -83,6 +84,7 @@ export function updateDesktopRuntimeRelayPort(relayPort: number | null): void {
     updatedAt: new Date().toISOString(),
   };
 
+  mkdirSync(getRuntimeInstanceDir(), { recursive: true });
   writeFileSync(
     getDesktopInstanceMarkerPath(),
     JSON.stringify(record, null, 2),
