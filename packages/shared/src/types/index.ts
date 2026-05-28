@@ -1285,6 +1285,8 @@ export interface EditorTab {
   terminalLaunchConfig?: Pick<TerminalLaunchConfig, 'shell' | 'args' | 'agent'>;
   /** Favicon URL for embedded browser tabs */
   browserFaviconUrl?: string;
+  /** Current URL for embedded browser tabs, preserved across editor remounts. */
+  browserUrl?: string;
   /** Draft data for unsaved new entities (instance creation flow) */
   draftData?: {
     networkId?: string;

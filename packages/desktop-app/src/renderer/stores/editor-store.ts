@@ -38,6 +38,7 @@ interface OpenTabParams {
   terminalCwd?: string;
   terminalLaunchConfig?: Pick<TerminalLaunchConfig, 'shell' | 'args' | 'agent'>;
   browserFaviconUrl?: string;
+  browserUrl?: string;
   objectViewMode?: EditorTab['objectViewMode'];
   sideSplitRatio?: number;
   /** Host to open the tab in (defaults to MAIN_HOST_ID) */
@@ -78,6 +79,7 @@ interface EditorStore {
   updateSideSplitRatio: (tabId: string, ratio: number) => void;
   updateTitle: (tabId: string, title: string, isManualRename?: boolean) => void;
   updateBrowserFavicon: (tabId: string, faviconUrl: string | null) => void;
+  updateBrowserUrl: (tabId: string, url: string) => void;
 
   setActiveFile: (tabId: string, filePath: string | null) => void;
   setDirty: (tabId: string, dirty: boolean) => void;
@@ -543,7 +545,7 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
   focusedHostId: MAIN_HOST_ID,
   pendingCloseTabId: null,
 
-  openTab: async ({ type, targetId, title, viewMode, isDirty, draftData, projectId, networkId, nodeId, terminalCwd, terminalLaunchConfig, browserFaviconUrl, objectViewMode, sideSplitRatio, hostId }) => {
+  openTab: async ({ type, targetId, title, viewMode, isDirty, draftData, projectId, networkId, nodeId, terminalCwd, terminalLaunchConfig, browserFaviconUrl, browserUrl, objectViewMode, sideSplitRatio, hostId }) => {
     const { tabs } = get();
     const tabId = makeTabId(type, targetId);
     const resolvedHostId = hostId ?? MAIN_HOST_ID;
@@ -556,6 +558,7 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
       if (nodeId !== undefined) contextPatch.nodeId = nodeId;
       if (draftData !== undefined) contextPatch.draftData = draftData;
       if (browserFaviconUrl !== undefined) contextPatch.browserFaviconUrl = browserFaviconUrl;
+      if (browserUrl !== undefined) contextPatch.browserUrl = browserUrl;
       if (objectViewMode !== undefined) contextPatch.objectViewMode = objectViewMode;
 
       // If tab exists in a different host, move it
@@ -671,6 +674,7 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
       terminalCwd,
       terminalLaunchConfig,
       browserFaviconUrl,
+      browserUrl,
       objectViewMode,
     };
 
@@ -777,6 +781,7 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
             terminalCwd: params.terminalCwd,
             terminalLaunchConfig: params.terminalLaunchConfig,
             browserFaviconUrl: params.browserFaviconUrl,
+            browserUrl: params.browserUrl,
             objectViewMode: params.objectViewMode,
             editorType: undefined,
             isMinimized: false,
@@ -1166,6 +1171,18 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
         if (t.id !== tabId || t.browserFaviconUrl === faviconUrl) return t;
         changed = true;
         return { ...t, browserFaviconUrl: faviconUrl ?? undefined };
+      });
+      return changed ? { tabs } : { tabs: s.tabs };
+    });
+  },
+
+  updateBrowserUrl: (tabId, url) => {
+    set((s) => {
+      let changed = false;
+      const tabs = s.tabs.map((t) => {
+        if (t.id !== tabId || t.browserUrl === url) return t;
+        changed = true;
+        return { ...t, browserUrl: url };
       });
       return changed ? { tabs } : { tabs: s.tabs };
     });

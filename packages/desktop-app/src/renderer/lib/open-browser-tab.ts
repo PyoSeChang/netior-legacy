@@ -61,6 +61,7 @@ export async function openBrowserTab(url: string, hostId?: string): Promise<bool
     targetId: normalized,
     title: getBrowserTabTitle(normalized),
     browserFaviconUrl: getDefaultFaviconUrl(normalized),
+    browserUrl: normalized,
     viewMode: 'side',
     hostId,
   });

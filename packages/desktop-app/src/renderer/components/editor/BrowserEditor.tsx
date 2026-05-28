@@ -125,10 +125,11 @@ function BrowserMenuFavicon({ faviconUrl }: { faviconUrl?: string | null }): JSX
 export function BrowserEditor({ tab }: BrowserEditorProps): JSX.Element {
   const webviewRef = useRef<BrowserWebView | null>(null);
   const webviewReadyRef = useRef(false);
-  const initialUrlRef = useRef(tab.targetId);
+  const restoredUrl = tab.browserUrl ?? tab.targetId;
+  const initialUrlRef = useRef(restoredUrl);
   const bookmarkButtonRef = useRef<HTMLButtonElement | null>(null);
   const moreButtonRef = useRef<HTMLButtonElement | null>(null);
-  const [address, setAddress] = useState(tab.targetId);
+  const [address, setAddress] = useState(restoredUrl);
   const [isLoading, setIsLoading] = useState(false);
   const [canGoBack, setCanGoBack] = useState(false);
   const [canGoForward, setCanGoForward] = useState(false);
@@ -142,6 +143,7 @@ export function BrowserEditor({ tab }: BrowserEditorProps): JSX.Element {
   const navigateTab = useEditorStore((s) => s.navigateTab);
   const updateTitle = useEditorStore((s) => s.updateTitle);
   const updateBrowserFavicon = useEditorStore((s) => s.updateBrowserFavicon);
+  const updateBrowserUrl = useEditorStore((s) => s.updateBrowserUrl);
   const browserSettings = useSettingsStore((s) => s.browser);
   const securityState = getSecurityState(address);
   const downloadProgress = downloadEvent ? getDownloadProgress(downloadEvent) : null;
@@ -149,20 +151,21 @@ export function BrowserEditor({ tab }: BrowserEditorProps): JSX.Element {
   const currentBookmark = normalizedAddress ? findBrowserBookmark(normalizedAddress, bookmarks) : undefined;
 
   useEffect(() => {
-    setAddress(tab.targetId);
+    const nextUrl = tab.browserUrl ?? tab.targetId;
+    setAddress(nextUrl);
     const webview = webviewRef.current;
     if (!webview) return;
     try {
-      if (webviewReadyRef.current && webview.getURL?.() === tab.targetId) return;
+      if (webviewReadyRef.current && webview.getURL?.() === nextUrl) return;
       if (webviewReadyRef.current && webview.loadURL) {
-        webview.loadURL(tab.targetId);
+        webview.loadURL(nextUrl);
       } else {
-        webview.src = tab.targetId;
+        webview.src = nextUrl;
       }
     } catch {
-      webview.src = tab.targetId;
+      webview.src = nextUrl;
     }
-  }, [tab.targetId]);
+  }, [tab.browserUrl, tab.targetId]);
 
   useEffect(() => {
     let clearTimer: ReturnType<typeof setTimeout> | null = null;
@@ -224,6 +227,7 @@ export function BrowserEditor({ tab }: BrowserEditorProps): JSX.Element {
       title: getBrowserTabTitle(normalized),
       projectId: tab.projectId,
       browserFaviconUrl: getDefaultFaviconUrl(normalized),
+      browserUrl: normalized,
     });
   }, [navigateTab, tab.id, tab.projectId]);
 
@@ -358,6 +362,7 @@ export function BrowserEditor({ tab }: BrowserEditorProps): JSX.Element {
         return;
       }
       setAddress(nextUrl);
+      updateBrowserUrl(tab.id, nextUrl);
       updateNavigationState();
     };
     const handleTitle = (event: Event) => {
@@ -419,7 +424,7 @@ export function BrowserEditor({ tab }: BrowserEditorProps): JSX.Element {
       webview.removeEventListener('new-window', handleNewWindow);
       webview.removeEventListener('dom-ready', handleDomReady);
     };
-  }, [address, browserSettings.openPopupsInTabs, tab.id, updateBrowserFavicon, updateNavigationState, updateTitle]);
+  }, [browserSettings.openPopupsInTabs, tab.id, updateBrowserFavicon, updateBrowserUrl, updateNavigationState, updateTitle]);
 
   return (
     <div className="flex h-full min-h-0 w-full min-w-0 flex-col bg-surface-editor text-default">
