@@ -27,9 +27,9 @@ packages:
     impact: local
     contracts: []
   desktop-app:
-    version: "1.3.4"
+    version: "1.3.5"
     type: patch
-    summary: "Narre 에이전트 스킬 격리와 모델링 패키징 릴리스"
+    summary: "외부 파일 열기와 브라우저 탭 상태 보존 개선"
     impact: local
     contracts: []
   narre-eval:
