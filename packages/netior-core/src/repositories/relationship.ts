@@ -1,5 +1,6 @@
 import { randomUUID } from 'crypto';
 import { getDatabase } from '../connection';
+import { getDefaultOwnerNetworkIdForProjectDb } from './network-scope';
 import type {
   Relationship,
   RelationshipCreate,
@@ -55,17 +56,19 @@ export function createRelationship(data: RelationshipCreate): Relationship {
   const id = randomUUID();
   const now = new Date().toISOString();
   const propertiesJson = validateJsonObject(data.properties_json, 'properties_json');
+  const ownerNetworkId = data.owner_network_id ?? getDefaultOwnerNetworkIdForProjectDb(db, data.project_id);
 
   db.prepare(`
     INSERT INTO relationships (
-      id, project_id, source_object_id, target_object_id, meaning_id, description,
+      id, project_id, owner_network_id, source_object_id, target_object_id, meaning_id, description,
       properties_json, source_kind, source_id, source_ref, source_version,
       created_at, updated_at
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     id,
     data.project_id,
+    ownerNetworkId,
     data.source_object_id,
     data.target_object_id,
     data.meaning_id ?? null,
@@ -93,7 +96,8 @@ export function updateRelationship(id: string, data: RelationshipUpdate): Relati
 
   db.prepare(`
     UPDATE relationships
-       SET meaning_id = ?,
+       SET owner_network_id = ?,
+           meaning_id = ?,
            description = ?,
            properties_json = ?,
            source_kind = ?,
@@ -103,6 +107,7 @@ export function updateRelationship(id: string, data: RelationshipUpdate): Relati
            updated_at = ?
      WHERE id = ?
   `).run(
+    data.owner_network_id !== undefined ? data.owner_network_id : existing.owner_network_id,
     data.meaning_id !== undefined ? data.meaning_id : existing.meaning_id,
     data.description !== undefined ? data.description : existing.description,
     nextPropertiesJson,

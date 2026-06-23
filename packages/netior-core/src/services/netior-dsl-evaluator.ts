@@ -216,7 +216,7 @@ function getObjectsInNetwork(networkId: string | undefined, projectId: string): 
       JOIN objects o ON o.id = nn.object_id
      WHERE nn.network_id = ?
        AND (n.project_id IS NULL OR n.project_id = ?)
-     ORDER BY nn.created_at, nn.id
+     ORDER BY nn.created_at, nn.rowid
   `).all(networkId, projectId) as Array<{ object_type: string; ref_id: string; object_id: string }>;
 
   return rows.map((row) => ({

@@ -35,7 +35,7 @@ import {
 } from '../repositories/module';
 import { getEditorPrefs, upsertEditorPrefs } from '../repositories/editor-prefs';
 import { createMeaning, deleteMeaning, getMeaning, listMeanings, updateMeaning } from '../repositories/meaning';
-import { listMeaningCategories } from '../repositories/meaning-category';
+import { listMeaningCategoriesForProjectDb } from '../repositories/meaning-category';
 import { createObject, getObject, getObjectByRef, deleteObject, deleteObjectByRef } from '../repositories/objects';
 import { createContext, listContexts, getContext, updateContext, deleteContext, addContextMember, removeContextMember, getContextMembers } from '../repositories/context';
 import {
@@ -624,6 +624,30 @@ describe('Repositories', () => {
       expect(ontology!.parent_network_id).toBeNull();
       expect(ontology!.name).toBe('Ontology');
     });
+
+    it('should use the project ontology network as the initial owner network scope', () => {
+      const project = createProject({ name: 'Scoped', root_dir: '/tmp/scoped' });
+      const ontology = getProjectOntologyNetwork(project.id);
+      expect(ontology).toBeDefined();
+
+      const db = getTestDb();
+      const schema = db.prepare(
+        "SELECT owner_network_id FROM schemas WHERE project_id = ? AND source_ref = 'schema.meaning_category'",
+      ).get(project.id) as { owner_network_id: string | null } | undefined;
+      expect(schema?.owner_network_id).toBe(ontology!.id);
+
+      const meanings = listMeanings(project.id);
+      expect(meanings.length).toBeGreaterThan(0);
+      expect(meanings.every((meaning) => meaning.owner_network_id === ontology!.id)).toBe(true);
+
+      const bindingCount = db.prepare(
+        `SELECT COUNT(*) AS count
+           FROM object_scope_bindings
+          WHERE scope_network_id = ?
+            AND binding_kind = 'visible'`,
+      ).get(ontology!.id) as { count: number };
+      expect(bindingCount.count).toBeGreaterThan(0);
+    });
   });
 
   // --- File Entity ---
@@ -881,7 +905,7 @@ describe('Repositories', () => {
     });
 
     it('should create, update, and delete custom meanings', () => {
-      const categorySchemaId = listMeaningCategories(projectId)[0]?.schema_id;
+      const categorySchemaId = listMeaningCategoriesForProjectDb(getTestDb(), projectId)[0]?.schema_id;
       expect(categorySchemaId).toBeDefined();
       const experimentCategory = createInstance({
         project_id: projectId,
@@ -937,7 +961,7 @@ describe('Repositories', () => {
     });
 
     it('should keep schema meaning references aligned when a custom meaning key changes', () => {
-      const knowledgeCategory = listMeaningCategories(projectId).find((category) => category.source_ref === 'meaning-category.knowledge');
+      const knowledgeCategory = listMeaningCategoriesForProjectDb(getTestDb(), projectId).find((category) => category.source_ref === 'meaning-category.knowledge');
       const meaning = createMeaning({
         project_id: projectId,
         name: 'Evidence Lifecycle',
@@ -1455,7 +1479,7 @@ describe('Repositories', () => {
             cardinality: 'object',
           }],
         }),
-      ).toThrow('Circular schema reference detected');
+      ).toThrow('Circular schema composition detected');
     });
 
     it('should reject circular schema composition chain', () => {
@@ -1486,7 +1510,7 @@ describe('Repositories', () => {
             cardinality: 'object',
           }],
         }),
-      ).toThrow('Circular schema reference detected');
+      ).toThrow('Circular schema composition detected');
     });
 
     it('should reject longer circular schema composition chain', () => {
@@ -1497,7 +1521,7 @@ describe('Repositories', () => {
       createField({ schema_id: b.id, name: 'refC', field_type: 'object', sort_order: 0, bindings: [{ binding_kind: 'schema_composition', source_schema_id: c.id, cardinality: 'object' }] });
       expect(() =>
         createField({ schema_id: c.id, name: 'refA', field_type: 'object', sort_order: 0, bindings: [{ binding_kind: 'schema_composition', source_schema_id: a.id, cardinality: 'object' }] }),
-      ).toThrow('Circular schema reference detected');
+      ).toThrow('Circular schema composition detected');
     });
 
     it('should allow non-cyclic schema composition fan-out', () => {

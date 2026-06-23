@@ -48,15 +48,20 @@ import { migrate043 } from '../migrations/043-remove-concept-model-id';
 import { migrate044 } from '../migrations/044-concept-properties-schema-field-fk';
 import { migrate045 } from '../migrations/045-source-provenance-and-model-category-concepts';
 import { migrate046 } from '../migrations/046-instance-rename';
+import { migrate047 } from '../migrations/047-schema-field-bindings';
 import { migrate048 } from '../migrations/048-interactive-view-state';
 import { migrate049 } from '../migrations/049-interactive-view-templates';
 import { migrate050 } from '../migrations/050-interactive-view-inheritance';
 import { migrate051 } from '../migrations/051-interactive-view-user-authored-templates';
+import { migrate052 } from '../migrations/052-remove-schema-node-shape';
+import { migrate053 } from '../migrations/053-network-representation-grammar';
+import { migrate054 } from '../migrations/054-relationships';
 import { migrate055 } from '../migrations/055-relation-model-target-kind';
 import { migrate056 } from '../migrations/056-meaning-domain-rename';
 import { migrate057 } from '../migrations/057-meaning-ontology-node-metadata';
 import { migrate058 } from '../migrations/058-remove-field-behavior-meanings';
 import { migrate059 } from '../migrations/059-add-dependency-meaning';
+import { migrate060 } from '../migrations/060-network-owned-ontology-scope';
 
 let testDb: Database.Database | null = null;
 
@@ -110,15 +115,20 @@ export function setupTestDb(): Database.Database {
   migrate044(testDb);
   migrate045(testDb);
   migrate046(testDb);
+  migrate047(testDb);
   migrate048(testDb);
   migrate049(testDb);
   migrate050(testDb);
   migrate051(testDb);
+  migrate052(testDb);
+  migrate053(testDb);
+  migrate054(testDb);
   migrate055(testDb);
   migrate056(testDb);
   migrate057(testDb);
   migrate058(testDb);
   migrate059(testDb);
+  migrate060(testDb);
   testDb.pragma('foreign_keys = ON');
   return testDb;
 }

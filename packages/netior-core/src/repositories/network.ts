@@ -282,7 +282,8 @@ export function getNetworkFull(networkId: string): NetworkFullData | undefined {
     `SELECT nn.*,
             o.id as o_id, o.object_type as o_object_type, o.scope as o_scope,
             o.project_id as o_project_id, o.ref_id as o_ref_id, o.created_at as o_created_at,
-            c.title, c.color, c.icon, c.schema_id, c.project_id as instance_project_id,
+            c.title, c.color, c.icon, c.schema_id, c.owner_network_id as instance_owner_network_id,
+            c.project_id as instance_project_id,
             c.source_kind as instance_source_kind,
             c.source_id as instance_source_id,
             c.source_ref as instance_source_ref,
@@ -327,6 +328,7 @@ export function getNetworkFull(networkId: string): NetworkFullData | undefined {
         instance: {
           id: row.o_ref_id as string,
           project_id: row.instance_project_id as string,
+          owner_network_id: (row.instance_owner_network_id as string | null) ?? null,
           schema_id: (row.schema_id as string | null) ?? null,
           title: row.title as string,
           color: row.color as string | null,
@@ -358,6 +360,7 @@ export function getNetworkFull(networkId: string): NetworkFullData | undefined {
   const edgeRows = db.prepare(
     `SELECT e.*,
             m.id as m_id, m.project_id as m_project_id,
+            m.owner_network_id as m_owner_network_id,
             m.key as m_key, m.name as m_name,
             m.description as m_description,
             m.category_instance_id as m_category_instance_id,
@@ -382,6 +385,7 @@ export function getNetworkFull(networkId: string): NetworkFullData | undefined {
             r.source_ref as r_source_ref, r.source_version as r_source_version,
             r.created_at as r_created_at, r.updated_at as r_updated_at,
             rm.id as rm_id, rm.project_id as rm_project_id,
+            rm.owner_network_id as rm_owner_network_id,
             rm.key as rm_key, rm.name as rm_name,
             rm.description as rm_description,
             rm.category_instance_id as rm_category_instance_id,
@@ -446,6 +450,7 @@ export function getNetworkFull(networkId: string): NetworkFullData | undefined {
             meaning: toMeaning({
               id: row.rm_id as string,
               project_id: row.rm_project_id as string,
+              owner_network_id: (row.rm_owner_network_id as string | null) ?? null,
               key: row.rm_key as string,
               name: row.rm_name as string,
               description: (row.rm_description as string | null) ?? null,
@@ -476,6 +481,7 @@ export function getNetworkFull(networkId: string): NetworkFullData | undefined {
         meaning: toMeaning({
           id: row.m_id as string,
           project_id: row.m_project_id as string,
+          owner_network_id: (row.m_owner_network_id as string | null) ?? null,
           key: row.m_key as string,
           name: row.m_name as string,
           description: (row.m_description as string | null) ?? null,

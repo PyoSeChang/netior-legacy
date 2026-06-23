@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto';
 import { getDatabase } from '../connection';
 import { createObject, deleteObjectByRef } from './objects';
+import { ensureObjectScopeBindingForDb, getDefaultOwnerNetworkIdForProjectDb } from './network-scope';
 import {
   fieldMeaningToMeaningBindings,
   meaningSlotToFieldMeaning,
@@ -130,10 +131,15 @@ export function createInstance(data: InstanceCreate): Instance {
     }
   }
 
+  const ownerNetworkId = data.owner_network_id
+    ?? schema?.owner_network_id
+    ?? getDefaultOwnerNetworkIdForProjectDb(db, data.project_id);
+
   db.prepare(
     `INSERT INTO instances (
       id,
       project_id,
+      owner_network_id,
       schema_id,
       recurrence_source_instance_id,
       recurrence_occurrence_key,
@@ -149,10 +155,11 @@ export function createInstance(data: InstanceCreate): Instance {
       created_at,
       updated_at
     )
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     id,
     data.project_id,
+    ownerNetworkId,
     data.schema_id ?? null,
     data.recurrence_source_instance_id ?? null,
     data.recurrence_occurrence_key ?? null,
@@ -170,7 +177,15 @@ export function createInstance(data: InstanceCreate): Instance {
   );
 
   // Register object record
-  createObject('instance', 'project', data.project_id, id);
+  const object = createObject('instance', 'project', data.project_id, id);
+  ensureObjectScopeBindingForDb(db, {
+    objectId: object.id,
+    scopeNetworkId: ownerNetworkId,
+    sourceKind: data.source_kind ?? 'project',
+    sourceId: data.source_id ?? null,
+    sourceRef: data.source_ref ?? null,
+    sourceVersion: data.source_version ?? null,
+  });
 
   // Generate initial agent_content after insert (needs full instance)
   const instance = db.prepare('SELECT * FROM instances WHERE id = ?').get(id) as Instance;
@@ -188,7 +203,7 @@ export function createInstance(data: InstanceCreate): Instance {
 export function getInstancesByProject(projectId: string): Instance[] {
   const db = getDatabase();
   return db
-    .prepare('SELECT * FROM instances WHERE project_id = ? ORDER BY created_at')
+    .prepare("SELECT * FROM instances WHERE project_id = ? AND COALESCE(source_kind, 'project') <> 'system' ORDER BY created_at")
     .all(projectId) as Instance[];
 }
 
@@ -200,7 +215,8 @@ export function updateInstance(id: string, data: InstanceUpdate): Instance | und
   const now = new Date().toISOString();
   db.prepare(
     `UPDATE instances
-     SET schema_id = ?,
+     SET owner_network_id = ?,
+         schema_id = ?,
          recurrence_source_instance_id = ?,
          recurrence_occurrence_key = ?,
          title = ?,
@@ -215,6 +231,7 @@ export function updateInstance(id: string, data: InstanceUpdate): Instance | und
          updated_at = ?
      WHERE id = ?`,
   ).run(
+    data.owner_network_id !== undefined ? data.owner_network_id : existing.owner_network_id,
     data.schema_id !== undefined ? data.schema_id : existing.schema_id,
     data.recurrence_source_instance_id !== undefined
       ? data.recurrence_source_instance_id
@@ -251,6 +268,6 @@ export function deleteInstance(id: string): boolean {
 export function searchInstances(projectId: string, query: string): Instance[] {
   const db = getDatabase();
   return db
-    .prepare('SELECT * FROM instances WHERE project_id = ? AND title LIKE ? ORDER BY title')
+    .prepare("SELECT * FROM instances WHERE project_id = ? AND COALESCE(source_kind, 'project') <> 'system' AND title LIKE ? ORDER BY title")
     .all(projectId, `%${query}%`) as Instance[];
 }

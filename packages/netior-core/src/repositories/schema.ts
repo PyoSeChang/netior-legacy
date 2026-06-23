@@ -1,5 +1,6 @@
 import { randomUUID } from 'crypto';
 import { getDatabase } from '../connection';
+import { ensureObjectScopeBindingForDb, getDefaultOwnerNetworkIdForProjectDb } from './network-scope';
 import { createObject, deleteObjectByRef } from './objects';
 import { syncProjectOntologyForDb } from './system-networks';
 import {
@@ -488,16 +489,18 @@ export function createSchema(data: SchemaCreate): Schema {
   const id = randomUUID();
   const now = new Date().toISOString();
   const meanings = data.meanings ?? [];
+  const ownerNetworkId = data.owner_network_id ?? getDefaultOwnerNetworkIdForProjectDb(db, data.project_id);
 
   db.prepare(
     `INSERT INTO schemas (
-      id, project_id, name, description, icon, color, file_template, meanings,
+      id, project_id, owner_network_id, name, description, icon, color, file_template, meanings,
       source_kind, source_id, source_ref, source_version, created_at, updated_at
     )
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     id,
     data.project_id,
+    ownerNetworkId,
     data.name,
     data.description ?? null,
     data.icon ?? null,
@@ -512,7 +515,15 @@ export function createSchema(data: SchemaCreate): Schema {
     now,
   );
 
-  createObject('schema', 'project', data.project_id, id);
+  const object = createObject('schema', 'project', data.project_id, id);
+  ensureObjectScopeBindingForDb(db, {
+    objectId: object.id,
+    scopeNetworkId: ownerNetworkId,
+    sourceKind: data.source_kind ?? 'project',
+    sourceId: data.source_id ?? null,
+    sourceRef: data.source_ref ?? null,
+    sourceVersion: data.source_version ?? null,
+  });
   syncProjectOntologyForDb(db, data.project_id);
 
   const row = db.prepare('SELECT * FROM schemas WHERE id = ?').get(id) as SchemaRow;
@@ -545,10 +556,11 @@ export function updateSchema(id: string, data: SchemaUpdate): Schema | undefined
 
   db.prepare(
     `UPDATE schemas
-        SET name = ?, description = ?, icon = ?, color = ?, file_template = ?, meanings = ?,
+        SET owner_network_id = ?, name = ?, description = ?, icon = ?, color = ?, file_template = ?, meanings = ?,
             source_kind = ?, source_id = ?, source_ref = ?, source_version = ?, updated_at = ?
       WHERE id = ?`,
   ).run(
+    data.owner_network_id !== undefined ? data.owner_network_id : existing.owner_network_id,
     data.name !== undefined ? data.name : existing.name,
     data.description !== undefined ? data.description : existing.description,
     data.icon !== undefined ? data.icon : existing.icon,

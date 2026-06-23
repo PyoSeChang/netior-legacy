@@ -21,8 +21,8 @@ function insertField(id: string, schemaId: string, name: string, fieldType = 'te
   getTestDb().prepare(`
     INSERT INTO schema_fields (
       id, schema_id, name, field_type, options, sort_order, required, default_value,
-      ref_schema_id, meaning_slot, meaning_key, slot_binding_locked, generated_by_model, created_at
-    ) VALUES (?, ?, ?, ?, NULL, 0, 0, NULL, NULL, NULL, NULL, 0, 0, datetime('now'))
+      meaning_slot, meaning_key, slot_binding_locked, generated_by_meaning, created_at
+    ) VALUES (?, ?, ?, ?, NULL, 0, 0, NULL, NULL, NULL, 0, 0, datetime('now'))
   `).run(id, schemaId, name, fieldType);
 }
 

@@ -1,5 +1,6 @@
 import type Database from 'better-sqlite3';
 import { getDatabase } from '../connection';
+import { ensureObjectScopeBindingForDb, getDefaultOwnerNetworkIdForProjectDb } from './network-scope';
 import {
   MEANING_CATEGORY_INSTANCE_DEFINITIONS,
   MEANING_CATEGORY_SCHEMA_SOURCE_REF,
@@ -15,11 +16,13 @@ function ensureObject(
   projectId: string | null,
   refId: string,
   createdAt: string,
-): void {
+): string {
+  const objectId = `object-${objectType}-${refId}`;
   db.prepare(`
     INSERT OR IGNORE INTO objects (id, object_type, scope, project_id, ref_id, created_at)
     VALUES (?, ?, ?, ?, ?, ?)
-  `).run(`object-${objectType}-${refId}`, objectType, scope, projectId, refId, createdAt);
+  `).run(objectId, objectType, scope, projectId, refId, createdAt);
+  return objectId;
 }
 
 export function getMeaningCategorySchemaId(projectId: string): string {
@@ -36,37 +39,48 @@ export function ensureMeaningCategoryTaxonomyForProjectDb(
 ): { schemaId: string; instancesByKey: Map<string, Instance> } {
   const now = new Date().toISOString();
   const schemaId = getMeaningCategorySchemaId(projectId);
+  const ownerNetworkId = getDefaultOwnerNetworkIdForProjectDb(db, projectId);
 
   db.prepare(`
     INSERT OR IGNORE INTO schemas (
-      id, project_id, name, description, icon, color, file_template, meanings,
+      id, project_id, owner_network_id, name, description, icon, color, file_template, meanings,
       source_kind, source_id, source_ref, source_version, created_at, updated_at
     )
-    VALUES (?, ?, 'Meaning Category', 'Built-in enum schema for semantic meaning categories.', 'folder-tree', '#6b7280', NULL, '[]',
+    VALUES (?, ?, ?, 'Meaning Category', 'Built-in enum schema for semantic meaning categories.', 'folder-tree', '#6b7280', NULL, '[]',
       'system', ?, ?, ?, ?, ?)
-  `).run(schemaId, projectId, SYSTEM_ONTOLOGY_SOURCE_ID, MEANING_CATEGORY_SCHEMA_SOURCE_REF, SYSTEM_ONTOLOGY_SOURCE_VERSION, now, now);
+  `).run(schemaId, projectId, ownerNetworkId, SYSTEM_ONTOLOGY_SOURCE_ID, MEANING_CATEGORY_SCHEMA_SOURCE_REF, SYSTEM_ONTOLOGY_SOURCE_VERSION, now, now);
   db.prepare(`
     UPDATE schemas
-       SET source_kind = 'system',
+       SET owner_network_id = COALESCE(owner_network_id, ?),
+           source_kind = 'system',
            source_id = ?,
            source_ref = ?,
            source_version = ?,
            updated_at = ?
      WHERE id = ?
-  `).run(SYSTEM_ONTOLOGY_SOURCE_ID, MEANING_CATEGORY_SCHEMA_SOURCE_REF, SYSTEM_ONTOLOGY_SOURCE_VERSION, now, schemaId);
-  ensureObject(db, 'schema', 'project', projectId, schemaId, now);
+  `).run(ownerNetworkId, SYSTEM_ONTOLOGY_SOURCE_ID, MEANING_CATEGORY_SCHEMA_SOURCE_REF, SYSTEM_ONTOLOGY_SOURCE_VERSION, now, schemaId);
+  const schemaObjectId = ensureObject(db, 'schema', 'project', projectId, schemaId, now);
+  ensureObjectScopeBindingForDb(db, {
+    objectId: schemaObjectId,
+    scopeNetworkId: ownerNetworkId,
+    sourceKind: 'system',
+    sourceId: SYSTEM_ONTOLOGY_SOURCE_ID,
+    sourceRef: MEANING_CATEGORY_SCHEMA_SOURCE_REF,
+    sourceVersion: SYSTEM_ONTOLOGY_SOURCE_VERSION,
+  });
 
   const insertInstance = db.prepare(`
     INSERT OR IGNORE INTO instances (
-      id, project_id, schema_id, recurrence_source_instance_id, recurrence_occurrence_key,
+      id, project_id, owner_network_id, schema_id, recurrence_source_instance_id, recurrence_occurrence_key,
       title, color, icon, content, agent_content,
       source_kind, source_id, source_ref, source_version, created_at, updated_at
     )
-    VALUES (?, ?, ?, NULL, NULL, ?, NULL, NULL, NULL, NULL, 'system', ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, NULL, NULL, ?, NULL, NULL, NULL, NULL, 'system', ?, ?, ?, ?, ?)
   `);
   const updateInstance = db.prepare(`
     UPDATE instances
-       SET schema_id = ?,
+       SET owner_network_id = COALESCE(owner_network_id, ?),
+           schema_id = ?,
            source_kind = 'system',
            source_id = ?,
            source_ref = ?,
@@ -78,9 +92,17 @@ export function ensureMeaningCategoryTaxonomyForProjectDb(
   const instancesByKey = new Map<string, Instance>();
   for (const category of MEANING_CATEGORY_INSTANCE_DEFINITIONS) {
     const instanceId = getMeaningCategoryInstanceId(projectId, category.key);
-    insertInstance.run(instanceId, projectId, schemaId, category.title, SYSTEM_ONTOLOGY_SOURCE_ID, category.sourceRef, SYSTEM_ONTOLOGY_SOURCE_VERSION, now, now);
-    updateInstance.run(schemaId, SYSTEM_ONTOLOGY_SOURCE_ID, category.sourceRef, SYSTEM_ONTOLOGY_SOURCE_VERSION, now, instanceId);
-    ensureObject(db, 'instance', 'project', projectId, instanceId, now);
+    insertInstance.run(instanceId, projectId, ownerNetworkId, schemaId, category.title, SYSTEM_ONTOLOGY_SOURCE_ID, category.sourceRef, SYSTEM_ONTOLOGY_SOURCE_VERSION, now, now);
+    updateInstance.run(ownerNetworkId, schemaId, SYSTEM_ONTOLOGY_SOURCE_ID, category.sourceRef, SYSTEM_ONTOLOGY_SOURCE_VERSION, now, instanceId);
+    const instanceObjectId = ensureObject(db, 'instance', 'project', projectId, instanceId, now);
+    ensureObjectScopeBindingForDb(db, {
+      objectId: instanceObjectId,
+      scopeNetworkId: ownerNetworkId,
+      sourceKind: 'system',
+      sourceId: SYSTEM_ONTOLOGY_SOURCE_ID,
+      sourceRef: category.sourceRef,
+      sourceVersion: SYSTEM_ONTOLOGY_SOURCE_VERSION,
+    });
     const instance = db.prepare('SELECT * FROM instances WHERE id = ?').get(instanceId) as Instance;
     instancesByKey.set(category.key, instance);
   }

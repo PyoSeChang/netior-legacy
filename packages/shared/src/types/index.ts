@@ -36,6 +36,7 @@ export interface ProjectUpdate {
 export interface Instance {
   id: string;
   project_id: string;
+  owner_network_id: string | null;
   schema_id: string | null;
   recurrence_source_instance_id: string | null;
   recurrence_occurrence_key: string | null;
@@ -54,6 +55,7 @@ export interface Instance {
 
 export interface InstanceCreate {
   project_id: string;
+  owner_network_id?: string | null;
   title: string;
   schema_id?: string;
   recurrence_source_instance_id?: string | null;
@@ -69,6 +71,7 @@ export interface InstanceCreate {
 }
 
 export interface InstanceUpdate {
+  owner_network_id?: string | null;
   title?: string;
   schema_id?: string | null;
   recurrence_source_instance_id?: string | null;
@@ -99,7 +102,7 @@ export interface Network {
   updated_at: string;
 }
 
-export type NetworkKind = 'universe' | 'ontology' | 'network';
+export type NetworkKind = 'universe' | 'root' | 'ontology' | 'network';
 
 export interface NetworkCreate {
   project_id: string | null;
@@ -375,6 +378,20 @@ export interface NodeListConfig {
 
 export type NodeConfig = NodeFreeformConfig | NodeGridConfig | NodeListConfig;
 
+export interface ObjectScopeBinding {
+  id: string;
+  object_id: string;
+  scope_network_id: string;
+  include_descendants: boolean;
+  binding_kind: string;
+  source_kind: OntologySourceKind;
+  source_id: string | null;
+  source_ref: string | null;
+  source_version: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface ObjectRecord {
   id: string;
   object_type: NetworkObjectType;
@@ -465,6 +482,7 @@ export interface EdgeUpdate {
 export interface Relationship {
   id: string;
   project_id: string;
+  owner_network_id: string | null;
   source_object_id: string;
   target_object_id: string;
   meaning_id: string | null;
@@ -480,6 +498,7 @@ export interface Relationship {
 
 export interface RelationshipCreate {
   project_id: string;
+  owner_network_id?: string | null;
   source_object_id: string;
   target_object_id: string;
   meaning_id?: string | null;
@@ -492,6 +511,7 @@ export interface RelationshipCreate {
 }
 
 export interface RelationshipUpdate {
+  owner_network_id?: string | null;
   meaning_id?: string | null;
   description?: string | null;
   properties_json?: string | null;
@@ -734,6 +754,7 @@ export interface MeaningContract {
 export interface Meaning {
   id: string;
   project_id: string;
+  owner_network_id: string | null;
   key: MeaningRefKey;
   name: string;
   description: string | null;
@@ -760,6 +781,7 @@ export interface Meaning {
 
 export interface MeaningCreate {
   project_id: string;
+  owner_network_id?: string | null;
   key?: MeaningRefKey;
   name: string;
   description?: string | null;
@@ -781,6 +803,7 @@ export interface MeaningCreate {
 }
 
 export interface MeaningUpdate {
+  owner_network_id?: string | null;
   key?: MeaningRefKey;
   name?: string;
   description?: string | null;
@@ -948,6 +971,7 @@ export interface ModuleDirectoryCreate {
 export interface Schema {
   id: string;
   project_id: string;
+  owner_network_id: string | null;
   name: string;
   description: string | null;
   icon: string | null;
@@ -964,6 +988,7 @@ export interface Schema {
 
 export interface SchemaCreate {
   project_id: string;
+  owner_network_id?: string | null;
   name: string;
   description?: string;
   icon?: string;
@@ -977,6 +1002,7 @@ export interface SchemaCreate {
 }
 
 export interface SchemaUpdate {
+  owner_network_id?: string | null;
   name?: string;
   description?: string | null;
   icon?: string | null;
