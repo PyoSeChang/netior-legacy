@@ -24,20 +24,20 @@ export interface OrchestrationSnapshot {
   events: AgentEvent[];
 }
 
-export async function listSessions(projectId: string): Promise<NarreSession[]> {
-  return unwrapIpc(await window.electron.narre.listSessions(projectId));
+export async function listSessions(rootNetworkId: string): Promise<NarreSession[]> {
+  return unwrapIpc(await window.electron.narre.listSessions(rootNetworkId));
 }
 
-export async function listSkills(projectId: string): Promise<SkillDefinition[]> {
-  return unwrapIpc(await window.electron.narre.listSkills(projectId));
+export async function listSkills(rootNetworkId: string): Promise<SkillDefinition[]> {
+  return unwrapIpc(await window.electron.narre.listSkills(rootNetworkId));
 }
 
-export async function listSupervisorAgents(projectId?: string | null): Promise<AgentDefinition[]> {
-  return unwrapIpc(await window.electron.narre.listSupervisorAgents(projectId));
+export async function listSupervisorAgents(rootNetworkId?: string | null): Promise<AgentDefinition[]> {
+  return unwrapIpc(await window.electron.narre.listSupervisorAgents(rootNetworkId));
 }
 
-export async function listSupervisorSkills(projectId: string): Promise<SkillDefinition[]> {
-  return unwrapIpc(await window.electron.narre.listSupervisorSkills(projectId));
+export async function listSupervisorSkills(rootNetworkId: string): Promise<SkillDefinition[]> {
+  return unwrapIpc(await window.electron.narre.listSupervisorSkills(rootNetworkId));
 }
 
 export async function listSupervisorSessions(): Promise<SupervisorAgentSessionSnapshot[]> {
@@ -48,12 +48,12 @@ export async function listSupervisorEvents(afterSeq?: number | null): Promise<Su
   return unwrapIpc(await window.electron.narre.listSupervisorEvents(afterSeq));
 }
 
-export async function listSupervisorRuns(projectId?: string | null): Promise<OrchestrationRun[]> {
-  return unwrapIpc(await window.electron.narre.listSupervisorRuns(projectId));
+export async function listSupervisorRuns(rootNetworkId?: string | null): Promise<OrchestrationRun[]> {
+  return unwrapIpc(await window.electron.narre.listSupervisorRuns(rootNetworkId));
 }
 
 export async function createSupervisorRun(data: {
-  projectId: string;
+  rootNetworkId: string;
   userRequest: string;
   mode?: string;
 }): Promise<OrchestrationSnapshot> {
@@ -88,9 +88,9 @@ export async function resolveSupervisorApproval(data: {
   return unwrapIpc(await window.electron.narre.resolveSupervisorApproval(data));
 }
 
-export async function createSession(projectId: string, options?: { agentKey?: string | null }): Promise<NarreSession> {
+export async function createSession(rootNetworkId: string, options?: { agentKey?: string | null }): Promise<NarreSession> {
   return unwrapIpc(await window.electron.narre.createSession({
-    projectId,
+    rootNetworkId,
     agentKey: options?.agentKey ?? null,
   }));
 }
@@ -99,8 +99,8 @@ export async function getSession(sessionId: string): Promise<NarreSessionDetail>
   return unwrapIpc(await window.electron.narre.getSession(sessionId));
 }
 
-export async function updateSessionTitle(projectId: string, sessionId: string, title: string): Promise<NarreSession> {
-  return unwrapIpc(await window.electron.narre.updateSessionTitle({ projectId, sessionId, title }));
+export async function updateSessionTitle(rootNetworkId: string, sessionId: string, title: string): Promise<NarreSession> {
+  return unwrapIpc(await window.electron.narre.updateSessionTitle({ rootNetworkId, sessionId, title }));
 }
 
 export async function deleteSession(sessionId: string): Promise<boolean> {
@@ -125,13 +125,13 @@ export interface MentionResult {
   meta?: Record<string, unknown>;
 }
 
-export async function searchMentions(projectId: string, query: string): Promise<MentionResult[]> {
-  return unwrapIpc(await window.electron.narre.searchMentions(projectId, query));
+export async function searchMentions(rootNetworkId: string, query: string): Promise<MentionResult[]> {
+  return unwrapIpc(await window.electron.narre.searchMentions(rootNetworkId, query));
 }
 
 export async function sendMessage(data: {
   sessionId?: string;
-  projectId: string;
+  rootNetworkId: string;
   message: string;
   mentions?: NarreMention[];
   skillIds?: string[];

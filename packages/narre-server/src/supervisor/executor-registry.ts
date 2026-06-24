@@ -18,7 +18,7 @@ export interface ExecutorRegistryOptions {
 
 export interface RegisterExecutorInput {
   id?: string;
-  projectId?: string | null;
+  rootNetworkId?: string | null;
   provider: AgentProvider | AgentRuntimeProvider;
   surface: AgentSurfaceRef;
   capabilities?: string[];
@@ -43,7 +43,7 @@ export class ExecutorRegistry {
     const id = input.id?.trim() || `executor-${randomUUID()}`;
     const executor: AgentExecutorRegistration = {
       id,
-      projectId: input.projectId ?? null,
+      rootNetworkId: input.rootNetworkId ?? null,
       provider: input.provider,
       surface: input.surface,
       status: 'online',
@@ -76,9 +76,9 @@ export class ExecutorRegistry {
     return cloneExecutor(next);
   }
 
-  list(projectId?: string | null): AgentExecutorRegistration[] {
+  list(rootNetworkId?: string | null): AgentExecutorRegistration[] {
     return Array.from(this.executors.values())
-      .filter((executor) => !projectId || executor.projectId === projectId)
+      .filter((executor) => !rootNetworkId || executor.rootNetworkId === rootNetworkId)
       .sort((a, b) => Date.parse(b.lastHeartbeatAt) - Date.parse(a.lastHeartbeatAt))
       .map(cloneExecutor);
   }
@@ -136,8 +136,8 @@ export class ExecutorRegistry {
     });
   }
 
-  findAvailableExecutor(projectId: string, provider: AgentProvider | AgentRuntimeProvider): AgentExecutorRegistration | null {
-    const candidates = this.list(projectId)
+  findAvailableExecutor(rootNetworkId: string, provider: AgentProvider | AgentRuntimeProvider): AgentExecutorRegistration | null {
+    const candidates = this.list(rootNetworkId)
       .filter((executor) =>
         executor.status === 'online'
         && (executor.provider === provider || executor.capabilities.includes(provider)),

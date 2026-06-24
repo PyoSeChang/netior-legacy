@@ -20,8 +20,8 @@ import type {
 } from '@netior/shared/types';
 import { BUILT_IN_SKILLS, IPC_CHANNELS } from '@netior/shared/constants';
 import {
-  listRemoteInstancesByProject,
-  listRemoteFilesByProject,
+  listRemoteInstancesByWorld,
+  listRemoteFilesByWorld,
   listRemoteSchemas,
   listRemoteNetworks,
   listRemoteModels,
@@ -44,7 +44,7 @@ const NARRE_TRACE_HEADER = 'x-netior-trace-id';
 
 interface ActiveNarreChatRequest {
   request: http.ClientRequest;
-  projectId: string;
+  rootNetworkId: string;
   sessionId: string;
   mainWindow: BrowserWindow;
   cancelled: boolean;
@@ -53,16 +53,16 @@ interface ActiveNarreChatRequest {
 const activeNarreChatRequests = new Map<string, ActiveNarreChatRequest>();
 const cancelledNarreChatRequests = new WeakSet<http.ClientRequest>();
 
-function getNarreDir(projectId: string): string {
-  const dir = getRuntimeNarreDir(projectId);
+function getNarreDir(rootNetworkId: string): string {
+  const dir = getRuntimeNarreDir(rootNetworkId);
   if (!existsSync(dir)) {
     mkdirSync(dir, { recursive: true });
   }
   return dir;
 }
 
-function getSessionsIndex(projectId: string): { sessions: NarreSession[] } {
-  const dir = getNarreDir(projectId);
+function getSessionsIndex(rootNetworkId: string): { sessions: NarreSession[] } {
+  const dir = getNarreDir(rootNetworkId);
   const indexPath = join(dir, 'sessions.json');
   if (!existsSync(indexPath)) {
     return { sessions: [] };
@@ -70,8 +70,8 @@ function getSessionsIndex(projectId: string): { sessions: NarreSession[] } {
   return JSON.parse(readFileSync(indexPath, 'utf-8'));
 }
 
-function saveSessionsIndex(projectId: string, data: { sessions: NarreSession[] }): void {
-  const dir = getNarreDir(projectId);
+function saveSessionsIndex(rootNetworkId: string, data: { sessions: NarreSession[] }): void {
+  const dir = getNarreDir(rootNetworkId);
   const indexPath = join(dir, 'sessions.json');
   writeFileSync(indexPath, JSON.stringify(data, null, 2), 'utf-8');
 }
@@ -178,7 +178,7 @@ function normalizeSessionFile(value: unknown): NarreSessionFileV2 {
 
 function buildSessionDetail(
   session: NarreSession | undefined,
-  projectId: string,
+  rootNetworkId: string,
   file: NarreSessionFileV2,
 ): NarreSessionDetail {
   return {
@@ -189,7 +189,7 @@ function buildSessionDetail(
       last_message_at: new Date(0).toISOString(),
       message_count: file.transcript.turns.length,
     }),
-    projectId,
+    rootNetworkId,
     transcript: file.transcript,
     messages: transcriptToMessages(file.transcript),
   };
@@ -275,21 +275,21 @@ function summarizeNarreStreamEvent(event: NarreStreamEvent): string {
   }
 }
 
-async function listRemoteNarreSessions(projectId: string): Promise<NarreSession[]> {
-  return requestNarreServer<NarreSession[]>(`/sessions?projectId=${encodeURIComponent(projectId)}`);
+async function listRemoteNarreSessions(rootNetworkId: string): Promise<NarreSession[]> {
+  return requestNarreServer<NarreSession[]>(`/sessions?rootNetworkId=${encodeURIComponent(rootNetworkId)}`);
 }
 
-async function listRemoteNarreSkills(projectId: string): Promise<SkillDefinition[]> {
-  return requestNarreServer<SkillDefinition[]>(`/skills?projectId=${encodeURIComponent(projectId)}`);
+async function listRemoteNarreSkills(rootNetworkId: string): Promise<SkillDefinition[]> {
+  return requestNarreServer<SkillDefinition[]>(`/skills?rootNetworkId=${encodeURIComponent(rootNetworkId)}`);
 }
 
-async function listRemoteSupervisorAgents(projectId?: string | null): Promise<AgentDefinition[]> {
-  const query = projectId ? `?projectId=${encodeURIComponent(projectId)}` : '';
+async function listRemoteSupervisorAgents(rootNetworkId?: string | null): Promise<AgentDefinition[]> {
+  const query = rootNetworkId ? `?rootNetworkId=${encodeURIComponent(rootNetworkId)}` : '';
   return requestNarreServer<AgentDefinition[]>(`/supervisor/agents${query}`);
 }
 
-async function listRemoteSupervisorSkills(projectId: string): Promise<SkillDefinition[]> {
-  return requestNarreServer<SkillDefinition[]>(`/supervisor/skills?projectId=${encodeURIComponent(projectId)}`);
+async function listRemoteSupervisorSkills(rootNetworkId: string): Promise<SkillDefinition[]> {
+  return requestNarreServer<SkillDefinition[]>(`/supervisor/skills?rootNetworkId=${encodeURIComponent(rootNetworkId)}`);
 }
 
 async function listRemoteSupervisorSessions(): Promise<SupervisorAgentSessionSnapshot[]> {
@@ -301,8 +301,8 @@ async function listRemoteSupervisorEvents(afterSeq?: number | null): Promise<Sup
   return requestNarreServer<SupervisorEvent[]>(`/supervisor/events${query}`);
 }
 
-async function listRemoteSupervisorRuns(projectId?: string | null): Promise<unknown[]> {
-  const query = projectId ? `?projectId=${encodeURIComponent(projectId)}` : '';
+async function listRemoteSupervisorRuns(rootNetworkId?: string | null): Promise<unknown[]> {
+  const query = rootNetworkId ? `?rootNetworkId=${encodeURIComponent(rootNetworkId)}` : '';
   return requestNarreServer<unknown[]>(`/supervisor/runs${query}`);
 }
 
@@ -353,10 +353,10 @@ async function resolveRemoteSupervisorApproval(input: Record<string, unknown>): 
   });
 }
 
-async function createRemoteNarreSession(projectId: string, agentKey?: string | null): Promise<NarreSession> {
+async function createRemoteNarreSession(rootNetworkId: string, agentKey?: string | null): Promise<NarreSession> {
   return requestNarreServer<NarreSession>('/sessions', {
     method: 'POST',
-    body: JSON.stringify({ projectId, agentKey: agentKey ?? null }),
+    body: JSON.stringify({ rootNetworkId, agentKey: agentKey ?? null }),
   });
 }
 
@@ -371,17 +371,17 @@ async function deleteRemoteNarreSession(sessionId: string): Promise<boolean> {
   return payload.success;
 }
 
-async function updateRemoteNarreSessionTitle(projectId: string, sessionId: string, title: string): Promise<NarreSession> {
+async function updateRemoteNarreSessionTitle(rootNetworkId: string, sessionId: string, title: string): Promise<NarreSession> {
   return requestNarreServer<NarreSession>(`/sessions/${encodeURIComponent(sessionId)}`, {
     method: 'PATCH',
-    body: JSON.stringify({ projectId, title }),
+    body: JSON.stringify({ rootNetworkId, title }),
   });
 }
 
 function emitNarreStreamEvent(
   mainWindow: BrowserWindow,
   event: NarreStreamEvent,
-  context: { projectId?: string; sessionId?: string },
+  context: { rootNetworkId?: string; sessionId?: string },
 ): void {
   if (mainWindow.isDestroyed() || mainWindow.webContents.isDestroyed()) {
     return;
@@ -390,7 +390,7 @@ function emitNarreStreamEvent(
   try {
     mainWindow.webContents.send(IPC_CHANNELS.NARRE_STREAM_EVENT, {
       ...event,
-      projectId: event.projectId ?? context.projectId,
+      rootNetworkId: event.rootNetworkId ?? context.rootNetworkId,
       sessionId: event.sessionId ?? context.sessionId,
     } satisfies NarreStreamEvent);
   } catch (error) {
@@ -402,13 +402,13 @@ function emitNarreStreamEvent(
 }
 
 export function registerNarreIpc(): void {
-  ipcMain.handle(IPC_CHANNELS.NARRE_LIST_SESSIONS, async (_e, projectId: string): Promise<IpcResult<NarreSession[]>> => {
+  ipcMain.handle(IPC_CHANNELS.NARRE_LIST_SESSIONS, async (_e, rootNetworkId: string): Promise<IpcResult<NarreSession[]>> => {
     try {
       if (isNarreServerRunning()) {
-        return { success: true, data: await listRemoteNarreSessions(projectId) };
+        return { success: true, data: await listRemoteNarreSessions(rootNetworkId) };
       }
 
-      const index = getSessionsIndex(projectId);
+      const index = getSessionsIndex(rootNetworkId);
       index.sessions.sort((a, b) =>
         new Date(b.last_message_at).getTime() - new Date(a.last_message_at).getTime(),
       );
@@ -418,9 +418,9 @@ export function registerNarreIpc(): void {
     }
   });
 
-  ipcMain.handle(IPC_CHANNELS.NARRE_LIST_SKILLS, async (_e, projectId: string): Promise<IpcResult<SkillDefinition[]>> => {
+  ipcMain.handle(IPC_CHANNELS.NARRE_LIST_SKILLS, async (_e, rootNetworkId: string): Promise<IpcResult<SkillDefinition[]>> => {
     try {
-      return { success: true, data: await listRemoteNarreSkills(projectId) };
+      return { success: true, data: await listRemoteNarreSkills(rootNetworkId) };
     } catch (err) {
       console.warn(`[narre:bridge] failed to list skills, using built-ins: ${(err as Error).message}`);
       return { success: true, data: [...BUILT_IN_SKILLS] };
@@ -429,9 +429,9 @@ export function registerNarreIpc(): void {
 
   ipcMain.handle(
     IPC_CHANNELS.NARRE_SUPERVISOR_LIST_AGENTS,
-    async (_e, projectId?: string | null): Promise<IpcResult<AgentDefinition[]>> => {
+    async (_e, rootNetworkId?: string | null): Promise<IpcResult<AgentDefinition[]>> => {
       try {
-        return { success: true, data: await listRemoteSupervisorAgents(projectId) };
+        return { success: true, data: await listRemoteSupervisorAgents(rootNetworkId) };
       } catch (err) {
         return { success: false, error: (err as Error).message };
       }
@@ -440,9 +440,9 @@ export function registerNarreIpc(): void {
 
   ipcMain.handle(
     IPC_CHANNELS.NARRE_SUPERVISOR_LIST_SKILLS,
-    async (_e, projectId: string): Promise<IpcResult<SkillDefinition[]>> => {
+    async (_e, rootNetworkId: string): Promise<IpcResult<SkillDefinition[]>> => {
       try {
-        return { success: true, data: await listRemoteSupervisorSkills(projectId) };
+        return { success: true, data: await listRemoteSupervisorSkills(rootNetworkId) };
       } catch (err) {
         return { success: false, error: (err as Error).message };
       }
@@ -473,9 +473,9 @@ export function registerNarreIpc(): void {
 
   ipcMain.handle(
     IPC_CHANNELS.NARRE_SUPERVISOR_LIST_RUNS,
-    async (_e, projectId?: string | null): Promise<IpcResult<unknown[]>> => {
+    async (_e, rootNetworkId?: string | null): Promise<IpcResult<unknown[]>> => {
       try {
-        return { success: true, data: await listRemoteSupervisorRuns(projectId) };
+        return { success: true, data: await listRemoteSupervisorRuns(rootNetworkId) };
       } catch (err) {
         return { success: false, error: (err as Error).message };
       }
@@ -559,15 +559,15 @@ export function registerNarreIpc(): void {
     },
   );
 
-  ipcMain.handle(IPC_CHANNELS.NARRE_CREATE_SESSION, async (_e, input: string | { projectId?: unknown; agentKey?: unknown }): Promise<IpcResult<NarreSession>> => {
+  ipcMain.handle(IPC_CHANNELS.NARRE_CREATE_SESSION, async (_e, input: string | { rootNetworkId?: unknown; agentKey?: unknown }): Promise<IpcResult<NarreSession>> => {
     try {
-      const projectId = typeof input === 'string' ? input : typeof input.projectId === 'string' ? input.projectId : '';
+      const rootNetworkId = typeof input === 'string' ? input : typeof input.rootNetworkId === 'string' ? input.rootNetworkId : '';
       const agentKey = typeof input === 'object' && typeof input.agentKey === 'string' ? input.agentKey : null;
-      if (!projectId) {
-        return { success: false, error: 'projectId required' };
+      if (!rootNetworkId) {
+        return { success: false, error: 'rootNetworkId required' };
       }
       if (isNarreServerRunning()) {
-        return { success: true, data: await createRemoteNarreSession(projectId, agentKey) };
+        return { success: true, data: await createRemoteNarreSession(rootNetworkId, agentKey) };
       }
 
       const now = new Date().toISOString();
@@ -580,12 +580,12 @@ export function registerNarreIpc(): void {
         agentKey,
       };
 
-      const index = getSessionsIndex(projectId);
+      const index = getSessionsIndex(rootNetworkId);
       index.sessions.push(session);
-      saveSessionsIndex(projectId, index);
+      saveSessionsIndex(rootNetworkId, index);
 
       // Create empty session file
-      const dir = getNarreDir(projectId);
+      const dir = getNarreDir(rootNetworkId);
       const sessionPath = join(dir, `session_${session.id}.json`);
       writeFileSync(sessionPath, JSON.stringify(createEmptySessionFile(), null, 2), 'utf-8');
 
@@ -601,7 +601,7 @@ export function registerNarreIpc(): void {
         return { success: true, data: await getRemoteNarreSession(sessionId) };
       }
 
-      // We need to search across all project dirs to find the session
+      // We need to search across all world dirs to find the session
       // For now, the sessionId is globally unique, so we scan
       const baseDir = getRuntimeNarreDir();
       if (!existsSync(baseDir)) {
@@ -609,21 +609,21 @@ export function registerNarreIpc(): void {
       }
 
       const { readdirSync } = require('fs');
-      const projectDirs = readdirSync(baseDir, { withFileTypes: true })
+      const worldDirs = readdirSync(baseDir, { withFileTypes: true })
         .filter((d: { isDirectory: () => boolean }) => d.isDirectory())
         .map((d: { name: string }) => d.name);
 
-      for (const projectId of projectDirs) {
-        const sessionPath = join(baseDir, projectId, `session_${sessionId}.json`);
+      for (const rootNetworkId of worldDirs) {
+        const sessionPath = join(baseDir, rootNetworkId, `session_${sessionId}.json`);
         if (existsSync(sessionPath)) {
           const parsed = JSON.parse(readFileSync(sessionPath, 'utf-8')) as unknown;
           const data = normalizeSessionFile(parsed);
           if (!isSessionFileV2(parsed)) {
             writeFileSync(sessionPath, JSON.stringify(data, null, 2), 'utf-8');
           }
-          const index = getSessionsIndex(projectId);
+          const index = getSessionsIndex(rootNetworkId);
           const sessionMeta = index.sessions.find((s) => s.id === sessionId);
-          return { success: true, data: buildSessionDetail(sessionMeta, projectId, data) };
+          return { success: true, data: buildSessionDetail(sessionMeta, rootNetworkId, data) };
         }
       }
 
@@ -635,13 +635,13 @@ export function registerNarreIpc(): void {
 
   ipcMain.handle(
     IPC_CHANNELS.NARRE_UPDATE_SESSION_TITLE,
-    async (_e, input: { projectId?: unknown; sessionId?: unknown; title?: unknown }): Promise<IpcResult<NarreSession>> => {
+    async (_e, input: { rootNetworkId?: unknown; sessionId?: unknown; title?: unknown }): Promise<IpcResult<NarreSession>> => {
       try {
-        const projectId = typeof input.projectId === 'string' ? input.projectId : '';
+        const rootNetworkId = typeof input.rootNetworkId === 'string' ? input.rootNetworkId : '';
         const sessionId = typeof input.sessionId === 'string' ? input.sessionId : '';
         const title = typeof input.title === 'string' ? input.title.trim() : '';
-        if (!projectId) {
-          return { success: false, error: 'projectId required' };
+        if (!rootNetworkId) {
+          return { success: false, error: 'rootNetworkId required' };
         }
         if (!sessionId) {
           return { success: false, error: 'sessionId required' };
@@ -650,16 +650,16 @@ export function registerNarreIpc(): void {
           return { success: false, error: 'title required' };
         }
         if (isNarreServerRunning()) {
-          return { success: true, data: await updateRemoteNarreSessionTitle(projectId, sessionId, title) };
+          return { success: true, data: await updateRemoteNarreSessionTitle(rootNetworkId, sessionId, title) };
         }
 
-        const index = getSessionsIndex(projectId);
+        const index = getSessionsIndex(rootNetworkId);
         const session = index.sessions.find((s) => s.id === sessionId);
         if (!session) {
           return { success: false, error: 'Session not found' };
         }
         session.title = title;
-        saveSessionsIndex(projectId, index);
+        saveSessionsIndex(rootNetworkId, index);
         return { success: true, data: session };
       } catch (err) {
         return { success: false, error: (err as Error).message };
@@ -679,18 +679,18 @@ export function registerNarreIpc(): void {
       }
 
       const { readdirSync } = require('fs');
-      const projectDirs = readdirSync(baseDir, { withFileTypes: true })
+      const worldDirs = readdirSync(baseDir, { withFileTypes: true })
         .filter((d: { isDirectory: () => boolean }) => d.isDirectory())
         .map((d: { name: string }) => d.name);
 
-      for (const projectId of projectDirs) {
-        const index = getSessionsIndex(projectId);
+      for (const rootNetworkId of worldDirs) {
+        const index = getSessionsIndex(rootNetworkId);
         const sessionIdx = index.sessions.findIndex((s) => s.id === sessionId);
         if (sessionIdx >= 0) {
           index.sessions.splice(sessionIdx, 1);
-          saveSessionsIndex(projectId, index);
+          saveSessionsIndex(rootNetworkId, index);
 
-          const sessionPath = join(baseDir, projectId, `session_${sessionId}.json`);
+          const sessionPath = join(baseDir, rootNetworkId, `session_${sessionId}.json`);
           if (existsSync(sessionPath)) {
             unlinkSync(sessionPath);
           }
@@ -733,7 +733,7 @@ export function registerNarreIpc(): void {
     }
   });
 
-  ipcMain.handle(IPC_CHANNELS.NARRE_SEARCH_MENTIONS, async (_e, projectId: string, query: string): Promise<IpcResult<unknown>> => {
+  ipcMain.handle(IPC_CHANNELS.NARRE_SEARCH_MENTIONS, async (_e, rootNetworkId: string, query: string): Promise<IpcResult<unknown>> => {
     try {
       const results: Array<{
         type: string; id: string; display: string;
@@ -749,13 +749,13 @@ export function registerNarreIpc(): void {
       );
       const take = <T>(items: T[]): T[] => items.slice(0, categoryLimit);
 
-      const meanings = await listRemoteModels(projectId);
+      const meanings = await listRemoteModels(rootNetworkId);
       const meaningMap = new Map(meanings.map((a) => [a.id, a]));
-      const schemas = await listRemoteSchemas(projectId);
+      const schemas = await listRemoteSchemas(rootNetworkId);
       const schemaMap = new Map(schemas.map((schema) => [schema.id, schema]));
       const instances = lowerQuery.length === 0
-        ? await listRemoteInstancesByProject(projectId)
-        : await searchRemoteInstances(projectId, query);
+        ? await listRemoteInstancesByWorld(rootNetworkId)
+        : await searchRemoteInstances(rootNetworkId, query);
 
       for (const c of take(instances)) {
         const schema = c.schema_id ? schemaMap.get(c.schema_id) : null;
@@ -773,7 +773,7 @@ export function registerNarreIpc(): void {
       }
 
       // Search networks
-      const networks = await listRemoteNetworks(projectId);
+      const networks = await listRemoteNetworks(rootNetworkId);
       for (const nw of take(networks.filter((nw) => matches([nw.name, nw.kind, nw.scope])))) {
         results.push({
           type: 'network', id: nw.id, display: nw.name,
@@ -812,7 +812,7 @@ export function registerNarreIpc(): void {
       }
 
       // Search file entities
-      const files = await listRemoteFilesByProject(projectId);
+      const files = await listRemoteFilesByWorld(rootNetworkId);
       for (const fe of files) {
         const fileName = fe.path.split('/').pop() ?? fe.path;
         if (results.filter((result) => result.type === 'file').length >= categoryLimit) break;
@@ -835,9 +835,9 @@ export function registerNarreIpc(): void {
     const requestStartedAt = Date.now();
 
     try {
-      const { sessionId, projectId, message, mentions } = data as {
+      const { sessionId, rootNetworkId, message, mentions } = data as {
         sessionId?: string;
-        projectId: string;
+        rootNetworkId: string;
         message: string;
         mentions?: unknown[];
         skillIds?: unknown[];
@@ -845,7 +845,7 @@ export function registerNarreIpc(): void {
 
       console.log(
         `[narre:bridge] trace=${traceId} stage=request.start session=${sessionId ?? 'new'} ` +
-        `project=${projectId} chars=${message.length} mentions=${mentions?.length ?? 0}`,
+        `world=${rootNetworkId} chars=${message.length} mentions=${mentions?.length ?? 0}`,
       );
 
       if (!sessionId || typeof sessionId !== 'string') {
@@ -862,7 +862,7 @@ export function registerNarreIpc(): void {
       const skillIds = Array.isArray(data.skillIds)
         ? data.skillIds.filter((value): value is string => typeof value === 'string')
         : undefined;
-      const body = JSON.stringify({ sessionId, projectId, message, mentions, skillIds });
+      const body = JSON.stringify({ sessionId, rootNetworkId, message, mentions, skillIds });
       const chatUrl = new URL('/chat', await ensureNarreServerBaseUrl());
 
       const req = http.request(
@@ -890,7 +890,7 @@ export function registerNarreIpc(): void {
               `[narre:bridge] trace=${traceId} stage=sse.recv source=${source} seq=${eventCount} ` +
               `${summarizeNarreStreamEvent(parsed)}`,
             );
-            emitNarreStreamEvent(mainWindow, parsed, { projectId, sessionId });
+            emitNarreStreamEvent(mainWindow, parsed, { rootNetworkId, sessionId });
           };
           res.on('data', (chunk: Buffer) => {
             buffer += chunk.toString();
@@ -962,10 +962,10 @@ export function registerNarreIpc(): void {
             emitNarreStreamEvent(mainWindow, {
               type: 'error',
               error: err.message,
-            }, { projectId, sessionId });
+            }, { rootNetworkId, sessionId });
             emitNarreStreamEvent(mainWindow, {
               type: 'done',
-            }, { projectId, sessionId });
+            }, { rootNetworkId, sessionId });
           });
         },
       );
@@ -990,11 +990,11 @@ export function registerNarreIpc(): void {
         emitNarreStreamEvent(mainWindow, {
           type: 'error',
           error: `Narre server connection failed: ${err.message}. Check the selected provider auth settings.`,
-        }, { projectId, sessionId });
+        }, { rootNetworkId, sessionId });
         // Send done so the UI exits streaming state
         emitNarreStreamEvent(mainWindow, {
           type: 'done',
-        }, { projectId, sessionId });
+        }, { rootNetworkId, sessionId });
       });
 
       const previousRequest = activeNarreChatRequests.get(sessionId);
@@ -1006,7 +1006,7 @@ export function registerNarreIpc(): void {
 
       activeNarreChatRequests.set(sessionId, {
         request: req,
-        projectId,
+        rootNetworkId,
         sessionId,
         mainWindow,
         cancelled: false,
@@ -1047,7 +1047,7 @@ export function registerNarreIpc(): void {
       cleanupActiveNarreChatRequest(sessionId, activeRequest.request);
       activeRequest.request.destroy();
       emitNarreStreamEvent(activeRequest.mainWindow, { type: 'done' }, {
-        projectId: activeRequest.projectId,
+        rootNetworkId: activeRequest.rootNetworkId,
         sessionId: activeRequest.sessionId,
       });
 

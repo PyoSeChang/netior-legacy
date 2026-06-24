@@ -26,7 +26,7 @@ import { createOntologyDisplayResolver } from '@netior/shared';
 
 interface NarreMentionPickerProps {
   query: string;
-  projectId: string;
+  rootNetworkId: string;
   position: { bottom: number; left: number };
   initialCategory?: string;
   agentMentions?: MentionResult[];
@@ -110,7 +110,7 @@ function toMeaningDisplaySource(item: MentionResult): Pick<Meaning, 'key' | 'nam
     key: key as MeaningRefKey,
     name,
     description: item.description ?? null,
-    source_kind: stringMeta(item.meta, 'sourceKind') as Meaning['source_kind'] ?? 'project',
+    source_kind: stringMeta(item.meta, 'sourceKind') as Meaning['source_kind'] ?? 'world',
     source_ref: stringMeta(item.meta, 'sourceRef'),
   };
 }
@@ -145,7 +145,7 @@ function localizeMentionResult(
       key: (stringMeta(item.meta, 'meaningKey') ?? stringMeta(item.meta, 'meaning') ?? '') as MeaningRefKey,
       name: stringMeta(item.meta, 'meaning') ?? '',
       description: stringMeta(item.meta, 'meaningDescription'),
-      source_kind: stringMeta(item.meta, 'meaningSourceKind') as Meaning['source_kind'] ?? 'project',
+      source_kind: stringMeta(item.meta, 'meaningSourceKind') as Meaning['source_kind'] ?? 'world',
       source_ref: stringMeta(item.meta, 'meaningSourceRef'),
     };
     return {
@@ -234,7 +234,7 @@ function PreviewPanel({ item, t }: { item: MentionResult; t: (key: TranslationKe
 
 export function NarreMentionPicker({
   query,
-  projectId,
+  rootNetworkId,
   position,
   initialCategory = 'all',
   agentMentions = [],
@@ -266,7 +266,7 @@ export function NarreMentionPicker({
     debounceRef.current = setTimeout(async () => {
       setLoading(true);
       try {
-        const data = await narreService.searchMentions(projectId, search);
+        const data = await narreService.searchMentions(rootNetworkId, search);
         setResults(data.map((item) => localizeMentionResult(item, display)));
         setSelectedIndex(0);
       } catch {
@@ -276,7 +276,7 @@ export function NarreMentionPicker({
       }
     }, delay);
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-  }, [display, search, projectId]);
+  }, [display, search, rootNetworkId]);
 
   const allResults = useMemo(() => {
     const lowerSearch = search.toLowerCase();

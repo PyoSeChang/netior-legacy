@@ -72,9 +72,9 @@ function getSubmittedAction(response: unknown): string | null {
 function getAllowActionKey(card: NarrePermissionCard): string | null {
   const allowAction = card.actions.find((action) => {
     const key = action.key.toLowerCase();
-    return key === 'accept_project'
-      || key === 'allow_project'
-      || key === 'always_allow_project'
+    return key === 'accept_world'
+      || key === 'allow_world'
+      || key === 'always_allow_world'
       || key === 'approve'
       || key === 'allow'
       || key === 'confirm'
@@ -107,9 +107,9 @@ function getEffectivePermissionResponse(
 
 function getPermissionDecisionVariant(actionKey: string): 'success' | 'error' | 'default' {
   switch (actionKey.toLowerCase()) {
-    case 'accept_project':
-    case 'allow_project':
-    case 'always_allow_project':
+    case 'accept_world':
+    case 'allow_world':
+    case 'always_allow_world':
     case 'approve':
     case 'allow':
     case 'confirm':
@@ -126,10 +126,10 @@ function getPermissionDecisionVariant(actionKey: string): 'success' | 'error' | 
 
 function getPermissionDecisionLabel(actionKey: string, t: ReturnType<typeof useI18n>['t']): string {
   switch (actionKey.toLowerCase()) {
-    case 'accept_project':
-    case 'allow_project':
-    case 'always_allow_project':
-      return t('narre.card.permissionAllowedProject');
+    case 'accept_world':
+    case 'allow_world':
+    case 'always_allow_world':
+      return t('narre.card.permissionAllowedWorld');
     case 'approve':
     case 'allow':
     case 'confirm':

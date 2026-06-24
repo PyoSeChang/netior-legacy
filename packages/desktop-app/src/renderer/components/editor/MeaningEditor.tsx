@@ -28,7 +28,7 @@ import { Plus, Trash2 } from 'lucide-react';
 import { useMeaningStore } from '../../stores/meaning-store';
 import { useSchemaStore } from '../../stores/schema-store';
 import { useInstanceStore } from '../../stores/instance-store';
-import { useProjectStore } from '../../stores/project-store';
+import { useWorldStore } from '../../stores/world-store';
 import { useEditorStore } from '../../stores/editor-store';
 import { useEditorSession } from '../../hooks/useEditorSession';
 import { useI18n } from '../../hooks/useI18n';
@@ -293,48 +293,48 @@ export function MeaningEditor({ tab }: MeaningEditorProps): JSX.Element {
   const display = useMemo(() => createOntologyDisplayResolver(t), [t]);
   const meaningId = tab.targetId;
   const meanings = useMeaningStore((s) => s.meanings);
-  const loadMeanings = useMeaningStore((s) => s.loadByProject);
+  const loadMeanings = useMeaningStore((s) => s.loadByWorld);
   const saveMeaning = useMeaningStore((s) => s.updateMeaning);
   const deleteMeaning = useMeaningStore((s) => s.deleteMeaning);
-  const currentProject = useProjectStore((s) => s.currentProject);
+  const currentWorld = useWorldStore((s) => s.currentWorld);
   const instances = useInstanceStore((s) => s.instances);
-  const loadInstances = useInstanceStore((s) => s.loadByProject);
+  const loadInstances = useInstanceStore((s) => s.loadByWorld);
   const createInstance = useInstanceStore((s) => s.createInstance);
   const schemas = useSchemaStore((s) => s.schemas);
-  const loadSchemas = useSchemaStore((s) => s.loadByProject);
+  const loadSchemas = useSchemaStore((s) => s.loadByWorld);
   const fieldsByMeaning = useSchemaStore((s) => s.fields);
   const meaningsByMeaning = useSchemaStore((s) => s.meanings);
   const loadMeaningFields = useSchemaStore((s) => s.loadFields);
   const loadMeaningAspects = useSchemaStore((s) => s.loadMeanings);
   const meaning = meanings.find((item) => item.id === meaningId);
-  const projectId = meaning?.project_id ?? tab.projectId ?? currentProject?.id ?? null;
+  const rootNetworkId = meaning?.root_network_id ?? tab.rootNetworkId ?? currentWorld?.id ?? null;
   const [newCategoryName, setNewCategoryName] = useState('');
   const [showCategoryCreator, setShowCategoryCreator] = useState(false);
   const [visualMode, setVisualMode] = useState<VisualMode>('icon');
 
   useEffect(() => {
-    if (projectId) {
-      void loadMeanings(projectId);
-      void loadSchemas(projectId);
-      void loadInstances(projectId);
+    if (rootNetworkId) {
+      void loadMeanings(rootNetworkId);
+      void loadSchemas(rootNetworkId);
+      void loadInstances(rootNetworkId);
     }
-  }, [loadInstances, loadMeanings, loadSchemas, projectId]);
+  }, [loadInstances, loadMeanings, loadSchemas, rootNetworkId]);
 
-  const projectMeanings = useMemo(
-    () => meanings.filter((meaning) => !projectId || meaning.project_id === projectId),
-    [projectId, meanings],
+  const worldMeanings = useMemo(
+    () => meanings.filter((meaning) => !rootNetworkId || meaning.root_network_id === rootNetworkId),
+    [rootNetworkId, meanings],
   );
-  const projectMeaningIdsKey = useMemo(
-    () => projectMeanings.map((meaning) => meaning.id).sort().join('|'),
-    [projectMeanings],
+  const worldMeaningIdsKey = useMemo(
+    () => worldMeanings.map((meaning) => meaning.id).sort().join('|'),
+    [worldMeanings],
   );
 
   useEffect(() => {
-    if (!projectMeaningIdsKey) return;
+    if (!worldMeaningIdsKey) return;
 
     let cancelled = false;
     void (async () => {
-      for (const meaning of projectMeanings) {
+      for (const meaning of worldMeanings) {
         if (cancelled) return;
         await Promise.all([
           loadMeaningFields(meaning.id),
@@ -346,7 +346,7 @@ export function MeaningEditor({ tab }: MeaningEditorProps): JSX.Element {
     return () => {
       cancelled = true;
     };
-  }, [loadMeaningFields, loadMeaningAspects, projectMeaningIdsKey, projectMeanings]);
+  }, [loadMeaningFields, loadMeaningAspects, worldMeaningIdsKey, worldMeanings]);
 
   const session = useEditorSession<MeaningEditorState>({
     tabId: tab.id,
@@ -396,7 +396,7 @@ export function MeaningEditor({ tab }: MeaningEditorProps): JSX.Element {
         description: state.description,
         target_kind: state.target_kind,
         built_in: state.built_in,
-        source_kind: meaning?.source_kind ?? 'project',
+        source_kind: meaning?.source_kind ?? 'world',
         source_ref: meaning?.source_ref ?? null,
       };
       useEditorStore.getState().updateTitle(tab.id, display.meaningName(nextDisplayMeaning) || t('meaning.title' as never));
@@ -422,7 +422,7 @@ export function MeaningEditor({ tab }: MeaningEditorProps): JSX.Element {
       ...meaning.optional_slots,
     ]);
 
-    return projectMeanings.flatMap((meaning) => {
+    return worldMeanings.flatMap((meaning) => {
       const meaningRefs = normalizeMeaningRefs((meaning as unknown as { meanings?: unknown }).meanings);
       const linkedToMeaning = meaningRefs.includes(meaningKey);
       const sourceMeanings = meaningsByMeaning[meaning.id] ?? [];
@@ -455,7 +455,7 @@ export function MeaningEditor({ tab }: MeaningEditorProps): JSX.Element {
         fields,
       }];
     });
-  }, [fieldsByMeaning, meaningsByMeaning, meaning, projectMeanings]);
+  }, [fieldsByMeaning, meaningsByMeaning, meaning, worldMeanings]);
 
   const fieldTypeLabelByValue = useMemo(
     () => new Map(FIELD_TYPE_OPTIONS.map((option) => [option.value, t(option.labelKey as never)])),
@@ -463,14 +463,14 @@ export function MeaningEditor({ tab }: MeaningEditorProps): JSX.Element {
   );
   const meaningCategorySchema = useMemo(() => (
     schemas.find((schema) => (
-      schema.project_id === projectId
+      schema.root_network_id === rootNetworkId
       && schema.source_ref === MEANING_CATEGORY_SCHEMA_SOURCE_REF
     )) ?? null
-  ), [projectId, schemas]);
+  ), [rootNetworkId, schemas]);
   const meaningCategoryInstances = useMemo(() => (
     instances
       .filter((instance) => (
-        instance.project_id === projectId
+        instance.root_network_id === rootNetworkId
         && (
           instance.schema_id === meaningCategorySchema?.id
           || instance.source_ref?.startsWith('meaning-category.')
@@ -481,7 +481,7 @@ export function MeaningEditor({ tab }: MeaningEditorProps): JSX.Element {
         const bKey = getMeaningCategorySourceKey(b) ?? b.title;
         return aKey.localeCompare(bKey);
       })
-  ), [instances, meaningCategorySchema?.id, projectId]);
+  ), [instances, meaningCategorySchema?.id, rootNetworkId]);
   const meaningCategoryOptions = useMemo(() => {
     const optionByValue = new Map(meaningCategoryInstances.map((instance) => [instance.id, {
       value: instance.id,
@@ -663,14 +663,14 @@ export function MeaningEditor({ tab }: MeaningEditorProps): JSX.Element {
     return description === key ? field.description ?? '' : description;
   };
   const handleCreateCategory = async () => {
-    if (!newCategoryName.trim() || !projectId || !meaningCategorySchema) return;
+    if (!newCategoryName.trim() || !rootNetworkId || !meaningCategorySchema) return;
     const name = newCategoryName.trim();
     const sourceKey = normalizeKey(name, 'category');
     const created = await createInstance({
-      project_id: projectId,
+      root_network_id: rootNetworkId,
       schema_id: meaningCategorySchema.id,
       title: name,
-      source_kind: 'project',
+      source_kind: 'world',
       source_ref: `meaning-category.${sourceKey}`,
     });
     update({ category_instance_id: created.id });
@@ -1205,7 +1205,7 @@ export function MeaningEditor({ tab }: MeaningEditorProps): JSX.Element {
             size="sm"
             variant="ghost"
             className="bg-status-error/10 text-status-error hover:bg-status-error/15 hover:text-status-error"
-            disabled={isBuiltInMeaning || meaning.source_kind !== 'project'}
+            disabled={isBuiltInMeaning || meaning.source_kind !== 'world'}
             onClick={() => { void handleDelete(); }}
           >
             {t('common.delete')}

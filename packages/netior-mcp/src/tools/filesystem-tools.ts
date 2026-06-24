@@ -3,20 +3,20 @@ import { z } from 'zod';
 import { readdirSync, readFileSync } from 'fs';
 import fg from 'fast-glob';
 import { getAllowedPaths, validatePath } from './path-validation.js';
-import { projectIdSchema, registerNetiorTool, resolveProjectId } from './shared-tool-registry.js';
+import { rootNetworkIdSchema, registerNetiorTool, resolveRootNetworkId } from './shared-tool-registry.js';
 
 export function registerFilesystemTools(server: McpServer): void {
   registerNetiorTool(
     server,
     'list_directory',
     {
-      project_id: projectIdSchema(),
+      root_network_id: rootNetworkIdSchema(),
       dir_path: z.string().describe('Absolute path to the directory'),
     },
-    async ({ project_id, dir_path }) => {
+    async ({ root_network_id, dir_path }) => {
       try {
-        const targetProjectId = resolveProjectId(project_id);
-        const validation = await validatePath(targetProjectId, dir_path);
+        const targetRootNetworkId = resolveRootNetworkId(root_network_id);
+        const validation = await validatePath(targetRootNetworkId, dir_path);
         if (typeof validation === 'string') {
           return {
             content: [{ type: 'text' as const, text: `Error: ${validation}` }],
@@ -42,14 +42,14 @@ export function registerFilesystemTools(server: McpServer): void {
     server,
     'read_file',
     {
-      project_id: projectIdSchema(),
+      root_network_id: rootNetworkIdSchema(),
       file_path: z.string().describe('Absolute path to the file'),
       max_lines: z.number().optional().describe('Maximum number of lines to return (default 200)'),
     },
-    async ({ project_id, file_path, max_lines }) => {
+    async ({ root_network_id, file_path, max_lines }) => {
       try {
-        const targetProjectId = resolveProjectId(project_id);
-        const validation = await validatePath(targetProjectId, file_path);
+        const targetRootNetworkId = resolveRootNetworkId(root_network_id);
+        const validation = await validatePath(targetRootNetworkId, file_path);
         if (typeof validation === 'string') {
           return {
             content: [{ type: 'text' as const, text: `Error: ${validation}` }],
@@ -82,15 +82,15 @@ export function registerFilesystemTools(server: McpServer): void {
     server,
     'glob_files',
     {
-      project_id: projectIdSchema(),
+      root_network_id: rootNetworkIdSchema(),
       pattern: z.string().describe('Glob pattern (e.g. "**/*.md")'),
       base_dir: z.string().optional().describe('Optional base directory to search in'),
     },
-    async ({ project_id, pattern, base_dir }) => {
+    async ({ root_network_id, pattern, base_dir }) => {
       try {
-        const targetProjectId = resolveProjectId(project_id);
+        const targetRootNetworkId = resolveRootNetworkId(root_network_id);
         if (base_dir) {
-          const validation = await validatePath(targetProjectId, base_dir);
+          const validation = await validatePath(targetRootNetworkId, base_dir);
           if (typeof validation === 'string') {
             return {
               content: [{ type: 'text' as const, text: `Error: ${validation}` }],
@@ -101,11 +101,11 @@ export function registerFilesystemTools(server: McpServer): void {
 
         const searchPaths = base_dir
           ? [base_dir]
-          : await getAllowedPaths(targetProjectId);
+          : await getAllowedPaths(targetRootNetworkId);
 
         if (searchPaths.length === 0) {
           return {
-            content: [{ type: 'text' as const, text: 'Error: No module paths registered for this project' }],
+            content: [{ type: 'text' as const, text: 'Error: No module paths registered for this world' }],
             isError: true,
           };
         }
@@ -136,16 +136,16 @@ export function registerFilesystemTools(server: McpServer): void {
     server,
     'grep_files',
     {
-      project_id: projectIdSchema(),
+      root_network_id: rootNetworkIdSchema(),
       pattern: z.string().describe('Regex pattern to search for'),
       base_dir: z.string().optional().describe('Optional base directory to search in'),
       file_glob: z.string().optional().describe('File glob pattern (default "**/*")'),
     },
-    async ({ project_id, pattern, base_dir, file_glob }) => {
+    async ({ root_network_id, pattern, base_dir, file_glob }) => {
       try {
-        const targetProjectId = resolveProjectId(project_id);
+        const targetRootNetworkId = resolveRootNetworkId(root_network_id);
         if (base_dir) {
-          const validation = await validatePath(targetProjectId, base_dir);
+          const validation = await validatePath(targetRootNetworkId, base_dir);
           if (typeof validation === 'string') {
             return {
               content: [{ type: 'text' as const, text: `Error: ${validation}` }],
@@ -156,11 +156,11 @@ export function registerFilesystemTools(server: McpServer): void {
 
         const searchPaths = base_dir
           ? [base_dir]
-          : await getAllowedPaths(targetProjectId);
+          : await getAllowedPaths(targetRootNetworkId);
 
         if (searchPaths.length === 0) {
           return {
-            content: [{ type: 'text' as const, text: 'Error: No module paths registered for this project' }],
+            content: [{ type: 'text' as const, text: 'Error: No module paths registered for this world' }],
             isError: true,
           };
         }

@@ -26,7 +26,7 @@ async function main(): Promise<void> {
   await server.connect(transport);
   console.error(
     `[netior-mcp] profile=${getActiveNetiorMcpToolProfile()} ` +
-    `defaultProject=${process.env.NETIOR_MCP_DEFAULT_PROJECT_ID ?? '(none)'} ` +
+    `defaultWorld=${process.env.NETIOR_MCP_DEFAULT_WORLD_ID ?? '(none)'} ` +
     `service=${getNetiorServiceUrl()}`,
   );
 

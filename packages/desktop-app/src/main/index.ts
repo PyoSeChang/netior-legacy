@@ -23,7 +23,7 @@ import {
   listDesktopRuntimeInstances,
   registerDesktopRuntimeInstance,
   unregisterDesktopRuntimeInstance,
-  updateDesktopRuntimeProjectContext,
+  updateDesktopRuntimeWorldContext,
   updateDesktopRuntimeRelayPort,
 } from './runtime/runtime-coordination';
 import { listSystemFonts } from './system-fonts';
@@ -126,7 +126,7 @@ function isPathInsideRoot(filePath: string, rootDir: string): boolean {
   return file === root || file.startsWith(`${root}/`);
 }
 
-function findOpenFileRelayTarget(filePaths: string[]): { relayPort: number; projectRoot: string | null } | null {
+function findOpenFileRelayTarget(filePaths: string[]): { relayPort: number; worldRoot: string | null } | null {
   if (filePaths.length === 0) return null;
 
   const currentInstanceId = getRuntimeInstanceId();
@@ -137,23 +137,23 @@ function findOpenFileRelayTarget(filePaths: string[]): { relayPort: number; proj
       && record.relayPort > 0
     ));
 
-  let bestProjectMatch: { relayPort: number; projectRoot: string } | null = null;
+  let bestWorldMatch: { relayPort: number; worldRoot: string } | null = null;
   for (const candidate of candidates) {
-    if (!candidate.projectRoot) continue;
-    if (!filePaths.some((filePath) => isPathInsideRoot(filePath, candidate.projectRoot!))) continue;
+    if (!candidate.worldRoot) continue;
+    if (!filePaths.some((filePath) => isPathInsideRoot(filePath, candidate.worldRoot!))) continue;
     if (
-      !bestProjectMatch
-      || normalizeComparablePath(candidate.projectRoot).length > normalizeComparablePath(bestProjectMatch.projectRoot).length
+      !bestWorldMatch
+      || normalizeComparablePath(candidate.worldRoot).length > normalizeComparablePath(bestWorldMatch.worldRoot).length
     ) {
-      bestProjectMatch = { relayPort: candidate.relayPort!, projectRoot: candidate.projectRoot };
+      bestWorldMatch = { relayPort: candidate.relayPort!, worldRoot: candidate.worldRoot };
     }
   }
 
-  if (bestProjectMatch) return bestProjectMatch;
+  if (bestWorldMatch) return bestWorldMatch;
 
-  const projectlessMatch = candidates.find((candidate) => !candidate.projectRoot);
-  return projectlessMatch?.relayPort
-    ? { relayPort: projectlessMatch.relayPort, projectRoot: null }
+  const worldlessMatch = candidates.find((candidate) => !candidate.worldRoot);
+  return worldlessMatch?.relayPort
+    ? { relayPort: worldlessMatch.relayPort, worldRoot: null }
     : null;
 }
 
@@ -192,7 +192,7 @@ async function forwardOpenFilesToExistingInstance(filePaths: string[]): Promise<
   if (forwarded) {
     console.log('[open-files] Forwarded to existing runtime instance', {
       relayPort: target.relayPort,
-      projectRoot: target.projectRoot,
+      worldRoot: target.worldRoot,
       fileCount: filePaths.length,
     });
   }
@@ -740,10 +740,10 @@ app.whenReady().then(async () => {
   ipcMain.on('app:renderer-ready-for-open-files', () => {
     flushPendingOpenFilePaths();
   });
-  ipcMain.on('app:update-project-context', (_event, context: { projectId?: string | null; projectRoot?: string | null }) => {
-    updateDesktopRuntimeProjectContext({
-      projectId: context.projectId ?? null,
-      projectRoot: context.projectRoot ?? null,
+  ipcMain.on('app:update-world-context', (_event, context: { rootNetworkId?: string | null; worldRoot?: string | null }) => {
+    updateDesktopRuntimeWorldContext({
+      rootNetworkId: context.rootNetworkId ?? null,
+      worldRoot: context.worldRoot ?? null,
     });
   });
   ipcMain.on('browser:permission-response', (_event, payload: { id: string; allowed: boolean }) => {
@@ -757,7 +757,7 @@ app.whenReady().then(async () => {
   });
   ipcMain.handle('agent:notifyNative', (event, payload: {
     tabId: string;
-    projectId?: string | null;
+    rootNetworkId?: string | null;
     title: string;
     message: string;
     playSound: boolean;
@@ -791,7 +791,7 @@ app.whenReady().then(async () => {
       }
       win.show();
       win.focus();
-      win.webContents.send('agent:focusTab', { tabId: payload.tabId, projectId: payload.projectId ?? null });
+      win.webContents.send('agent:focusTab', { tabId: payload.tabId, rootNetworkId: payload.rootNetworkId ?? null });
     });
 
     notification.show();

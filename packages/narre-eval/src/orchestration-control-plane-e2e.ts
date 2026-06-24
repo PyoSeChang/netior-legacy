@@ -39,7 +39,7 @@ interface ExecutorCommand {
   assignmentId?: string | null;
 }
 
-const PROJECT_ID = 'narre-eval-orchestration-control-plane';
+const ROOT_NETWORK_ID = 'narre-eval-orchestration-control-plane';
 const EXECUTOR_ID = 'narre-eval-terminal-executor';
 const TERMINAL_AGENT_KEY = 'terminal:codex-cli:codex-cli';
 
@@ -53,14 +53,14 @@ async function main(): Promise<void> {
   try {
     server = await startServer(serverPath, port, dataDir);
     const runSnapshot = await post<OrchestrationSnapshot>(baseUrl, '/supervisor/runs', {
-      projectId: PROJECT_ID,
+      rootNetworkId: ROOT_NETWORK_ID,
       userRequest: 'Use Codex CLI to perform a deterministic terminal orchestration contract task.',
       mode: 'orchestration',
     });
 
     await post(baseUrl, '/supervisor/executors/register', {
       id: EXECUTOR_ID,
-      projectId: PROJECT_ID,
+      rootNetworkId: ROOT_NETWORK_ID,
       provider: 'terminal',
       surface: { kind: 'terminal', id: 'narre-eval-terminal-surface' },
       capabilities: ['terminal'],

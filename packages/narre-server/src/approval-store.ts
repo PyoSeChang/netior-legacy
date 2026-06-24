@@ -2,26 +2,26 @@
 import path from 'path';
 import { normalizeNetiorToolName } from '@netior/shared/constants';
 
-interface ProjectApprovalGrant {
+interface WorldApprovalGrant {
   operationKey: string;
   decision: 'allow';
-  scope: 'project';
+  scope: 'world';
   createdAt: string;
 }
 
-interface ProjectApprovalFileV1 {
+interface WorldApprovalFileV1 {
   version: 1;
   allowedTools: string[];
 }
 
-interface ProjectApprovalFileV2 {
+interface WorldApprovalFileV2 {
   version: 2;
-  grants: ProjectApprovalGrant[];
+  grants: WorldApprovalGrant[];
 }
 
-type ProjectApprovalFile = ProjectApprovalFileV1 | ProjectApprovalFileV2;
+type WorldApprovalFile = WorldApprovalFileV1 | WorldApprovalFileV2;
 
-function createEmptyApprovalFile(): ProjectApprovalFileV2 {
+function createEmptyApprovalFile(): WorldApprovalFileV2 {
   return {
     version: 2,
     grants: [],
@@ -31,32 +31,32 @@ function createEmptyApprovalFile(): ProjectApprovalFileV2 {
 export class ApprovalStore {
   constructor(private readonly dataDir: string) {}
 
-  private projectDir(projectId: string): string {
-    return path.join(this.dataDir, 'narre', projectId);
+  private worldDir(rootNetworkId: string): string {
+    return path.join(this.dataDir, 'narre', rootNetworkId);
   }
 
-  private approvalsPath(projectId: string): string {
-    return path.join(this.projectDir(projectId), 'approvals.json');
+  private approvalsPath(rootNetworkId: string): string {
+    return path.join(this.worldDir(rootNetworkId), 'approvals.json');
   }
 
-  private async ensureDir(projectId: string): Promise<void> {
-    await fs.mkdir(this.projectDir(projectId), { recursive: true });
+  private async ensureDir(rootNetworkId: string): Promise<void> {
+    await fs.mkdir(this.worldDir(rootNetworkId), { recursive: true });
   }
 
-  private async readApprovalFile(projectId: string): Promise<ProjectApprovalFileV2> {
+  private async readApprovalFile(rootNetworkId: string): Promise<WorldApprovalFileV2> {
     try {
-      const raw = await fs.readFile(this.approvalsPath(projectId), 'utf-8');
-      const parsed = JSON.parse(raw) as Partial<ProjectApprovalFile>;
-      if (parsed.version === 2 && Array.isArray((parsed as Partial<ProjectApprovalFileV2>).grants)) {
+      const raw = await fs.readFile(this.approvalsPath(rootNetworkId), 'utf-8');
+      const parsed = JSON.parse(raw) as Partial<WorldApprovalFile>;
+      if (parsed.version === 2 && Array.isArray((parsed as Partial<WorldApprovalFileV2>).grants)) {
         return {
           version: 2,
-          grants: (parsed as Partial<ProjectApprovalFileV2>).grants!
-            .filter((grant): grant is ProjectApprovalGrant =>
+          grants: (parsed as Partial<WorldApprovalFileV2>).grants!
+            .filter((grant): grant is WorldApprovalGrant =>
               Boolean(grant)
               && typeof grant.operationKey === 'string'
               && grant.operationKey.trim().length > 0
               && grant.decision === 'allow'
-              && grant.scope === 'project'
+              && grant.scope === 'world'
               && typeof grant.createdAt === 'string'
               && grant.createdAt.trim().length > 0,
             )
@@ -67,15 +67,15 @@ export class ApprovalStore {
         };
       }
 
-      if (parsed.version === 1 && Array.isArray((parsed as Partial<ProjectApprovalFileV1>).allowedTools)) {
+      if (parsed.version === 1 && Array.isArray((parsed as Partial<WorldApprovalFileV1>).allowedTools)) {
         return {
           version: 2,
-          grants: (parsed as Partial<ProjectApprovalFileV1>).allowedTools!
+          grants: (parsed as Partial<WorldApprovalFileV1>).allowedTools!
             .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
             .map((value) => ({
               operationKey: normalizeNetiorToolName(value),
               decision: 'allow' as const,
-              scope: 'project' as const,
+              scope: 'world' as const,
               createdAt: new Date(0).toISOString(),
             })),
         };
@@ -87,19 +87,19 @@ export class ApprovalStore {
     return createEmptyApprovalFile();
   }
 
-  private async writeApprovalFile(projectId: string, data: ProjectApprovalFileV2): Promise<void> {
-    await this.ensureDir(projectId);
-    await fs.writeFile(this.approvalsPath(projectId), JSON.stringify(data, null, 2), 'utf-8');
+  private async writeApprovalFile(rootNetworkId: string, data: WorldApprovalFileV2): Promise<void> {
+    await this.ensureDir(rootNetworkId);
+    await fs.writeFile(this.approvalsPath(rootNetworkId), JSON.stringify(data, null, 2), 'utf-8');
   }
 
-  async isOperationAllowed(projectId: string, operationKey: string): Promise<boolean> {
-    const file = await this.readApprovalFile(projectId);
+  async isOperationAllowed(rootNetworkId: string, operationKey: string): Promise<boolean> {
+    const file = await this.readApprovalFile(rootNetworkId);
     const normalizedOperationKey = normalizeNetiorToolName(operationKey);
     return file.grants.some((grant) => grant.operationKey === normalizedOperationKey && grant.decision === 'allow');
   }
 
-  async allowOperation(projectId: string, operationKey: string): Promise<void> {
-    const file = await this.readApprovalFile(projectId);
+  async allowOperation(rootNetworkId: string, operationKey: string): Promise<void> {
+    const file = await this.readApprovalFile(rootNetworkId);
     const normalizedOperationKey = normalizeNetiorToolName(operationKey);
     if (file.grants.some((grant) => grant.operationKey === normalizedOperationKey && grant.decision === 'allow')) {
       return;
@@ -108,18 +108,18 @@ export class ApprovalStore {
     file.grants.push({
       operationKey: normalizedOperationKey,
       decision: 'allow',
-      scope: 'project',
+      scope: 'world',
       createdAt: new Date().toISOString(),
     });
     file.grants.sort((left, right) => left.operationKey.localeCompare(right.operationKey));
-    await this.writeApprovalFile(projectId, file);
+    await this.writeApprovalFile(rootNetworkId, file);
   }
 
-  async isToolAllowed(projectId: string, toolName: string): Promise<boolean> {
-    return this.isOperationAllowed(projectId, toolName);
+  async isToolAllowed(rootNetworkId: string, toolName: string): Promise<boolean> {
+    return this.isOperationAllowed(rootNetworkId, toolName);
   }
 
-  async allowTool(projectId: string, toolName: string): Promise<void> {
-    await this.allowOperation(projectId, toolName);
+  async allowTool(rootNetworkId: string, toolName: string): Promise<void> {
+    await this.allowOperation(rootNetworkId, toolName);
   }
 }

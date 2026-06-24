@@ -3,9 +3,9 @@ import { getDatabase } from '../connection';
 import { createLayout, getLayoutByNetwork, getNodePositions, getEdgeVisuals } from './layout';
 import { createObject, deleteObjectByRef } from './objects';
 import {
-  ensureProjectOntologyNetworkForDb,
+  syncRootNetworkOntologyForDb,
   ensureUniverseNetworkForDb,
-  getProjectOntologyNetworkForDb,
+  getRootNetworkForDb,
   getUniverseNetworkForDb,
 } from './system-networks';
 import type {
@@ -40,17 +40,17 @@ export function createNetwork(data: NetworkCreate): Network {
   const db = getDatabase();
   const id = randomUUID();
   const now = new Date().toISOString();
-  const scope = data.scope ?? 'project';
+  const scope = data.scope ?? 'world';
   const kind = data.kind ?? 'network';
   if (kind !== 'network') {
     throw new Error('System networks must be created through the system network repository');
   }
 
   db.prepare(
-    `INSERT INTO networks (id, project_id, network_type_id, name, scope, kind, parent_network_id, created_at, updated_at)
+    `INSERT INTO networks (id, root_network_id, network_type_id, name, scope, kind, parent_network_id, created_at, updated_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
-    id, data.project_id, data.network_type_id ?? DEFAULT_NETWORK_TYPE_ID, data.name,
+    id, data.root_network_id, data.network_type_id ?? DEFAULT_NETWORK_TYPE_ID, data.name,
     scope,
     kind,
     data.parent_network_id ?? null,
@@ -61,18 +61,18 @@ export function createNetwork(data: NetworkCreate): Network {
   createLayout({ networkId: id });
 
   // Register object record for the network
-  createObject('network', scope, data.project_id ?? null, id);
+  createObject('network', scope, data.root_network_id ?? null, id);
 
   return db.prepare('SELECT * FROM networks WHERE id = ?').get(id) as Network;
 }
 
-export function listNetworks(projectId: string, rootOnly = false): Network[] {
+export function listNetworks(rootNetworkId: string, rootOnly = false): Network[] {
   const db = getDatabase();
-  const orderBy = `ORDER BY CASE kind WHEN 'ontology' THEN 0 ELSE 1 END, created_at`;
+  const orderBy = `ORDER BY CASE kind WHEN 'root' THEN 0 ELSE 1 END, created_at`;
   const sql = rootOnly
-    ? `SELECT * FROM networks WHERE project_id = ? AND parent_network_id IS NULL ${orderBy}`
-    : `SELECT * FROM networks WHERE project_id = ? ${orderBy}`;
-  return db.prepare(sql).all(projectId) as Network[];
+    ? `SELECT * FROM networks WHERE root_network_id = ? AND parent_network_id IS NULL ${orderBy}`
+    : `SELECT * FROM networks WHERE root_network_id = ? ${orderBy}`;
+  return db.prepare(sql).all(rootNetworkId) as Network[];
 }
 
 export interface NetworkTreeNode {
@@ -80,14 +80,14 @@ export interface NetworkTreeNode {
   children: NetworkTreeNode[];
 }
 
-export function getNetworkTree(projectId: string): NetworkTreeNode[] {
+export function getNetworkTree(rootNetworkId: string): NetworkTreeNode[] {
   const db = getDatabase();
 
   const allNetworks = db.prepare(
     `SELECT * FROM networks
-      WHERE project_id = ?
-      ORDER BY CASE kind WHEN 'ontology' THEN 0 ELSE 1 END, created_at`,
-  ).all(projectId) as Network[];
+      WHERE root_network_id = ?
+      ORDER BY CASE kind WHEN 'root' THEN 0 ELSE 1 END, created_at`,
+  ).all(rootNetworkId) as Network[];
   const networkIds = new Set(allNetworks.map((network) => network.id));
 
   // Group by parent_network_id
@@ -122,11 +122,11 @@ export function getNetworkAncestors(networkId: string): NetworkBreadcrumbItem[] 
 
   // Recursive CTE following parent_network_id chain
   const rows = db.prepare(`
-    WITH RECURSIVE ancestors(id, project_id, network_type_id, name, scope, kind, parent_network_id, created_at, updated_at, depth) AS (
-      SELECT id, project_id, network_type_id, name, scope, kind, parent_network_id, created_at, updated_at, 0
+    WITH RECURSIVE ancestors(id, root_network_id, network_type_id, name, scope, kind, parent_network_id, created_at, updated_at, depth) AS (
+      SELECT id, root_network_id, network_type_id, name, scope, kind, parent_network_id, created_at, updated_at, 0
         FROM networks WHERE id = ?
       UNION ALL
-      SELECT n.id, n.project_id, n.network_type_id, n.name, n.scope, n.kind, n.parent_network_id, n.created_at, n.updated_at, a.depth + 1
+      SELECT n.id, n.root_network_id, n.network_type_id, n.name, n.scope, n.kind, n.parent_network_id, n.created_at, n.updated_at, a.depth + 1
         FROM networks n
         JOIN ancestors a ON n.id = a.parent_network_id
     )
@@ -144,7 +144,7 @@ export function updateNetwork(id: string, data: NetworkUpdate): Network | undefi
   const existing = db.prepare('SELECT * FROM networks WHERE id = ?').get(id) as Network | undefined;
   if (!existing) return undefined;
 
-  if (existing.kind === 'universe' || existing.kind === 'ontology') {
+  if (existing.kind === 'universe' || existing.kind === 'root') {
     const nameChanged = data.name !== undefined && data.name !== existing.name;
     const scopeChanged = data.scope !== undefined && data.scope !== existing.scope;
     const parentChanged = data.parent_network_id !== undefined && data.parent_network_id !== existing.parent_network_id;
@@ -174,7 +174,7 @@ export function deleteNetwork(id: string): boolean {
   const db = getDatabase();
   const existing = db.prepare('SELECT * FROM networks WHERE id = ?').get(id) as Network | undefined;
   if (!existing) return false;
-  if (existing.kind === 'universe' || existing.kind === 'ontology') {
+  if (existing.kind === 'universe' || existing.kind === 'root') {
     throw new Error(`${existing.name} is a system network and cannot be deleted`);
   }
   const result = db.prepare('DELETE FROM networks WHERE id = ?').run(id);
@@ -195,12 +195,12 @@ export function ensureUniverseNetwork(): Network {
   return ensureUniverseNetworkForDb(getDatabase());
 }
 
-export function getProjectOntologyNetwork(projectId: string): Network | undefined {
-  return getProjectOntologyNetworkForDb(getDatabase(), projectId);
+export function getRootNetwork(rootNetworkId: string): Network | undefined {
+  return getRootNetworkForDb(getDatabase(), rootNetworkId);
 }
 
-export function ensureProjectOntologyNetwork(projectId: string): Network {
-  return ensureProjectOntologyNetworkForDb(getDatabase(), projectId);
+export function syncRootNetwork(rootNetworkId: string): Network {
+  return syncRootNetworkOntologyForDb(getDatabase(), rootNetworkId);
 }
 
 // ── Network Full Data ──
@@ -263,8 +263,8 @@ export function getNetworkFull(networkId: string): NetworkFullData | undefined {
   const db = getDatabase();
   const initialNetwork = db.prepare('SELECT * FROM networks WHERE id = ?').get(networkId) as Network | undefined;
   if (!initialNetwork) return undefined;
-  const network = initialNetwork.kind === 'ontology' && initialNetwork.project_id
-    ? ensureProjectOntologyNetworkForDb(db, initialNetwork.project_id)
+  const network = initialNetwork.kind === 'root'
+    ? syncRootNetworkOntologyForDb(db, initialNetwork.id)
     : initialNetwork;
 
   const layout = getLayoutByNetwork(network.id);
@@ -281,15 +281,15 @@ export function getNetworkFull(networkId: string): NetworkFullData | undefined {
   const nodes = db.prepare(
     `SELECT nn.*,
             o.id as o_id, o.object_type as o_object_type, o.scope as o_scope,
-            o.project_id as o_project_id, o.ref_id as o_ref_id, o.created_at as o_created_at,
+            o.root_network_id as o_root_network_id, o.ref_id as o_ref_id, o.created_at as o_created_at,
             c.title, c.color, c.icon, c.schema_id, c.owner_network_id as instance_owner_network_id,
-            c.project_id as instance_project_id,
+            c.root_network_id as instance_root_network_id,
             c.source_kind as instance_source_kind,
             c.source_id as instance_source_id,
             c.source_ref as instance_source_ref,
             c.source_version as instance_source_version,
             c.created_at as instance_created_at, c.updated_at as instance_updated_at,
-            f.id as f_id, f.project_id as f_project_id, f.path as f_path, f.type as f_type,
+            f.id as f_id, f.root_network_id as f_root_network_id, f.path as f_path, f.type as f_type,
             f.metadata as f_metadata, f.created_at as f_created_at, f.updated_at as f_updated_at
      FROM network_nodes nn
      JOIN objects o ON nn.object_id = o.id
@@ -320,14 +320,14 @@ export function getNetworkFull(networkId: string): NetworkFullData | undefined {
         id: row.o_id as string,
         object_type: row.o_object_type as string,
         scope: row.o_scope as string,
-        project_id: (row.o_project_id as string | null) ?? null,
+        root_network_id: (row.o_root_network_id as string | null) ?? null,
         ref_id: row.o_ref_id as string,
         created_at: row.o_created_at as string,
       },
       ...(hasInstance ? {
         instance: {
           id: row.o_ref_id as string,
-          project_id: row.instance_project_id as string,
+          root_network_id: row.instance_root_network_id as string,
           owner_network_id: (row.instance_owner_network_id as string | null) ?? null,
           schema_id: (row.schema_id as string | null) ?? null,
           title: row.title as string,
@@ -335,7 +335,7 @@ export function getNetworkFull(networkId: string): NetworkFullData | undefined {
           icon: row.icon as string | null,
           content: null,
           agent_content: null,
-          source_kind: ((row.instance_source_kind as string | null) ?? 'project') as OntologySourceKind,
+          source_kind: ((row.instance_source_kind as string | null) ?? 'world') as OntologySourceKind,
           source_id: (row.instance_source_id as string | null) ?? null,
           source_ref: (row.instance_source_ref as string | null) ?? null,
           source_version: (row.instance_source_version as string | null) ?? null,
@@ -346,7 +346,7 @@ export function getNetworkFull(networkId: string): NetworkFullData | undefined {
       ...(hasFile ? {
         file: {
           id: row.f_id as string,
-          project_id: row.f_project_id as string,
+          root_network_id: row.f_root_network_id as string,
           path: row.f_path as string,
           type: row.f_type as string,
           metadata: (row.f_metadata as string | null) ?? null,
@@ -359,7 +359,7 @@ export function getNetworkFull(networkId: string): NetworkFullData | undefined {
 
   const edgeRows = db.prepare(
     `SELECT e.*,
-            m.id as m_id, m.project_id as m_project_id,
+            m.id as m_id, m.root_network_id as m_root_network_id,
             m.owner_network_id as m_owner_network_id,
             m.key as m_key, m.name as m_name,
             m.description as m_description,
@@ -377,14 +377,14 @@ export function getNetworkFull(networkId: string): NetworkFullData | undefined {
             m.source_ref as m_source_ref,
             m.source_version as m_source_version,
             m.created_at as m_created_at, m.updated_at as m_updated_at,
-            r.id as r_id, r.project_id as r_project_id,
+            r.id as r_id, r.root_network_id as r_root_network_id,
             r.source_object_id as r_source_object_id, r.target_object_id as r_target_object_id,
             r.meaning_id as r_meaning_id, r.description as r_description,
             r.properties_json as r_properties_json,
             r.source_kind as r_source_kind, r.source_id as r_source_id,
             r.source_ref as r_source_ref, r.source_version as r_source_version,
             r.created_at as r_created_at, r.updated_at as r_updated_at,
-            rm.id as rm_id, rm.project_id as rm_project_id,
+            rm.id as rm_id, rm.root_network_id as rm_root_network_id,
             rm.owner_network_id as rm_owner_network_id,
             rm.key as rm_key, rm.name as rm_name,
             rm.description as rm_description,
@@ -434,13 +434,13 @@ export function getNetworkFull(networkId: string): NetworkFullData | undefined {
       ...(hasRelationship ? {
         relationship: {
           id: row.r_id as string,
-          project_id: row.r_project_id as string,
+          root_network_id: row.r_root_network_id as string,
           source_object_id: row.r_source_object_id as string,
           target_object_id: row.r_target_object_id as string,
           meaning_id: (row.r_meaning_id as string | null) ?? null,
           description: (row.r_description as string | null) ?? null,
           properties_json: (row.r_properties_json as string | null) ?? null,
-          source_kind: ((row.r_source_kind as string | null) ?? 'project') as RelationshipRow['source_kind'],
+          source_kind: ((row.r_source_kind as string | null) ?? 'world') as RelationshipRow['source_kind'],
           source_id: (row.r_source_id as string | null) ?? null,
           source_ref: (row.r_source_ref as string | null) ?? null,
           source_version: (row.r_source_version as string | null) ?? null,
@@ -449,7 +449,7 @@ export function getNetworkFull(networkId: string): NetworkFullData | undefined {
           ...(hasRelationshipMeaning ? {
             meaning: toMeaning({
               id: row.rm_id as string,
-              project_id: row.rm_project_id as string,
+              root_network_id: row.rm_root_network_id as string,
               owner_network_id: (row.rm_owner_network_id as string | null) ?? null,
               key: row.rm_key as string,
               name: row.rm_name as string,
@@ -467,7 +467,7 @@ export function getNetworkFull(networkId: string): NetworkFullData | undefined {
               line_style: ((row.rm_line_style as string | null) ?? null) as EdgeLineStyle | null,
               directed: (row.rm_directed as number | null) ?? null,
               built_in: (row.rm_built_in as number | null) ?? 0,
-              source_kind: ((row.rm_source_kind as string | null) ?? 'project') as OntologySourceKind,
+              source_kind: ((row.rm_source_kind as string | null) ?? 'world') as OntologySourceKind,
               source_id: (row.rm_source_id as string | null) ?? null,
               source_ref: (row.rm_source_ref as string | null) ?? null,
               source_version: (row.rm_source_version as string | null) ?? null,
@@ -480,7 +480,7 @@ export function getNetworkFull(networkId: string): NetworkFullData | undefined {
       ...(hasMeaning ? {
         meaning: toMeaning({
           id: row.m_id as string,
-          project_id: row.m_project_id as string,
+          root_network_id: row.m_root_network_id as string,
           owner_network_id: (row.m_owner_network_id as string | null) ?? null,
           key: row.m_key as string,
           name: row.m_name as string,
@@ -498,7 +498,7 @@ export function getNetworkFull(networkId: string): NetworkFullData | undefined {
           line_style: ((row.m_line_style as string | null) ?? null) as EdgeLineStyle | null,
           directed: (row.m_directed as number | null) ?? null,
           built_in: (row.m_built_in as number | null) ?? 0,
-          source_kind: ((row.m_source_kind as string | null) ?? 'project') as OntologySourceKind,
+          source_kind: ((row.m_source_kind as string | null) ?? 'world') as OntologySourceKind,
           source_id: (row.m_source_id as string | null) ?? null,
           source_ref: (row.m_source_ref as string | null) ?? null,
           source_version: (row.m_source_version as string | null) ?? null,
@@ -586,7 +586,7 @@ export function removeNetworkNode(id: string): boolean {
       WHERE nn.id = ?`,
   ).get(id) as { id: string; network_id: string; object_id: string; metadata: string | null; network_kind: string } | undefined;
 
-  if (existing?.network_kind === 'ontology' && existing.metadata?.includes('"managedBy":"ontology"')) {
+  if (existing?.network_kind === 'root' && existing.metadata?.includes('"managedBy":"ontology"')) {
     db.prepare(
       `INSERT OR IGNORE INTO network_node_exclusions (id, network_id, object_id, created_at)
        VALUES (?, ?, ?, ?)`,

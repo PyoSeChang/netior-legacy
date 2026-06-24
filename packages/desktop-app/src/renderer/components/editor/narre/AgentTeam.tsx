@@ -33,7 +33,7 @@ import {
 } from './agent-display';
 
 interface AgentTeamProps {
-  projectId: string;
+  rootNetworkId: string;
   onBackHome: () => void;
 }
 
@@ -60,7 +60,7 @@ function tk(key: string): TranslationKey {
   return key as TranslationKey;
 }
 
-export function AgentTeam({ projectId, onBackHome }: AgentTeamProps): JSX.Element {
+export function AgentTeam({ rootNetworkId, onBackHome }: AgentTeamProps): JSX.Element {
   const { t } = useI18n();
   const [runs, setRuns] = useState<OrchestrationRun[]>([]);
   const [snapshot, setSnapshot] = useState<OrchestrationSnapshot | null>(null);
@@ -80,8 +80,8 @@ export function AgentTeam({ projectId, onBackHome }: AgentTeamProps): JSX.Elemen
     setError(null);
     try {
       const [nextRuns, nextAgents] = await Promise.all([
-        narreService.listSupervisorRuns(projectId),
-        narreService.listSupervisorAgents(projectId),
+        narreService.listSupervisorRuns(rootNetworkId),
+        narreService.listSupervisorAgents(rootNetworkId),
       ]);
       setRuns(nextRuns);
       setAgents(nextAgents);
@@ -90,7 +90,7 @@ export function AgentTeam({ projectId, onBackHome }: AgentTeamProps): JSX.Elemen
     } catch (err) {
       setError((err as Error).message);
     }
-  }, [projectId]);
+  }, [rootNetworkId]);
 
   useEffect(() => {
     void refresh(null);
@@ -104,7 +104,7 @@ export function AgentTeam({ projectId, onBackHome }: AgentTeamProps): JSX.Elemen
     setError(null);
     try {
       const created = await narreService.createSupervisorRun({
-        projectId,
+        rootNetworkId,
         userRequest: request,
         mode: 'orchestration',
       });
@@ -123,7 +123,7 @@ export function AgentTeam({ projectId, onBackHome }: AgentTeamProps): JSX.Elemen
     } finally {
       setLoading(false);
     }
-  }, [projectId, refresh]);
+  }, [rootNetworkId, refresh]);
 
   const stopTeamRun = useCallback(async () => {
     const runId = activeRunIdRef.current;
@@ -267,7 +267,7 @@ export function AgentTeam({ projectId, onBackHome }: AgentTeamProps): JSX.Elemen
 
           <div className="mx-auto w-full max-w-[860px] shrink-0 pt-3">
             <NarreMentionInput
-              projectId={projectId}
+              rootNetworkId={rootNetworkId}
               onSend={sendTeamRequest}
               isStreaming={isRunning}
               stopDisabled={!snapshot || snapshot.run.status === 'completed' || snapshot.run.status === 'failed' || snapshot.run.status === 'cancelled'}
@@ -477,7 +477,7 @@ function AgentStatusBadge({ status }: { status: string }): JSX.Element {
 function getAgentKey(agent: AgentDefinition): string {
   if (agent.kind === 'terminal') return `terminal:${agent.terminalAgentType}:${agent.id}`;
   if (agent.narreAgentType === 'system') return `narre:system:${agent.systemAgentType}:${agent.id}`;
-  if (agent.userAgentType === 'project') return `narre:user:project:${agent.projectId}:${agent.id}`;
+  if (agent.userAgentType === 'world') return `narre:user:world:${agent.rootNetworkId}:${agent.id}`;
   return `narre:user:global:${agent.id}`;
 }
 

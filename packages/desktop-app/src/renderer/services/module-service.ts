@@ -8,8 +8,8 @@ export async function createModule(data: ModuleCreate): Promise<Module> {
   return unwrapIpc(await window.electron.module.create(data as unknown as Record<string, unknown>));
 }
 
-export async function listModules(projectId: string): Promise<Module[]> {
-  return unwrapIpc(await window.electron.module.list(projectId));
+export async function listModules(rootNetworkId: string): Promise<Module[]> {
+  return unwrapIpc(await window.electron.module.list(rootNetworkId));
 }
 
 export async function updateModule(id: string, data: ModuleUpdate): Promise<Module> {

@@ -1,52 +1,55 @@
 # Netior Domain Model
 
-This document is the current canonical summary of Netior's domain model. Older docs may still mention the previous Canvas/Concept/RelationType model; treat this page and `AGENTS.md` as the source of truth when they disagree.
+This document is the current canonical summary of Netior's domain model. Older docs may still mention the previous Project/Canvas/Concept/RelationType model; treat this page and `AGENTS.md` as the source of truth when they disagree.
 
 ## Core Idea
 
 Netior is a network-based desktop app for organizing ontology-backed instances.
 
-- **Model** is the meaning layer (`의미`). It defines how an object or edge should be interpreted.
-- **Schema** is the ontological meta object layer (`존재론적 메타 객체`). It defines fields and structure for instances.
-- **Instance** is the concrete object layer (`실체`). It is the real node-like entity users organize and edit.
-- **Network** is the spatial/relational surface. It places objects as nodes and connects them with edges.
+- **World** is the user-facing name for a root network. It is the openable top-level work boundary and owns a user root directory.
+- **Root Network** is the canonical top-level network object for a world. It is also a real work surface.
+- **Network** is a spatial/relational work surface under a world. It places objects as nodes and connects them with edges.
+- **Schema** is the ontology layer. It defines fields and structure for instances.
+- **Instance** is the concrete object layer. It is the real entity users organize and edit.
+- **Meaning** is the semantic layer. It defines how an object, relationship, field, or edge should be interpreted.
 
-Do not reintroduce `Concept` as a domain object name. The old `Concept` role is now `Instance`.
+Do not reintroduce `Project` or `Concept` as runtime domain object names. The old Project role is now the world/root network boundary. The old Concept role is now Instance.
 
 ## Storage Layers
 
 | Layer | Location | Contents |
 |---|---|---|
-| Metadata | `%APPDATA%/netior/data/netior.db` | projects, instances, schemas, models, relationships, networks, network_nodes, edges, files, objects, sources, instance_properties, editor prefs |
-| Instance data | User project directory | `.md`, `.pdf`, `.png`, and other user-owned files |
+| Metadata | `%APPDATA%/netior/data/netior.db` | root networks/worlds, instances, schemas, meanings, relationships, networks, network_nodes, edges, files, objects, sources, instance_properties, editor prefs |
+| Instance data | User world directory | `.md`, `.pdf`, `.png`, and other user-owned files |
 
-Project directories are for real files. Metadata belongs in SQLite.
+World directories are for real files. Metadata belongs in SQLite.
 
 ## Primary Objects
 
-- **Project**: owns a user root directory and project-scoped ontology.
-- **Instance**: concrete object in a project. It has `title`, optional visual fields, optional `schema_id`, content fields, and source provenance.
-- **Schema**: field-bearing ontology object. It describes the shape of instances.
-- **Model**: semantic meaning object. It classifies how objects or edges should be read by Netior, Narre, MCP tools, and layouts.
+- **World**: product term for a root network. A world owns the root directory users open and is identified by the root network id.
+- **Root Network**: network row with `kind = 'root'`. It is the world's canonical object, ontology work surface, and ownership boundary.
+- **Instance**: concrete object in a world. It has `title`, optional visual fields, optional `schema_id`, content fields, source provenance, and `root_network_id`.
+- **Schema**: field-bearing ontology object in a world. It describes the shape of instances.
+- **Meaning**: semantic meaning object in a world. It classifies how objects, relationships, fields, edges, Narre, MCP tools, and layouts should read data.
 - **Network**: object graph surface. It owns `network_nodes`, `edges`, layout state, viewport state, and hierarchy/group behavior.
-- **NetworkNode**: placement of an object in a network. It references an `objects` row rather than embedding instance/model/project/file identity directly.
-- **Relationship**: project/domain relationship between two objects. Its `model_id` points to the model that defines the relationship meaning.
+- **NetworkNode**: placement of an object in a network. It references an `objects` row rather than embedding instance/meaning/world/file identity directly.
+- **Relationship**: world-level relationship between two objects. Its `meaning_id` points to the meaning that defines the relationship.
 - **Edge**: network-local occurrence that visually connects two network nodes. When it represents a domain relationship, `relationship_id` points to `relationships`; edge type and visual fields describe representation, not meaning.
-- **ObjectRecord**: normalized object reference with `object_type`, `ref_id`, scope, and project id. Networks use this as the common reference layer for projects, networks, instances, files, schemas, models, contexts, agents, and future object kinds.
-- **FileEntity**: metadata for a project file or directory. File contents stay on disk.
+- **ObjectRecord**: normalized object reference with `object_type`, `ref_id`, scope, and `root_network_id`. Networks use this as the common reference layer for worlds, networks, instances, files, schemas, meanings, contexts, agents, and future object kinds.
+- **FileEntity**: metadata for a world file or directory. File contents stay on disk.
 
 ## Relationship And Edge
 
 Relationship and Edge are separate domain layers.
 
-- A `Relationship` says that a relation exists between two project objects.
-- The relationship's `model_id` is the semantic meaning of that relation.
+- A `Relationship` says that a relation exists between two world objects.
+- The relationship's `meaning_id` is the semantic meaning of that relation.
 - An `Edge` says that a relationship, or a network-structural connection, appears inside one network surface.
 - The edge's `edge_type_id`, ports, route, and visual overrides are representation data.
 - A relationship may have zero, one, or many edge occurrences across networks.
 - A network may contain structural edges, such as containment, hierarchy parent, or portal edges, that are not user-authored domain relationships.
 
-Do not use `Edge` as the canonical object-to-object relation. Use `Relationship` for model-backed meaning, and use `Edge` for network representation.
+Do not use `Edge` as the canonical object-to-object relation. Use `Relationship` for meaning-backed semantics, and use `Edge` for network representation.
 
 ## Source Provenance
 
@@ -57,19 +60,19 @@ Built-in and package-provided ontology objects are not tracked by a `built_in` b
 - `source_ref`
 - `source_version`
 
-Use these fields for display resolution, package ownership, future community ontology packages, and stable built-in identification.
+Use these fields for display resolution, package ownership, future community ontology packages, and stable built-in identification. World-authored ontology data uses `source_kind = 'world'`.
 
 Display code should localize built-ins from `source_ref`. Behavior must not depend on localized labels.
 
-## Model Categories
+## Meaning Categories
 
-Model categories are not duplicated as a model field and a separate UI-only type. They are represented as built-in schema/instance data:
+Meaning categories are not duplicated as a meaning field and a separate UI-only type. They are represented as built-in schema/instance data:
 
 - A built-in schema with `source_ref = 'schema.model_category'`.
 - Built-in category instances with `source_ref` such as `model-category.time`, `model-category.workflow`, and `model-category.structure`.
-- Models reference a category through `category_instance_id`.
+- Meanings reference a category through `category_instance_id`.
 
-When a built-in category is shown to users, localize it through the shared ontology display resolver. When a network groups models by category, use category instance ids or explicit contains edges, never the translated category label.
+When a built-in category is shown to users, localize it through the shared ontology display resolver. When a network groups meanings by category, use category instance ids or explicit contains edges, never the translated category label.
 
 ## Schema Field Bindings
 
@@ -104,14 +107,15 @@ Current behavior-to-type rules:
 
 Field behavior config is stored as JSON in `schema_field_bindings.config`. The canonical behavior language is Netior DSL JSON AST; plain text config should be treated as invalid or unconfigured.
 
-## Ontology Network
+## Root Network
 
-The project ontology network is a managed network view of ontology objects.
+The root network is the managed world work surface for ontology-backed objects.
 
 - Category instances are rendered as group nodes.
-- Model objects are rendered as model nodes.
-- Built-in contains edges connect category groups to their model nodes.
-- Sync must discover ontology objects by stable references (`object_type + ref_id`, model/category ids), not by generated object id formats or localized labels.
+- Meaning objects are rendered as meaning nodes.
+- Schema and instance objects can appear on the root surface when they are part of world modeling work.
+- Built-in contains edges connect category groups to their meaning nodes.
+- Sync must discover ontology objects by stable references (`object_type + ref_id`, meaning/category ids), not by generated object id formats or localized labels.
 
 ## i18n Boundary
 
@@ -127,11 +131,14 @@ Use these terms in new code and docs:
 
 | Old term | Current term |
 |---|---|
+| Project | World / Root Network |
+| project_id | root_network_id |
+| projectId | rootNetworkId |
 | Concept | Instance |
 | Canvas | Network |
 | CanvasNode | NetworkNode |
-| RelationType | Edge Model / Model with edge target |
+| RelationType / Model | Meaning |
 | CanvasType | Network kind/layout/config, depending on context |
-| Type Group | Removed; use model categories as schema/instance ontology data |
+| Type Group | Removed; use meaning categories as schema/instance ontology data |
 
 Historical migrations may still mention old table or column names because they describe already-applied database history. New runtime code, APIs, tools, prompts, and docs should use the current names only.

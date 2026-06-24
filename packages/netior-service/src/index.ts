@@ -17,9 +17,9 @@ import {
   createNodeType,
   createEdgeType,
   createRelationship,
-  createProject,
+  createWorld,
   createMeaning,
-  deleteProject,
+  deleteWorld,
   deleteSchema,
   deleteInstance,
   deleteContext,
@@ -38,7 +38,7 @@ import {
   getContextMembers,
   getSchema,
   getByInstanceId,
-  getInstancesByProject,
+  getInstancesByWorld,
   getEditorPrefs,
   getInteractiveViewState,
   getInteractiveViewPreference,
@@ -46,7 +46,7 @@ import {
   getInteractiveViewTemplate,
   getEdge,
   getEdgeVisuals,
-  getFileEntitiesByProject,
+  getFileEntitiesByWorld,
   getFileEntity,
   getFileEntityByPath,
   getLayoutByNetwork,
@@ -61,8 +61,8 @@ import {
   getNodePositions,
   getObject,
   getObjectByRef,
-  getProjectOntologyNetwork,
-  getProjectById,
+  getRootNetwork,
+  getWorldById,
   getMeaning,
   getSetting,
   getUniverseNetwork,
@@ -80,7 +80,7 @@ import {
   listEdgeTypes,
   listRelationships,
   listRelationshipOccurrences,
-  listProjects,
+  listWorlds,
   listMeanings,
   listMeaningCategories,
   listInteractiveViewTemplates,
@@ -120,8 +120,8 @@ import {
   updateNodeType,
   updateEdgeType,
   updateRelationship,
-  updateProject,
-  updateProjectRootDir,
+  updateWorld,
+  updateWorldRootDir,
   updateMeaning,
   updateInteractiveViewTemplate,
   deleteInteractiveViewTemplate,
@@ -171,8 +171,8 @@ import type {
   NetworkUpdate,
   RelationshipCreate,
   RelationshipUpdate,
-  ProjectCreate,
-  ProjectUpdate,
+  WorldCreate,
+  WorldUpdate,
   MeaningCreate,
   MeaningUpdate,
   NetiorServiceResponse,
@@ -274,8 +274,8 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
     }
 
     const body = await readJsonBody<NetiorDslEvaluateRequest>(req);
-    if (!body.context?.projectId || !body.expression) {
-      sendJson(res, 400, { ok: false, error: 'context.projectId and expression are required' });
+    if (!body.context?.rootNetworkId || !body.expression) {
+      sendJson(res, 400, { ok: false, error: 'context.rootNetworkId and expression are required' });
       return;
     }
 
@@ -312,16 +312,16 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
       return;
     }
 
-    const projectId = getRequiredSearchParam(url, 'projectId');
+    const rootNetworkId = getRequiredSearchParam(url, 'rootNetworkId');
     const query = url.searchParams.get('query') ?? '';
-    sendJson(res, 200, { ok: true, data: searchInstances(projectId, query) });
+    sendJson(res, 200, { ok: true, data: searchInstances(rootNetworkId, query) });
     return;
   }
 
   if (pathname === '/instances') {
     if (method === 'GET') {
-      const projectId = getRequiredSearchParam(url, 'projectId');
-      sendJson(res, 200, { ok: true, data: getInstancesByProject(projectId) });
+      const rootNetworkId = getRequiredSearchParam(url, 'rootNetworkId');
+      sendJson(res, 200, { ok: true, data: getInstancesByWorld(rootNetworkId) });
       return;
     }
 
@@ -423,8 +423,8 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
 
   if (pathname === '/schemas') {
     if (method === 'GET') {
-      const projectId = getRequiredSearchParam(url, 'projectId');
-      sendJson(res, 200, { ok: true, data: listSchemas(projectId) });
+      const rootNetworkId = getRequiredSearchParam(url, 'rootNetworkId');
+      sendJson(res, 200, { ok: true, data: listSchemas(rootNetworkId) });
       return;
     }
 
@@ -558,8 +558,8 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
 
   if (pathname === '/meanings') {
     if (method === 'GET') {
-      const projectId = getRequiredSearchParam(url, 'projectId');
-      sendJson(res, 200, { ok: true, data: listMeanings(projectId) });
+      const rootNetworkId = getRequiredSearchParam(url, 'rootNetworkId');
+      sendJson(res, 200, { ok: true, data: listMeanings(rootNetworkId) });
       return;
     }
 
@@ -575,8 +575,8 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
 
   if (pathname === '/meaning-categories') {
     if (method === 'GET') {
-      const projectId = getRequiredSearchParam(url, 'projectId');
-      sendJson(res, 200, { ok: true, data: listMeaningCategories(projectId) });
+      const rootNetworkId = getRequiredSearchParam(url, 'rootNetworkId');
+      sendJson(res, 200, { ok: true, data: listMeaningCategories(rootNetworkId) });
       return;
     }
 
@@ -680,7 +680,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
       sendJson(res, 200, {
         ok: true,
         data: listInteractiveViewTemplates({
-          projectId: getRequiredSearchParam(url, 'projectId'),
+          rootNetworkId: getRequiredSearchParam(url, 'rootNetworkId'),
           schemaId: url.searchParams.get('schemaId'),
           instanceId: url.searchParams.get('instanceId'),
         }),
@@ -856,16 +856,16 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
       return;
     }
 
-    const projectId = getRequiredSearchParam(url, 'projectId');
+    const rootNetworkId = getRequiredSearchParam(url, 'rootNetworkId');
     const filePath = getRequiredSearchParam(url, 'path');
-    sendJson(res, 200, { ok: true, data: getFileEntityByPath(projectId, filePath) });
+    sendJson(res, 200, { ok: true, data: getFileEntityByPath(rootNetworkId, filePath) });
     return;
   }
 
   if (pathname === '/files') {
     if (method === 'GET') {
-      const projectId = getRequiredSearchParam(url, 'projectId');
-      sendJson(res, 200, { ok: true, data: getFileEntitiesByProject(projectId) });
+      const rootNetworkId = getRequiredSearchParam(url, 'rootNetworkId');
+      sendJson(res, 200, { ok: true, data: getFileEntitiesByWorld(rootNetworkId) });
       return;
     }
 
@@ -904,8 +904,8 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
 
   if (pathname === '/modules') {
     if (method === 'GET') {
-      const projectId = getRequiredSearchParam(url, 'projectId');
-      sendJson(res, 200, { ok: true, data: listModules(projectId) });
+      const rootNetworkId = getRequiredSearchParam(url, 'rootNetworkId');
+      sendJson(res, 200, { ok: true, data: listModules(rootNetworkId) });
       return;
     }
 
@@ -972,15 +972,15 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
     return;
   }
 
-  if (pathname === '/projects') {
+  if (pathname === '/worlds') {
     if (method === 'GET') {
-      sendJson(res, 200, { ok: true, data: listProjects() });
+      sendJson(res, 200, { ok: true, data: listWorlds() });
       return;
     }
 
     if (method === 'POST') {
-      const body = await readJsonBody<ProjectCreate>(req);
-      sendJson(res, 200, { ok: true, data: createProject(body) });
+      const body = await readJsonBody<WorldCreate>(req);
+      sendJson(res, 200, { ok: true, data: createWorld(body) });
       return;
     }
 
@@ -988,8 +988,8 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
     return;
   }
 
-  if (pathname.startsWith('/projects/')) {
-    const suffix = pathname.slice('/projects/'.length);
+  if (pathname.startsWith('/worlds/')) {
+    const suffix = pathname.slice('/worlds/'.length);
     const rootDirSuffix = '/root-dir';
 
     if (suffix.endsWith(rootDirSuffix)) {
@@ -1000,25 +1000,25 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
       }
 
       const body = await readJsonBody<{ rootDir: string }>(req);
-      sendJson(res, 200, { ok: true, data: updateProjectRootDir(id, body.rootDir) });
+      sendJson(res, 200, { ok: true, data: updateWorldRootDir(id, body.rootDir) });
       return;
     }
 
     const id = decodeURIComponent(suffix);
 
     if (method === 'GET') {
-      sendJson(res, 200, { ok: true, data: getProjectById(id) });
+      sendJson(res, 200, { ok: true, data: getWorldById(id) });
       return;
     }
 
     if (method === 'PATCH') {
-      const body = await readJsonBody<ProjectUpdate>(req);
-      sendJson(res, 200, { ok: true, data: updateProject(id, body) });
+      const body = await readJsonBody<WorldUpdate>(req);
+      sendJson(res, 200, { ok: true, data: updateWorld(id, body) });
       return;
     }
 
     if (method === 'DELETE') {
-      sendJson(res, 200, { ok: true, data: deleteProject(id) });
+      sendJson(res, 200, { ok: true, data: deleteWorld(id) });
       return;
     }
 
@@ -1036,14 +1036,14 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
     return;
   }
 
-  if (pathname === '/networks/ontology') {
+  if (pathname === '/networks/root') {
     if (method !== 'GET') {
       sendJson(res, 405, { ok: false, error: `Method ${method} not allowed for ${pathname}` });
       return;
     }
 
-    const projectId = getRequiredSearchParam(url, 'projectId');
-    sendJson(res, 200, { ok: true, data: getProjectOntologyNetwork(projectId) });
+    const rootNetworkId = getRequiredSearchParam(url, 'rootNetworkId');
+    sendJson(res, 200, { ok: true, data: getRootNetwork(rootNetworkId) });
     return;
   }
 
@@ -1053,14 +1053,14 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
       return;
     }
 
-    const projectId = getRequiredSearchParam(url, 'projectId');
-    sendJson(res, 200, { ok: true, data: getNetworkTree(projectId) });
+    const rootNetworkId = getRequiredSearchParam(url, 'rootNetworkId');
+    sendJson(res, 200, { ok: true, data: getNetworkTree(rootNetworkId) });
     return;
   }
 
   if (pathname === '/network-types') {
     if (method === 'GET') {
-      sendJson(res, 200, { ok: true, data: listNetworkTypes(url.searchParams.get('projectId')) });
+      sendJson(res, 200, { ok: true, data: listNetworkTypes(url.searchParams.get('rootNetworkId')) });
       return;
     }
 
@@ -1189,9 +1189,9 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
 
   if (pathname === '/networks') {
     if (method === 'GET') {
-      const projectId = getRequiredSearchParam(url, 'projectId');
+      const rootNetworkId = getRequiredSearchParam(url, 'rootNetworkId');
       const rootOnly = parseOptionalBoolean(url.searchParams.get('rootOnly')) ?? false;
-      sendJson(res, 200, { ok: true, data: listNetworks(projectId, rootOnly) });
+      sendJson(res, 200, { ok: true, data: listNetworks(rootNetworkId, rootOnly) });
       return;
     }
 
@@ -1283,11 +1283,11 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
 
   if (pathname === '/relationships') {
     if (method === 'GET') {
-      const projectId = getRequiredSearchParam(url, 'projectId');
+      const rootNetworkId = getRequiredSearchParam(url, 'rootNetworkId');
       sendJson(res, 200, {
         ok: true,
         data: listRelationships({
-          project_id: projectId,
+          root_network_id: rootNetworkId,
           source_object_id: url.searchParams.get('sourceObjectId') ?? undefined,
           target_object_id: url.searchParams.get('targetObjectId') ?? undefined,
           meaning_id: url.searchParams.get('meaningId') ?? undefined,

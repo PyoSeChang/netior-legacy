@@ -1,8 +1,8 @@
 import { randomUUID } from 'crypto';
 import { getDatabase } from '../connection';
-import { ensureObjectScopeBindingForDb, getDefaultOwnerNetworkIdForProjectDb } from './network-scope';
+import { ensureObjectScopeBindingForDb, getDefaultOwnerNetworkIdForWorldDb } from './network-scope';
 import { createObject, deleteObjectByRef } from './objects';
-import { syncProjectOntologyForDb } from './system-networks';
+import { syncRootNetworkOntologyForDb } from './system-networks';
 import {
   getSemanticMeaningDefinition,
   getSemanticMeaningForSlot,
@@ -240,7 +240,7 @@ function replaceFieldBindings(
       binding.read_only ? 1 : 0,
       binding.config ?? null,
       binding.sort_order ?? index,
-      binding.source_kind ?? fallback.sourceKind ?? 'project',
+      binding.source_kind ?? fallback.sourceKind ?? 'world',
       binding.source_id ?? fallback.sourceId ?? null,
       binding.source_ref ?? fallback.sourceRef ?? null,
       binding.source_version ?? fallback.sourceVersion ?? null,
@@ -379,7 +379,7 @@ function ensureMeaningForDb(
     options.source ?? (options.sourceMeaning ? 'meaning' : 'manual'),
     options.sourceMeaning ?? null,
     sortOrder,
-    'project',
+    'world',
     null,
     null,
     null,
@@ -489,17 +489,17 @@ export function createSchema(data: SchemaCreate): Schema {
   const id = randomUUID();
   const now = new Date().toISOString();
   const meanings = data.meanings ?? [];
-  const ownerNetworkId = data.owner_network_id ?? getDefaultOwnerNetworkIdForProjectDb(db, data.project_id);
+  const ownerNetworkId = data.owner_network_id ?? getDefaultOwnerNetworkIdForWorldDb(db, data.root_network_id);
 
   db.prepare(
     `INSERT INTO schemas (
-      id, project_id, owner_network_id, name, description, icon, color, file_template, meanings,
+      id, root_network_id, owner_network_id, name, description, icon, color, file_template, meanings,
       source_kind, source_id, source_ref, source_version, created_at, updated_at
     )
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     id,
-    data.project_id,
+    data.root_network_id,
     ownerNetworkId,
     data.name,
     data.description ?? null,
@@ -507,7 +507,7 @@ export function createSchema(data: SchemaCreate): Schema {
     data.color ?? null,
     data.file_template ?? null,
     serializeMeaningRefs(meanings),
-    data.source_kind ?? 'project',
+    data.source_kind ?? 'world',
     data.source_id ?? null,
     data.source_ref ?? null,
     data.source_version ?? null,
@@ -515,26 +515,26 @@ export function createSchema(data: SchemaCreate): Schema {
     now,
   );
 
-  const object = createObject('schema', 'project', data.project_id, id);
+  const object = createObject('schema', 'world', data.root_network_id, id);
   ensureObjectScopeBindingForDb(db, {
     objectId: object.id,
     scopeNetworkId: ownerNetworkId,
-    sourceKind: data.source_kind ?? 'project',
+    sourceKind: data.source_kind ?? 'world',
     sourceId: data.source_id ?? null,
     sourceRef: data.source_ref ?? null,
     sourceVersion: data.source_version ?? null,
   });
-  syncProjectOntologyForDb(db, data.project_id);
+  syncRootNetworkOntologyForDb(db, data.root_network_id);
 
   const row = db.prepare('SELECT * FROM schemas WHERE id = ?').get(id) as SchemaRow;
   return toSchema(row);
 }
 
-export function listSchemas(projectId: string): Schema[] {
+export function listSchemas(rootNetworkId: string): Schema[] {
   const db = getDatabase();
   const rows = db
-    .prepare('SELECT * FROM schemas WHERE project_id = ? ORDER BY created_at')
-    .all(projectId) as SchemaRow[];
+    .prepare('SELECT * FROM schemas WHERE root_network_id = ? ORDER BY created_at')
+    .all(rootNetworkId) as SchemaRow[];
   return rows.map(toSchema);
 }
 
@@ -718,7 +718,7 @@ export function createField(data: SchemaFieldCreate): SchemaField {
     fieldMeaning ?? null,
     data.slot_binding_locked ? 1 : 0,
     generatedByModel ? 1 : 0,
-    data.source_kind ?? 'project',
+    data.source_kind ?? 'world',
     data.source_id ?? null,
     data.source_ref ?? null,
     data.source_version ?? null,
@@ -735,7 +735,7 @@ export function createField(data: SchemaFieldCreate): SchemaField {
   );
   replaceFieldBindings(db, id, data.bindings ?? [], {
     fieldType: data.field_type,
-    sourceKind: data.source_kind ?? 'project',
+    sourceKind: data.source_kind ?? 'world',
     sourceId: data.source_id ?? null,
     sourceRef: data.source_ref ?? null,
     sourceVersion: data.source_version ?? null,

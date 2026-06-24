@@ -59,13 +59,13 @@ describe('ontology display resolver', () => {
     const source = toMeaningDisplaySource({
       key: 'custom.meaning',
       name: 'Custom Meaning',
-      description: 'Project-owned meaning',
-      source_kind: 'project',
+      description: 'World-owned meaning',
+      source_kind: 'world',
       source_ref: null,
     });
 
     expect(display.name(source)).toBe('Custom Meaning');
-    expect(display.description(source)).toBe('Project-owned meaning');
+    expect(display.description(source)).toBe('World-owned meaning');
   });
 
   it('resolves MCP tool display text through the shared Narre tool namespace', () => {

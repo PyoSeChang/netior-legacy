@@ -12,7 +12,7 @@ import type { NetworkFullData } from '../../services/network-service';
 import { useInstanceStore } from '../../stores/instance-store';
 import { useSchemaStore } from '../../stores/schema-store';
 import { useEditorStore } from '../../stores/editor-store';
-import { useProjectStore } from '../../stores/project-store';
+import { useWorldStore } from '../../stores/world-store';
 import { useNetworkStore } from '../../stores/network-store';
 import { useEditorSession } from '../../hooks/useEditorSession';
 import { ScrollArea } from '../ui/ScrollArea';
@@ -153,10 +153,10 @@ function resolvePreferredNodeId(
 }
 
 async function loadInstanceNodeOccurrences(
-  projectId: string,
+  rootNetworkId: string,
   instanceId: string,
 ): Promise<Pick<InstanceEditorState, 'nodeOccurrences'>> {
-  const networks = await networkService.list(projectId);
+  const networks = await networkService.list(rootNetworkId);
   const items = await Promise.all(networks.map(async (network) => ({
     network,
     full: await networkService.getFull(network.id),
@@ -269,19 +269,19 @@ function areInstanceEditorStatesEqual(a: InstanceEditorState, b: InstanceEditorS
 export function InstanceEditor({ tab }: InstanceEditorProps): JSX.Element {
   const { t } = useI18n();
   const isDraft = isDraftTab(tab);
-  const currentProject = useProjectStore((s) => s.currentProject);
+  const currentWorld = useWorldStore((s) => s.currentWorld);
   const instances = useInstanceStore((s) => s.instances);
   const {
     createInstance,
     updateInstance,
     deleteInstance,
-    loadByProject: loadInstancesByProject,
+    loadByWorld: loadInstancesByWorld,
     upsertProperty,
     deleteProperty: deleteInstanceProperty,
   } = useInstanceStore();
   const meanings = useSchemaStore((s) => Array.isArray(s.schemas) ? s.schemas : []);
   const fields = useSchemaStore((s) => s.fields);
-  const loadSchemasByProject = useSchemaStore((s) => s.loadByProject);
+  const loadSchemasByWorld = useSchemaStore((s) => s.loadByWorld);
   const loadFields = useSchemaStore((s) => s.loadFields);
   const createField = useSchemaStore((s) => s.createField);
   const currentNetwork = useNetworkStore((s) => s.currentNetwork);
@@ -401,16 +401,16 @@ export function InstanceEditor({ tab }: InstanceEditorProps): JSX.Element {
   }, [createField, t, updateInstance, upsertProperty]);
 
   useEffect(() => {
-    if (!isDraft && !instance && currentProject) {
-      loadInstancesByProject(currentProject.id);
+    if (!isDraft && !instance && currentWorld) {
+      loadInstancesByWorld(currentWorld.id);
     }
-  }, [isDraft, instance, currentProject, loadInstancesByProject]);
+  }, [isDraft, instance, currentWorld, loadInstancesByWorld]);
 
   useEffect(() => {
-    if (currentProject) {
-      void loadSchemasByProject(currentProject.id);
+    if (currentWorld) {
+      void loadSchemasByWorld(currentWorld.id);
     }
-  }, [currentProject, loadSchemasByProject]);
+  }, [currentWorld, loadSchemasByWorld]);
 
   const session = useEditorSession<InstanceEditorState>({
     tabId: tab.id,
@@ -431,8 +431,8 @@ export function InstanceEditor({ tab }: InstanceEditorProps): JSX.Element {
           for (const p of props) {
             propsMap[p.field_id] = p.value;
           }
-          const occurrenceState = currentProject
-            ? await loadInstanceNodeOccurrences(currentProject.id, tab.targetId)
+          const occurrenceState = currentWorld
+            ? await loadInstanceNodeOccurrences(currentWorld.id, tab.targetId)
             : { nodeOccurrences: [] };
           return {
             title: c?.title ?? '',
@@ -446,10 +446,10 @@ export function InstanceEditor({ tab }: InstanceEditorProps): JSX.Element {
         },
     save: isDraft
       ? async (state) => {
-          if (!currentProject || !state.title.trim()) return;
+          if (!currentWorld || !state.title.trim()) return;
           const draft = tab.draftData;
           const newInstance = await createInstance({
-            project_id: currentProject.id,
+            root_network_id: currentWorld.id,
             title: state.title.trim(),
             schema_id: state.meaningId || undefined,
             icon: state.icon || undefined,
@@ -472,14 +472,14 @@ export function InstanceEditor({ tab }: InstanceEditorProps): JSX.Element {
                   network_id: draft.networkId,
                   source_node_id: draft.parentGroupNodeId,
                   target_node_id: node.id,
-                  meaning_id: systemEdgeMeaningId(currentProject.id, CONTAINS_MEANING_KEY),
+                  meaning_id: systemEdgeMeaningId(currentWorld.id, CONTAINS_MEANING_KEY),
                 });
                 if (parentGroupNode?.node_type === 'hierarchy') {
                   await networkService.edge.create({
                     network_id: draft.networkId,
                     source_node_id: draft.parentGroupNodeId,
                     target_node_id: node.id,
-                    meaning_id: systemEdgeMeaningId(currentProject.id, HIERARCHY_PARENT_MEANING_KEY),
+                    meaning_id: systemEdgeMeaningId(currentWorld.id, HIERARCHY_PARENT_MEANING_KEY),
                   });
                 }
               }
@@ -493,8 +493,8 @@ export function InstanceEditor({ tab }: InstanceEditorProps): JSX.Element {
             }
             await openNetwork(draft.networkId);
             const networkStore = useNetworkStore.getState();
-            if (networkStore.currentNetwork?.project_id) {
-              await networkStore.loadNetworkTree(networkStore.currentNetwork.project_id);
+            if (networkStore.currentNetwork?.root_network_id) {
+              await networkStore.loadNetworkTree(networkStore.currentNetwork.root_network_id);
             }
           }
           const editorStore = useEditorStore.getState();
@@ -534,7 +534,7 @@ export function InstanceEditor({ tab }: InstanceEditorProps): JSX.Element {
           useEditorStore.getState().updateTitle(tab.id, state.title);
         },
     isEqual: areInstanceEditorStatesEqual,
-    deps: isDraft ? [] : [tab.targetId, instance?.schema_id, currentProject?.id],
+    deps: isDraft ? [] : [tab.targetId, instance?.schema_id, currentWorld?.id],
   });
 
   useEffect(() => {
@@ -877,7 +877,7 @@ export function InstanceEditor({ tab }: InstanceEditorProps): JSX.Element {
                 ) : (
                   <InstancePropertiesPanel
                     meaningId={session.state.meaningId}
-                    projectId={currentProject?.id}
+                    rootNetworkId={currentWorld?.id}
                     instanceId={tab.targetId}
                     properties={session.state.properties}
                     onChange={(fieldId, value) => update({
@@ -888,11 +888,11 @@ export function InstanceEditor({ tab }: InstanceEditorProps): JSX.Element {
               </NetworkObjectEditorSection>
             )}
 
-            {!isDraft && currentProject && session.state.meaningId && (
+            {!isDraft && currentWorld && session.state.meaningId && (
               <NetworkObjectEditorSection title={t('editorShell.interactiveView' as never)} viewMode="interactive">
                 <InteractiveViewPanel
                   tabId={tab.id}
-                  projectId={currentProject.id}
+                  rootNetworkId={currentWorld.id}
                   schemaId={session.state.meaningId}
                   instanceId={tab.targetId}
                   fields={meaningFields}
@@ -910,7 +910,7 @@ export function InstanceEditor({ tab }: InstanceEditorProps): JSX.Element {
               <InstanceBodyEditor
                 tabId={tab.id}
                 content={session.state.content ?? ''}
-                projectId={currentProject?.id}
+                rootNetworkId={currentWorld?.id}
                 instanceId={isDraft ? null : tab.targetId}
                 onChange={(content) => update({ content: content || null })}
               />
@@ -1266,10 +1266,10 @@ export function InstanceEditor({ tab }: InstanceEditorProps): JSX.Element {
               </NetworkObjectEditorSection>
             )}
 
-            {!isDraft && currentProject && session.state.meaningId && (
+            {!isDraft && currentWorld && session.state.meaningId && (
               <NetworkObjectEditorSection title={t('interactiveView.configure' as never)} viewMode="details">
                 <InteractiveViewPanel
-                  projectId={currentProject.id}
+                  rootNetworkId={currentWorld.id}
                   schemaId={session.state.meaningId}
                   instanceId={tab.targetId}
                   fields={meaningFields}

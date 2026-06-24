@@ -9,7 +9,7 @@ vi.mock('../connection', async (importOriginal) => {
   };
 });
 
-import { createProject } from '../repositories/project';
+import { createWorld } from '../repositories/world';
 import { createInstance, deleteInstance } from '../repositories/instance';
 import {
   getInteractiveViewState,
@@ -26,8 +26,8 @@ describe('interactive view state repository', () => {
   });
 
   it('persists state per instance and view template', () => {
-    const project = createProject({ name: 'Project', root_dir: '/tmp/interactive-view-state' });
-    const instance = createInstance({ project_id: project.id, title: 'Instance' });
+    const world = createWorld({ name: 'World', root_dir: '/tmp/interactive-view-state' });
+    const instance = createInstance({ root_network_id: world.id, title: 'Instance' });
 
     const state = upsertInteractiveViewState({
       instance_id: instance.id,
@@ -35,7 +35,7 @@ describe('interactive view state repository', () => {
       state_json: JSON.stringify({ selectedFieldId: 'field-1', note: 'hello' }),
     });
 
-    expect(state.project_id).toBe(project.id);
+    expect(state.root_network_id).toBe(world.id);
     expect(state.instance_id).toBe(instance.id);
     expect(JSON.parse(state.state_json)).toMatchObject({ note: 'hello' });
 
@@ -52,8 +52,8 @@ describe('interactive view state repository', () => {
   });
 
   it('cascades when the instance is deleted', () => {
-    const project = createProject({ name: 'Project', root_dir: '/tmp/interactive-view-state-cascade' });
-    const instance = createInstance({ project_id: project.id, title: 'Instance' });
+    const world = createWorld({ name: 'World', root_dir: '/tmp/interactive-view-state-cascade' });
+    const instance = createInstance({ root_network_id: world.id, title: 'Instance' });
 
     upsertInteractiveViewState({
       instance_id: instance.id,

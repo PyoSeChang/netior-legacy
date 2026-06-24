@@ -12,17 +12,17 @@ export default async function seed(ctx: SeedContext): Promise<void> {
   const targetPdf = join(ctx.tempDir, fileName);
   copyFileSync(sourcePdf, targetPdf);
 
-  const project = await ctx.createProject({
+  const world = await ctx.createWorld({
     name: 'Think Data Structure Indexing',
     root_dir: ctx.tempDir,
   });
   await ctx.createModule({
-    project_id: project.id,
+    root_network_id: world.id,
     name: 'Ontology',
     path: ctx.tempDir,
   });
   const file = await ctx.createFileEntity({
-    project_id: project.id,
+    root_network_id: world.id,
     path: fileName,
     type: 'file',
   });

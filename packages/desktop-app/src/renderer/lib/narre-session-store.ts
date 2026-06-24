@@ -16,12 +16,12 @@ import { useInstanceStore } from '../stores/instance-store';
 import { useNetworkStore } from '../stores/network-store';
 import { useMeaningStore } from '../stores/meaning-store';
 import {
-  getNarreProjectPendingSkillInvocation,
-  getNarreProjectDraft,
-  moveNarreProjectPendingSkillInvocation,
-  moveNarreProjectDraft,
-  setNarreProjectPendingSkillInvocation,
-  setNarreProjectDraft,
+  getNarreWorldPendingSkillInvocation,
+  getNarreWorldDraft,
+  moveNarreWorldPendingSkillInvocation,
+  moveNarreWorldDraft,
+  setNarreWorldPendingSkillInvocation,
+  setNarreWorldDraft,
   type NarrePendingSkillInvocationState,
 } from './narre-ui-state';
 
@@ -34,7 +34,7 @@ export interface NarreDisplayMessage {
 }
 
 export interface NarreSessionState {
-  projectId: string;
+  rootNetworkId: string;
   sessionId: string | null;
   title: string;
   agentKey: string | null;
@@ -61,11 +61,11 @@ let version = 0;
 let initialized = false;
 let displayBlockCounter = 0;
 
-function refreshStores(projectId: string): void {
-  useSchemaStore.getState().loadByProject(projectId);
-  useInstanceStore.getState().loadByProject(projectId);
-  useMeaningStore.getState().loadByProject(projectId);
-  useNetworkStore.getState().loadNetworks(projectId);
+function refreshStores(rootNetworkId: string): void {
+  useSchemaStore.getState().loadByWorld(rootNetworkId);
+  useInstanceStore.getState().loadByWorld(rootNetworkId);
+  useMeaningStore.getState().loadByWorld(rootNetworkId);
+  useNetworkStore.getState().loadNetworks(rootNetworkId);
 }
 
 function notify(): void {
@@ -73,13 +73,13 @@ function notify(): void {
   for (const fn of listeners) fn();
 }
 
-function getSessionKey(projectId: string, sessionId: string | null): string {
-  return `${projectId}:${sessionId ?? NEW_SESSION_KEY}`;
+function getSessionKey(rootNetworkId: string, sessionId: string | null): string {
+  return `${rootNetworkId}:${sessionId ?? NEW_SESSION_KEY}`;
 }
 
-function createEmptySessionState(projectId: string, sessionId: string | null): NarreSessionState {
+function createEmptySessionState(rootNetworkId: string, sessionId: string | null): NarreSessionState {
   return {
-    projectId,
+    rootNetworkId,
     sessionId,
     title: '',
     agentKey: null,
@@ -92,18 +92,18 @@ function createEmptySessionState(projectId: string, sessionId: string | null): N
     hasReceivedFirstStreamEvent: false,
     isInterrupting: false,
     pendingDraftHtml: '',
-    pendingSkillInvocation: getNarreProjectPendingSkillInvocation(projectId, sessionId),
+    pendingSkillInvocation: getNarreWorldPendingSkillInvocation(rootNetworkId, sessionId),
     pendingDraftSkillInvocation: null,
     pendingUserTimestamp: null,
-    draftHtml: getNarreProjectDraft(projectId, sessionId),
+    draftHtml: getNarreWorldDraft(rootNetworkId, sessionId),
   };
 }
 
-function ensureSessionState(projectId: string, sessionId: string | null): NarreSessionState {
-  const key = getSessionKey(projectId, sessionId);
+function ensureSessionState(rootNetworkId: string, sessionId: string | null): NarreSessionState {
+  const key = getSessionKey(rootNetworkId, sessionId);
   let state = sessions.get(key);
   if (!state) {
-    state = createEmptySessionState(projectId, sessionId);
+    state = createEmptySessionState(rootNetworkId, sessionId);
     sessions.set(key, state);
   }
   return state;
@@ -114,7 +114,7 @@ function humanizeSlashSkillName(skillName: string): string {
     case 'index':
       return 'PDF TOC Indexing';
     case 'bootstrap':
-      return 'Project Bootstrap';
+      return 'World Bootstrap';
     default:
       return skillName
         .split(/[-_]/g)
@@ -318,16 +318,16 @@ function buildDisplayMessages(sessionData: NarreSessionDetail): NarreDisplayMess
 }
 
 function resolveSessionStateFromEvent(event: NarreStreamEvent): NarreSessionState | null {
-  if (!event.projectId) {
+  if (!event.rootNetworkId) {
     return null;
   }
 
   if (typeof event.sessionId === 'string' && event.sessionId.length > 0) {
-    return ensureSessionState(event.projectId, event.sessionId);
+    return ensureSessionState(event.rootNetworkId, event.sessionId);
   }
 
   for (const state of sessions.values()) {
-    if (state.projectId === event.projectId && state.isStreaming) {
+    if (state.rootNetworkId === event.rootNetworkId && state.isStreaming) {
       return state;
     }
   }
@@ -524,7 +524,7 @@ function handleStreamEvent(event: NarreStreamEvent): void {
         completeStreamingTool(state, toolKey, event.toolResult, event.toolMetadata);
 
         if (['create_', 'update_', 'delete_'].some((prefix) => toolKey.startsWith(prefix))) {
-          refreshStores(state.projectId);
+          refreshStores(state.rootNetworkId);
         }
       }
       break;
@@ -575,15 +575,15 @@ export function getNarreSessionStoreVersion(): number {
   return version;
 }
 
-export function getNarreSessionState(projectId: string, sessionId: string | null): NarreSessionState {
+export function getNarreSessionState(rootNetworkId: string, sessionId: string | null): NarreSessionState {
   initNarreSessionStore();
-  return ensureSessionState(projectId, sessionId);
+  return ensureSessionState(rootNetworkId, sessionId);
 }
 
-export async function ensureNarreSessionLoaded(projectId: string, sessionId: string | null): Promise<void> {
+export async function ensureNarreSessionLoaded(rootNetworkId: string, sessionId: string | null): Promise<void> {
   initNarreSessionStore();
 
-  const state = ensureSessionState(projectId, sessionId);
+  const state = ensureSessionState(rootNetworkId, sessionId);
   if (sessionId === null) {
     if (!state.hasLoaded || state.loading) {
       state.hasLoaded = true;
@@ -593,7 +593,7 @@ export async function ensureNarreSessionLoaded(projectId: string, sessionId: str
     return;
   }
 
-  const key = getSessionKey(projectId, sessionId);
+  const key = getSessionKey(rootNetworkId, sessionId);
   const pending = loadPromises.get(key);
   if (pending) {
     return pending;
@@ -608,7 +608,7 @@ export async function ensureNarreSessionLoaded(projectId: string, sessionId: str
 
   const promise = narreService.getSession(sessionId)
     .then((data) => {
-      const next = ensureSessionState(projectId, sessionId);
+      const next = ensureSessionState(rootNetworkId, sessionId);
       next.title = data.title || '';
       next.agentKey = data.agentKey ?? null;
       next.messages = buildDisplayMessages(data);
@@ -616,7 +616,7 @@ export async function ensureNarreSessionLoaded(projectId: string, sessionId: str
       next.hasLoaded = true;
     })
     .catch(() => {
-      const next = ensureSessionState(projectId, sessionId);
+      const next = ensureSessionState(rootNetworkId, sessionId);
       next.loading = false;
     })
     .finally(() => {
@@ -628,8 +628,8 @@ export async function ensureNarreSessionLoaded(projectId: string, sessionId: str
   return promise;
 }
 
-export function primeNarreSession(projectId: string, sessionId: string | null, title?: string): void {
-  const state = ensureSessionState(projectId, sessionId);
+export function primeNarreSession(rootNetworkId: string, sessionId: string | null, title?: string): void {
+  const state = ensureSessionState(rootNetworkId, sessionId);
   if (title && !state.title) {
     state.title = title;
   }
@@ -638,20 +638,20 @@ export function primeNarreSession(projectId: string, sessionId: string | null, t
   notify();
 }
 
-export function setNarreSessionTitle(projectId: string, sessionId: string | null, title: string): void {
-  const state = ensureSessionState(projectId, sessionId);
+export function setNarreSessionTitle(rootNetworkId: string, sessionId: string | null, title: string): void {
+  const state = ensureSessionState(rootNetworkId, sessionId);
   state.title = title;
   notify();
 }
 
 export function promoteNarreDraftSession(
-  projectId: string,
+  rootNetworkId: string,
   sessionId: string,
   title?: string,
 ): void {
-  const sourceKey = getSessionKey(projectId, null);
+  const sourceKey = getSessionKey(rootNetworkId, null);
   const source = sessions.get(sourceKey);
-  const target = ensureSessionState(projectId, sessionId);
+  const target = ensureSessionState(rootNetworkId, sessionId);
 
   if (source) {
     if (source.messages.length > 0 && target.messages.length === 0) {
@@ -669,8 +669,8 @@ export function promoteNarreDraftSession(
     sessions.delete(sourceKey);
   }
 
-  moveNarreProjectDraft(projectId, null, sessionId);
-  moveNarreProjectPendingSkillInvocation(projectId, null, sessionId);
+  moveNarreWorldDraft(rootNetworkId, null, sessionId);
+  moveNarreWorldPendingSkillInvocation(rootNetworkId, null, sessionId);
 
   if (title && !target.title) {
     target.title = title;
@@ -681,11 +681,11 @@ export function promoteNarreDraftSession(
 }
 
 export function appendNarreUserMessage(
-  projectId: string,
+  rootNetworkId: string,
   sessionId: string | null,
   message: NarreDisplayMessage,
 ): void {
-  const state = ensureSessionState(projectId, sessionId);
+  const state = ensureSessionState(rootNetworkId, sessionId);
   state.messages = [
     ...state.messages,
     {
@@ -699,8 +699,8 @@ export function appendNarreUserMessage(
   notify();
 }
 
-export function beginNarreAssistantStream(projectId: string, sessionId: string | null): void {
-  const state = ensureSessionState(projectId, sessionId);
+export function beginNarreAssistantStream(rootNetworkId: string, sessionId: string | null): void {
+  const state = ensureSessionState(rootNetworkId, sessionId);
   state.isStreaming = true;
   state.streamingBlocks = [];
   state.streamingTimestamp = new Date().toISOString();
@@ -712,7 +712,7 @@ export function beginNarreAssistantStream(projectId: string, sessionId: string |
 }
 
 export function prepareNarreAssistantStream(
-  projectId: string,
+  rootNetworkId: string,
   sessionId: string | null,
   options: {
     draftHtml: string;
@@ -720,7 +720,7 @@ export function prepareNarreAssistantStream(
     userTimestamp: string;
   },
 ): void {
-  const state = ensureSessionState(projectId, sessionId);
+  const state = ensureSessionState(rootNetworkId, sessionId);
   state.pendingDraftHtml = options.draftHtml;
   state.pendingDraftSkillInvocation = options.pendingSkillInvocation;
   state.pendingUserTimestamp = options.userTimestamp;
@@ -728,11 +728,11 @@ export function prepareNarreAssistantStream(
 }
 
 export function appendNarreAssistantErrorMessage(
-  projectId: string,
+  rootNetworkId: string,
   sessionId: string | null,
   error: string,
 ): void {
-  const state = ensureSessionState(projectId, sessionId);
+  const state = ensureSessionState(rootNetworkId, sessionId);
   state.messages = [...state.messages, createErrorMessage(error)];
   state.isStreaming = false;
   state.streamingBlocks = [];
@@ -748,36 +748,36 @@ export function appendNarreAssistantErrorMessage(
 }
 
 export function setNarreSessionDraft(
-  projectId: string,
+  rootNetworkId: string,
   sessionId: string | null,
   draftHtml: string,
 ): void {
-  const state = ensureSessionState(projectId, sessionId);
+  const state = ensureSessionState(rootNetworkId, sessionId);
   if (state.draftHtml === draftHtml) {
     return;
   }
   state.draftHtml = draftHtml;
-  setNarreProjectDraft(projectId, sessionId, draftHtml);
+  setNarreWorldDraft(rootNetworkId, sessionId, draftHtml);
   notify();
 }
 
 export function setNarreSessionPendingSkillInvocation(
-  projectId: string,
+  rootNetworkId: string,
   sessionId: string | null,
   pendingSkillInvocation: NarrePendingSkillInvocationState | null,
 ): void {
-  const state = ensureSessionState(projectId, sessionId);
+  const state = ensureSessionState(rootNetworkId, sessionId);
   state.pendingSkillInvocation = pendingSkillInvocation;
-  setNarreProjectPendingSkillInvocation(projectId, sessionId, pendingSkillInvocation);
+  setNarreWorldPendingSkillInvocation(rootNetworkId, sessionId, pendingSkillInvocation);
   notify();
 }
 
 export function setNarreSessionInterrupting(
-  projectId: string,
+  rootNetworkId: string,
   sessionId: string | null,
   isInterrupting: boolean,
 ): void {
-  const state = ensureSessionState(projectId, sessionId);
+  const state = ensureSessionState(rootNetworkId, sessionId);
   if (state.isInterrupting === isInterrupting) {
     return;
   }
@@ -786,12 +786,12 @@ export function setNarreSessionInterrupting(
 }
 
 export function updateNarreCardResponse(
-  projectId: string,
+  rootNetworkId: string,
   sessionId: string | null,
   toolCallId: string,
   response: unknown,
 ): void {
-  const state = ensureSessionState(projectId, sessionId);
+  const state = ensureSessionState(rootNetworkId, sessionId);
   let updated = updateCardResponseInBlocks(state.streamingBlocks, toolCallId, response);
 
   if (!updated) {
@@ -814,7 +814,7 @@ export function updateNarreCardResponse(
 }
 
 export function cancelPendingNarreAssistantTurn(
-  projectId: string,
+  rootNetworkId: string,
   sessionId: string | null,
   options: {
     draftHtml: string;
@@ -822,7 +822,7 @@ export function cancelPendingNarreAssistantTurn(
     userTimestamp: string | null;
   },
 ): void {
-  const state = ensureSessionState(projectId, sessionId);
+  const state = ensureSessionState(rootNetworkId, sessionId);
   if (options.userTimestamp) {
     const nextMessages = [...state.messages];
     const lastMessage = nextMessages[nextMessages.length - 1];
@@ -833,9 +833,9 @@ export function cancelPendingNarreAssistantTurn(
   }
 
   state.draftHtml = options.draftHtml;
-  setNarreProjectDraft(projectId, sessionId, options.draftHtml);
+  setNarreWorldDraft(rootNetworkId, sessionId, options.draftHtml);
   state.pendingSkillInvocation = options.pendingSkillInvocation;
-  setNarreProjectPendingSkillInvocation(projectId, sessionId, options.pendingSkillInvocation);
+  setNarreWorldPendingSkillInvocation(rootNetworkId, sessionId, options.pendingSkillInvocation);
   state.isStreaming = false;
   state.streamingBlocks = [];
   state.streamingTimestamp = null;

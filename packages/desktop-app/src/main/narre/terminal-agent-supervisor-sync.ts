@@ -1,16 +1,16 @@
 ﻿import type {
   AgentProvider,
   AgentSessionSnapshot,
-  Project,
+  World,
   SupervisorSessionReport,
   TerminalAgentDefinition,
 } from '@netior/shared/types';
-import { listRemoteProjects } from '../netior-service/netior-service-client';
+import { listRemoteWorlds } from '../netior-service/netior-service-client';
 import { syncNarreServerWithSettings } from './narre-config';
 import { getNarreServerBaseUrl } from '../process/narre-server-manager';
 
 const SUPERVISOR_REPORT_PATH = '/supervisor/sessions/report';
-const PROJECT_CACHE_TTL_MS = 10_000;
+const WORLD_CACHE_TTL_MS = 10_000;
 const SERVER_START_RETRY_MS = 5_000;
 
 export interface TerminalSupervisorContext {
@@ -22,10 +22,10 @@ type TerminalMirrorProvider = Exclude<AgentProvider, 'narre'>;
 type TerminalAgentSessionSnapshot = AgentSessionSnapshot & { provider: TerminalMirrorProvider };
 
 export class TerminalAgentSupervisorSync {
-  private readonly projectIdByRootDir = new Map<string, string>();
+  private readonly rootNetworkIdByRootDir = new Map<string, string>();
   private readonly reportSignatures = new Map<string, string>();
   private ensureServerPromise: Promise<string | null> | null = null;
-  private lastProjectCacheAt = 0;
+  private lastWorldCacheAt = 0;
   private lastEnsureServerAttemptAt = 0;
   private lastWarningMessage: string | null = null;
 
@@ -86,14 +86,14 @@ export class TerminalAgentSupervisorSync {
     status: AgentSessionSnapshot['status'],
   ): Promise<SupervisorSessionReport> {
     const cwd = context?.cwd?.trim() || null;
-    const projectId = await this.resolveProjectId(cwd);
+    const rootNetworkId = await this.resolveRootNetworkId(cwd);
 
     return {
       sessionId: buildTerminalSupervisorSessionId(snapshot.provider, snapshot.sessionId),
       agent: createTerminalAgentDefinition(snapshot.provider),
       surface: snapshot.surface,
       externalSessionId: snapshot.externalSessionId,
-      ...(projectId ? { projectId } : {}),
+      ...(rootNetworkId ? { rootNetworkId } : {}),
       title: resolveTerminalSessionTitle(snapshot, context),
       status,
       reason: snapshot.reason,
@@ -141,7 +141,7 @@ export class TerminalAgentSupervisorSync {
     return this.ensureServerPromise;
   }
 
-  private async resolveProjectId(cwd: string | null): Promise<string | null> {
+  private async resolveRootNetworkId(cwd: string | null): Promise<string | null> {
     if (!cwd) {
       return null;
     }
@@ -151,54 +151,54 @@ export class TerminalAgentSupervisorSync {
       return null;
     }
 
-    const cached = this.findProjectIdForPath(normalizedCwd);
+    const cached = this.findRootNetworkIdForPath(normalizedCwd);
     if (cached) {
       return cached;
     }
 
-    await this.refreshProjectCache();
-    return this.findProjectIdForPath(normalizedCwd);
+    await this.refreshWorldCache();
+    return this.findRootNetworkIdForPath(normalizedCwd);
   }
 
-  private findProjectIdForPath(normalizedPath: string): string | null {
-    let bestMatch: { rootDir: string; projectId: string } | null = null;
+  private findRootNetworkIdForPath(normalizedPath: string): string | null {
+    let bestMatch: { rootDir: string; rootNetworkId: string } | null = null;
 
-    for (const [rootDir, projectId] of this.projectIdByRootDir) {
+    for (const [rootDir, rootNetworkId] of this.rootNetworkIdByRootDir) {
       if (!isSameOrChildPath(normalizedPath, rootDir)) {
         continue;
       }
 
       if (!bestMatch || rootDir.length > bestMatch.rootDir.length) {
-        bestMatch = { rootDir, projectId };
+        bestMatch = { rootDir, rootNetworkId };
       }
     }
 
-    return bestMatch?.projectId ?? null;
+    return bestMatch?.rootNetworkId ?? null;
   }
 
-  private async refreshProjectCache(): Promise<void> {
-    if (Date.now() - this.lastProjectCacheAt < PROJECT_CACHE_TTL_MS) {
+  private async refreshWorldCache(): Promise<void> {
+    if (Date.now() - this.lastWorldCacheAt < WORLD_CACHE_TTL_MS) {
       return;
     }
 
     try {
-      const projects = await listRemoteProjects();
-      this.projectIdByRootDir.clear();
-      for (const project of projects) {
-        this.addProjectRoot(project);
+      const worlds = await listRemoteWorlds();
+      this.rootNetworkIdByRootDir.clear();
+      for (const world of worlds) {
+        this.addWorldRoot(world);
       }
-      this.lastProjectCacheAt = Date.now();
+      this.lastWorldCacheAt = Date.now();
     } catch (error) {
-      this.warnOnce(`failed to resolve project id for terminal mirror: ${(error as Error).message}`);
+      this.warnOnce(`failed to resolve world id for terminal mirror: ${(error as Error).message}`);
     }
   }
 
-  private addProjectRoot(project: Project): void {
-    const normalizedRootDir = normalizePathKey(project.root_dir);
+  private addWorldRoot(world: World): void {
+    const normalizedRootDir = normalizePathKey(world.root_dir);
     if (!normalizedRootDir) {
       return;
     }
-    this.projectIdByRootDir.set(normalizedRootDir, project.id);
+    this.rootNetworkIdByRootDir.set(normalizedRootDir, world.id);
   }
 
   private warnOnce(message: string): void {

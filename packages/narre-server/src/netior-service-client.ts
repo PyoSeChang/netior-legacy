@@ -3,7 +3,7 @@
   Network,
   NetworkType,
   NetworkTreeNode,
-  Project,
+  World,
   Instance,
   Meaning,
   Schema,
@@ -58,12 +58,12 @@ async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
   return payload.data;
 }
 
-export async function getProjectById(projectId: string): Promise<Project | null> {
-  return requestJson<Project | null>(`/projects/${encodeURIComponent(projectId)}`);
+export async function getWorldById(rootNetworkId: string): Promise<World | null> {
+  return requestJson<World | null>(`/worlds/${encodeURIComponent(rootNetworkId)}`);
 }
 
-export async function listSchemas(projectId: string): Promise<Schema[]> {
-  return requestJson<Schema[]>(`/schemas${toQueryString({ projectId })}`);
+export async function listSchemas(rootNetworkId: string): Promise<Schema[]> {
+  return requestJson<Schema[]>(`/schemas${toQueryString({ rootNetworkId })}`);
 }
 
 export async function listSchemaFields(schemaId: string): Promise<SchemaField[]> {
@@ -74,26 +74,26 @@ export async function listSchemaMeanings(schemaId: string): Promise<SchemaMeanin
   return requestJson<SchemaMeaning[]>(`/schema-meanings${toQueryString({ schemaId })}`);
 }
 
-export async function listMeanings(projectId: string): Promise<Meaning[]> {
-  return requestJson<Meaning[]>(`/meanings${toQueryString({ projectId })}`);
+export async function listMeanings(rootNetworkId: string): Promise<Meaning[]> {
+  return requestJson<Meaning[]>(`/meanings${toQueryString({ rootNetworkId })}`);
 }
 
-export async function listMeaningCategories(projectId: string): Promise<Instance[]> {
-  return requestJson<Instance[]>(`/meaning-categories${toQueryString({ projectId })}`);
+export async function listMeaningCategories(rootNetworkId: string): Promise<Instance[]> {
+  return requestJson<Instance[]>(`/meaning-categories${toQueryString({ rootNetworkId })}`);
 }
 
 export async function getUniverseNetwork(): Promise<Network | null> {
   return requestJson<Network | null>('/networks/universe');
 }
 
-export async function getProjectOntologyNetwork(projectId: string): Promise<Network | null> {
-  return requestJson<Network | null>(`/networks/ontology${toQueryString({ projectId })}`);
+export async function getRootNetwork(rootNetworkId: string): Promise<Network | null> {
+  return requestJson<Network | null>(`/networks/root${toQueryString({ rootNetworkId })}`);
 }
 
-export async function getNetworkTree(projectId: string): Promise<NetworkTreeNode[]> {
-  return requestJson<NetworkTreeNode[]>(`/networks/tree${toQueryString({ projectId })}`);
+export async function getNetworkTree(rootNetworkId: string): Promise<NetworkTreeNode[]> {
+  return requestJson<NetworkTreeNode[]>(`/networks/tree${toQueryString({ rootNetworkId })}`);
 }
 
-export async function listNetworkTypes(projectId: string): Promise<NetworkType[]> {
-  return requestJson<NetworkType[]>(`/network-types${toQueryString({ projectId })}`);
+export async function listNetworkTypes(rootNetworkId: string): Promise<NetworkType[]> {
+  return requestJson<NetworkType[]>(`/network-types${toQueryString({ rootNetworkId })}`);
 }

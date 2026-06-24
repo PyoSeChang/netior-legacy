@@ -9,19 +9,19 @@ import { buildTesterCardHandler, flattenTesterInteractions, resolveTurnTemplates
 export async function runScenario(
   adapter: EvalAgentAdapter,
   scenario: EvalScenario,
-  projectId: string,
+  rootNetworkId: string,
   templateVars: Record<string, string> = {},
 ): Promise<Transcript> {
   if (scenario.type === 'conversation') {
-    return runConversation(adapter, scenario, projectId, templateVars);
+    return runConversation(adapter, scenario, rootNetworkId, templateVars);
   }
-  return runSingleTurn(adapter, scenario, projectId, templateVars);
+  return runSingleTurn(adapter, scenario, rootNetworkId, templateVars);
 }
 
 async function runSingleTurn(
   adapter: EvalAgentAdapter,
   scenario: EvalScenario,
-  projectId: string,
+  rootNetworkId: string,
   templateVars: Record<string, string>,
 ): Promise<Transcript> {
   const turns: TurnTranscript[] = [];
@@ -37,7 +37,7 @@ async function runSingleTurn(
     });
     const result = await adapter.sendTurn({
       sessionId: null,
-      projectId,
+      rootNetworkId,
       message: resolvedTurn.content,
       mentions: resolvedTurn.mentions,
       onCard,
@@ -72,7 +72,7 @@ async function runSingleTurn(
 async function runConversation(
   adapter: EvalAgentAdapter,
   scenario: EvalScenario,
-  projectId: string,
+  rootNetworkId: string,
   templateVars: Record<string, string>,
 ): Promise<Transcript> {
   const turns: TurnTranscript[] = [];
@@ -94,7 +94,7 @@ async function runConversation(
 
     const result = await adapter.sendTurn({
       sessionId,
-      projectId,
+      rootNetworkId,
       message: resolvedTurn.content,
       mentions: resolvedTurn.mentions,
       onCard,

@@ -14,12 +14,12 @@ export function NetworkViewerEditor({ tab }: NetworkViewerEditorProps): JSX.Elem
   const currentNetwork = useNetworkStore((s) => s.currentNetwork);
   const network = networks.find((item) => item.id === tab.targetId)
     ?? (currentNetwork?.id === tab.targetId ? currentNetwork : null);
-  const projectId = tab.projectId ?? network?.project_id ?? null;
+  const rootNetworkId = tab.rootNetworkId ?? network?.root_network_id ?? null;
 
   return (
     <div className="relative h-full min-h-0 min-w-0 overflow-hidden bg-surface-panel">
       <NetworkWorkspace
-        projectId={projectId}
+        rootNetworkId={rootNetworkId}
         initialNetworkId={tab.targetId}
         showOpenViewerAction={false}
         onOpenLayoutSettings={() => {
@@ -27,7 +27,7 @@ export function NetworkViewerEditor({ tab }: NetworkViewerEditorProps): JSX.Elem
             type: 'network',
             targetId: tab.targetId,
             title: network?.name ?? tab.title,
-            projectId: projectId ?? undefined,
+            rootNetworkId: rootNetworkId ?? undefined,
           });
         }}
       />

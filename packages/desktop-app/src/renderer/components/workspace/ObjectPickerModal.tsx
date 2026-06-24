@@ -8,7 +8,7 @@ import { useNetworkStore } from '../../stores/network-store';
 import { useMeaningStore } from '../../stores/meaning-store';
 import { useSchemaStore } from '../../stores/schema-store';
 import { useContextStore } from '../../stores/context-store';
-import { useProjectStore } from '../../stores/project-store';
+import { useWorldStore } from '../../stores/world-store';
 import { useI18n } from '../../hooks/useI18n';
 import { createOntologyDisplayResolver } from '@netior/shared';
 import { NodeVisual } from './node-components/NodeVisual';
@@ -21,9 +21,9 @@ interface ObjectPickerModalProps {
   allowedTabs?: PickerTab[];
 }
 
-type PickerTab = 'instance' | 'network' | 'project' | 'schema' | 'meaning' | 'context';
+type PickerTab = 'instance' | 'network' | 'world' | 'schema' | 'meaning' | 'context';
 
-const TABS: PickerTab[] = ['instance', 'network', 'project', 'schema', 'meaning', 'context'];
+const TABS: PickerTab[] = ['instance', 'network', 'world', 'schema', 'meaning', 'context'];
 
 export function ObjectPickerModal({
   open,
@@ -45,7 +45,7 @@ export function ObjectPickerModal({
   const instances = useInstanceStore((s) => s.instances);
   const networks = useNetworkStore((s) => s.networks);
   const currentNetwork = useNetworkStore((s) => s.currentNetwork);
-  const projects = useProjectStore((s) => s.projects);
+  const worlds = useWorldStore((s) => s.worlds);
   const schemas = useSchemaStore((s) => s.schemas);
   const meanings = useMeaningStore((s) => s.meanings);
   const contexts = useContextStore((s) => s.contexts);
@@ -53,7 +53,7 @@ export function ObjectPickerModal({
   const tabLabels: Record<PickerTab, string> = {
     instance: t('instance.title'),
     network: t('sidebar.networks' as never),
-    project: t('project.title' as never) ?? 'Projects',
+    world: t('world.title' as never) ?? 'Worlds',
     schema: t('schema.title' as never),
     meaning: t('meaning.title' as never),
     context: t('context.title'),
@@ -79,10 +79,10 @@ export function ObjectPickerModal({
           .filter((network) => network.id !== currentNetwork?.id)
           .filter((network) => !query || matches(network.name))
           .map((network) => ({ id: network.id, title: network.name, subtitle: t('sidebar.networks' as never), icon: null }));
-      case 'project':
-        return projects
-          .filter((project) => !query || matches(project.name))
-          .map((project) => ({ id: project.id, title: project.name, subtitle: t('project.title' as never) ?? 'Project', icon: null }));
+      case 'world':
+        return worlds
+          .filter((world) => !query || matches(world.name))
+          .map((world) => ({ id: world.id, title: world.name, subtitle: t('world.title' as never) ?? 'World', icon: null }));
       case 'schema':
         return schemas
           .filter((schema) => !query || matches(schema.name) || (schema.description ? matches(schema.description) : false))
@@ -112,7 +112,7 @@ export function ObjectPickerModal({
       default:
         return [];
     }
-  }, [activeTab, display, instances, contexts, currentNetwork?.id, meanings, networks, projects, schemas, search, t]);
+  }, [activeTab, display, instances, contexts, currentNetwork?.id, meanings, networks, worlds, schemas, search, t]);
 
   const handleSelect = (refId: string) => {
     onSelect(activeTab, refId);

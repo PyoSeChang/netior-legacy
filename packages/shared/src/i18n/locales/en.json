@@ -26,28 +26,28 @@
     "recurringReadOnlyHint": "This is a recurring occurrence. Edit the source event to change the whole series.",
     "recurringVirtualHint": "Editing this occurrence creates a separate item from the series."
   },
-  "project": {
-    "title": "Project",
-    "create": "Create Project",
-    "name": "Project Name",
+  "world": {
+    "title": "World",
+    "create": "Create World",
+    "name": "World Name",
     "selectFolder": "Select Folder",
-    "noProjects": "No projects",
-    "deleteConfirm": "Delete this project?",
-    "newProject": "New Project",
-    "noProjectsYet": "No projects yet",
-    "createFirst": "Create your first project",
-    "deleteTitle": "Delete Project",
-    "deleteMessage": "This will remove the project reference. Files in the folder will not be deleted.",
-    "missingPathTitle": "Project Path Not Found",
-    "missingPathMessage": "Cannot find project path: {path}\nPlease select a new location.",
+    "noWorlds": "No worlds",
+    "deleteConfirm": "Delete this world?",
+    "newWorld": "New World",
+    "noWorldsYet": "No worlds yet",
+    "createFirst": "Create your first world",
+    "deleteTitle": "Delete World",
+    "deleteMessage": "This will remove the world reference. Files in the folder will not be deleted.",
+    "missingPathTitle": "World Path Not Found",
+    "missingPathMessage": "Cannot find world path: {path}\nPlease select a new location.",
     "selectNewPath": "Select Path",
-    "folder": "Project Folder",
-    "namePlaceholder": "My Project",
+    "folder": "World Folder",
+    "namePlaceholder": "My World",
     "folderPlaceholder": "Select a folder...",
-    "createFailed": "Failed to create project.",
-    "duplicateRootDir": "A project already uses this folder: {path}",
-    "goHome": "Project Home",
-    "noProject": "No Project"
+    "createFailed": "Failed to create world.",
+    "duplicateRootDir": "A world already uses this folder: {path}",
+    "goHome": "World Home",
+    "noWorld": "No World"
   },
   "network": {
     "create": "Create Network",
@@ -96,7 +96,7 @@
     "deleteSubtreeTitle": "Exclude from Network",
     "deleteSubtreeMessage": "Exclude {count} nodes including the selected subtree from this network. The source object is not deleted.",
     "deleteObjectTitle": "Delete Object Permanently",
-    "deleteObjectMessage": "Delete {name} from the project permanently. It will also disappear from every network where it is placed.",
+    "deleteObjectMessage": "Delete {name} from the world permanently. It will also disappear from every network where it is placed.",
     "hierarchyLinkChildToParent": "Hierarchy link: start from the child, then click the parent.",
     "hierarchyDropToParent": "Drop on the highlighted node to make it the parent.",
     "hierarchyDropRootChild": "Drop on empty hierarchy space to attach as a root child.",
@@ -764,7 +764,8 @@
     "stadium": "Stadium",
     "detachMeaningConfirmTitle": "Remove meaning?",
     "detachMeaningConfirmMessage": "Removing {meaning} detaches the meaning but keeps generated slots and stored values.",
-    "detachMeaningConfirmAction": "Remove meaning"
+    "detachMeaningConfirmAction": "Remove meaning",
+    "sourceSchema": "Source schema"
   },
   "field": {
     "name": "Field Name",
@@ -928,14 +929,14 @@
     "sidebarTopItems": "Upper Built-in Items",
     "sidebarTopItemsDesc": "Reorder the primary sidebar views that stay above bookmarks.",
     "sidebarBookmarkedNetworks": "Bookmarked Networks",
-    "sidebarBookmarkedNetworksDesc": "Pin project networks into the activity bar. Bookmarks appear between the upper and lower built-in groups.",
+    "sidebarBookmarkedNetworksDesc": "Pin world networks into the activity bar. Bookmarks appear between the upper and lower built-in groups.",
     "sidebarAvailableNetworks": "Available Networks",
-    "sidebarAvailableNetworksDesc": "Add networks from the current project to the bookmark strip.",
+    "sidebarAvailableNetworksDesc": "Add networks from the current world to the bookmark strip.",
     "sidebarBottomItems": "Lower Built-in Items",
     "sidebarBottomItemsDesc": "Reorder the utility items that stay below bookmarks.",
-    "sidebarNoProject": "Open a project to manage network bookmarks.",
+    "sidebarNoWorld": "Open a world to manage network bookmarks.",
     "sidebarNoBookmarks": "No bookmarked networks yet.",
-    "sidebarNoAvailableNetworks": "All current project networks are already bookmarked.",
+    "sidebarNoAvailableNetworks": "All current world networks are already bookmarked.",
     "sidebarMoveUp": "Move up",
     "sidebarMoveDown": "Move down",
     "appearanceMode": "Appearance Mode",
@@ -960,7 +961,7 @@
     "typographyDesc": "Split interface, body, code, and terminal typography by role. Only fonts installed on this machine are listed in the selector.",
     "interfaceFont": "Interface font",
     "interfaceFontDesc": "Menus, sidebars, dialogs, and general application chrome.",
-    "interfaceFontSample": "Project graph, settings panels, and navigation labels.",
+    "interfaceFontSample": "World graph, settings panels, and navigation labels.",
     "bodyFont": "Body font",
     "bodyFontDesc": "Long-form writing surfaces such as notes, markdown, and multiline text fields.",
     "bodyFontSample": "A calmer reading voice for instances, notes, and longer descriptions.",
@@ -1081,8 +1082,8 @@
     "narreCodexRuntimeDesc": "These options are passed only to Narre's Codex app-server launch and do not rewrite your global Codex CLI config.",
     "narreCodexModel": "Codex Model",
     "narreCodexModelDesc": "Optional Codex model override for Narre.",
-    "narreCodexUseProjectRoot": "Use project directory as working directory",
-    "narreCodexUseProjectRootDesc": "When enabled, Narre points Codex at the target project directory instead of the Netior repo.",
+    "narreCodexUseWorldRoot": "Use world directory as working directory",
+    "narreCodexUseWorldRootDesc": "When enabled, Narre points Codex at the target world directory instead of the Netior repo.",
     "narreCodexSandbox": "Sandbox",
     "narreCodexSandboxReadOnly": "Read only",
     "narreCodexSandboxWorkspaceWrite": "Workspace write",
@@ -1282,7 +1283,7 @@
       "modal": "Modal"
     },
     "when": {
-      "projectOpen": "A project is open",
+      "worldOpen": "A world is open",
       "selectionExists": "Selection exists"
     },
     "items": {
@@ -1302,7 +1303,7 @@
         "openBrowserLabel": "Open Browser",
         "openBrowser": "Open a new browser tab",
         "openNarreLabel": "Open Narre",
-        "openNarre": "Open the Narre tab for the current project",
+        "openNarre": "Open the Narre tab for the current world",
         "toggleTocLabel": "Toggle TOC",
         "toggleToc": "Toggle the markdown table of contents panel",
         "toggleEditorModeLabel": "Toggle Editor Mode",
@@ -1482,7 +1483,7 @@
     "other": "Other"
   },
   "sidebar": {
-    "ontology": "Ontology",
+    "rootNetwork": "Root Network",
     "networks": "Networks",
     "networkObjects": "Network Objects",
     "objects": "Objects",
@@ -1585,7 +1586,7 @@
     "title": "Agents",
     "refresh": "Refresh agents",
     "newGlobal": "Global",
-    "newProject": "Project",
+    "newWorld": "World",
     "agentSectionTitle": "Agent",
     "agentSectionDescription": "Definition and persistent prompt for the local skill package owner",
     "skillSectionTitle": "Skills",
@@ -1596,7 +1597,7 @@
     "defaultSkillBodyDescription": "Use this skill when...",
     "scopeLabel": "Scope",
     "scopeGlobal": "Global",
-    "scopeProject": "Project",
+    "scopeWorld": "World",
     "idLabel": "ID",
     "idPlaceholder": "agent-id",
     "nameLabel": "Name",
@@ -1622,7 +1623,7 @@
     "deleteAgentMessage": "Delete {name} and all of its local skills?",
     "deleteSkillMessage": "Delete /{name}?",
     "skillCount": "{count} skills",
-    "projectRequired": "Project agent requires an active project",
+    "worldRequired": "World agent requires an active world",
     "error": {
       "loadAgents": "Failed to load agents",
       "saveAgent": "Failed to save agent",
@@ -1633,7 +1634,7 @@
       "skillNameRequired": "Skill name is required",
       "skillDescriptionRequired": "Skill description is required",
       "skillBodyRequired": "Skill body is required",
-      "projectIdRequired": "Project agent requires an active project",
+      "rootNetworkIdRequired": "World agent requires an active world",
       "invalidId": "Invalid id: {value}"
     }
   },
@@ -1682,10 +1683,10 @@
     "noAgents": "No agents are available",
     "agentScopes": {
       "system": "System",
-      "project": "Project",
+      "world": "World",
       "global": "Global",
       "systemAgent": "System agent",
-      "projectAgent": "Project agent",
+      "worldAgent": "World agent",
       "globalAgent": "Global agent"
     },
     "systemAgents": {
@@ -1881,7 +1882,7 @@
     "mentionTabHint": "Tab switches type",
     "mentionSearch": "Search...",
     "command": {
-      "bootstrap": "Bootstrap project workspace",
+      "bootstrap": "Bootstrap world workspace",
       "bootstrapHint": "Infers initial networks, schema, and starter graph from the user's domain description.",
       "index": "PDF table of contents indexing",
       "indexHint": "Requires one PDF file mention before sending.",
@@ -1895,7 +1896,7 @@
     },
     "toolWrite": "Write",
     "toolCategory": {
-      "project": "Project",
+      "world": "World",
       "types": "Types",
       "instances": "Instances",
       "graph": "Graph",
@@ -1910,7 +1911,7 @@
       },
       "create_schema": {
         "name": "Create Schema",
-        "description": "Create a new schema for a project, including optional file template and attached meanings."
+        "description": "Create a new schema for a world, including optional file template and attached meanings."
       },
       "update_schema": {
         "name": "Update Schema",
@@ -1964,14 +1965,14 @@
       },
       "evaluate_dsl": {
         "name": "Evaluate DSL",
-        "description": "Evaluate a read-only Netior DSL JSON AST expression against a project context."
+        "description": "Evaluate a read-only Netior DSL JSON AST expression against a world context."
       },
       "list_instances": {
         "name": "List Instances"
       },
       "create_instance": {
         "name": "Create Instance",
-        "description": "Create a new instance in a project."
+        "description": "Create a new instance in a world."
       },
       "update_instance": {
         "name": "Update Instance"
@@ -2056,7 +2057,7 @@
       },
       "create_network": {
         "name": "Create Network",
-        "description": "Create a network in project or app scope."
+        "description": "Create a network in world or app scope."
       },
       "update_network": {
         "name": "Update Network"
@@ -2070,8 +2071,9 @@
       "get_universe_network": {
         "name": "Get Universe Network"
       },
-      "get_project_ontology_network": {
-        "name": "Get Ontology Network"
+      "get_root_network": {
+        "name": "Get Root Network",
+        "description": "Get the root network for the current world."
       },
       "get_network_tree": {
         "name": "Browse Network Tree"
@@ -2169,8 +2171,9 @@
       "delete_relation_type": {
         "name": "Delete Relation Type"
       },
-      "get_project_summary": {
-        "name": "Project Summary"
+      "get_world_summary": {
+        "name": "World Summary",
+        "description": "Get a summary of a world including schema, meaning, instance, and network context."
       },
       "list_mcp_resources": {
         "name": "List MCP Resources"
@@ -2225,16 +2228,16 @@
       "parentNetwork": "Parent network",
       "kind": "Kind",
       "sortOrder": "Sort order",
-      "projectId": "Project ID"
+      "rootNetworkId": "Root Network ID"
     },
     "previewSummary": {
-      "createSchema": "Creates a project schema.",
+      "createSchema": "Creates a world schema.",
       "updateSchemaSettings": "Updates {count} schema settings.",
       "createSchemaField": "Create a field on a schema.",
-      "createInstance": "Creates a instance in the current project.",
-      "createProjectNetwork": "Creates a project network.",
+      "createInstance": "Creates an instance in the current world.",
+      "createWorldNetwork": "Creates a world network.",
       "createAppNetwork": "Creates an app-scope network.",
-      "createSchemaWithMeanings": "Creates a project schema attached to {count} meanings.",
+      "createSchemaWithMeanings": "Creates a world schema attached to {count} meanings.",
       "createMeaning": "Creates a reusable meaning."
     },
     "card": {
@@ -2254,8 +2257,8 @@
       "permissionDecline": "Decline",
       "permissionAllowed": "Allowed",
       "permissionDeclined": "Declined",
-      "permissionAllowedProject": "Always Allowed in This Project",
-      "permissionAllowProject": "Always allow in this project",
+      "permissionAllowedWorld": "Always Allowed in This World",
+      "permissionAllowWorld": "Always allow in this world",
       "permissionRequired": "Permission required",
       "permissionDecisionLabel": "Response",
       "permissionDecisionRecorded": "This request has already been answered.",

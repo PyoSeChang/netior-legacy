@@ -32,11 +32,11 @@ export class OpenAIDirectTransport implements OpenAIFamilyTransport {
     }
 
     console.log(
-      `[narre:${this.name}] trace=${traceId} Starting run session=${context.sessionId} project=${context.projectId} ` +
+      `[narre:${this.name}] trace=${traceId} Starting run session=${context.sessionId} world=${context.rootNetworkId} ` +
       `resume=${context.isResume ? 'yes' : 'no'} model=${this.options.model ?? 'default'}`,
     );
 
-    const session = new OpenAIFileSession(this.options.dataDir, context.projectId, context.sessionId);
+    const session = new OpenAIFileSession(this.options.dataDir, context.rootNetworkId, context.sessionId);
     const servers = await connectMcpServers(
       context.mcpServerConfigs.map((config) => new MCPServerStdio({
         name: config.name,

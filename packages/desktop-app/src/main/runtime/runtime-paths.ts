@@ -53,9 +53,9 @@ export function getRuntimeLogsDir(): string {
   return join(getRuntimeDataDir(), 'logs');
 }
 
-export function getRuntimeNarreDir(projectId?: string): string {
-  return projectId
-    ? join(getRuntimeDataDir(), 'narre', projectId)
+export function getRuntimeNarreDir(rootNetworkId?: string): string {
+  return rootNetworkId
+    ? join(getRuntimeDataDir(), 'narre', rootNetworkId)
     : join(getRuntimeDataDir(), 'narre');
 }
 

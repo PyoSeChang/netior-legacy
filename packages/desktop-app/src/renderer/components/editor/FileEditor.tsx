@@ -3,7 +3,7 @@ import type { EditorTab } from '@netior/shared/types';
 import { fsService, fileService } from '../../services';
 import { useI18n } from '../../hooks/useI18n';
 import { useEditorSession } from '../../hooks/useEditorSession';
-import { useProjectStore } from '../../stores/project-store';
+import { useWorldStore } from '../../stores/world-store';
 import { useEditorStore } from '../../stores/editor-store';
 import {
   registerFileEditorReloadHandler,
@@ -36,27 +36,27 @@ export function FileEditor({ tab }: FileEditorProps): JSX.Element {
   const filePath = tab.targetId;
   const editorType = (tab.editorType as EditorType) ?? getEditorType(filePath);
   const isTextEditor = editorType === 'code' || editorType === 'markdown';
-  const currentProject = useProjectStore((s) => s.currentProject);
+  const currentWorld = useWorldStore((s) => s.currentWorld);
   const [fileId, setFileId] = useState<string | null>(null);
   const [viewerRevision, setViewerRevision] = useState(0);
   const [reloadConfirmOpen, setReloadConfirmOpen] = useState(false);
 
   useEffect(() => {
-    if (editorType !== 'pdf' || !currentProject) {
+    if (editorType !== 'pdf' || !currentWorld) {
       setFileId(null);
       return;
     }
 
     let cancelled = false;
     const normalizedFilePath = filePath.replace(/\\/g, '/');
-    const relativePath = toRelativePath(currentProject.root_dir, filePath);
+    const relativePath = toRelativePath(currentWorld.root_dir, filePath);
 
-    fileService.getByPath(currentProject.id, relativePath).then(async (entity) => {
+    fileService.getByPath(currentWorld.id, relativePath).then(async (entity) => {
       if (cancelled) return;
       if (entity) { setFileId(entity.id); return; }
 
-      // Exact match failed ??try matching against all project files
-      const allFiles = await fileService.getByProject(currentProject.id);
+      // Exact match failed ??try matching against all world files
+      const allFiles = await fileService.getByRootNetwork(currentWorld.id);
       const match = allFiles.find((f) => {
         const dbPath = f.path.replace(/\\/g, '/');
         return dbPath === normalizedFilePath || normalizedFilePath.endsWith('/' + dbPath);
@@ -65,7 +65,7 @@ export function FileEditor({ tab }: FileEditorProps): JSX.Element {
     }).catch(() => {});
 
     return () => { cancelled = true; };
-  }, [filePath, editorType, currentProject]);
+  }, [filePath, editorType, currentWorld]);
 
   const session = useEditorSession<string>({
     tabId: tab.id,

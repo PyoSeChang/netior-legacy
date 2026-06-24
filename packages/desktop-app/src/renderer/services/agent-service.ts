@@ -8,8 +8,8 @@
 } from '@netior/shared/types';
 import { unwrapIpc } from './ipc';
 
-export async function listDefinitions(projectId?: string | null): Promise<UserAgentRecord[]> {
-  return unwrapIpc(await window.electron.agent.listDefinitions(projectId));
+export async function listDefinitions(rootNetworkId?: string | null): Promise<UserAgentRecord[]> {
+  return unwrapIpc(await window.electron.agent.listDefinitions(rootNetworkId));
 }
 
 export async function upsertDefinition(input: UpsertUserAgentInput): Promise<UserAgentRecord> {

@@ -30,9 +30,9 @@ export function registerSchemaIpc(): void {
     }
   });
 
-  ipcMain.handle('schema:list', async (_e, projectId: string): Promise<IpcResult<unknown>> => {
+  ipcMain.handle('schema:list', async (_e, rootNetworkId: string): Promise<IpcResult<unknown>> => {
     try {
-      return { success: true, data: await listRemoteSchemas(projectId) };
+      return { success: true, data: await listRemoteSchemas(rootNetworkId) };
     } catch (err) {
       return { success: false, error: (err as Error).message };
     }

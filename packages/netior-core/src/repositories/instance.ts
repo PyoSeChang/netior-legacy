@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto';
 import { getDatabase } from '../connection';
 import { createObject, deleteObjectByRef } from './objects';
-import { ensureObjectScopeBindingForDb, getDefaultOwnerNetworkIdForProjectDb } from './network-scope';
+import { ensureObjectScopeBindingForDb, getDefaultOwnerNetworkIdForWorldDb } from './network-scope';
 import {
   fieldMeaningToMeaningBindings,
   meaningSlotToFieldMeaning,
@@ -133,12 +133,12 @@ export function createInstance(data: InstanceCreate): Instance {
 
   const ownerNetworkId = data.owner_network_id
     ?? schema?.owner_network_id
-    ?? getDefaultOwnerNetworkIdForProjectDb(db, data.project_id);
+    ?? getDefaultOwnerNetworkIdForWorldDb(db, data.root_network_id);
 
   db.prepare(
     `INSERT INTO instances (
       id,
-      project_id,
+      root_network_id,
       owner_network_id,
       schema_id,
       recurrence_source_instance_id,
@@ -158,7 +158,7 @@ export function createInstance(data: InstanceCreate): Instance {
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     id,
-    data.project_id,
+    data.root_network_id,
     ownerNetworkId,
     data.schema_id ?? null,
     data.recurrence_source_instance_id ?? null,
@@ -168,7 +168,7 @@ export function createInstance(data: InstanceCreate): Instance {
     icon,
     content,
     null,
-    data.source_kind ?? 'project',
+    data.source_kind ?? 'world',
     data.source_id ?? null,
     data.source_ref ?? null,
     data.source_version ?? null,
@@ -177,11 +177,11 @@ export function createInstance(data: InstanceCreate): Instance {
   );
 
   // Register object record
-  const object = createObject('instance', 'project', data.project_id, id);
+  const object = createObject('instance', 'world', data.root_network_id, id);
   ensureObjectScopeBindingForDb(db, {
     objectId: object.id,
     scopeNetworkId: ownerNetworkId,
-    sourceKind: data.source_kind ?? 'project',
+    sourceKind: data.source_kind ?? 'world',
     sourceId: data.source_id ?? null,
     sourceRef: data.source_ref ?? null,
     sourceVersion: data.source_version ?? null,
@@ -200,11 +200,11 @@ export function createInstance(data: InstanceCreate): Instance {
   return instance;
 }
 
-export function getInstancesByProject(projectId: string): Instance[] {
+export function getInstancesByWorld(rootNetworkId: string): Instance[] {
   const db = getDatabase();
   return db
-    .prepare("SELECT * FROM instances WHERE project_id = ? AND COALESCE(source_kind, 'project') <> 'system' ORDER BY created_at")
-    .all(projectId) as Instance[];
+    .prepare("SELECT * FROM instances WHERE root_network_id = ? AND COALESCE(source_kind, 'world') <> 'system' ORDER BY created_at")
+    .all(rootNetworkId) as Instance[];
 }
 
 export function updateInstance(id: string, data: InstanceUpdate): Instance | undefined {
@@ -265,9 +265,9 @@ export function deleteInstance(id: string): boolean {
   return false;
 }
 
-export function searchInstances(projectId: string, query: string): Instance[] {
+export function searchInstances(rootNetworkId: string, query: string): Instance[] {
   const db = getDatabase();
   return db
-    .prepare("SELECT * FROM instances WHERE project_id = ? AND COALESCE(source_kind, 'project') <> 'system' AND title LIKE ? ORDER BY title")
-    .all(projectId, `%${query}%`) as Instance[];
+    .prepare("SELECT * FROM instances WHERE root_network_id = ? AND COALESCE(source_kind, 'world') <> 'system' AND title LIKE ? ORDER BY title")
+    .all(rootNetworkId, `%${query}%`) as Instance[];
 }

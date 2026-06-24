@@ -1,4 +1,4 @@
-export { projectService } from './project-service';
+export { worldService } from './world-service';
 export { instanceService } from './instance-service';
 export { networkService } from './network-service';
 export { layoutService } from './layout-service';

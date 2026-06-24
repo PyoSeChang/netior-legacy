@@ -45,7 +45,7 @@ export class AgentRuntimeDispatcher {
       };
     }
 
-    const agent = this.resolveAgent(snapshot.run.projectId, assignment.agentKey);
+    const agent = this.resolveAgent(snapshot.run.rootNetworkId, assignment.agentKey);
     if (agent.kind !== 'narre') {
       return this.queueTerminalAssignment(agent, assignmentId);
     }
@@ -74,7 +74,7 @@ export class AgentRuntimeDispatcher {
     try {
       const result = await runtime.runChat(
         {
-          projectId: snapshot.run.projectId,
+          rootNetworkId: snapshot.run.rootNetworkId,
           message: buildTaskPrompt(snapshot.run.userRequest, task.input, collectUpstreamResults(snapshot.tasks, task)),
           traceId: `assignment:${assignmentId}`,
           activeAgent: agent,
@@ -159,9 +159,9 @@ export class AgentRuntimeDispatcher {
     }
   }
 
-  private resolveAgent(projectId: string, agentKey: string): AgentDefinition {
+  private resolveAgent(rootNetworkId: string, agentKey: string): AgentDefinition {
     const agent = this.config.supervisor
-      .listAgents(projectId)
+      .listAgents(rootNetworkId)
       .find((candidate) => getSupervisorAgentKey(candidate) === agentKey);
     if (!agent) {
       throw new Error(`Agent not found: ${agentKey}`);
@@ -191,7 +191,7 @@ export class AgentRuntimeDispatcher {
     }
 
     const provider = agent.runtimeProfile?.provider ?? 'terminal';
-    const executor = executors.findAvailableExecutor(snapshot.run.projectId, provider);
+    const executor = executors.findAvailableExecutor(snapshot.run.rootNetworkId, provider);
     if (!executor) {
       const message = `No online executor is available for ${provider}.`;
       this.config.orchestration.updateAssignment({

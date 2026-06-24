@@ -122,10 +122,10 @@ function normalizeSessionFile(value: unknown): NarreSessionFileV2 {
   };
 }
 
-function buildSessionDetail(projectId: string, session: NarreSession, file: NarreSessionFileV2): NarreSessionDetail {
+function buildSessionDetail(rootNetworkId: string, session: NarreSession, file: NarreSessionFileV2): NarreSessionDetail {
   return {
     ...session,
-    projectId,
+    rootNetworkId,
     transcript: file.transcript,
     messages: transcriptToMessages(file.transcript),
   };
@@ -233,44 +233,44 @@ function mergePersistedCardResponses(
 export class SessionStore {
   constructor(private dataDir: string) {}
 
-  private projectDir(projectId: string): string {
-    return path.join(this.dataDir, 'narre', projectId);
+  private worldDir(rootNetworkId: string): string {
+    return path.join(this.dataDir, 'narre', rootNetworkId);
   }
 
-  private indexPath(projectId: string): string {
-    return path.join(this.projectDir(projectId), 'sessions.json');
+  private indexPath(rootNetworkId: string): string {
+    return path.join(this.worldDir(rootNetworkId), 'sessions.json');
   }
 
-  private sessionFilePath(projectId: string, sessionId: string): string {
-    return path.join(this.projectDir(projectId), `session_${sessionId}.json`);
+  private sessionFilePath(rootNetworkId: string, sessionId: string): string {
+    return path.join(this.worldDir(rootNetworkId), `session_${sessionId}.json`);
   }
 
-  private async ensureDir(projectId: string): Promise<void> {
-    await fs.mkdir(this.projectDir(projectId), { recursive: true });
+  private async ensureDir(rootNetworkId: string): Promise<void> {
+    await fs.mkdir(this.worldDir(rootNetworkId), { recursive: true });
   }
 
-  private async readIndex(projectId: string): Promise<SessionsIndex> {
+  private async readIndex(rootNetworkId: string): Promise<SessionsIndex> {
     try {
-      const content = await fs.readFile(this.indexPath(projectId), 'utf-8');
+      const content = await fs.readFile(this.indexPath(rootNetworkId), 'utf-8');
       return JSON.parse(content) as SessionsIndex;
     } catch {
       return { sessions: [] };
     }
   }
 
-  private async writeIndex(projectId: string, index: SessionsIndex): Promise<void> {
-    await this.ensureDir(projectId);
-    await fs.writeFile(this.indexPath(projectId), JSON.stringify(index, null, 2), 'utf-8');
+  private async writeIndex(rootNetworkId: string, index: SessionsIndex): Promise<void> {
+    await this.ensureDir(rootNetworkId);
+    await fs.writeFile(this.indexPath(rootNetworkId), JSON.stringify(index, null, 2), 'utf-8');
   }
 
-  private async readSessionFile(projectId: string, sessionId: string): Promise<NarreSessionFileV2 | null> {
+  private async readSessionFile(rootNetworkId: string, sessionId: string): Promise<NarreSessionFileV2 | null> {
     try {
-      const content = await fs.readFile(this.sessionFilePath(projectId, sessionId), 'utf-8');
+      const content = await fs.readFile(this.sessionFilePath(rootNetworkId, sessionId), 'utf-8');
       const parsed = JSON.parse(content) as unknown;
       const normalized = normalizeSessionFile(parsed);
 
       if (!isSessionFileV2(parsed)) {
-        await this.writeSessionFile(projectId, sessionId, normalized);
+        await this.writeSessionFile(rootNetworkId, sessionId, normalized);
       }
 
       return normalized;
@@ -279,20 +279,20 @@ export class SessionStore {
     }
   }
 
-  private async writeSessionFile(projectId: string, sessionId: string, data: NarreSessionFileV2): Promise<void> {
-    await this.ensureDir(projectId);
-    await fs.writeFile(this.sessionFilePath(projectId, sessionId), JSON.stringify(data, null, 2), 'utf-8');
+  private async writeSessionFile(rootNetworkId: string, sessionId: string, data: NarreSessionFileV2): Promise<void> {
+    await this.ensureDir(rootNetworkId);
+    await fs.writeFile(this.sessionFilePath(rootNetworkId, sessionId), JSON.stringify(data, null, 2), 'utf-8');
   }
 
-  async listSessions(projectId: string): Promise<NarreSession[]> {
-    const index = await this.readIndex(projectId);
+  async listSessions(rootNetworkId: string): Promise<NarreSession[]> {
+    const index = await this.readIndex(rootNetworkId);
     // Return sorted by last_message_at descending
     return index.sessions.sort(
       (a, b) => new Date(b.last_message_at).getTime() - new Date(a.last_message_at).getTime(),
     );
   }
 
-  async createSession(projectId: string, title?: string, agentKey?: string | null): Promise<NarreSession> {
+  async createSession(rootNetworkId: string, title?: string, agentKey?: string | null): Promise<NarreSession> {
     const now = new Date().toISOString();
     const session: NarreSession = {
       id: randomUUID(),
@@ -303,27 +303,27 @@ export class SessionStore {
       agentKey: agentKey ?? null,
     };
 
-    const index = await this.readIndex(projectId);
+    const index = await this.readIndex(rootNetworkId);
     index.sessions.push(session);
-    await this.writeIndex(projectId, index);
-    await this.writeSessionFile(projectId, session.id, createEmptySessionFile());
+    await this.writeIndex(rootNetworkId, index);
+    await this.writeSessionFile(rootNetworkId, session.id, createEmptySessionFile());
 
     return session;
   }
 
   async getSession(
     sessionId: string,
-    projectId: string,
+    rootNetworkId: string,
   ): Promise<NarreSessionDetail | null> {
-    const index = await this.readIndex(projectId);
+    const index = await this.readIndex(rootNetworkId);
     const session = index.sessions.find((s) => s.id === sessionId);
     if (!session) return null;
 
-    const file = await this.readSessionFile(projectId, sessionId) ?? createEmptySessionFile();
-    return buildSessionDetail(projectId, session, file);
+    const file = await this.readSessionFile(rootNetworkId, sessionId) ?? createEmptySessionFile();
+    return buildSessionDetail(rootNetworkId, session, file);
   }
 
-  private async listProjectIds(): Promise<string[]> {
+  private async listRootNetworkIds(): Promise<string[]> {
     try {
       const entries = await fs.readdir(path.join(this.dataDir, 'narre'), { withFileTypes: true });
       return entries.filter((entry) => entry.isDirectory()).map((entry) => entry.name);
@@ -335,9 +335,9 @@ export class SessionStore {
   async getSessionById(
     sessionId: string,
   ): Promise<NarreSessionDetail | null> {
-    const projectIds = await this.listProjectIds();
-    for (const projectId of projectIds) {
-      const result = await this.getSession(sessionId, projectId);
+    const rootNetworkIds = await this.listRootNetworkIds();
+    for (const rootNetworkId of rootNetworkIds) {
+      const result = await this.getSession(sessionId, rootNetworkId);
       if (result) {
         return result;
       }
@@ -345,22 +345,22 @@ export class SessionStore {
     return null;
   }
 
-  async appendTurn(sessionId: string, projectId: string, turn: NarreTranscriptTurn): Promise<void> {
-    const file = await this.readSessionFile(projectId, sessionId) ?? createEmptySessionFile();
+  async appendTurn(sessionId: string, rootNetworkId: string, turn: NarreTranscriptTurn): Promise<void> {
+    const file = await this.readSessionFile(rootNetworkId, sessionId) ?? createEmptySessionFile();
     file.transcript.turns.push(turn);
-    await this.writeSessionFile(projectId, sessionId, file);
+    await this.writeSessionFile(rootNetworkId, sessionId, file);
 
-    const index = await this.readIndex(projectId);
+    const index = await this.readIndex(rootNetworkId);
     const session = index.sessions.find((s) => s.id === sessionId);
     if (session) {
       session.last_message_at = turn.createdAt;
       session.message_count = file.transcript.turns.length;
     }
-    await this.writeIndex(projectId, index);
+    await this.writeIndex(rootNetworkId, index);
   }
 
-  async upsertTurn(sessionId: string, projectId: string, turn: NarreTranscriptTurn): Promise<void> {
-    const file = await this.readSessionFile(projectId, sessionId) ?? createEmptySessionFile();
+  async upsertTurn(sessionId: string, rootNetworkId: string, turn: NarreTranscriptTurn): Promise<void> {
+    const file = await this.readSessionFile(rootNetworkId, sessionId) ?? createEmptySessionFile();
     const existingIndex = file.transcript.turns.findIndex((candidate) => candidate.id === turn.id);
 
     if (existingIndex >= 0) {
@@ -372,44 +372,44 @@ export class SessionStore {
       file.transcript.turns.push(turn);
     }
 
-    await this.writeSessionFile(projectId, sessionId, file);
+    await this.writeSessionFile(rootNetworkId, sessionId, file);
 
-    const index = await this.readIndex(projectId);
+    const index = await this.readIndex(rootNetworkId);
     const session = index.sessions.find((s) => s.id === sessionId);
     if (session) {
       session.last_message_at = turn.createdAt;
       session.message_count = file.transcript.turns.length;
     }
-    await this.writeIndex(projectId, index);
+    await this.writeIndex(rootNetworkId, index);
   }
 
-  async removeTurn(sessionId: string, projectId: string, turnId: string): Promise<void> {
-    const file = await this.readSessionFile(projectId, sessionId) ?? createEmptySessionFile();
+  async removeTurn(sessionId: string, rootNetworkId: string, turnId: string): Promise<void> {
+    const file = await this.readSessionFile(rootNetworkId, sessionId) ?? createEmptySessionFile();
     const nextTurns = file.transcript.turns.filter((turn) => turn.id !== turnId);
     if (nextTurns.length === file.transcript.turns.length) {
       return;
     }
 
     file.transcript.turns = nextTurns;
-    await this.writeSessionFile(projectId, sessionId, file);
+    await this.writeSessionFile(rootNetworkId, sessionId, file);
 
-    const index = await this.readIndex(projectId);
+    const index = await this.readIndex(rootNetworkId);
     const session = index.sessions.find((s) => s.id === sessionId);
     if (session) {
       const lastTurn = nextTurns[nextTurns.length - 1];
       session.last_message_at = lastTurn?.createdAt ?? session.created_at;
       session.message_count = nextTurns.length;
     }
-    await this.writeIndex(projectId, index);
+    await this.writeIndex(rootNetworkId, index);
   }
 
   async updateCardResponse(
     sessionId: string,
-    projectId: string,
+    rootNetworkId: string,
     toolCallId: string,
     response: unknown,
   ): Promise<boolean> {
-    const file = await this.readSessionFile(projectId, sessionId) ?? createEmptySessionFile();
+    const file = await this.readSessionFile(rootNetworkId, sessionId) ?? createEmptySessionFile();
     let updated = false;
 
     for (const turn of file.transcript.turns) {
@@ -453,7 +453,7 @@ export class SessionStore {
       return false;
     }
 
-    await this.writeSessionFile(projectId, sessionId, file);
+    await this.writeSessionFile(rootNetworkId, sessionId, file);
     return true;
   }
 
@@ -463,39 +463,39 @@ export class SessionStore {
     response: unknown,
   ): Promise<boolean> {
     const session = await this.getSessionById(sessionId);
-    if (!session?.projectId) {
+    if (!session?.rootNetworkId) {
       return false;
     }
 
-    return this.updateCardResponse(sessionId, session.projectId, toolCallId, response);
+    return this.updateCardResponse(sessionId, session.rootNetworkId, toolCallId, response);
   }
 
-  async appendMessage(sessionId: string, projectId: string, message: NarreMessage): Promise<void> {
-    await this.appendTurn(sessionId, projectId, legacyMessageToTurn(message));
+  async appendMessage(sessionId: string, rootNetworkId: string, message: NarreMessage): Promise<void> {
+    await this.appendTurn(sessionId, rootNetworkId, legacyMessageToTurn(message));
   }
 
-  async updateSessionTitle(sessionId: string, projectId: string, title: string): Promise<NarreSession | null> {
-    const index = await this.readIndex(projectId);
+  async updateSessionTitle(sessionId: string, rootNetworkId: string, title: string): Promise<NarreSession | null> {
+    const index = await this.readIndex(rootNetworkId);
     const session = index.sessions.find((s) => s.id === sessionId);
     if (session) {
       session.title = title;
-      await this.writeIndex(projectId, index);
+      await this.writeIndex(rootNetworkId, index);
       return { ...session };
     }
     return null;
   }
 
-  async deleteSession(sessionId: string, projectId: string): Promise<boolean> {
-    const index = await this.readIndex(projectId);
+  async deleteSession(sessionId: string, rootNetworkId: string): Promise<boolean> {
+    const index = await this.readIndex(rootNetworkId);
     const idx = index.sessions.findIndex((s) => s.id === sessionId);
     if (idx === -1) return false;
 
     index.sessions.splice(idx, 1);
-    await this.writeIndex(projectId, index);
+    await this.writeIndex(rootNetworkId, index);
 
     // Remove session file (ignore if missing)
     try {
-      await fs.unlink(this.sessionFilePath(projectId, sessionId));
+      await fs.unlink(this.sessionFilePath(rootNetworkId, sessionId));
     } catch {
       // file may not exist
     }
@@ -503,9 +503,9 @@ export class SessionStore {
   }
 
   async deleteSessionById(sessionId: string): Promise<boolean> {
-    const projectIds = await this.listProjectIds();
-    for (const projectId of projectIds) {
-      const deleted = await this.deleteSession(sessionId, projectId);
+    const rootNetworkIds = await this.listRootNetworkIds();
+    for (const rootNetworkId of rootNetworkIds) {
+      const deleted = await this.deleteSession(sessionId, rootNetworkId);
       if (deleted) {
         return true;
       }

@@ -20,7 +20,7 @@ import {
   DEFAULT_NARRE_BEHAVIOR_SETTINGS,
   type SystemPromptParams,
 } from '../system-prompt.js';
-import { buildProjectPromptMetadata } from '../project-prompt-metadata.js';
+import { buildWorldPromptMetadata } from '../world-prompt-metadata.js';
 import { parseSkillInvocations } from '../skill-invocation-router.js';
 import { SessionStore } from '../session-store.js';
 import type { NarreMcpServerConfig, NarreProviderAdapter } from './provider-adapter.js';
@@ -39,7 +39,7 @@ import { buildNarreSupervisorSessionId } from '../supervisor/supervisor-registry
 export interface NarreRuntimeChatRequest {
   traceId?: string;
   sessionId?: string;
-  projectId: string;
+  rootNetworkId: string;
   message: string;
   mentions?: NarreMention[];
   activeAgent?: AgentDefinition;
@@ -62,11 +62,11 @@ export interface NarreRuntimeConfig {
   sessionStore: SessionStore;
   provider: NarreProviderAdapter;
   resolveMcpServerPath: () => string | null;
-  resolvePromptMetadata?: (projectId: string) => Promise<SystemPromptParams>;
-  resolveProjectRootDir?: (projectId: string) => Promise<string | null>;
+  resolvePromptMetadata?: (rootNetworkId: string) => Promise<SystemPromptParams>;
+  resolveWorldRootDir?: (rootNetworkId: string) => Promise<string | null>;
   sharedUserDataRootDir?: string | null;
   globalUserAgentId?: string | null;
-  projectUserAgentId?: string | null;
+  worldUserAgentId?: string | null;
   supervisor?: SupervisorRegistry;
   behaviorSettings?: NarreBehaviorSettings;
 }
@@ -82,14 +82,14 @@ export class NarreRuntime {
     return await this.config.provider.steer?.(sessionId, message) ?? false;
   }
 
-  async listSkills(projectId: string): Promise<SkillDefinition[]> {
-    const projectRootDir = this.config.resolveProjectRootDir
-      ? await this.config.resolveProjectRootDir(projectId)
-      : (await (this.config.resolvePromptMetadata ?? buildProjectPromptMetadata)(projectId)).projectRootDir ?? null;
+  async listSkills(rootNetworkId: string): Promise<SkillDefinition[]> {
+    const worldRootDir = this.config.resolveWorldRootDir
+      ? await this.config.resolveWorldRootDir(rootNetworkId)
+      : (await (this.config.resolvePromptMetadata ?? buildWorldPromptMetadata)(rootNetworkId)).worldRootDir ?? null;
     const availableSkills = await loadAvailableSkills({
-      projectRootDir,
+      worldRootDir,
       sharedUserDataRootDir: this.config.sharedUserDataRootDir ?? null,
-      projectAgentId: this.config.projectUserAgentId ?? null,
+      worldAgentId: this.config.worldUserAgentId ?? null,
       globalAgentId: this.config.globalUserAgentId ?? null,
     });
 
@@ -107,36 +107,36 @@ export class NarreRuntime {
 
     let activeSessionId = request.sessionId;
     if (!activeSessionId) {
-      const session = await this.config.sessionStore.createSession(request.projectId, request.message.slice(0, 60));
+      const session = await this.config.sessionStore.createSession(request.rootNetworkId, request.message.slice(0, 60));
       activeSessionId = session.id;
     }
     if (!activeSessionId) {
       throw new Error('Failed to resolve Narre session id');
     }
     const resolvedSessionId = activeSessionId;
-    const sessionData = await this.config.sessionStore.getSession(resolvedSessionId, request.projectId);
+    const sessionData = await this.config.sessionStore.getSession(resolvedSessionId, request.rootNetworkId);
     const historyTurns = sessionData?.transcript?.turns ?? [];
 
-    const metadata = await (this.config.resolvePromptMetadata ?? buildProjectPromptMetadata)(request.projectId);
+    const metadata = await (this.config.resolvePromptMetadata ?? buildWorldPromptMetadata)(request.rootNetworkId);
     const behaviorSettings = this.config.behaviorSettings ?? DEFAULT_NARRE_BEHAVIOR_SETTINGS;
     const loadedSkills = await loadAvailableSkills({
-      projectRootDir: metadata.projectRootDir ?? null,
+      worldRootDir: metadata.worldRootDir ?? null,
       sharedUserDataRootDir: this.config.sharedUserDataRootDir ?? null,
-      projectAgentId: this.config.projectUserAgentId ?? null,
+      worldAgentId: this.config.worldUserAgentId ?? null,
       globalAgentId: this.config.globalUserAgentId ?? null,
     });
     const availableSkills = filterSkillsForAgent(loadedSkills, request.activeAgent);
     const userAgentPromptDefinitions = await loadUserAgentPromptDefinitions({
-      projectRootDir: metadata.projectRootDir ?? null,
+      worldRootDir: metadata.worldRootDir ?? null,
       sharedUserDataRootDir: this.config.sharedUserDataRootDir ?? null,
-      projectAgentId: this.config.projectUserAgentId ?? null,
+      worldAgentId: this.config.worldUserAgentId ?? null,
       globalAgentId: this.config.globalUserAgentId ?? null,
     });
     const parsedSkillInvocations = parseSkillInvocations(request.message, availableSkills);
     const skillContext: NarreSkillContext = {
       params: metadata,
       behavior: behaviorSettings,
-      projectId: request.projectId,
+      rootNetworkId: request.rootNetworkId,
       historyTurns,
     };
     const selectedSkills = resolveSelectedSkills(availableSkills, parsedSkillInvocations, request.skillIds);
@@ -163,7 +163,7 @@ export class NarreRuntime {
     const supervisorSessionId = buildNarreSupervisorSessionId(resolvedSessionId);
     this.config.supervisor?.registerNarreSession({
       narreSessionId: resolvedSessionId,
-      projectId: request.projectId,
+      rootNetworkId: request.rootNetworkId,
       agent: request.activeAgent,
       surfaceId: request.activeAgent ? `narre-agent:${request.activeAgent.id}` : undefined,
       title: sessionData?.title ?? request.message.slice(0, 60),
@@ -184,7 +184,7 @@ export class NarreRuntime {
     const processedMessage = this.buildPromptMessage(request.message, request.mentions);
 
     const userTurn = buildUserTurn(request.message, request.mentions, parsedSkillInvocations.map((parsed) => parsed.invocation), normalizedSkillArgs);
-    await this.config.sessionStore.appendTurn(resolvedSessionId, request.projectId, userTurn);
+    await this.config.sessionStore.appendTurn(resolvedSessionId, request.rootNetworkId, userTurn);
 
     const mcpServerPath = this.config.resolveMcpServerPath();
     if (!mcpServerPath) {
@@ -200,14 +200,14 @@ export class NarreRuntime {
     const isResume = historyTurns.length > 1;
     const mcpServerConfigs = this.buildMcpServerConfigs(
       mcpServerPath,
-      request.projectId,
+      request.rootNetworkId,
       selectedSkills,
       skillContext,
       runtimeProfile,
     );
     console.log(
       `[narre:runtime] trace=${traceId} stage=run.start session=${resolvedSessionId} ` +
-      `project=${request.projectId} resume=${isResume ? 'yes' : 'no'} mentions=${request.mentions?.length ?? 0}`,
+      `world=${request.rootNetworkId} resume=${isResume ? 'yes' : 'no'} mentions=${request.mentions?.length ?? 0}`,
     );
     for (const config of mcpServerConfigs) {
       console.log(
@@ -242,7 +242,7 @@ export class NarreRuntime {
 
       const snapshot = buildAssistantTurn();
       checkpointPromise = checkpointPromise
-        .then(() => this.config.sessionStore.upsertTurn(resolvedSessionId, request.projectId, snapshot))
+        .then(() => this.config.sessionStore.upsertTurn(resolvedSessionId, request.rootNetworkId, snapshot))
         .catch((error) => {
           console.error('[narre:runtime] failed to checkpoint assistant turn', error);
         });
@@ -340,8 +340,8 @@ export class NarreRuntime {
     try {
       result = await this.config.provider.run({
         traceId,
-        projectId: request.projectId,
-        projectRootDir: metadata.projectRootDir ?? null,
+        rootNetworkId: request.rootNetworkId,
+        worldRootDir: metadata.worldRootDir ?? null,
         systemPrompt,
         userPrompt: processedMessage,
         sessionId: resolvedSessionId,
@@ -393,7 +393,7 @@ export class NarreRuntime {
       await checkpointPromise;
 
       if (assistantBlocks.length === 0) {
-        await this.config.sessionStore.removeTurn(resolvedSessionId, request.projectId, userTurn.id);
+        await this.config.sessionStore.removeTurn(resolvedSessionId, request.rootNetworkId, userTurn.id);
         this.config.supervisor?.updateSessionStatus(supervisorSessionId, 'idle', {
           eventType: 'session_completed',
           metadata: { aborted: 'true' },
@@ -402,7 +402,7 @@ export class NarreRuntime {
       }
 
       assistantTurnCompletedAt = new Date().toISOString();
-      await this.config.sessionStore.upsertTurn(resolvedSessionId, request.projectId, buildAssistantTurn());
+      await this.config.sessionStore.upsertTurn(resolvedSessionId, request.rootNetworkId, buildAssistantTurn());
       this.config.supervisor?.updateSessionStatus(supervisorSessionId, 'idle', {
         eventType: 'session_completed',
         metadata: { aborted: 'true' },
@@ -412,7 +412,7 @@ export class NarreRuntime {
 
     if (isAborted()) {
       if (assistantBlocks.length === 0) {
-        await this.config.sessionStore.removeTurn(resolvedSessionId, request.projectId, userTurn.id);
+        await this.config.sessionStore.removeTurn(resolvedSessionId, request.rootNetworkId, userTurn.id);
         this.config.supervisor?.updateSessionStatus(supervisorSessionId, 'idle', {
           eventType: 'session_completed',
           metadata: { aborted: 'true' },
@@ -433,7 +433,7 @@ export class NarreRuntime {
 
     if (assistantBlocks.length > 0) {
       assistantTurnCompletedAt = new Date().toISOString();
-      await this.config.sessionStore.upsertTurn(resolvedSessionId, request.projectId, buildAssistantTurn());
+      await this.config.sessionStore.upsertTurn(resolvedSessionId, request.rootNetworkId, buildAssistantTurn());
     }
 
     console.log(
@@ -455,7 +455,7 @@ export class NarreRuntime {
 
   private buildMcpServerConfigs(
     mcpServerPath: string,
-    projectId: string,
+    rootNetworkId: string,
     selectedSkills: readonly NarreSkillDefinition[],
     skillContext: NarreSkillContext,
     runtimeProfile?: AgentRuntimeProfile,
@@ -464,7 +464,7 @@ export class NarreRuntime {
     const mcpCommand = process.execPath;
     const baseEnv: Record<string, string> = {
       NETIOR_SERVICE_URL: process.env.NETIOR_SERVICE_URL ?? `http://127.0.0.1:${process.env.NETIOR_SERVICE_PORT ?? '3201'}`,
-      NETIOR_MCP_DEFAULT_PROJECT_ID: projectId,
+      NETIOR_MCP_DEFAULT_WORLD_ID: rootNetworkId,
     };
 
     if (runningInsideElectronNode) {
@@ -608,8 +608,8 @@ function buildActiveAgentSystemPrompt(
       lines.push(...getSystemAgentInstructionLines(agent.systemAgentType));
     } else {
       lines.push(`user_agent_type=${agent.userAgentType}`);
-      if (agent.userAgentType === 'project') {
-        lines.push(`agent_project_id=${agent.projectId}`);
+      if (agent.userAgentType === 'world') {
+        lines.push(`agent_root_network_id=${agent.rootNetworkId}`);
       }
     }
   } else {
@@ -661,7 +661,7 @@ function getSystemAgentInstructionLines(systemAgentType: string): string[] {
       return [
         '',
         '### System Agent Responsibility',
-        'You are Network Finder. Your primary job is discovery, lookup, comparison, and context gathering inside the current Netior project.',
+        'You are Network Finder. Your primary job is discovery, lookup, comparison, and context gathering inside the current Netior world.',
         'Prefer read-only inspection. Do not create or mutate instances, meanings, relation types, edges, files, or layouts unless a later assignment explicitly grants that responsibility.',
         'Return concise findings and handoff-ready references for the next agent.',
       ];

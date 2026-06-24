@@ -1,5 +1,5 @@
 ﻿import React, { useEffect } from 'react';
-import { useProjectStore } from './stores/project-store';
+import { useWorldStore } from './stores/world-store';
 import { useUIStore } from './stores/ui-store';
 import { useI18n } from './hooks/useI18n';
 import { WorkspaceShell } from './components/workspace/WorkspaceShell';
@@ -39,13 +39,13 @@ export default function App(): JSX.Element {
   const { t } = useI18n();
 
   const {
-    currentProject,
-    loadProjects,
-    missingPathProject,
+    currentWorld,
+    loadWorlds,
+    missingPathWorld,
     resolveMissingPath,
     dismissMissingPath,
-  } = useProjectStore();
-  useNetiorSync(currentProject?.id ?? null);
+  } = useWorldStore();
+  useNetiorSync(currentWorld?.id ?? null);
   const {
     showSettings,
     showShortcutOverlay,
@@ -54,31 +54,31 @@ export default function App(): JSX.Element {
   } = useUIStore();
 
   useEffect(() => {
-    loadProjects().catch(() => {});
-  }, [loadProjects]);
+    loadWorlds().catch(() => {});
+  }, [loadWorlds]);
 
   useEffect(() => {
-    window.electron.app.updateProjectContext({
-      projectId: currentProject?.id ?? null,
-      projectRoot: currentProject?.root_dir ?? null,
+    window.electron.app.updateWorldContext({
+      rootNetworkId: currentWorld?.id ?? null,
+      worldRoot: currentWorld?.root_dir ?? null,
     });
-  }, [currentProject?.id, currentProject?.root_dir]);
+  }, [currentWorld?.id, currentWorld?.root_dir]);
 
   useEffect(() => {
     const cleanup = window.electron.app.onOpenFiles((filePaths) => {
       void (async () => {
         if (filePaths.length === 0) return;
 
-        await loadProjects();
-        const projects = useProjectStore.getState().projects;
+        await loadWorlds();
+        const worlds = useWorldStore.getState().worlds;
 
         for (const filePath of filePaths) {
-          const matchingProject = projects
-            .filter((project) => isPathInsideRoot(filePath, project.root_dir))
+          const matchingWorld = worlds
+            .filter((world) => isPathInsideRoot(filePath, world.root_dir))
             .sort((a, b) => normalizePath(b.root_dir).length - normalizePath(a.root_dir).length)[0];
 
-          if (matchingProject && useProjectStore.getState().currentProject?.id !== matchingProject.id) {
-            await useProjectStore.getState().openProject(matchingProject);
+          if (matchingWorld && useWorldStore.getState().currentWorld?.id !== matchingWorld.id) {
+            await useWorldStore.getState().openWorld(matchingWorld);
           }
 
           await openFileTab({
@@ -90,19 +90,19 @@ export default function App(): JSX.Element {
     });
     window.electron.app.readyForOpenFiles();
     return cleanup;
-  }, [loadProjects]);
+  }, [loadWorlds]);
 
   return (
     <div className="relative h-full bg-surface-chrome text-default">
-      <WorkspaceShell project={currentProject} rightChrome={<TitleBar />} />
+      <WorkspaceShell world={currentWorld} rightChrome={<TitleBar />} />
       <ConfirmDialog
-        open={!!missingPathProject}
+        open={!!missingPathWorld}
         onClose={dismissMissingPath}
         onConfirm={resolveMissingPath}
         variant="primary"
-        title={t('project.missingPathTitle')}
-        message={t('project.missingPathMessage', { path: missingPathProject?.root_dir ?? '' })}
-        confirmLabel={t('project.selectNewPath')}
+        title={t('world.missingPathTitle')}
+        message={t('world.missingPathMessage', { path: missingPathWorld?.root_dir ?? '' })}
+        confirmLabel={t('world.selectNewPath')}
       />
       <SettingsModal open={showSettings} onClose={() => setShowSettings(false)} />
       <ShortcutOverlay open={showShortcutOverlay} onClose={() => setShowShortcutOverlay(false)} />

@@ -19,7 +19,7 @@ interface EvalFrame {
 
 interface SchemaRow {
   id: string;
-  project_id: string;
+  root_network_id: string;
   name: string;
 }
 
@@ -32,7 +32,7 @@ interface FieldRow {
 
 interface InstanceRow {
   id: string;
-  project_id: string;
+  root_network_id: string;
   schema_id: string | null;
   title: string;
 }
@@ -105,9 +105,9 @@ function evaluateExpression(
       if (frame.item === undefined) throw new DslError('invalid_query', 'item is only available inside collection operators');
       return frame.item;
     case 'objects.inNetwork':
-      return getObjectsInNetwork(expression.networkId ?? context.currentNetworkId, context.projectId);
+      return getObjectsInNetwork(expression.networkId ?? context.currentNetworkId, context.rootNetworkId);
     case 'instances':
-      return getInstances(expression.schemaId ?? context.currentSchemaId, expression.projectId ?? context.projectId);
+      return getInstances(expression.schemaId ?? context.currentSchemaId, expression.rootNetworkId ?? context.rootNetworkId);
     case 'field.value':
       return getFieldValue(
         requireObjectRef(evaluateExpression(expression.of, context, frame), 'field.value.of'),
@@ -127,7 +127,7 @@ function evaluateExpression(
         requireObjectRef(evaluateExpression(expression.from, context, frame), 'related.from'),
         expression.meaning,
         expression.networkId ?? context.currentNetworkId,
-        context.projectId,
+        context.rootNetworkId,
       );
     case 'filter':
       return requireObjectRefList(evaluateExpression(expression.scope, context, frame), 'filter.scope')
@@ -180,7 +180,7 @@ function evaluateExpression(
       );
     case 'discover.schemas':
       return discoverSchemas(
-        expression.projectId ?? context.projectId,
+        expression.rootNetworkId ?? context.rootNetworkId,
         expression.requires ?? [],
         expression.optional ?? [],
       );
@@ -198,15 +198,15 @@ function getContextSchema(context: NetiorDslContext): NetiorDslObjectRef {
   return toObjectRef('schema', context.currentSchemaId);
 }
 
-function getInstances(schemaId: string | undefined, projectId: string): NetiorDslObjectRef[] {
+function getInstances(schemaId: string | undefined, rootNetworkId: string): NetiorDslObjectRef[] {
   const db = getDatabase();
   const rows = schemaId
-    ? db.prepare('SELECT id FROM instances WHERE schema_id = ? AND project_id = ? ORDER BY title, id').all(schemaId, projectId) as InstanceRow[]
-    : db.prepare('SELECT id FROM instances WHERE project_id = ? ORDER BY title, id').all(projectId) as InstanceRow[];
+    ? db.prepare('SELECT id FROM instances WHERE schema_id = ? AND root_network_id = ? ORDER BY title, id').all(schemaId, rootNetworkId) as InstanceRow[]
+    : db.prepare('SELECT id FROM instances WHERE root_network_id = ? ORDER BY title, id').all(rootNetworkId) as InstanceRow[];
   return rows.map((row) => toObjectRef('instance', row.id));
 }
 
-function getObjectsInNetwork(networkId: string | undefined, projectId: string): NetiorDslObjectRef[] {
+function getObjectsInNetwork(networkId: string | undefined, rootNetworkId: string): NetiorDslObjectRef[] {
   if (!networkId) throw new DslError('invalid_query', 'objects.inNetwork requires networkId or context.currentNetworkId');
 
   const rows = getDatabase().prepare(`
@@ -215,9 +215,9 @@ function getObjectsInNetwork(networkId: string | undefined, projectId: string): 
       JOIN networks n ON n.id = nn.network_id
       JOIN objects o ON o.id = nn.object_id
      WHERE nn.network_id = ?
-       AND (n.project_id IS NULL OR n.project_id = ?)
+       AND (n.root_network_id IS NULL OR n.root_network_id = ?)
      ORDER BY nn.created_at, nn.rowid
-  `).all(networkId, projectId) as Array<{ object_type: string; ref_id: string; object_id: string }>;
+  `).all(networkId, rootNetworkId) as Array<{ object_type: string; ref_id: string; object_id: string }>;
 
   return rows.map((row) => ({
     objectType: row.object_type as NetiorDslObjectRef['objectType'],
@@ -273,13 +273,13 @@ function getRelatedObjects(
   from: NetiorDslObjectRef,
   meaning: string | undefined,
   networkId: string | undefined,
-  projectId: string,
+  rootNetworkId: string,
 ): NetiorDslObjectRef[] {
   const db = getDatabase();
   const sourceObject = getObjectByRef(from.objectType, from.refId);
   if (!sourceObject) throw new DslError('not_found', 'Source object is not in the object table');
 
-  const meaningIds = meaning ? resolveModelIds(projectId, meaning) : [];
+  const meaningIds = meaning ? resolveModelIds(rootNetworkId, meaning) : [];
   const modelFilter = meaningIds.length > 0 ? `AND e.meaning_id IN (${meaningIds.map(() => '?').join(',')})` : '';
   const networkFilter = networkId ? 'AND e.network_id = ?' : '';
   const params: unknown[] = [sourceObject.id, ...meaningIds];
@@ -351,13 +351,13 @@ function getRelativeObject(
 }
 
 function discoverSchemas(
-  projectId: string,
+  rootNetworkId: string,
   requires: Array<{ fieldMeaning?: string; meaning?: string }>,
   optional: Array<{ fieldMeaning?: string; meaning?: string }>,
 ): NetiorDslObjectRef[] {
   const db = getDatabase();
-  const schemas = db.prepare('SELECT id, project_id, name FROM schemas WHERE project_id = ? ORDER BY name, id')
-    .all(projectId) as SchemaRow[];
+  const schemas = db.prepare('SELECT id, root_network_id, name FROM schemas WHERE root_network_id = ? ORDER BY name, id')
+    .all(rootNetworkId) as SchemaRow[];
   const requirements = [...requires, ...optional];
   const requiredMeanings = requires.map((item) => item.fieldMeaning).filter((item): item is string => !!item);
   const allMeanings = requirements.map((item) => item.fieldMeaning).filter((item): item is string => !!item);
@@ -415,18 +415,18 @@ function getFieldMeanings(fieldId: string): string[] {
   return rows.map((row) => row.meaning_key);
 }
 
-function resolveModelIds(projectId: string, selector: string): string[] {
+function resolveModelIds(rootNetworkId: string, selector: string): string[] {
   const rows = getDatabase().prepare(`
     SELECT id, key, source_ref, meaning_keys
     FROM meanings
-    WHERE project_id = ?
+    WHERE root_network_id = ?
       AND (
         key = ?
         OR source_ref = ?
         OR source_ref = ?
         OR meaning_keys LIKE ?
       )
-  `).all(projectId, selector, selector, `meaning.${selector}`, `%"${selector}"%`) as ModelRow[];
+  `).all(rootNetworkId, selector, selector, `meaning.${selector}`, `%"${selector}"%`) as ModelRow[];
   if (rows.length === 0) throw new DslError('not_found', `Meaning not found: ${selector}`);
   return rows.map((row) => row.id);
 }

@@ -2,7 +2,7 @@
 import { ExternalLink, FileText, Link, Plus, Trash2, Unlink2 } from 'lucide-react';
 import { useNetworkStore } from '../../stores/network-store';
 import { useEditorStore } from '../../stores/editor-store';
-import { useProjectStore } from '../../stores/project-store';
+import { useWorldStore } from '../../stores/world-store';
 import { useI18n } from '../../hooks/useI18n';
 import type { NetworkObjectType } from '@netior/shared/types';
 import type { WorkspaceMode } from '../../stores/ui-store';
@@ -51,8 +51,8 @@ export function NodeContextMenu({
 }: NodeContextMenuProps): JSX.Element {
   const { t } = useI18n();
   const { currentNetwork } = useNetworkStore();
-  const openProject = useProjectStore((state) => state.openProject);
-  const deleteProject = useProjectStore((state) => state.deleteProject);
+  const openWorld = useWorldStore((state) => state.openWorld);
+  const deleteWorld = useWorldStore((state) => state.deleteWorld);
 
   const openObjectEditor = useCallback(() => {
     if (!objectType || !objectTargetId) return;
@@ -62,13 +62,13 @@ export function NodeContextMenu({
         type: 'network',
         targetId: objectTargetId,
         title: objectTitle ?? t('network.name' as never),
-        projectId: currentNetwork?.project_id ?? undefined,
+        rootNetworkId: currentNetwork?.root_network_id ?? undefined,
       });
-    } else if (objectType === 'project') {
+    } else if (objectType === 'world') {
       useEditorStore.getState().openTab({
-        type: 'project',
+        type: 'world',
         targetId: objectTargetId,
-        title: objectTitle ?? t('project.name'),
+        title: objectTitle ?? t('world.name'),
       });
     } else if (objectType === 'instance') {
       useEditorStore.getState().openTab({
@@ -89,7 +89,7 @@ export function NodeContextMenu({
         type: 'schema',
         targetId: objectTargetId,
         title: objectTitle ?? t('schema.title'),
-        projectId: currentNetwork?.project_id ?? undefined,
+        rootNetworkId: currentNetwork?.root_network_id ?? undefined,
       });
     } else if (objectType === 'context') {
       useEditorStore.getState().openTab({
@@ -110,7 +110,7 @@ export function NodeContextMenu({
   const canOpenEditor =
     !!objectType &&
     !!objectTargetId &&
-    ['network', 'project', 'instance', 'schema', 'meaning', 'context', 'file'].includes(objectType);
+    ['network', 'world', 'instance', 'schema', 'meaning', 'context', 'file'].includes(objectType);
   const canDeleteObject =
     !!objectType &&
     !!objectTargetId &&
@@ -121,14 +121,14 @@ export function NodeContextMenu({
     onClose();
   }, [onOpenNetwork, networkId, onClose]);
 
-  const handleOpenProject = useCallback(() => {
-    if (objectType !== 'project' || !objectTargetId) return;
-    const project = useProjectStore.getState().projects.find((item) => item.id === objectTargetId);
-    if (project) {
-      void openProject(project);
+  const handleOpenWorld = useCallback(() => {
+    if (objectType !== 'world' || !objectTargetId) return;
+    const world = useWorldStore.getState().worlds.find((item) => item.id === objectTargetId);
+    if (world) {
+      void openWorld(world);
     }
     onClose();
-  }, [objectTargetId, objectType, onClose, openProject]);
+  }, [objectTargetId, objectType, onClose, openWorld]);
 
   const handleCreateNetwork = useCallback(() => {
     if (instanceId) onCreateNetwork?.(instanceId);
@@ -146,14 +146,14 @@ export function NodeContextMenu({
   }, [onAddConnection, nodeId, onClose]);
 
   const handleExclude = useCallback(async () => {
-    const isUniverseProjectNode =
-      objectType === 'project'
+    const isUniverseWorldNode =
+      objectType === 'world'
       && !!objectTargetId
       && currentNetwork?.kind === 'universe'
       && currentNetwork.parent_network_id === null;
 
-    if (isUniverseProjectNode) {
-      await deleteProject(objectTargetId);
+    if (isUniverseWorldNode) {
+      await deleteWorld(objectTargetId);
       if (currentNetwork) {
         await useNetworkStore.getState().openNetwork(currentNetwork.id);
       }
@@ -163,7 +163,7 @@ export function NodeContextMenu({
 
     onExcludeNode?.(nodeId);
     onClose();
-  }, [currentNetwork?.kind, currentNetwork?.parent_network_id, deleteProject, nodeId, objectTargetId, objectType, onClose, onExcludeNode]);
+  }, [currentNetwork?.kind, currentNetwork?.parent_network_id, deleteWorld, nodeId, objectTargetId, objectType, onClose, onExcludeNode]);
 
   const handleDeleteObject = useCallback(() => {
     if (!canDeleteObject || !objectType || !objectTargetId) return;
@@ -184,10 +184,10 @@ export function NodeContextMenu({
         </button>
       )}
 
-      {objectType === 'project' && objectTargetId && (
+      {objectType === 'world' && objectTargetId && (
         <button
           className="flex w-full items-center gap-2 px-3 py-1 text-xs text-default hover:bg-state-hover cursor-pointer"
-          onClick={handleOpenProject}
+          onClick={handleOpenWorld}
         >
           <ExternalLink size={14} />
           {t('common.open')}

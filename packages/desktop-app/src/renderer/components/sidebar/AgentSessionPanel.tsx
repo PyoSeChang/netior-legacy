@@ -9,7 +9,7 @@ import type {
 import { useI18n } from '../../hooks/useI18n';
 import { narreService } from '../../services/narre-service';
 import { useEditorStore } from '../../stores/editor-store';
-import { updateNarreProjectUiState } from '../../lib/narre-ui-state';
+import { updateNarreWorldUiState } from '../../lib/narre-ui-state';
 import { Badge } from '../ui/Badge';
 import { IconButton } from '../ui/IconButton';
 import { Spinner } from '../ui/Spinner';
@@ -17,10 +17,10 @@ import { Spinner } from '../ui/Spinner';
 const POLL_INTERVAL_MS = 5_000;
 
 interface AgentSessionPanelProps {
-  projectId: string;
+  rootNetworkId: string;
 }
 
-export function AgentSessionPanel({ projectId }: AgentSessionPanelProps): JSX.Element {
+export function AgentSessionPanel({ rootNetworkId }: AgentSessionPanelProps): JSX.Element {
   const { t, locale } = useI18n();
   const tk = useCallback(
     (key: string, params?: Record<string, string | number>) =>
@@ -65,26 +65,26 @@ export function AgentSessionPanel({ projectId }: AgentSessionPanelProps): JSX.El
     };
   }, [loadSessions]);
 
-  const projectSessions = useMemo(
+  const worldSessions = useMemo(
     () => sessions
-      .filter((session) => session.projectId === projectId)
+      .filter((session) => session.rootNetworkId === rootNetworkId)
       .sort((left, right) => Date.parse(right.updatedAt) - Date.parse(left.updatedAt)),
-    [projectId, sessions],
+    [rootNetworkId, sessions],
   );
-  const projectEvents = useMemo(
+  const worldEvents = useMemo(
     () => events
-      .filter((event) => event.snapshot.projectId === projectId)
+      .filter((event) => event.snapshot.rootNetworkId === rootNetworkId)
       .sort((left, right) => Date.parse(right.createdAt) - Date.parse(left.createdAt))
       .slice(0, 8),
-    [events, projectId],
+    [events, rootNetworkId],
   );
 
-  const workingCount = projectSessions.filter((session) => session.status === 'working').length;
-  const issueCount = projectSessions.filter((session) => session.status === 'blocked' || session.status === 'error').length;
+  const workingCount = worldSessions.filter((session) => session.status === 'working').length;
+  const issueCount = worldSessions.filter((session) => session.status === 'blocked' || session.status === 'error').length;
 
   const handleSessionOpen = useCallback(async (session: SupervisorAgentSessionSnapshot): Promise<void> => {
     const editorStore = useEditorStore.getState();
-    const resolvedProjectId = session.projectId ?? projectId;
+    const resolvedRootNetworkId = session.rootNetworkId ?? rootNetworkId;
 
     if (session.surface.kind === 'terminal') {
       const tabId = `terminal:${session.surface.id}`;
@@ -97,16 +97,16 @@ export function AgentSessionPanel({ projectId }: AgentSessionPanelProps): JSX.El
         type: 'terminal',
         targetId: session.surface.id,
         title: session.title?.trim() || session.agent.name,
-        projectId: resolvedProjectId,
+        rootNetworkId: resolvedRootNetworkId,
       });
       return;
     }
 
-    if (!resolvedProjectId) {
+    if (!resolvedRootNetworkId) {
       return;
     }
 
-    updateNarreProjectUiState(resolvedProjectId, (prev) => ({
+    updateNarreWorldUiState(resolvedRootNetworkId, (prev) => ({
       ...prev,
       view: session.externalSessionId ? 'chat' : prev.view,
       activeSessionId: session.externalSessionId ?? prev.activeSessionId,
@@ -114,11 +114,11 @@ export function AgentSessionPanel({ projectId }: AgentSessionPanelProps): JSX.El
 
     await editorStore.openTab({
       type: 'narre',
-      targetId: resolvedProjectId,
+      targetId: resolvedRootNetworkId,
       title: t('narre.title'),
-      projectId: resolvedProjectId,
+      rootNetworkId: resolvedRootNetworkId,
     });
-  }, [projectId, t]);
+  }, [rootNetworkId, t]);
 
   return (
     <section className="flex min-h-full flex-col gap-2">
@@ -135,18 +135,18 @@ export function AgentSessionPanel({ projectId }: AgentSessionPanelProps): JSX.El
       <div className="flex flex-wrap items-center gap-2 px-2">
         <Badge variant={workingCount > 0 ? 'accent' : 'default'}>{tk('agentSession.workingCount', { count: workingCount })}</Badge>
         <Badge variant={issueCount > 0 ? 'warning' : 'default'}>{tk('agentSession.issueCount', { count: issueCount })}</Badge>
-        <Badge variant="default">{tk('agentSession.totalCount', { count: projectSessions.length })}</Badge>
+        <Badge variant="default">{tk('agentSession.totalCount', { count: worldSessions.length })}</Badge>
       </div>
 
       {loading ? (
         <div className="flex justify-center py-6">
           <Spinner size="sm" />
         </div>
-      ) : projectSessions.length === 0 ? (
+      ) : worldSessions.length === 0 ? (
         <div className="px-3 py-4 text-xs text-muted">{tk('agentSession.noActiveSessions')}</div>
       ) : (
         <div className="flex flex-col gap-2 px-2 pb-2">
-          {projectSessions.map((session) => (
+          {worldSessions.map((session) => (
             <button
               key={session.id}
               type="button"
@@ -195,13 +195,13 @@ export function AgentSessionPanel({ projectId }: AgentSessionPanelProps): JSX.El
         <div className="mb-2 text-[11px] font-semibold uppercase text-muted">
           {tk('agentSession.recentActivity')}
         </div>
-        {projectEvents.length === 0 ? (
+        {worldEvents.length === 0 ? (
           <div className="rounded border border-subtle bg-surface-card px-3 py-3 text-xs text-muted">
             {tk('agentSession.noRecentEvents')}
           </div>
         ) : (
           <div className="flex flex-col gap-2 pb-2">
-            {projectEvents.map((event) => (
+            {worldEvents.map((event) => (
               <button
                 key={`${event.seq}:${event.sessionId}`}
                 type="button"

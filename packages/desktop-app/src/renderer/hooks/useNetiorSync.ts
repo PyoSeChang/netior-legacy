@@ -6,23 +6,23 @@ import { useMeaningStore } from '../stores/meaning-store';
 import { useNetworkStore } from '../stores/network-store';
 import { useContextStore } from '../stores/context-store';
 
-export function useNetiorSync(projectId: string | null): void {
+export function useNetiorSync(rootNetworkId: string | null): void {
   useEffect(() => {
-    if (!projectId) return;
+    if (!rootNetworkId) return;
 
     const cleanup = window.electron.mocSync?.onChangeEvent((event: unknown) => {
       const change = event as NetiorChangeEvent;
       switch (change.type) {
         case 'meanings':
-          useSchemaStore.getState().loadByProject(projectId);
-          useMeaningStore.getState().loadByProject(projectId);
+          useSchemaStore.getState().loadByWorld(rootNetworkId);
+          useMeaningStore.getState().loadByWorld(rootNetworkId);
           break;
         case 'instances':
-          useInstanceStore.getState().loadByProject(projectId);
+          useInstanceStore.getState().loadByWorld(rootNetworkId);
           break;
         case 'networks':
-          useNetworkStore.getState().loadNetworks(projectId);
-          useNetworkStore.getState().loadNetworkTree(projectId);
+          useNetworkStore.getState().loadNetworks(rootNetworkId);
+          useNetworkStore.getState().loadNetworkTree(rootNetworkId);
           {
             const currentNetwork = useNetworkStore.getState().currentNetwork;
             if (currentNetwork) {
@@ -51,5 +51,5 @@ export function useNetiorSync(projectId: string | null): void {
     });
 
     return cleanup;
-  }, [projectId]);
+  }, [rootNetworkId]);
 }

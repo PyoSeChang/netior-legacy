@@ -38,7 +38,7 @@ export function applyRunSpecToOptions(options: EvalOptions, runSpec: RunSpec | n
     ...(options.preserve !== undefined || runSpec.preserve == null ? {} : { preserve: runSpec.preserve }),
     ...(options.devDb !== undefined || runSpec.dev_db == null ? {} : { devDb: runSpec.dev_db }),
     ...(options.dbPath ? {} : isTruthyString(runSpec.db_path) ? { dbPath: runSpec.db_path.trim() } : {}),
-    ...(options.projectId ? {} : isTruthyString(runSpec.project_id) ? { projectId: runSpec.project_id.trim() } : {}),
+    ...(options.rootNetworkId ? {} : isTruthyString(runSpec.root_network_id) ? { rootNetworkId: runSpec.root_network_id.trim() } : {}),
   };
 }
 

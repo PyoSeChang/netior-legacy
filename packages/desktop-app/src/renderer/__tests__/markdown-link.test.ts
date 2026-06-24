@@ -10,16 +10,16 @@ describe('markdown-link', () => {
   });
 
   it('does not treat Windows absolute paths as URL schemes', () => {
-    expect(parseMarkdownLinkTarget('C:/workspace/project/docs/readme.md')).toEqual({
+    expect(parseMarkdownLinkTarget('C:/workspace/world/docs/readme.md')).toEqual({
       kind: 'file',
-      path: 'C:/workspace/project/docs/readme.md',
+      path: 'C:/workspace/world/docs/readme.md',
     });
   });
 
   it('converts file URLs into editor file paths', () => {
-    expect(parseMarkdownLinkTarget('file:///C:/workspace/project/My%20File.md')).toEqual({
+    expect(parseMarkdownLinkTarget('file:///C:/workspace/world/My%20File.md')).toEqual({
       kind: 'file',
-      path: 'C:/workspace/project/My File.md',
+      path: 'C:/workspace/world/My File.md',
     });
   });
 
@@ -36,7 +36,7 @@ describe('markdown-link', () => {
   });
 
   it('resolves base directories from markdown file paths', () => {
-    expect(getMarkdownLinkBaseDir('C:/workspace/project/docs/readme.md')).toBe('C:/workspace/project/docs');
-    expect(getMarkdownLinkBaseDir('/home/me/project/readme.md')).toBe('/home/me/project');
+    expect(getMarkdownLinkBaseDir('C:/workspace/world/docs/readme.md')).toBe('C:/workspace/world/docs');
+    expect(getMarkdownLinkBaseDir('/home/me/world/readme.md')).toBe('/home/me/world');
   });
 });

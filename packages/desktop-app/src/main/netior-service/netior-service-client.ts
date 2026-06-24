@@ -59,9 +59,9 @@ import type {
   RelationshipUpdate,
   EdgeVisual,
   ObjectRecord,
-  Project,
-  ProjectCreate,
-  ProjectUpdate,
+  World,
+  WorldCreate,
+  WorldUpdate,
   Meaning,
   MeaningCreate,
   MeaningUpdate,
@@ -89,43 +89,43 @@ export async function evaluateRemoteDsl(data: NetiorDslEvaluateRequest): Promise
   });
 }
 
-export async function listRemoteProjects(): Promise<Project[]> {
-  return requestJson<Project[]>('/projects');
+export async function listRemoteWorlds(): Promise<World[]> {
+  return requestJson<World[]>('/worlds');
 }
 
-export async function createRemoteProject(data: ProjectCreate): Promise<Project> {
-  return requestJson<Project>('/projects', {
+export async function createRemoteWorld(data: WorldCreate): Promise<World> {
+  return requestJson<World>('/worlds', {
     method: 'POST',
     body: JSON.stringify(data),
   });
 }
 
-export async function updateRemoteProject(id: string, data: ProjectUpdate): Promise<Project | null> {
-  return requestJson<Project | null>(`/projects/${encodeURIComponent(id)}`, {
+export async function updateRemoteWorld(id: string, data: WorldUpdate): Promise<World | null> {
+  return requestJson<World | null>(`/worlds/${encodeURIComponent(id)}`, {
     method: 'PATCH',
     body: JSON.stringify(data),
   });
 }
 
-export async function getRemoteProject(id: string): Promise<Project | null> {
-  return requestJson<Project | null>(`/projects/${encodeURIComponent(id)}`);
+export async function getRemoteWorld(id: string): Promise<World | null> {
+  return requestJson<World | null>(`/worlds/${encodeURIComponent(id)}`);
 }
 
-export async function updateRemoteProjectRootDir(id: string, rootDir: string): Promise<Project | null> {
-  return requestJson<Project | null>(`/projects/${encodeURIComponent(id)}/root-dir`, {
+export async function updateRemoteWorldRootDir(id: string, rootDir: string): Promise<World | null> {
+  return requestJson<World | null>(`/worlds/${encodeURIComponent(id)}/root-dir`, {
     method: 'PATCH',
     body: JSON.stringify({ rootDir }),
   });
 }
 
-export async function deleteRemoteProject(id: string): Promise<boolean> {
-  return requestJson<boolean>(`/projects/${encodeURIComponent(id)}`, {
+export async function deleteRemoteWorld(id: string): Promise<boolean> {
+  return requestJson<boolean>(`/worlds/${encodeURIComponent(id)}`, {
     method: 'DELETE',
   });
 }
 
-export async function listRemoteInstancesByProject(projectId: string): Promise<Instance[]> {
-  return requestJson<Instance[]>(`/instances${toQueryString({ projectId })}`);
+export async function listRemoteInstancesByWorld(rootNetworkId: string): Promise<Instance[]> {
+  return requestJson<Instance[]>(`/instances${toQueryString({ rootNetworkId })}`);
 }
 
 export async function createRemoteInstance(data: InstanceCreate): Promise<Instance> {
@@ -148,8 +148,8 @@ export async function deleteRemoteInstance(id: string): Promise<boolean> {
   });
 }
 
-export async function searchRemoteInstances(projectId: string, query: string): Promise<Instance[]> {
-  return requestJson<Instance[]>(`/instances/search${toQueryString({ projectId, query })}`);
+export async function searchRemoteInstances(rootNetworkId: string, query: string): Promise<Instance[]> {
+  return requestJson<Instance[]>(`/instances/search${toQueryString({ rootNetworkId, query })}`);
 }
 
 export async function syncRemoteInstanceToAgent(instanceId: string): Promise<Instance | null> {
@@ -214,8 +214,8 @@ export async function removeRemoteContextMember(id: string): Promise<boolean> {
   });
 }
 
-export async function listRemoteFilesByProject(projectId: string): Promise<FileEntity[]> {
-  return requestJson<FileEntity[]>(`/files${toQueryString({ projectId })}`);
+export async function listRemoteFilesByWorld(rootNetworkId: string): Promise<FileEntity[]> {
+  return requestJson<FileEntity[]>(`/files${toQueryString({ rootNetworkId })}`);
 }
 
 export async function createRemoteFile(data: FileEntityCreate): Promise<FileEntity> {
@@ -229,8 +229,8 @@ export async function getRemoteFile(id: string): Promise<FileEntity | null> {
   return requestJson<FileEntity | null>(`/files/${encodeURIComponent(id)}`);
 }
 
-export async function getRemoteFileByPath(projectId: string, path: string): Promise<FileEntity | null> {
-  return requestJson<FileEntity | null>(`/files/by-path${toQueryString({ projectId, path })}`);
+export async function getRemoteFileByPath(rootNetworkId: string, path: string): Promise<FileEntity | null> {
+  return requestJson<FileEntity | null>(`/files/by-path${toQueryString({ rootNetworkId, path })}`);
 }
 
 export async function updateRemoteFile(id: string, data: FileEntityUpdate): Promise<FileEntity | null> {
@@ -246,8 +246,8 @@ export async function deleteRemoteFile(id: string): Promise<boolean> {
   });
 }
 
-export async function listRemoteModules(projectId: string): Promise<Module[]> {
-  return requestJson<Module[]>(`/modules${toQueryString({ projectId })}`);
+export async function listRemoteModules(rootNetworkId: string): Promise<Module[]> {
+  return requestJson<Module[]>(`/modules${toQueryString({ rootNetworkId })}`);
 }
 
 export async function createRemoteModule(data: ModuleCreate): Promise<Module> {
@@ -294,8 +294,8 @@ export async function removeRemoteModuleDirectory(id: string): Promise<boolean> 
   });
 }
 
-export async function listRemoteSchemas(projectId: string): Promise<Schema[]> {
-  return requestJson<Schema[]>(`/schemas${toQueryString({ projectId })}`);
+export async function listRemoteSchemas(rootNetworkId: string): Promise<Schema[]> {
+  return requestJson<Schema[]>(`/schemas${toQueryString({ rootNetworkId })}`);
 }
 
 export async function createRemoteSchema(data: SchemaCreate): Promise<Schema> {
@@ -387,8 +387,8 @@ export async function updateRemoteSchemaMeaningSlotBinding(
   });
 }
 
-export async function listRemoteModels(projectId: string): Promise<Meaning[]> {
-  return requestJson<Meaning[]>(`/meanings${toQueryString({ projectId })}`);
+export async function listRemoteModels(rootNetworkId: string): Promise<Meaning[]> {
+  return requestJson<Meaning[]>(`/meanings${toQueryString({ rootNetworkId })}`);
 }
 
 export async function createRemoteModel(data: MeaningCreate): Promise<Meaning> {
@@ -468,7 +468,7 @@ export async function listRemoteInteractiveViewTemplates(
   query: InteractiveViewTemplateListQuery,
 ): Promise<InteractiveViewTemplate[]> {
   return requestJson<InteractiveViewTemplate[]>(`/interactive-view-templates${toQueryString({
-    projectId: query.projectId,
+    rootNetworkId: query.rootNetworkId,
     schemaId: query.schemaId ?? undefined,
     instanceId: query.instanceId ?? undefined,
   })}`);
@@ -543,9 +543,9 @@ export async function getRemoteObjectByRef(objectType: NetworkObjectType, refId:
   return requestJson<ObjectRecord | null>(`/objects/by-ref${toQueryString({ objectType, refId })}`);
 }
 
-export async function listRemoteNetworks(projectId: string, rootOnly?: boolean): Promise<Network[]> {
+export async function listRemoteNetworks(rootNetworkId: string, rootOnly?: boolean): Promise<Network[]> {
   return requestJson<Network[]>(`/networks${toQueryString({
-    projectId,
+    rootNetworkId,
     rootOnly: rootOnly == null ? undefined : String(rootOnly),
   })}`);
 }
@@ -578,16 +578,16 @@ export async function getRemoteUniverseNetwork(): Promise<Network | null> {
   return requestJson<Network | null>('/networks/universe');
 }
 
-export async function getRemoteProjectOntologyNetwork(projectId: string): Promise<Network | null> {
-  return requestJson<Network | null>(`/networks/ontology${toQueryString({ projectId })}`);
+export async function getRemoteRootNetwork(rootNetworkId: string): Promise<Network | null> {
+  return requestJson<Network | null>(`/networks/root${toQueryString({ rootNetworkId })}`);
 }
 
 export async function getRemoteNetworkAncestors(networkId: string): Promise<NetworkBreadcrumbItem[]> {
   return requestJson<NetworkBreadcrumbItem[]>(`/networks/${encodeURIComponent(networkId)}/ancestors`);
 }
 
-export async function getRemoteNetworkTree(projectId: string): Promise<NetworkTreeNode[]> {
-  return requestJson<NetworkTreeNode[]>(`/networks/tree${toQueryString({ projectId })}`);
+export async function getRemoteNetworkTree(rootNetworkId: string): Promise<NetworkTreeNode[]> {
+  return requestJson<NetworkTreeNode[]>(`/networks/tree${toQueryString({ rootNetworkId })}`);
 }
 
 export async function addRemoteNetworkNode(data: NetworkNodeCreate): Promise<NetworkNode> {
@@ -636,7 +636,7 @@ export async function deleteRemoteEdge(id: string): Promise<boolean> {
 
 export async function listRemoteRelationships(filters: RelationshipListFilters): Promise<Relationship[]> {
   return requestJson<Relationship[]>(`/relationships${toQueryString({
-    projectId: filters.project_id,
+    rootNetworkId: filters.root_network_id,
     sourceObjectId: filters.source_object_id,
     targetObjectId: filters.target_object_id,
     meaningId: filters.meaning_id,

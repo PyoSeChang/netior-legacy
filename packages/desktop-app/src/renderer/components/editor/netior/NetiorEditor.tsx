@@ -36,7 +36,7 @@ type TargetScope = 'instance' | 'content' | 'property' | 'properties' | 'interac
 interface NetiorEditorProps {
   tabId: string;
   content: string;
-  projectId?: string | null;
+  rootNetworkId?: string | null;
   instanceId?: string | null;
   onChange: (content: string) => void;
 }
@@ -55,7 +55,7 @@ interface EditingTokenState {
 }
 
 function isEmbeddableInstance(instance: Instance): boolean {
-  return instance.source_kind === 'project' || instance.source_kind === 'imported';
+  return instance.source_kind === 'world' || instance.source_kind === 'imported';
 }
 
 function isRelationMeaning(meaning: Meaning): boolean {
@@ -112,7 +112,7 @@ function makeLabel(
 export function NetiorEditor({
   tabId,
   content,
-  projectId,
+  rootNetworkId,
   instanceId: _instanceId,
   onChange,
 }: NetiorEditorProps): JSX.Element {
@@ -224,7 +224,7 @@ export function NetiorEditor({
   const semanticExtensions = useMemo(() => {
     const renderInteractiveView = (container: HTMLElement, token: SemanticEditorToken) => {
       const startedAt = performance.now();
-      if (token.target.kind !== 'interactive_view' || !projectId) {
+      if (token.target.kind !== 'interactive_view' || !rootNetworkId) {
         container.textContent = '-';
         return undefined;
       }
@@ -242,7 +242,7 @@ export function NetiorEditor({
         <div className="netior-embed-interactive-view-panel">
           <InteractiveViewPanel
             tabId={tabId}
-            projectId={projectId}
+            rootNetworkId={rootNetworkId}
             schemaId={instance.schema_id}
             instanceId={instance.id}
             fields={fields}
@@ -297,7 +297,7 @@ export function NetiorEditor({
     });
 
     return createExtensions(0);
-  }, [projectId, tabId]);
+  }, [rootNetworkId, tabId]);
   const [fields, setFields] = useState<SchemaField[]>([]);
   const [templates, setTemplates] = useState<InteractiveViewTemplate[]>([]);
   const [query, setQuery] = useState('');
@@ -313,7 +313,7 @@ export function NetiorEditor({
   const pendingTargetSelectionRef = useRef<{ fieldId?: string; fieldIds?: string[]; templateId?: string | null } | null>(null);
   useRenderPerfTrace('NetiorEditor', {
     tabId,
-    projectId: projectId ?? null,
+    rootNetworkId: rootNetworkId ?? null,
     instanceId: _instanceId ?? null,
     contentLength: content.length,
     hasSemanticSyntax: content.includes('::netior-embed') || content.includes('[['),
@@ -405,9 +405,9 @@ export function NetiorEditor({
   }, [loadProperties, propertiesByInstance, referencedTargetIds.interactive, referencedTargetIds.properties]);
 
   useEffect(() => {
-    if (!projectId || (!mode && referencedTargetIds.all.length === 0)) return;
+    if (!rootNetworkId || (!mode && referencedTargetIds.all.length === 0)) return;
     let cancelled = false;
-    void instanceService.getByProject(projectId).then((items) => {
+    void instanceService.getByRootNetwork(rootNetworkId).then((items) => {
       if (cancelled) return;
       setInstances(items);
       if (mode) {
@@ -420,12 +420,12 @@ export function NetiorEditor({
       }
     });
     return () => { cancelled = true; };
-  }, [mode, projectId, referencedTargetIds.all]);
+  }, [mode, rootNetworkId, referencedTargetIds.all]);
 
   useEffect(() => {
-    if (!projectId || !mode) return;
+    if (!rootNetworkId || !mode) return;
     let cancelled = false;
-    void meaningService.list(projectId).then((items) => {
+    void meaningService.list(rootNetworkId).then((items) => {
       if (cancelled) return;
       const relationMeanings = items.filter(isRelationMeaning);
       setMeanings(relationMeanings);
@@ -434,7 +434,7 @@ export function NetiorEditor({
       ));
     });
     return () => { cancelled = true; };
-  }, [mode, projectId]);
+  }, [mode, rootNetworkId]);
 
   const selectedInstance = useMemo(
     () => instances.find((instance) => instance.id === selectedInstanceId),
@@ -467,12 +467,12 @@ export function NetiorEditor({
     setSelectedFieldId('');
     setSelectedPropertyFieldIds([]);
     setSelectedTemplateId('');
-    if (!selectedInstance?.schema_id || !projectId || !mode) return;
+    if (!selectedInstance?.schema_id || !rootNetworkId || !mode) return;
     let cancelled = false;
     void Promise.all([
       schemaService.field.list(selectedInstance.schema_id),
       interactiveViewTemplateService.list({
-        projectId,
+        rootNetworkId,
         schemaId: selectedInstance.schema_id,
         instanceId: selectedInstance.id,
       }),
@@ -492,7 +492,7 @@ export function NetiorEditor({
       pendingTargetSelectionRef.current = null;
     });
     return () => { cancelled = true; };
-  }, [mode, projectId, selectedInstance?.id, selectedInstance?.schema_id]);
+  }, [mode, rootNetworkId, selectedInstance?.id, selectedInstance?.schema_id]);
 
   const filteredInstances = useMemo(() => {
     const normalized = query.trim().toLowerCase();

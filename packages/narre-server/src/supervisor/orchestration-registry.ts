@@ -64,7 +64,7 @@ export class OrchestrationRegistry {
     const now = new Date().toISOString();
     const conversation: Conversation = {
       id: `conv-${randomUUID()}`,
-      projectId: input.projectId,
+      rootNetworkId: input.rootNetworkId,
       mode: input.mode ?? 'direct',
       title: input.title?.trim() || 'New conversation',
       participantAgentKeys: [...new Set(input.participantAgentKeys ?? [])],
@@ -79,9 +79,9 @@ export class OrchestrationRegistry {
     return cloneConversation(conversation);
   }
 
-  listConversations(projectId?: string | null): Conversation[] {
+  listConversations(rootNetworkId?: string | null): Conversation[] {
     return Array.from(this.conversations.values())
-      .filter((conversation) => !projectId || conversation.projectId === projectId)
+      .filter((conversation) => !rootNetworkId || conversation.rootNetworkId === rootNetworkId)
       .sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt))
       .map(cloneConversation);
   }
@@ -96,7 +96,7 @@ export class OrchestrationRegistry {
     const conversation = input.conversationId
       ? this.requireConversation(input.conversationId)
       : this.createConversation({
-        projectId: input.projectId,
+        rootNetworkId: input.rootNetworkId,
         mode: input.mode ?? 'orchestration',
         title: input.userRequest.slice(0, 80) || 'Orchestration run',
         participantAgentKeys: input.participantAgentKeys ?? [],
@@ -105,7 +105,7 @@ export class OrchestrationRegistry {
     const run: OrchestrationRun = {
       id: `run-${randomUUID()}`,
       conversationId,
-      projectId: input.projectId,
+      rootNetworkId: input.rootNetworkId,
       mode: input.mode ?? conversation?.mode ?? 'orchestration',
       userRequest: input.userRequest,
       status: 'planning',
@@ -138,9 +138,9 @@ export class OrchestrationRegistry {
     return this.getRunSnapshot(run.id) as OrchestrationSnapshot;
   }
 
-  listRuns(projectId?: string | null): OrchestrationRun[] {
+  listRuns(rootNetworkId?: string | null): OrchestrationRun[] {
     return Array.from(this.runs.values())
-      .filter((run) => !projectId || run.projectId === projectId)
+      .filter((run) => !rootNetworkId || run.rootNetworkId === rootNetworkId)
       .sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt))
       .map(cloneRun);
   }

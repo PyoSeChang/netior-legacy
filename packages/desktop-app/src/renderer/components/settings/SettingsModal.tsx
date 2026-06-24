@@ -513,7 +513,7 @@ function TerminalPresetPanel({
                 letterSpacing: `${preset.letterSpacing}px`,
               }}
             >
-              <div className="text-xs opacity-70">PS C:\\project&gt;</div>
+              <div className="text-xs opacity-70">PS C:\\world&gt;</div>
               <div className="mt-1 flex items-center gap-2 text-sm">
                 <span className="font-medium">prompt</span>
                 <span className="opacity-70">sample text</span>
@@ -771,7 +771,7 @@ function TerminalAppearancePanel({
               letterSpacing: `${terminalAppearance.letterSpacing}px`,
             }}
           >
-            <div className="text-xs opacity-70">PS C:\\project&gt;</div>
+            <div className="text-xs opacity-70">PS C:\\world&gt;</div>
             <div className="mt-1 flex items-center gap-2">
               <span className="font-medium">prompt</span>
               <span className="opacity-70">{t('settings.terminalFontSample')}</span>
@@ -970,7 +970,7 @@ const DEFAULT_NARRE_BEHAVIOR_SETTINGS: NarreBehaviorSettings = {
 
 const DEFAULT_NARRE_CODEX_SETTINGS: NarreCodexSettings = {
   model: '',
-  useProjectRootAsWorkingDirectory: true,
+  useWorldRootAsWorkingDirectory: true,
   sandboxMode: 'read-only',
   approvalPolicy: 'on-request',
   enableShellTool: false,
@@ -1020,7 +1020,7 @@ function normalizeCodexSettings(value: unknown): NarreCodexSettings {
   const source = value as Record<string, unknown>;
   return {
     model: typeof source.model === 'string' ? source.model : '',
-    useProjectRootAsWorkingDirectory: source.useProjectRootAsWorkingDirectory !== false,
+    useWorldRootAsWorkingDirectory: source.useWorldRootAsWorkingDirectory !== false,
     sandboxMode: source.sandboxMode === 'workspace-write' || source.sandboxMode === 'danger-full-access'
       ? source.sandboxMode
       : 'read-only',
@@ -1332,16 +1332,16 @@ function NarreSettingsPanel({
 
           <div className="mb-4 flex items-start justify-between gap-4">
             <div>
-              <div className="text-sm font-medium text-default">{t('settings.narreCodexUseProjectRoot' as never)}</div>
-              <div className="mt-1 text-xs text-muted">{t('settings.narreCodexUseProjectRootDesc' as never)}</div>
+              <div className="text-sm font-medium text-default">{t('settings.narreCodexUseWorldRoot' as never)}</div>
+              <div className="mt-1 text-xs text-muted">{t('settings.narreCodexUseWorldRootDesc' as never)}</div>
             </div>
             <Toggle
-              checked={draft.codexSettings.useProjectRootAsWorkingDirectory}
+              checked={draft.codexSettings.useWorldRootAsWorkingDirectory}
               onChange={(checked) => updateDraft((current) => ({
                 ...current,
                 codexSettings: {
                   ...current.codexSettings,
-                  useProjectRootAsWorkingDirectory: checked,
+                  useWorldRootAsWorkingDirectory: checked,
                 },
               }))}
               disabled={loading || saving}
@@ -1679,7 +1679,7 @@ export function SettingsModal({ open, onClose }: SettingsModalProps): JSX.Elemen
     t('settings.sidebarAvailableNetworksDesc' as never),
     t('settings.sidebarBottomItems' as never),
     t('settings.sidebarBottomItemsDesc' as never),
-    t('settings.sidebarNoProject' as never),
+    t('settings.sidebarNoWorld' as never),
     t('settings.sidebarNoBookmarks' as never),
     t('settings.sidebarNoAvailableNetworks' as never),
     t('sidebar.networks'),

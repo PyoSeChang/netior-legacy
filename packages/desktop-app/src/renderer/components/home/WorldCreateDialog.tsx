@@ -5,15 +5,15 @@ import { Input } from '../ui/Input';
 import { Button } from '../ui/Button';
 import { fsService } from '../../services';
 import { useI18n } from '../../hooks/useI18n';
-import { PROJECT_ROOT_DIR_DUPLICATE_ERROR } from '../../stores/project-store';
+import { WORLD_ROOT_DIR_DUPLICATE_ERROR } from '../../stores/world-store';
 
-interface ProjectCreateDialogProps {
+interface WorldCreateDialogProps {
   open: boolean;
   onClose: () => void;
   onCreate: (name: string, rootDir: string) => Promise<void> | void;
 }
 
-export function ProjectCreateDialog({ open, onClose, onCreate }: ProjectCreateDialogProps): JSX.Element {
+export function WorldCreateDialog({ open, onClose, onCreate }: WorldCreateDialogProps): JSX.Element {
   const { t } = useI18n();
   const [name, setName] = useState('');
   const [rootDir, setRootDir] = useState('');
@@ -40,11 +40,11 @@ export function ProjectCreateDialog({ open, onClose, onCreate }: ProjectCreateDi
 
   const getCreateErrorMessage = (createError: unknown): string => {
     const message = createError instanceof Error ? createError.message : String(createError);
-    if (message.startsWith(`${PROJECT_ROOT_DIR_DUPLICATE_ERROR}:`)) {
-      const path = message.slice(PROJECT_ROOT_DIR_DUPLICATE_ERROR.length + 1);
-      return t('project.duplicateRootDir', { path });
+    if (message.startsWith(`${WORLD_ROOT_DIR_DUPLICATE_ERROR}:`)) {
+      const path = message.slice(WORLD_ROOT_DIR_DUPLICATE_ERROR.length + 1);
+      return t('world.duplicateRootDir', { path });
     }
-    return message || t('project.createFailed');
+    return message || t('world.createFailed');
   };
 
   const handleCreate = async () => {
@@ -73,7 +73,7 @@ export function ProjectCreateDialog({ open, onClose, onCreate }: ProjectCreateDi
   );
 
   return (
-    <Modal open={open} onClose={handleClose} title={t('project.create')} footer={footer} width="480px">
+    <Modal open={open} onClose={handleClose} title={t('world.create')} footer={footer} width="480px">
       <div className="flex flex-col gap-4">
         {error && (
           <div className="rounded border border-status-error/40 bg-status-error/10 px-3 py-2 text-sm text-status-error">
@@ -81,24 +81,24 @@ export function ProjectCreateDialog({ open, onClose, onCreate }: ProjectCreateDi
           </div>
         )}
         <div>
-          <label className="mb-1 block text-xs text-secondary">{t('project.name')}</label>
+          <label className="mb-1 block text-xs text-secondary">{t('world.name')}</label>
           <Input
             value={name}
             onChange={(e) => {
               setError(null);
               setName(e.target.value);
             }}
-            placeholder={t('project.namePlaceholder')}
+            placeholder={t('world.namePlaceholder')}
             autoFocus
           />
         </div>
         <div>
-          <label className="mb-1 block text-xs text-secondary">{t('project.folder')}</label>
+          <label className="mb-1 block text-xs text-secondary">{t('world.folder')}</label>
           <div className="flex gap-2">
             <Input
               value={rootDir}
               onChange={(e) => setRootDir(e.target.value)}
-              placeholder={t('project.folderPlaceholder')}
+              placeholder={t('world.folderPlaceholder')}
               className="flex-1"
               readOnly
             />

@@ -1,9 +1,9 @@
 import { randomUUID } from 'crypto';
 import { getDatabase } from '../connection';
 import { createObject, deleteObjectByRef, getObjectByRef } from './objects';
-import { ensureObjectScopeBindingForDb, getDefaultOwnerNetworkIdForProjectDb } from './network-scope';
-import { syncProjectOntologyForDb } from './system-networks';
-import { ensureMeaningCategoryTaxonomyForProjectDb } from './meaning-category';
+import { ensureObjectScopeBindingForDb, getDefaultOwnerNetworkIdForWorldDb } from './network-scope';
+import { syncRootNetworkOntologyForDb } from './system-networks';
+import { ensureMeaningCategoryTaxonomyForWorldDb } from './meaning-category';
 import {
   SEMANTIC_MEANING_DEFINITIONS,
   MEANING_DEFINITIONS,
@@ -94,10 +94,10 @@ function serializeStringArray(values: readonly string[] | undefined): string {
 
 function updateSchemaMeaningRefs(
   db: Db,
-  projectId: string,
+  rootNetworkId: string,
   rewrite: (refs: MeaningRefKey[]) => MeaningRefKey[],
 ): void {
-  const rows = db.prepare('SELECT id, meanings FROM schemas WHERE project_id = ?').all(projectId) as Array<{
+  const rows = db.prepare('SELECT id, meanings FROM schemas WHERE root_network_id = ?').all(rootNetworkId) as Array<{
     id: string;
     meanings: string | null;
   }>;
@@ -113,16 +113,16 @@ function updateSchemaMeaningRefs(
 
 function replaceSchemaMeaningRef(
   db: Db,
-  projectId: string,
+  rootNetworkId: string,
   oldKey: MeaningRefKey,
   newKey: MeaningRefKey,
 ): void {
   if (oldKey === newKey) return;
-  updateSchemaMeaningRefs(db, projectId, (refs) => refs.map((ref) => (ref === oldKey ? newKey : ref)));
+  updateSchemaMeaningRefs(db, rootNetworkId, (refs) => refs.map((ref) => (ref === oldKey ? newKey : ref)));
 }
 
-function removeSchemaMeaningRef(db: Db, projectId: string, key: MeaningRefKey): void {
-  updateSchemaMeaningRefs(db, projectId, (refs) => refs.filter((ref) => ref !== key));
+function removeSchemaMeaningRef(db: Db, rootNetworkId: string, key: MeaningRefKey): void {
+  updateSchemaMeaningRefs(db, rootNetworkId, (refs) => refs.filter((ref) => ref !== key));
 }
 
 function normalizeRecipeField(raw: unknown, fallbackIndex: number): MeaningFieldRecipe | null {
@@ -285,7 +285,7 @@ function normalizeMeaningKey(value: string): MeaningRefKey {
 
 function getUniqueMeaningKey(
   db: Db,
-  projectId: string,
+  rootNetworkId: string,
   baseKey: MeaningRefKey,
   excludeId?: string,
 ): MeaningRefKey {
@@ -294,8 +294,8 @@ function getUniqueMeaningKey(
   let suffix = 2;
   while (true) {
     const existing = db.prepare(
-      'SELECT id FROM meanings WHERE project_id = ? AND key = ?',
-    ).get(projectId, candidate) as { id: string } | undefined;
+      'SELECT id FROM meanings WHERE root_network_id = ? AND key = ?',
+    ).get(rootNetworkId, candidate) as { id: string } | undefined;
     if (!existing || existing.id === excludeId) return candidate;
     candidate = `${normalized}_${suffix}` as MeaningRefKey;
     suffix += 1;
@@ -337,35 +337,35 @@ function toMeaning(row: MeaningRow): Meaning {
 
 function ensureObjectForMeaning(
   db: Db,
-  meaning: Pick<MeaningRow, 'id' | 'project_id' | 'owner_network_id' | 'created_at'>,
+  meaning: Pick<MeaningRow, 'id' | 'root_network_id' | 'owner_network_id' | 'created_at'>,
 ): void {
   const existing = getObjectByRef('meaning', meaning.id);
-  const object = existing ?? createObject('meaning', 'project', meaning.project_id, meaning.id);
+  const object = existing ?? createObject('meaning', 'world', meaning.root_network_id, meaning.id);
   ensureObjectScopeBindingForDb(db, {
     objectId: object.id,
-    scopeNetworkId: meaning.owner_network_id ?? getDefaultOwnerNetworkIdForProjectDb(db, meaning.project_id),
-    sourceKind: 'project',
+    scopeNetworkId: meaning.owner_network_id ?? getDefaultOwnerNetworkIdForWorldDb(db, meaning.root_network_id),
+    sourceKind: 'world',
   });
 }
 
-function assertMeaningCategoryInstance(db: Db, projectId: string, categoryInstanceId: string | null | undefined): void {
+function assertMeaningCategoryInstance(db: Db, rootNetworkId: string, categoryInstanceId: string | null | undefined): void {
   if (!categoryInstanceId) return;
-  const { schemaId } = ensureMeaningCategoryTaxonomyForProjectDb(db, projectId);
+  const { schemaId } = ensureMeaningCategoryTaxonomyForWorldDb(db, rootNetworkId);
   const row = db.prepare(
-    'SELECT id FROM instances WHERE id = ? AND project_id = ? AND schema_id = ?',
-  ).get(categoryInstanceId, projectId, schemaId);
+    'SELECT id FROM instances WHERE id = ? AND root_network_id = ? AND schema_id = ?',
+  ).get(categoryInstanceId, rootNetworkId, schemaId);
   if (!row) {
-    throw new Error(`Meaning category instance not found in project meaning category schema: ${categoryInstanceId}`);
+    throw new Error(`Meaning category instance not found in world meaning category schema: ${categoryInstanceId}`);
   }
 }
 
-export function seedBuiltInMeaningsForProjectDb(db: Db, projectId: string): void {
+export function seedBuiltInMeaningsForWorldDb(db: Db, rootNetworkId: string): void {
   const now = new Date().toISOString();
-  const { instancesByKey } = ensureMeaningCategoryTaxonomyForProjectDb(db, projectId);
-  const ownerNetworkId = getDefaultOwnerNetworkIdForProjectDb(db, projectId);
+  const { instancesByKey } = ensureMeaningCategoryTaxonomyForWorldDb(db, rootNetworkId);
+  const ownerNetworkId = getDefaultOwnerNetworkIdForWorldDb(db, rootNetworkId);
   const insertMeaning = db.prepare(`
     INSERT OR IGNORE INTO meanings (
-      id, project_id, owner_network_id, key, name, description, category_instance_id,
+      id, root_network_id, owner_network_id, key, name, description, category_instance_id,
       target_kind, meaning_keys, core_slots, optional_slots, recipe_json,
       color, icon, line_style, directed, built_in,
       source_kind, source_id, source_ref, source_version, created_at, updated_at
@@ -375,7 +375,7 @@ export function seedBuiltInMeaningsForProjectDb(db: Db, projectId: string): void
   const updateMissingDescription = db.prepare(`
     UPDATE meanings
        SET description = ?, updated_at = ?
-     WHERE project_id = ?
+     WHERE root_network_id = ?
        AND key = ?
        AND built_in = 1
        AND (description IS NULL OR trim(description) = '')
@@ -383,7 +383,7 @@ export function seedBuiltInMeaningsForProjectDb(db: Db, projectId: string): void
   const updateMissingRecipe = db.prepare(`
     UPDATE meanings
        SET recipe_json = ?, updated_at = ?
-     WHERE project_id = ?
+     WHERE root_network_id = ?
        AND key = ?
        AND built_in = 1
        AND (recipe_json IS NULL OR trim(recipe_json) = '' OR recipe_json = '{"roles":[],"rules":[]}' OR recipe_json = '{"meanings":[],"rules":[]}')
@@ -391,19 +391,19 @@ export function seedBuiltInMeaningsForProjectDb(db: Db, projectId: string): void
   const updateMissingIcon = db.prepare(`
     UPDATE meanings
        SET icon = ?, updated_at = ?
-     WHERE project_id = ?
+     WHERE root_network_id = ?
        AND key = ?
        AND built_in = 1
        AND (icon IS NULL OR trim(icon) = '' OR icon IN ('box', 'boxes'))
   `);
   for (const definition of MEANING_DEFINITIONS) {
-    const id = `meaning-${projectId}-${definition.key}`;
+    const id = `meaning-${rootNetworkId}-${definition.key}`;
     const description = definition.description ?? null;
     const recipeJson = serializeMeaningContract(buildContractForBuiltInMeaning(definition));
     const icon = (definition as { icon?: string }).icon ?? null;
     insertMeaning.run(
       id,
-      projectId,
+      rootNetworkId,
       ownerNetworkId,
       definition.key,
       definition.label,
@@ -422,15 +422,15 @@ export function seedBuiltInMeaningsForProjectDb(db: Db, projectId: string): void
       now,
     );
     if (description) {
-      updateMissingDescription.run(description, now, projectId, definition.key);
+      updateMissingDescription.run(description, now, rootNetworkId, definition.key);
     }
     if (icon) {
-      updateMissingIcon.run(icon, now, projectId, definition.key);
+      updateMissingIcon.run(icon, now, rootNetworkId, definition.key);
     }
-    updateMissingRecipe.run(recipeJson, now, projectId, definition.key);
+    updateMissingRecipe.run(recipeJson, now, rootNetworkId, definition.key);
     db.prepare('UPDATE meanings SET owner_network_id = COALESCE(owner_network_id, ?), updated_at = ? WHERE id = ?')
       .run(ownerNetworkId, now, id);
-    ensureObjectForMeaning(db, { id, project_id: projectId, owner_network_id: ownerNetworkId, created_at: now });
+    ensureObjectForMeaning(db, { id, root_network_id: rootNetworkId, owner_network_id: ownerNetworkId, created_at: now });
   }
 }
 
@@ -444,14 +444,14 @@ export function createMeaning(data: MeaningCreate): Meaning {
   const now = new Date().toISOString();
   const meaningKeys = data.meaning_keys ?? [];
   const derivedSlots = deriveSlotsForMeanings(meaningKeys);
-  const key = getUniqueMeaningKey(db, data.project_id, data.key ?? normalizeMeaningKey(data.name));
-  const sourceKind = data.source_kind ?? (data.built_in ? 'system' : 'project');
-  const ownerNetworkId = data.owner_network_id ?? getDefaultOwnerNetworkIdForProjectDb(db, data.project_id);
-  assertMeaningCategoryInstance(db, data.project_id, data.category_instance_id);
+  const key = getUniqueMeaningKey(db, data.root_network_id, data.key ?? normalizeMeaningKey(data.name));
+  const sourceKind = data.source_kind ?? (data.built_in ? 'system' : 'world');
+  const ownerNetworkId = data.owner_network_id ?? getDefaultOwnerNetworkIdForWorldDb(db, data.root_network_id);
+  assertMeaningCategoryInstance(db, data.root_network_id, data.category_instance_id);
 
   db.prepare(
     `INSERT INTO meanings (
-      id, project_id, owner_network_id, key, name, description, category_instance_id,
+      id, root_network_id, owner_network_id, key, name, description, category_instance_id,
       target_kind, meaning_keys, core_slots, optional_slots, recipe_json,
       color, icon, line_style, directed, built_in,
       source_kind, source_id, source_ref, source_version, created_at, updated_at
@@ -459,7 +459,7 @@ export function createMeaning(data: MeaningCreate): Meaning {
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     id,
-    data.project_id,
+    data.root_network_id,
     ownerNetworkId,
     key,
     data.name,
@@ -483,7 +483,7 @@ export function createMeaning(data: MeaningCreate): Meaning {
     now,
   );
 
-  const object = createObject('meaning', 'project', data.project_id, id);
+  const object = createObject('meaning', 'world', data.root_network_id, id);
   ensureObjectScopeBindingForDb(db, {
     objectId: object.id,
     scopeNetworkId: ownerNetworkId,
@@ -492,26 +492,26 @@ export function createMeaning(data: MeaningCreate): Meaning {
     sourceRef: data.source_ref ?? null,
     sourceVersion: data.source_version ?? null,
   });
-  syncProjectOntologyForDb(db, data.project_id);
+  syncRootNetworkOntologyForDb(db, data.root_network_id);
 
   return getMeaning(id)!;
 }
 
-export function listMeanings(projectId: string): Meaning[] {
+export function listMeanings(rootNetworkId: string): Meaning[] {
   const db = getDatabase();
   db.transaction(() => {
-    seedBuiltInMeaningsForProjectDb(db, projectId);
-    syncProjectOntologyForDb(db, projectId);
+    seedBuiltInMeaningsForWorldDb(db, rootNetworkId);
+    syncRootNetworkOntologyForDb(db, rootNetworkId);
   })();
   const rows = db
     .prepare(`
       SELECT m.*, c.title AS category_instance_title, c.source_ref AS category_instance_source_ref
         FROM meanings m
         LEFT JOIN instances c ON c.id = m.category_instance_id
-       WHERE m.project_id = ?
+       WHERE m.root_network_id = ?
        ORDER BY m.built_in DESC, COALESCE(c.title, ''), m.name
     `)
-    .all(projectId) as MeaningRow[];
+    .all(rootNetworkId) as MeaningRow[];
   const updateRecipe = db.prepare('UPDATE meanings SET recipe_json = ?, updated_at = ? WHERE id = ?');
   for (const row of rows) {
     ensureObjectForMeaning(db, row);
@@ -554,10 +554,10 @@ export function updateMeaning(id: string, data: MeaningUpdate): Meaning | undefi
   const nextMeaningKeys = data.meaning_keys ?? parseStringArray<SemanticMeaningKey>(existing.meaning_keys);
   const derivedSlots = deriveSlotsForMeanings(nextMeaningKeys);
   const nextKey = data.key !== undefined
-    ? getUniqueMeaningKey(db, existing.project_id, data.key, id)
+    ? getUniqueMeaningKey(db, existing.root_network_id, data.key, id)
     : existing.key as MeaningRefKey;
   const now = new Date().toISOString();
-  assertMeaningCategoryInstance(db, existing.project_id, data.category_instance_id);
+  assertMeaningCategoryInstance(db, existing.root_network_id, data.category_instance_id);
 
   db.prepare(
     `UPDATE meanings
@@ -590,7 +590,7 @@ export function updateMeaning(id: string, data: MeaningUpdate): Meaning | undefi
     id,
   );
 
-  replaceSchemaMeaningRef(db, existing.project_id, existing.key as MeaningRefKey, nextKey);
+  replaceSchemaMeaningRef(db, existing.root_network_id, existing.key as MeaningRefKey, nextKey);
 
   return getMeaning(id);
 }
@@ -611,7 +611,7 @@ export function deleteMeaning(id: string): boolean {
   const schemaModelRefCount = (db.prepare('SELECT COUNT(*) AS count FROM schemas WHERE meanings LIKE ?').get(`%${existing.key}%`) as { count: number }).count;
   console.info('[ModelDelete][core] start', {
     id,
-    projectId: existing.project_id,
+    rootNetworkId: existing.root_network_id,
     key: existing.key,
     builtIn: !!existing.built_in,
     objectId: object?.id ?? null,
@@ -621,7 +621,7 @@ export function deleteMeaning(id: string): boolean {
   });
 
   removeMeaningFromEdges(db, id);
-  removeSchemaMeaningRef(db, existing.project_id, existing.key as MeaningRefKey);
+  removeSchemaMeaningRef(db, existing.root_network_id, existing.key as MeaningRefKey);
   const deletedObject = deleteObjectByRef('meaning', id);
   console.info('[ModelDelete][core] object cleanup', { id, deletedObject });
 
@@ -629,7 +629,7 @@ export function deleteMeaning(id: string): boolean {
   console.info('[ModelDelete][core] meaning delete statement', { id, changes: result.changes });
   if (result.changes === 0) return false;
 
-  syncProjectOntologyForDb(db, existing.project_id);
+  syncRootNetworkOntologyForDb(db, existing.root_network_id);
   const remainingModel = db.prepare('SELECT id FROM meanings WHERE id = ?').get(id) as { id: string } | undefined;
   const remainingObject = getObjectByRef('meaning', id);
   console.info('[ModelDelete][core] after ontology sync', {

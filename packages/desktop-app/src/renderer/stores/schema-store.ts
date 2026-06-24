@@ -25,7 +25,7 @@ interface SchemaStore {
   meanings: Record<string, SchemaMeaning[]>;
   loading: boolean;
 
-  loadByProject: (projectId: string) => Promise<void>;
+  loadByWorld: (rootNetworkId: string) => Promise<void>;
   createSchema: (data: SchemaCreate) => Promise<Schema>;
   updateSchema: (id: string, data: SchemaUpdate) => Promise<void>;
   deleteSchema: (id: string) => Promise<void>;
@@ -55,10 +55,10 @@ export const useSchemaStore = create<SchemaStore>((set, get) => ({
   meanings: {},
   loading: false,
 
-  loadByProject: async (projectId) => {
+  loadByWorld: async (rootNetworkId) => {
     set({ loading: true });
     try {
-      const schemas = normalizeSchemas(await schemaService.list(projectId));
+      const schemas = normalizeSchemas(await schemaService.list(rootNetworkId));
       set({ schemas });
     } finally {
       set({ loading: false });

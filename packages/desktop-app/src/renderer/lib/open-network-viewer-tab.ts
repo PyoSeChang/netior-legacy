@@ -3,21 +3,21 @@
 interface OpenNetworkViewerTabOptions {
   networkId: string;
   title: string;
-  projectId?: string | null;
+  rootNetworkId?: string | null;
   isDirty?: boolean;
 }
 
 export async function openNetworkViewerTab({
   networkId,
   title,
-  projectId,
+  rootNetworkId,
   isDirty,
 }: OpenNetworkViewerTabOptions): Promise<void> {
   await useEditorStore.getState().openTab({
     type: 'networkViewer',
     targetId: networkId,
     title,
-    projectId: projectId ?? undefined,
+    rootNetworkId: rootNetworkId ?? undefined,
     isDirty,
   });
 }

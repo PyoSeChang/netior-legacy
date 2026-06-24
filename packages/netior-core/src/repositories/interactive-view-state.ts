@@ -14,8 +14,8 @@ export function getInteractiveViewState(
 
 export function upsertInteractiveViewState(data: InteractiveViewStateUpsert): InteractiveViewState {
   const db = getDatabase();
-  const instance = db.prepare('SELECT id, project_id FROM instances WHERE id = ?').get(data.instance_id) as
-    | { id: string; project_id: string }
+  const instance = db.prepare('SELECT id, root_network_id FROM instances WHERE id = ?').get(data.instance_id) as
+    | { id: string; root_network_id: string }
     | undefined;
   if (!instance) {
     throw new Error(`Instance not found for interactive view state upsert: ${data.instance_id}`);
@@ -26,7 +26,7 @@ export function upsertInteractiveViewState(data: InteractiveViewStateUpsert): In
 
   db.prepare(
     `INSERT INTO interactive_view_states (
-       id, project_id, instance_id, view_template_id, state_json, created_at, updated_at
+       id, root_network_id, instance_id, view_template_id, state_json, created_at, updated_at
      )
      VALUES (?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(instance_id, view_template_id) DO UPDATE SET
@@ -34,7 +34,7 @@ export function upsertInteractiveViewState(data: InteractiveViewStateUpsert): In
        updated_at = excluded.updated_at`,
   ).run(
     id,
-    instance.project_id,
+    instance.root_network_id,
     data.instance_id,
     data.view_template_id,
     data.state_json,

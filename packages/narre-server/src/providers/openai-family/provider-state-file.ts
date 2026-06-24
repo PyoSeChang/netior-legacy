@@ -4,7 +4,7 @@ import path from 'path';
 export class OpenAIFamilyProviderStateFile<TState extends { sessionId: string }> {
   constructor(
     private readonly dataDir: string,
-    private readonly projectId: string,
+    private readonly rootNetworkId: string,
     private readonly sessionId: string,
     private readonly prefix: string,
     private readonly createInitialState: () => TState,
@@ -25,7 +25,7 @@ export class OpenAIFamilyProviderStateFile<TState extends { sessionId: string }>
   }
 
   private providerStateDir(): string {
-    return path.join(this.dataDir, 'narre', this.projectId, 'provider-state');
+    return path.join(this.dataDir, 'narre', this.rootNetworkId, 'provider-state');
   }
 
   private sessionFilePath(): string {

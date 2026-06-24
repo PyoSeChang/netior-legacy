@@ -45,7 +45,7 @@ export function registerSchemaMeaningTools(server: McpServer): void {
     {
       schema_id: z.string().describe('The schema ID'),
       meaning_key: meaningKeySchema.describe('Meaning to attach to the schema'),
-      label: z.string().nullable().optional().describe('Optional project-local label for the meaning'),
+      label: z.string().nullable().optional().describe('Optional world-local label for the meaning'),
       source: meaningSourceSchema.optional().describe('Where this meaning came from'),
       source_meaning: z.string().nullable().optional().describe('Meaning key that contributed this meaning'),
       sort_order: z.number().optional().describe('Meaning order within the schema'),
@@ -82,7 +82,7 @@ export function registerSchemaMeaningTools(server: McpServer): void {
     'update_schema_meaning',
     {
       meaning_id: z.string().describe('The schema meaning ID'),
-      label: z.string().nullable().optional().describe('New project-local label'),
+      label: z.string().nullable().optional().describe('New world-local label'),
       sort_order: z.number().optional().describe('New meaning order'),
     },
     async ({ meaning_id, label, sort_order }) => {

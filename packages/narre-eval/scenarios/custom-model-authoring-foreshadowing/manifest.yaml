@@ -1,6 +1,6 @@
 id: custom-model-authoring-foreshadowing
 title: "Custom Model Authoring Foreshadowing"
-description: "Evaluates whether Narre can build a project-level custom model with meanings and multi-type field recipes, then apply it to a schema."
+description: "Evaluates whether Narre can build a world-level custom model with meanings and multi-type field recipes, then apply it to a schema."
 scenario_version: "1.0.0"
 schema_version: 1
 type: conversation

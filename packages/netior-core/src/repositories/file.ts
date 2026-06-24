@@ -9,10 +9,10 @@ export function createFileEntity(data: FileEntityCreate): FileEntity {
   const now = new Date().toISOString();
 
   db.prepare(
-    `INSERT INTO files (id, project_id, path, type, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`,
-  ).run(id, data.project_id, data.path, data.type, now, now);
+    `INSERT INTO files (id, root_network_id, path, type, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`,
+  ).run(id, data.root_network_id, data.path, data.type, now, now);
 
-  createObject('file', 'project', data.project_id, id);
+  createObject('file', 'world', data.root_network_id, id);
 
   return db.prepare('SELECT * FROM files WHERE id = ?').get(id) as FileEntity;
 }
@@ -22,14 +22,14 @@ export function getFileEntity(id: string): FileEntity | undefined {
   return db.prepare('SELECT * FROM files WHERE id = ?').get(id) as FileEntity | undefined;
 }
 
-export function getFileEntityByPath(projectId: string, path: string): FileEntity | undefined {
+export function getFileEntityByPath(rootNetworkId: string, path: string): FileEntity | undefined {
   const db = getDatabase();
-  return db.prepare('SELECT * FROM files WHERE project_id = ? AND path = ?').get(projectId, path) as FileEntity | undefined;
+  return db.prepare('SELECT * FROM files WHERE root_network_id = ? AND path = ?').get(rootNetworkId, path) as FileEntity | undefined;
 }
 
-export function getFileEntitiesByProject(projectId: string): FileEntity[] {
+export function getFileEntitiesByWorld(rootNetworkId: string): FileEntity[] {
   const db = getDatabase();
-  return db.prepare('SELECT * FROM files WHERE project_id = ? ORDER BY type, path').all(projectId) as FileEntity[];
+  return db.prepare('SELECT * FROM files WHERE root_network_id = ? ORDER BY type, path').all(rootNetworkId) as FileEntity[];
 }
 
 export function updateFileEntity(id: string, data: FileEntityUpdate): FileEntity | undefined {

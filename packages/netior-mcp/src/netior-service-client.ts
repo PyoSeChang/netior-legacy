@@ -52,7 +52,7 @@ import type {
   RelationshipUpdate,
   NetworkObjectType,
   ObjectRecord,
-  Project,
+  World,
   Meaning,
   MeaningCreate,
   MeaningUpdate,
@@ -102,13 +102,13 @@ export function getNetiorServiceUrl(): string {
   return getNetiorServiceBaseUrl();
 }
 
-export async function getProjectById(projectId: string): Promise<Project | null> {
-  return requestJson<Project | null>(`/projects/${encodeURIComponent(projectId)}`);
+export async function getWorldById(rootNetworkId: string): Promise<World | null> {
+  return requestJson<World | null>(`/worlds/${encodeURIComponent(rootNetworkId)}`);
 }
 
-export async function listNetworks(projectId: string, rootOnly?: boolean): Promise<Network[]> {
+export async function listNetworks(rootNetworkId: string, rootOnly?: boolean): Promise<Network[]> {
   return requestJson<Network[]>(`/networks${toQueryString({
-    projectId,
+    rootNetworkId,
     rootOnly: rootOnly == null ? undefined : String(rootOnly),
   })}`);
 }
@@ -133,8 +133,8 @@ export async function deleteNetwork(id: string): Promise<boolean> {
   });
 }
 
-export async function listSchemas(projectId: string): Promise<Schema[]> {
-  return requestJson<Schema[]>(`/schemas${toQueryString({ projectId })}`);
+export async function listSchemas(rootNetworkId: string): Promise<Schema[]> {
+  return requestJson<Schema[]>(`/schemas${toQueryString({ rootNetworkId })}`);
 }
 
 export async function listSchemaFields(schemaId: string): Promise<SchemaField[]> {
@@ -225,8 +225,8 @@ export async function deleteSchema(id: string): Promise<boolean> {
   });
 }
 
-export async function listMeanings(projectId: string): Promise<Meaning[]> {
-  return requestJson<Meaning[]>(`/meanings${toQueryString({ projectId })}`);
+export async function listMeanings(rootNetworkId: string): Promise<Meaning[]> {
+  return requestJson<Meaning[]>(`/meanings${toQueryString({ rootNetworkId })}`);
 }
 
 export async function evaluateDsl(data: NetiorDslEvaluateRequest): Promise<NetiorDslEvalResult> {
@@ -236,8 +236,8 @@ export async function evaluateDsl(data: NetiorDslEvaluateRequest): Promise<Netio
   });
 }
 
-export async function listMeaningCategories(projectId: string): Promise<Instance[]> {
-  return requestJson<Instance[]>(`/meaning-categories${toQueryString({ projectId })}`);
+export async function listMeaningCategories(rootNetworkId: string): Promise<Instance[]> {
+  return requestJson<Instance[]>(`/meaning-categories${toQueryString({ rootNetworkId })}`);
 }
 
 export async function createMeaning(data: MeaningCreate): Promise<Meaning> {
@@ -264,12 +264,12 @@ export async function deleteMeaning(id: string): Promise<boolean> {
   });
 }
 
-export async function getInstancesByProject(projectId: string): Promise<Instance[]> {
-  return requestJson<Instance[]>(`/instances${toQueryString({ projectId })}`);
+export async function getInstancesByWorld(rootNetworkId: string): Promise<Instance[]> {
+  return requestJson<Instance[]>(`/instances${toQueryString({ rootNetworkId })}`);
 }
 
-export async function searchInstances(projectId: string, query: string): Promise<Instance[]> {
-  return requestJson<Instance[]>(`/instances/search${toQueryString({ projectId, query })}`);
+export async function searchInstances(rootNetworkId: string, query: string): Promise<Instance[]> {
+  return requestJson<Instance[]>(`/instances/search${toQueryString({ rootNetworkId, query })}`);
 }
 
 export async function createInstance(data: InstanceCreate): Promise<Instance> {
@@ -292,8 +292,8 @@ export async function deleteInstance(id: string): Promise<boolean> {
   });
 }
 
-export async function listModules(projectId: string): Promise<Module[]> {
-  return requestJson<Module[]>(`/modules${toQueryString({ projectId })}`);
+export async function listModules(rootNetworkId: string): Promise<Module[]> {
+  return requestJson<Module[]>(`/modules${toQueryString({ rootNetworkId })}`);
 }
 
 export async function getObject(id: string): Promise<ObjectRecord | null> {
@@ -308,12 +308,12 @@ export async function getUniverseNetwork(): Promise<Network | null> {
   return requestJson<Network | null>('/networks/universe');
 }
 
-export async function getProjectOntologyNetwork(projectId: string): Promise<Network | null> {
-  return requestJson<Network | null>(`/networks/ontology${toQueryString({ projectId })}`);
+export async function getRootNetwork(rootNetworkId: string): Promise<Network | null> {
+  return requestJson<Network | null>(`/networks/root${toQueryString({ rootNetworkId })}`);
 }
 
-export async function getNetworkTree(projectId: string): Promise<NetworkTreeNode[]> {
-  return requestJson<NetworkTreeNode[]>(`/networks/tree${toQueryString({ projectId })}`);
+export async function getNetworkTree(rootNetworkId: string): Promise<NetworkTreeNode[]> {
+  return requestJson<NetworkTreeNode[]>(`/networks/tree${toQueryString({ rootNetworkId })}`);
 }
 
 export async function getNetworkFull(networkId: string): Promise<NetworkFullData | null> {
@@ -324,8 +324,8 @@ export async function getNetworkAncestors(networkId: string): Promise<NetworkBre
   return requestJson<NetworkBreadcrumbItem[]>(`/networks/${encodeURIComponent(networkId)}/ancestors`);
 }
 
-export async function listNetworkTypes(projectId?: string | null): Promise<NetworkType[]> {
-  return requestJson<NetworkType[]>(`/network-types${toQueryString({ projectId: projectId ?? undefined })}`);
+export async function listNetworkTypes(rootNetworkId?: string | null): Promise<NetworkType[]> {
+  return requestJson<NetworkType[]>(`/network-types${toQueryString({ rootNetworkId: rootNetworkId ?? undefined })}`);
 }
 
 export async function getNetworkType(id: string): Promise<NetworkType | null> {
@@ -425,7 +425,7 @@ export async function deleteNetworkNode(id: string): Promise<boolean> {
 }
 
 export async function listRelationships(query: {
-  projectId: string;
+  rootNetworkId: string;
   sourceObjectId?: string;
   targetObjectId?: string;
   meaningId?: string;
@@ -510,7 +510,7 @@ export async function listInteractiveViewTemplates(
   query: InteractiveViewTemplateListQuery,
 ): Promise<InteractiveViewTemplate[]> {
   return requestJson<InteractiveViewTemplate[]>(`/interactive-view-templates${toQueryString({
-    projectId: query.projectId,
+    rootNetworkId: query.rootNetworkId,
     schemaId: query.schemaId ?? undefined,
     instanceId: query.instanceId ?? undefined,
   })}`);

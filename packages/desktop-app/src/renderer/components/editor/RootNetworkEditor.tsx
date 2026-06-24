@@ -5,7 +5,7 @@ import { useInstanceStore } from '../../stores/instance-store';
 import { useContextStore } from '../../stores/context-store';
 import { useEditorStore } from '../../stores/editor-store';
 import { useNetworkStore } from '../../stores/network-store';
-import { useProjectStore } from '../../stores/project-store';
+import { useWorldStore } from '../../stores/world-store';
 import { useMeaningStore } from '../../stores/meaning-store';
 import { useSchemaStore } from '../../stores/schema-store';
 import { useI18n } from '../../hooks/useI18n';
@@ -17,29 +17,29 @@ import {
   type NetworkBrowserItem,
 } from './NetworkObjectBrowser';
 
-interface OntologyEditorProps {
+interface RootNetworkEditorProps {
   tab: EditorTab;
 }
 
 function getNetworkKindLabel(kind: string): string {
-  if (kind === 'ontology') return 'Ontology';
+  if (kind === 'root') return 'Root Network';
   if (kind === 'universe') return 'Universe';
   return 'Network';
 }
 
-type CreatableOntologyType = 'network' | 'instance' | 'schema' | 'meaning' | 'context';
+type CreatableRootNetworkObjectType = 'network' | 'instance' | 'schema' | 'meaning' | 'context';
 
 const EMPTY_LIST: never[] = [];
 
-export function OntologyEditor({ tab }: OntologyEditorProps): JSX.Element {
+export function RootNetworkEditor({ tab }: RootNetworkEditorProps): JSX.Element {
   const { t } = useI18n();
   const display = useMemo(() => createOntologyDisplayResolver(t), [t]);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
 
   const openEditorTab = useEditorStore((s) => s.openTab);
-  const currentProject = useProjectStore((s) => s.currentProject);
-  const projects = useProjectStore((s) => s.projects);
-  const loadProjects = useProjectStore((s) => s.loadProjects);
+  const currentWorld = useWorldStore((s) => s.currentWorld);
+  const worlds = useWorldStore((s) => s.worlds);
+  const loadWorlds = useWorldStore((s) => s.loadWorlds);
   const rawNetworks = useNetworkStore((s) => s.networks);
   const currentNetwork = useNetworkStore((s) => s.currentNetwork);
   const loadNetworks = useNetworkStore((s) => s.loadNetworks);
@@ -47,12 +47,12 @@ export function OntologyEditor({ tab }: OntologyEditorProps): JSX.Element {
   const createNetwork = useNetworkStore((s) => s.createNetwork);
   const openNetwork = useNetworkStore((s) => s.openNetwork);
   const rawInstances = useInstanceStore((s) => s.instances);
-  const loadInstances = useInstanceStore((s) => s.loadByProject);
+  const loadInstances = useInstanceStore((s) => s.loadByWorld);
   const rawSchemas = useSchemaStore((s) => s.schemas);
-  const loadSchemas = useSchemaStore((s) => s.loadByProject);
+  const loadSchemas = useSchemaStore((s) => s.loadByWorld);
   const createSchema = useSchemaStore((s) => s.createSchema);
   const rawModels = useMeaningStore((s) => s.meanings);
-  const loadMeanings = useMeaningStore((s) => s.loadByProject);
+  const loadMeanings = useMeaningStore((s) => s.loadByWorld);
   const createMeaning = useMeaningStore((s) => s.createMeaning);
   const rawContexts = useContextStore((s) => s.contexts);
   const loadContexts = useContextStore((s) => s.loadContexts);
@@ -63,44 +63,44 @@ export function OntologyEditor({ tab }: OntologyEditorProps): JSX.Element {
   const meanings = Array.isArray(rawModels) ? rawModels : EMPTY_LIST;
   const contexts = Array.isArray(rawContexts) ? rawContexts : EMPTY_LIST;
 
-  const projectId = tab.projectId
-    ?? (tab.targetId === 'global' ? currentProject?.id : tab.targetId)
-    ?? currentProject?.id
+  const rootNetworkId = tab.rootNetworkId
+    ?? (tab.targetId === 'global' ? currentWorld?.id : tab.targetId)
+    ?? currentWorld?.id
     ?? null;
-  const project = projects.find((item) => item.id === projectId)
-    ?? (currentProject?.id === projectId ? currentProject : null);
+  const world = worlds.find((item) => item.id === rootNetworkId)
+    ?? (currentWorld?.id === rootNetworkId ? currentWorld : null);
   const tr = useCallback((key: string, fallback: string) => {
     const value = t(key as never);
     return value === key ? fallback : value;
   }, [t]);
 
   useEffect(() => {
-    void loadProjects();
-  }, [loadProjects]);
+    void loadWorlds();
+  }, [loadWorlds]);
 
   useEffect(() => {
-    if (!projectId) return;
-    void loadNetworks(projectId);
-    void loadNetworkTree(projectId);
-    void loadInstances(projectId);
-    void loadSchemas(projectId);
-    void loadMeanings(projectId);
+    if (!rootNetworkId) return;
+    void loadNetworks(rootNetworkId);
+    void loadNetworkTree(rootNetworkId);
+    void loadInstances(rootNetworkId);
+    void loadSchemas(rootNetworkId);
+    void loadMeanings(rootNetworkId);
   }, [
     loadInstances,
     loadMeanings,
     loadNetworks,
     loadNetworkTree,
     loadSchemas,
-    projectId,
+    rootNetworkId,
   ]);
 
   const contextNetworkId = useMemo(() => {
-    if (currentNetwork?.project_id === projectId) return currentNetwork.id;
-    const projectNetworks = networks.filter((network) => network.project_id === projectId);
-    return projectNetworks.find((network) => network.kind === 'ontology')?.id
-      ?? projectNetworks[0]?.id
+    if (currentNetwork?.root_network_id === rootNetworkId) return currentNetwork.id;
+    const worldNetworks = networks.filter((network) => network.root_network_id === rootNetworkId);
+    return worldNetworks.find((network) => network.kind === 'root')?.id
+      ?? worldNetworks[0]?.id
       ?? null;
-  }, [currentNetwork?.id, currentNetwork?.project_id, networks, projectId]);
+  }, [currentNetwork?.id, currentNetwork?.root_network_id, networks, rootNetworkId]);
 
   useEffect(() => {
     if (!contextNetworkId) return;
@@ -109,43 +109,43 @@ export function OntologyEditor({ tab }: OntologyEditorProps): JSX.Element {
 
   const ensureContextNetworkId = useCallback(async () => {
     if (contextNetworkId) return contextNetworkId;
-    if (!projectId) return null;
+    if (!rootNetworkId) return null;
 
-    const ontology = await networkService.getProjectOntology(projectId);
-    if (ontology) {
-      await loadNetworks(projectId);
-      await loadNetworkTree(projectId);
-      return ontology.id;
+    const rootNetwork = await networkService.getRoot(rootNetworkId);
+    if (rootNetwork) {
+      await loadNetworks(rootNetworkId);
+      await loadNetworkTree(rootNetworkId);
+      return rootNetwork.id;
     }
 
     const created = await createNetwork({
-      project_id: projectId,
+      root_network_id: rootNetworkId,
       name: tr('network.defaultName', 'New Network'),
       kind: 'network',
     });
-    await loadNetworks(projectId);
-    await loadNetworkTree(projectId);
+    await loadNetworks(rootNetworkId);
+    await loadNetworkTree(rootNetworkId);
     return created.id;
-  }, [contextNetworkId, createNetwork, loadNetworkTree, loadNetworks, projectId, tr]);
+  }, [contextNetworkId, createNetwork, loadNetworkTree, loadNetworks, rootNetworkId, tr]);
 
-  const handleCreate = useCallback(async (objectType: CreatableOntologyType) => {
-    if (!projectId) return;
+  const handleCreate = useCallback(async (objectType: CreatableRootNetworkObjectType) => {
+    if (!rootNetworkId) return;
 
     switch (objectType) {
       case 'network': {
         const created = await createNetwork({
-          project_id: projectId,
+          root_network_id: rootNetworkId,
           name: tr('network.defaultName', 'New Network'),
           kind: 'network',
         });
-        await loadNetworks(projectId);
-        await loadNetworkTree(projectId);
+        await loadNetworks(rootNetworkId);
+        await loadNetworkTree(rootNetworkId);
         await openNetwork(created.id);
         await openEditorTab({
           type: 'network',
           targetId: created.id,
           title: created.name,
-          projectId,
+          rootNetworkId,
           isDirty: true,
         });
         break;
@@ -156,8 +156,8 @@ export function OntologyEditor({ tab }: OntologyEditorProps): JSX.Element {
           type: 'instance',
           targetId: draftId,
           title: tr('instance.defaultTitle', 'New Instance'),
-          projectId,
-          draftData: currentNetwork?.project_id === projectId
+          rootNetworkId,
+          draftData: currentNetwork?.root_network_id === rootNetworkId
             ? { networkId: currentNetwork.id }
             : {},
         });
@@ -165,28 +165,28 @@ export function OntologyEditor({ tab }: OntologyEditorProps): JSX.Element {
       }
       case 'schema': {
         const created = await createSchema({
-          project_id: projectId,
+          root_network_id: rootNetworkId,
           name: tr('schema.newDefault', 'New Schema'),
         });
         await openEditorTab({
           type: 'schema',
           targetId: created.id,
           title: created.name,
-          projectId,
+          rootNetworkId,
           isDirty: true,
         });
         break;
       }
       case 'meaning': {
         const created = await createMeaning({
-          project_id: projectId,
+          root_network_id: rootNetworkId,
           name: tr('meaning.newDefault', 'New Meaning'),
         });
         await openEditorTab({
           type: 'meaning',
           targetId: created.id,
           title: display.meaningName(created),
-          projectId,
+          rootNetworkId,
           isDirty: true,
         });
         break;
@@ -203,7 +203,7 @@ export function OntologyEditor({ tab }: OntologyEditorProps): JSX.Element {
           type: 'context',
           targetId: created.id,
           title: created.name,
-          projectId,
+          rootNetworkId,
           networkId,
           isDirty: true,
         });
@@ -218,7 +218,7 @@ export function OntologyEditor({ tab }: OntologyEditorProps): JSX.Element {
     createSchema,
     createNetwork,
     currentNetwork?.id,
-    currentNetwork?.project_id,
+    currentNetwork?.root_network_id,
     display,
     ensureContextNetworkId,
     loadContexts,
@@ -226,13 +226,13 @@ export function OntologyEditor({ tab }: OntologyEditorProps): JSX.Element {
     loadNetworks,
     openEditorTab,
     openNetwork,
-    projectId,
+    rootNetworkId,
     t,
     tr,
   ]);
 
   const createActions = useMemo<Array<{
-    key: CreatableOntologyType;
+    key: CreatableRootNetworkObjectType;
     label: string;
     icon: React.ElementType;
   }>>(() => [
@@ -253,7 +253,7 @@ export function OntologyEditor({ tab }: OntologyEditorProps): JSX.Element {
         key: 'network' as const,
         label: t('sidebar.networks'),
         items: [...networks]
-          .filter((item) => !projectId || item.project_id === projectId)
+          .filter((item) => !rootNetworkId || item.root_network_id === rootNetworkId)
           .sort((a, b) => a.name.localeCompare(b.name))
           .map((item) => ({
             id: item.id,
@@ -324,11 +324,11 @@ export function OntologyEditor({ tab }: OntologyEditorProps): JSX.Element {
     instances,
     contexts,
     currentNetwork?.id,
-    currentProject?.id,
+    currentWorld?.id,
     meanings,
     networks,
-    projectId,
-    projects,
+    rootNetworkId,
+    worlds,
     schemas,
     display,
     t,
@@ -343,21 +343,21 @@ export function OntologyEditor({ tab }: OntologyEditorProps): JSX.Element {
           type: 'network',
           targetId: item.id,
           title: item.title,
-          projectId: network?.project_id ?? projectId ?? undefined,
+          rootNetworkId: network?.root_network_id ?? rootNetworkId ?? undefined,
         });
         break;
       }
-      case 'project':
-        await openEditorTab({ type: 'project', targetId: item.id, title: item.title });
+      case 'world':
+        await openEditorTab({ type: 'world', targetId: item.id, title: item.title });
         break;
       case 'instance':
         await openEditorTab({ type: 'instance', targetId: item.id, title: item.title });
         break;
       case 'schema':
-        await openEditorTab({ type: 'schema', targetId: item.id, title: item.title, projectId: projectId ?? undefined });
+        await openEditorTab({ type: 'schema', targetId: item.id, title: item.title, rootNetworkId: rootNetworkId ?? undefined });
         break;
       case 'meaning':
-        await openEditorTab({ type: 'meaning', targetId: item.id, title: item.title, projectId: projectId ?? undefined });
+        await openEditorTab({ type: 'meaning', targetId: item.id, title: item.title, rootNetworkId: rootNetworkId ?? undefined });
         break;
       case 'context':
         await openEditorTab({ type: 'context', targetId: item.id, title: item.title });
@@ -365,12 +365,12 @@ export function OntologyEditor({ tab }: OntologyEditorProps): JSX.Element {
       default:
         break;
     }
-  }, [networks, openEditorTab, projectId]);
+  }, [networks, openEditorTab, rootNetworkId]);
 
   return (
     <div className="h-full min-h-0 min-w-0 overflow-hidden bg-surface-editor text-default">
       <NetworkObjectBrowser
-        title={project ? `${project.name} Ontology` : 'Ontology'}
+        title={world ? `${world.name} Root Network` : 'Root Network'}
         searchPlaceholder={t('sidebar.search')}
         sections={browserSections}
         selectedKey={selectedKey}
@@ -380,7 +380,7 @@ export function OntologyEditor({ tab }: OntologyEditorProps): JSX.Element {
             key={key}
             size="sm"
             variant="secondary"
-            disabled={!projectId}
+            disabled={!rootNetworkId}
             onClick={() => {
               void handleCreate(key);
             }}

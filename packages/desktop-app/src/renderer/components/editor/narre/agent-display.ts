@@ -31,8 +31,8 @@ export function getLocalizedAgentScope(agent: AgentDefinition, t: Translate): st
   if (agent.narreAgentType === 'system') {
     return translateOrFallback(t, 'narre.agentScopes.system', 'System');
   }
-  return agent.userAgentType === 'project'
-    ? translateOrFallback(t, 'narre.agentScopes.project', 'Project')
+  return agent.userAgentType === 'world'
+    ? translateOrFallback(t, 'narre.agentScopes.world', 'World')
     : translateOrFallback(t, 'narre.agentScopes.global', 'Global');
 }
 
@@ -44,7 +44,7 @@ export function getLocalizedAgentRole(agent: AgentDefinition | undefined, t: Tra
   if (agent.narreAgentType === 'system') {
     return translateOrFallback(t, 'narre.agentScopes.systemAgent', 'System agent');
   }
-  return agent.userAgentType === 'project'
-    ? translateOrFallback(t, 'narre.agentScopes.projectAgent', 'Project agent')
+  return agent.userAgentType === 'world'
+    ? translateOrFallback(t, 'narre.agentScopes.worldAgent', 'World agent')
     : translateOrFallback(t, 'narre.agentScopes.globalAgent', 'Global agent');
 }

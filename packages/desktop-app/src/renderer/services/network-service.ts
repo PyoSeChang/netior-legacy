@@ -36,8 +36,8 @@ export async function createNetwork(data: NetworkCreate): Promise<Network> {
   return unwrapIpc(await window.electron.network.create(data as unknown as Record<string, unknown>));
 }
 
-export async function listNetworks(projectId: string, rootOnly?: boolean): Promise<Network[]> {
-  return unwrapIpc(await window.electron.network.list(projectId, rootOnly));
+export async function listNetworks(rootNetworkId: string, rootOnly?: boolean): Promise<Network[]> {
+  return unwrapIpc(await window.electron.network.list(rootNetworkId, rootOnly));
 }
 
 export async function updateNetwork(id: string, data: NetworkUpdate): Promise<Network> {
@@ -56,16 +56,16 @@ export async function getUniverseNetwork(): Promise<Network | undefined> {
   return unwrapIpc(await window.electron.network.getUniverse());
 }
 
-export async function getProjectOntologyNetwork(projectId: string): Promise<Network | undefined> {
-  return unwrapIpc(await window.electron.network.getProjectOntology(projectId));
+export async function getRootNetwork(rootNetworkId: string): Promise<Network | undefined> {
+  return unwrapIpc(await window.electron.network.getRoot(rootNetworkId));
 }
 
 export async function getNetworkAncestors(networkId: string): Promise<NetworkBreadcrumbItem[]> {
   return unwrapIpc(await window.electron.network.getAncestors(networkId));
 }
 
-export async function getNetworkTree(projectId: string): Promise<NetworkTreeNode[]> {
-  return unwrapIpc(await window.electron.network.getTree(projectId));
+export async function getNetworkTree(rootNetworkId: string): Promise<NetworkTreeNode[]> {
+  return unwrapIpc(await window.electron.network.getTree(rootNetworkId));
 }
 
 // Network Node
@@ -125,7 +125,7 @@ export async function listRelationshipOccurrences(id: string): Promise<Edge[]> {
 export const networkService = {
   create: createNetwork, list: listNetworks, update: updateNetwork,
   delete: deleteNetwork, getFull: getNetworkFull,
-  getUniverse: getUniverseNetwork, getProjectOntology: getProjectOntologyNetwork,
+  getUniverse: getUniverseNetwork, getRoot: getRootNetwork,
   getAncestors: getNetworkAncestors, getTree: getNetworkTree,
   node: { add: addNetworkNode, update: updateNetworkNode, remove: removeNetworkNode },
   edge: { create: createEdge, get: getEdge, update: updateEdge, delete: deleteEdge },

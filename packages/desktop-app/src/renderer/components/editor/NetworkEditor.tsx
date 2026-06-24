@@ -2,7 +2,7 @@
 import type { EditorTab } from '@netior/shared/types';
 import { ArrowLeft } from 'lucide-react';
 import { useNetworkStore } from '../../stores/network-store';
-import { useProjectStore } from '../../stores/project-store';
+import { useWorldStore } from '../../stores/world-store';
 import { useEditorStore } from '../../stores/editor-store';
 import { useEditorSession } from '../../hooks/useEditorSession';
 import { layoutService, networkService } from '../../services';
@@ -42,7 +42,7 @@ function parseLayoutConfig(configJson: string | null | undefined): Record<string
 }
 
 function getKindLabel(kind: string | undefined): string {
-  if (kind === 'ontology') return 'Ontology';
+  if (kind === 'root') return 'Root Network';
   if (kind === 'universe') return 'Universe';
   return 'Network';
 }
@@ -62,7 +62,7 @@ export function NetworkEditor({ tab }: NetworkEditorProps): JSX.Element {
   const nodes = useNetworkStore((s) => s.nodes);
   const edges = useNetworkStore((s) => s.edges);
   const navigateTab = useEditorStore((s) => s.navigateTab);
-  const currentProject = useProjectStore((s) => s.currentProject);
+  const currentWorld = useWorldStore((s) => s.currentWorld);
 
   const network = networks.find((item) => item.id === networkId)
     ?? (currentNetwork?.id === networkId ? currentNetwork : null);
@@ -143,17 +143,17 @@ export function NetworkEditor({ tab }: NetworkEditorProps): JSX.Element {
     }));
   }, [session]);
 
-  const handleOpenOntology = useCallback(async () => {
-    const projectId = network?.project_id ?? currentProject?.id ?? 'global';
+  const handleOpenRootNetwork = useCallback(async () => {
+    const rootNetworkId = network?.root_network_id ?? currentWorld?.id ?? 'global';
     navigateTab(tab.id, {
-      type: 'ontology',
-      targetId: projectId,
-      title: t('sidebar.ontology' as never) === 'sidebar.ontology'
-        ? 'Ontology'
-        : t('sidebar.ontology' as never),
-      projectId: projectId === 'global' ? undefined : projectId,
+      type: 'rootNetwork',
+      targetId: rootNetworkId,
+      title: t('sidebar.rootNetwork' as never) === 'sidebar.rootNetwork'
+        ? 'Root Network'
+        : t('sidebar.rootNetwork' as never),
+      rootNetworkId: rootNetworkId === 'global' ? undefined : rootNetworkId,
     });
-  }, [currentProject?.id, navigateTab, network?.project_id, t, tab.id]);
+  }, [currentWorld?.id, navigateTab, network?.root_network_id, t, tab.id]);
 
   const handleDelete = useCallback(async () => {
     await deleteNetwork(networkId);
@@ -188,7 +188,7 @@ export function NetworkEditor({ tab }: NetworkEditorProps): JSX.Element {
             size="sm"
             variant="ghost"
             onClick={() => {
-              void handleOpenOntology();
+              void handleOpenRootNetwork();
             }}
           >
             <ArrowLeft size={14} />
@@ -216,7 +216,7 @@ export function NetworkEditor({ tab }: NetworkEditorProps): JSX.Element {
                     void openNetworkViewerTab({
                       networkId,
                       title,
-                      projectId: network.project_id ?? currentProject?.id ?? null,
+                      rootNetworkId: network.root_network_id ?? currentWorld?.id ?? null,
                     });
                   }}
                 >

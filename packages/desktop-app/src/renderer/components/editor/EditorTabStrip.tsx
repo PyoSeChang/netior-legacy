@@ -124,9 +124,9 @@ function TabIcon({ tab }: { tab: EditorTab }): JSX.Element {
       return <Layout size={ICON_SIZE} style={{ flexShrink: 0 }} />;
     case 'networkViewer':
       return <Waypoints size={ICON_SIZE} style={{ flexShrink: 0 }} />;
-    case 'ontology':
+    case 'rootNetwork':
       return <Boxes size={ICON_SIZE} style={{ flexShrink: 0 }} />;
-    case 'project':
+    case 'world':
       return <FolderOpen size={ICON_SIZE} style={{ flexShrink: 0 }} />;
     case 'narre':
       return <Sparkles size={ICON_SIZE} style={{ flexShrink: 0 }} />;

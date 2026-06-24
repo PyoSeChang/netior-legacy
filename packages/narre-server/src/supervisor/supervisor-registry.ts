@@ -9,7 +9,7 @@
 } from '@netior/shared/types';
 import {
   createGlobalUserAgentDefinition,
-  createProjectUserAgentDefinition,
+  createWorldUserAgentDefinition,
   DEFAULT_USER_AGENT_ID,
   getSupervisorAgentKey,
   listSupervisorAgentDefinitions,
@@ -19,12 +19,12 @@ const MAX_EVENTS = 500;
 
 export interface SupervisorRegistryOptions {
   globalUserAgentId?: string | null;
-  projectUserAgentId?: string | null;
+  worldUserAgentId?: string | null;
 }
 
 export interface RegisterNarreSessionOptions {
   narreSessionId: string;
-  projectId: string;
+  rootNetworkId: string;
   agent?: AgentDefinition;
   surfaceId?: string;
   title?: string | null;
@@ -43,11 +43,11 @@ export class SupervisorRegistry {
 
   constructor(private readonly options: SupervisorRegistryOptions = {}) {}
 
-  listAgents(projectId?: string | null): AgentDefinition[] {
+  listAgents(rootNetworkId?: string | null): AgentDefinition[] {
     return listSupervisorAgentDefinitions({
-      projectId,
+      rootNetworkId,
       globalUserAgentId: this.options.globalUserAgentId,
-      projectUserAgentId: this.options.projectUserAgentId,
+      worldUserAgentId: this.options.worldUserAgentId,
     });
   }
 
@@ -68,8 +68,8 @@ export class SupervisorRegistry {
   }
 
   registerNarreSession(options: RegisterNarreSessionOptions): SupervisorAgentSessionSnapshot {
-    const agentId = this.options.projectUserAgentId?.trim() || DEFAULT_USER_AGENT_ID;
-    const agent = options.agent ?? createProjectUserAgentDefinition(agentId, options.projectId);
+    const agentId = this.options.worldUserAgentId?.trim() || DEFAULT_USER_AGENT_ID;
+    const agent = options.agent ?? createWorldUserAgentDefinition(agentId, options.rootNetworkId);
     const sessionId = buildNarreSupervisorSessionId(options.narreSessionId);
     const eventType = this.sessions.has(sessionId) ? 'session_updated' : 'session_started';
     return this.upsertSession({
@@ -77,10 +77,10 @@ export class SupervisorRegistry {
       agent,
       surface: {
         kind: 'editor',
-        id: options.surfaceId ?? `narre:${options.projectId}`,
+        id: options.surfaceId ?? `narre:${options.rootNetworkId}`,
       },
       externalSessionId: options.narreSessionId,
-      projectId: options.projectId,
+      rootNetworkId: options.rootNetworkId,
       currentRunId: options.currentRunId ?? null,
       currentTaskId: options.currentTaskId ?? null,
       title: options.title ?? null,
@@ -134,7 +134,7 @@ export class SupervisorRegistry {
       agent: report.agent,
       surface: report.surface,
       externalSessionId: report.externalSessionId ?? null,
-      projectId: report.projectId,
+      rootNetworkId: report.rootNetworkId,
       currentRunId: report.currentRunId ?? null,
       currentTaskId: report.currentTaskId ?? null,
       title: report.title ?? null,
@@ -151,7 +151,7 @@ export class SupervisorRegistry {
       agent: AgentDefinition;
       surface: SupervisorAgentSessionSnapshot['surface'];
       externalSessionId: string | null;
-      projectId?: string;
+      rootNetworkId?: string;
       currentRunId?: string | null;
       currentTaskId?: string | null;
       title?: string | null;
@@ -174,7 +174,7 @@ export class SupervisorRegistry {
       reason: input.reason,
       surface: input.surface,
       externalSessionId: input.externalSessionId,
-      ...(input.projectId ? { projectId: input.projectId } : {}),
+      ...(input.rootNetworkId ? { rootNetworkId: input.rootNetworkId } : {}),
       currentRunId: input.currentRunId ?? current?.currentRunId ?? null,
       currentTaskId: input.currentTaskId ?? current?.currentTaskId ?? null,
       title: input.title ?? current?.title ?? null,

@@ -2,7 +2,7 @@ verify:
   - name: "network structure separates character world plot and story spaces"
     db:
       table: networks
-      condition: "project_id = '{{project_id}}' AND LOWER(name) IN ('character', 'characters', 'worldbuilding', 'world', 'plot', 'story', '캐릭터', '인물', '세계관', '설정', '플롯', '줄거리', '스토리', '장면')"
+      condition: "root_network_id = '{{root_network_id}}' AND LOWER(name) IN ('character', 'characters', 'worldbuilding', 'world', 'plot', 'story', '캐릭터', '인물', '세계관', '설정', '플롯', '줄거리', '스토리', '장면')"
       expect:
         count_min: 4
 
@@ -17,42 +17,42 @@ verify:
   - name: "Quest uses workflow models"
     db:
       table: schemas
-      condition: "project_id = '{{project_id}}' AND name = 'Quest' AND models LIKE '%statusful%' AND models LIKE '%prioritizable%'"
+      condition: "root_network_id = '{{root_network_id}}' AND name = 'Quest' AND models LIKE '%statusful%' AND models LIKE '%prioritizable%'"
       expect:
         count: 1
 
   - name: "Scene uses temporal model"
     db:
       table: schemas
-      condition: "project_id = '{{project_id}}' AND name = 'Scene' AND models LIKE '%temporal%'"
+      condition: "root_network_id = '{{root_network_id}}' AND name = 'Scene' AND models LIKE '%temporal%'"
       expect:
         count: 1
 
   - name: "Character.faction is a Faction schema_ref"
     db:
       table: schema_fields
-      condition: "name = 'faction' AND field_type = 'schema_ref' AND schema_id IN (SELECT id FROM schemas WHERE project_id = '{{project_id}}' AND name = 'Character') AND ref_schema_id IN (SELECT id FROM schemas WHERE project_id = '{{project_id}}' AND name = 'Faction')"
+      condition: "name = 'faction' AND field_type = 'schema_ref' AND schema_id IN (SELECT id FROM schemas WHERE root_network_id = '{{root_network_id}}' AND name = 'Character') AND ref_schema_id IN (SELECT id FROM schemas WHERE root_network_id = '{{root_network_id}}' AND name = 'Faction')"
       expect:
         count: 1
 
   - name: "Quest.giver is a Character schema_ref"
     db:
       table: schema_fields
-      condition: "name = 'giver' AND field_type = 'schema_ref' AND schema_id IN (SELECT id FROM schemas WHERE project_id = '{{project_id}}' AND name = 'Quest') AND ref_schema_id IN (SELECT id FROM schemas WHERE project_id = '{{project_id}}' AND name = 'Character')"
+      condition: "name = 'giver' AND field_type = 'schema_ref' AND schema_id IN (SELECT id FROM schemas WHERE root_network_id = '{{root_network_id}}' AND name = 'Quest') AND ref_schema_id IN (SELECT id FROM schemas WHERE root_network_id = '{{root_network_id}}' AND name = 'Character')"
       expect:
         count: 1
 
   - name: "Quest.target_region is a Region schema_ref"
     db:
       table: schema_fields
-      condition: "name = 'target_region' AND field_type = 'schema_ref' AND schema_id IN (SELECT id FROM schemas WHERE project_id = '{{project_id}}' AND name = 'Quest') AND ref_schema_id IN (SELECT id FROM schemas WHERE project_id = '{{project_id}}' AND name = 'Region')"
+      condition: "name = 'target_region' AND field_type = 'schema_ref' AND schema_id IN (SELECT id FROM schemas WHERE root_network_id = '{{root_network_id}}' AND name = 'Quest') AND ref_schema_id IN (SELECT id FROM schemas WHERE root_network_id = '{{root_network_id}}' AND name = 'Region')"
       expect:
         count: 1
 
   - name: "Scene.pov_character is a Character schema_ref"
     db:
       table: schema_fields
-      condition: "name = 'pov_character' AND field_type = 'schema_ref' AND schema_id IN (SELECT id FROM schemas WHERE project_id = '{{project_id}}' AND name = 'Scene') AND ref_schema_id IN (SELECT id FROM schemas WHERE project_id = '{{project_id}}' AND name = 'Character')"
+      condition: "name = 'pov_character' AND field_type = 'schema_ref' AND schema_id IN (SELECT id FROM schemas WHERE root_network_id = '{{root_network_id}}' AND name = 'Scene') AND ref_schema_id IN (SELECT id FROM schemas WHERE root_network_id = '{{root_network_id}}' AND name = 'Character')"
       expect:
         count: 1
 
@@ -65,7 +65,7 @@ verify:
   - name: "starter instance nodes were created"
     db:
       table: network_nodes
-      condition: "network_id IN (SELECT id FROM networks WHERE project_id = '{{project_id}}') AND object_id IN (SELECT id FROM objects WHERE project_id = '{{project_id}}' AND object_type = 'instance')"
+      condition: "network_id IN (SELECT id FROM networks WHERE root_network_id = '{{root_network_id}}') AND object_id IN (SELECT id FROM objects WHERE root_network_id = '{{root_network_id}}' AND object_type = 'instance')"
       expect:
         count_min: 4
 
@@ -123,10 +123,10 @@ verify:
         count_min: 4
         count_max: 24
 
-  - name: "analysis: project binding violation absent"
+  - name: "analysis: world binding violation absent"
     analysis:
       tool_use:
-        findings_absent: [bootstrap_missing_interview, bootstrap_insufficient_interview, bootstrap_missing_proposal, project_binding_violation]
+        findings_absent: [bootstrap_missing_interview, bootstrap_insufficient_interview, bootstrap_missing_proposal, world_binding_violation]
         summary:
-          project_binding_violation_count:
+          world_binding_violation_count:
             count: 0

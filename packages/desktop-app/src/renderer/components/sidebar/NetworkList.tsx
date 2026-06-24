@@ -5,12 +5,12 @@ import { useNetworkStore } from '../../stores/network-store';
 import { useEditorStore } from '../../stores/editor-store';
 import { useActivityBarStore } from '../../stores/activity-bar-store';
 import { useI18n } from '../../hooks/useI18n';
-import { getProjectNetworkBookmarkIds } from '../../lib/activity-bar-layout';
+import { getWorldNetworkBookmarkIds } from '../../lib/activity-bar-layout';
 import { ContextMenu, type ContextMenuEntry } from '../ui/ContextMenu';
 import { openNetworkViewerTab } from '../../lib/open-network-viewer-tab';
 
 interface NetworkListProps {
-  projectId: string;
+  rootNetworkId: string;
   kindFilter?: NetworkKind | NetworkKind[];
   title?: string;
   canCreate?: boolean;
@@ -38,7 +38,7 @@ interface NetworkContextMenuState {
   networkId: string;
   networkName: string;
   networkKind: string;
-  networkProjectId: string | null;
+  networkRootNetworkId: string | null;
 }
 
 // ??? Tree Item ???????????????????????????????????????????????????
@@ -54,12 +54,12 @@ function TreeNode({
   depth: number;
   currentNetworkId?: string;
   onOpen: (id: string) => void;
-  onContextMenu: (e: React.MouseEvent, id: string, name: string, kind: string, projectId: string | null) => void;
+  onContextMenu: (e: React.MouseEvent, id: string, name: string, kind: string, rootNetworkId: string | null) => void;
 }): JSX.Element {
   const [expanded, setExpanded] = useState(depth < 2);
   const isActive = currentNetworkId === treeNode.network.id;
   const hasChildren = treeNode.children.length > 0;
-  const NetworkIcon = treeNode.network.kind === 'ontology' ? Boxes : Waypoints;
+  const NetworkIcon = treeNode.network.kind === 'root' ? Boxes : Waypoints;
 
   return (
     <>
@@ -75,7 +75,7 @@ function TreeNode({
         onContextMenu={(e) => {
           e.preventDefault();
           e.stopPropagation();
-          onContextMenu(e, treeNode.network.id, treeNode.network.name, treeNode.network.kind, treeNode.network.project_id);
+          onContextMenu(e, treeNode.network.id, treeNode.network.name, treeNode.network.kind, treeNode.network.root_network_id);
         }}
       >
         {hasChildren ? (
@@ -109,22 +109,22 @@ function TreeNode({
 
 // ??? NetworkList Root ?????????????????????????????????????????????
 
-export function NetworkList({ projectId, kindFilter, title, canCreate }: NetworkListProps): JSX.Element {
+export function NetworkList({ rootNetworkId, kindFilter, title, canCreate }: NetworkListProps): JSX.Element {
   const { t } = useI18n();
   const { currentNetwork, createNetwork, openNetwork, loadNetworkTree, networkTree } = useNetworkStore();
   const ensureActivityBarLoaded = useActivityBarStore((state) => state.ensureLoaded);
   const addBookmark = useActivityBarStore((state) => state.addBookmark);
   const removeBookmark = useActivityBarStore((state) => state.removeBookmark);
-  const bookmarkedNetworkIds = useActivityBarStore((state) => getProjectNetworkBookmarkIds(state.config, projectId));
+  const bookmarkedNetworkIds = useActivityBarStore((state) => getWorldNetworkBookmarkIds(state.config, rootNetworkId));
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState('');
   const [contextMenu, setContextMenu] = useState<NetworkContextMenuState | null>(null);
-  const allowCreate = canCreate ?? kindFilter !== 'ontology';
+  const allowCreate = canCreate ?? kindFilter !== 'root';
   const visibleTree = kindFilter ? filterTreeByKind(networkTree, kindFilter) : networkTree;
 
   useEffect(() => {
-    loadNetworkTree(projectId);
-  }, [projectId, loadNetworkTree]);
+    loadNetworkTree(rootNetworkId);
+  }, [rootNetworkId, loadNetworkTree]);
 
   useEffect(() => {
     void ensureActivityBarLoaded();
@@ -146,11 +146,11 @@ export function NetworkList({ projectId, kindFilter, title, canCreate }: Network
     if (!allowCreate) return;
     if (!newName.trim()) return;
     const network = await createNetwork({
-      project_id: projectId,
+      root_network_id: rootNetworkId,
       name: newName.trim(),
     });
     await openNetwork(network.id);
-    await loadNetworkTree(projectId);
+    await loadNetworkTree(rootNetworkId);
     setNewName('');
     setCreating(false);
   };
@@ -165,12 +165,12 @@ export function NetworkList({ projectId, kindFilter, title, canCreate }: Network
     networkId: string,
     networkName: string,
     networkKind: string,
-    networkProjectId: string | null,
+    networkRootNetworkId: string | null,
   ) => {
-    setContextMenu({ x: e.clientX, y: e.clientY, networkId, networkName, networkKind, networkProjectId });
+    setContextMenu({ x: e.clientX, y: e.clientY, networkId, networkName, networkKind, networkRootNetworkId });
   }, []);
 
-  const contextMenuIsSystem = contextMenu?.networkKind === 'universe' || contextMenu?.networkKind === 'ontology';
+  const contextMenuIsSystem = contextMenu?.networkKind === 'universe' || contextMenu?.networkKind === 'root';
   const contextMenuIsBookmarked = contextMenu ? bookmarkedNetworkIds.includes(contextMenu.networkId) : false;
   const contextMenuItems: ContextMenuEntry[] = contextMenu ? [
     {
@@ -180,7 +180,7 @@ export function NetworkList({ projectId, kindFilter, title, canCreate }: Network
         void openNetworkViewerTab({
           networkId: contextMenu.networkId,
           title: contextMenu.networkName,
-          projectId: contextMenu.networkProjectId ?? projectId,
+          rootNetworkId: contextMenu.networkRootNetworkId ?? rootNetworkId,
         });
       },
     },
@@ -192,7 +192,7 @@ export function NetworkList({ projectId, kindFilter, title, canCreate }: Network
           type: 'network',
           targetId: contextMenu.networkId,
           title: contextMenu.networkName,
-          projectId: contextMenu.networkProjectId ?? projectId,
+          rootNetworkId: contextMenu.networkRootNetworkId ?? rootNetworkId,
         });
       },
     },
@@ -201,10 +201,10 @@ export function NetworkList({ projectId, kindFilter, title, canCreate }: Network
       icon: contextMenuIsBookmarked ? <PinOff size={14} /> : <Pin size={14} />,
       onClick: async () => {
         if (contextMenuIsBookmarked) {
-          await removeBookmark(projectId, contextMenu.networkId);
+          await removeBookmark(rootNetworkId, contextMenu.networkId);
           return;
         }
-        await addBookmark(projectId, contextMenu.networkId);
+        await addBookmark(rootNetworkId, contextMenu.networkId);
       },
     } satisfies ContextMenuEntry] : []),
     ...(!contextMenuIsSystem ? [
@@ -214,16 +214,16 @@ export function NetworkList({ projectId, kindFilter, title, canCreate }: Network
         icon: <Plus size={14} />,
         onClick: async () => {
           const child = await createNetwork({
-            project_id: contextMenu.networkProjectId ?? projectId,
+            root_network_id: contextMenu.networkRootNetworkId ?? rootNetworkId,
             name: t('network.defaultName'),
             parent_network_id: contextMenu.networkId,
           });
-          await loadNetworkTree(projectId);
+          await loadNetworkTree(rootNetworkId);
           await openNetwork(child.id);
           void openNetworkViewerTab({
             networkId: child.id,
             title: child.name,
-            projectId: child.project_id ?? projectId,
+            rootNetworkId: child.root_network_id ?? rootNetworkId,
             isDirty: true,
           });
         },
@@ -234,7 +234,7 @@ export function NetworkList({ projectId, kindFilter, title, canCreate }: Network
         danger: true,
         onClick: async () => {
           await useNetworkStore.getState().deleteNetwork(contextMenu.networkId);
-          await loadNetworkTree(projectId);
+          await loadNetworkTree(rootNetworkId);
         },
       },
     ] : []),

@@ -1,6 +1,6 @@
 ﻿import React, { useCallback } from 'react';
 import type { EditorTab } from '@netior/shared/types';
-import { useProjectStore } from '../../stores/project-store';
+import { useWorldStore } from '../../stores/world-store';
 import { useEditorStore } from '../../stores/editor-store';
 import { useEditorSession } from '../../hooks/useEditorSession';
 import { useI18n } from '../../hooks/useI18n';
@@ -12,52 +12,52 @@ import {
   NetworkObjectMetadataList,
 } from './NetworkObjectEditorShell';
 
-interface ProjectEditorProps {
+interface WorldEditorProps {
   tab: EditorTab;
 }
 
-interface ProjectState {
+interface WorldState {
   name: string;
 }
 
-export function ProjectEditor({ tab }: ProjectEditorProps): JSX.Element {
+export function WorldEditor({ tab }: WorldEditorProps): JSX.Element {
   const { t } = useI18n();
-  const projectId = tab.targetId;
-  const projects = useProjectStore((s) => s.projects);
-  const currentProject = useProjectStore((s) => s.currentProject);
-  const updateProject = useProjectStore((s) => s.updateProject);
-  const openProject = useProjectStore((s) => s.openProject);
-  const deleteProject = useProjectStore((s) => s.deleteProject);
-  const project = projects.find((item) => item.id === projectId) ?? null;
+  const rootNetworkId = tab.targetId;
+  const worlds = useWorldStore((s) => s.worlds);
+  const currentWorld = useWorldStore((s) => s.currentWorld);
+  const updateWorld = useWorldStore((s) => s.updateWorld);
+  const openWorld = useWorldStore((s) => s.openWorld);
+  const deleteWorld = useWorldStore((s) => s.deleteWorld);
+  const world = worlds.find((item) => item.id === rootNetworkId) ?? null;
 
-  const session = useEditorSession<ProjectState>({
+  const session = useEditorSession<WorldState>({
     tabId: tab.id,
     load: () => {
-      const current = useProjectStore.getState().projects.find((item) => item.id === projectId);
+      const current = useWorldStore.getState().worlds.find((item) => item.id === rootNetworkId);
       return { name: current?.name ?? '' };
     },
     save: async (state) => {
-      const updated = await updateProject(projectId, { name: state.name });
+      const updated = await updateWorld(rootNetworkId, { name: state.name });
       useEditorStore.getState().updateTitle(tab.id, updated.name);
     },
-    deps: [projectId, project?.name],
+    deps: [rootNetworkId, world?.name],
   });
 
   const handleOpenWorkspace = useCallback(async () => {
-    const target = useProjectStore.getState().projects.find((item) => item.id === projectId);
+    const target = useWorldStore.getState().worlds.find((item) => item.id === rootNetworkId);
     if (!target) return;
-    await openProject(target);
-  }, [openProject, projectId]);
+    await openWorld(target);
+  }, [openWorld, rootNetworkId]);
 
   const handleDelete = useCallback(async () => {
-    await deleteProject(projectId);
+    await deleteWorld(rootNetworkId);
     useEditorStore.getState().closeTab(tab.id);
-  }, [deleteProject, projectId, tab.id]);
+  }, [deleteWorld, rootNetworkId, tab.id]);
 
-  if (!project) {
+  if (!world) {
     return (
       <div className="flex h-full items-center justify-center text-xs text-muted">
-        {t('project.noProject')}
+        {t('world.noWorld')}
       </div>
     );
   }
@@ -67,10 +67,10 @@ export function ProjectEditor({ tab }: ProjectEditorProps): JSX.Element {
   return (
     <div className="h-full overflow-y-auto">
       <NetworkObjectEditorShell
-        badge={t('project.name')}
-        title={session.state.name || project.name}
-        subtitle={currentProject?.id === project.id ? 'Current Project' : 'Project'}
-        description={project.root_dir}
+        badge={t('world.name')}
+        title={session.state.name || world.name}
+        subtitle={currentWorld?.id === world.id ? 'Current World' : 'World'}
+        description={world.root_dir}
         actions={(
           <div className="flex items-center gap-2">
             <Button size="sm" variant="secondary" onClick={() => { void handleOpenWorkspace(); }}>
@@ -81,7 +81,7 @@ export function ProjectEditor({ tab }: ProjectEditorProps): JSX.Element {
       >
         <NetworkObjectEditorSection title={t('editorShell.overview' as never)} defaultOpen={tab.isDirty} viewMode="body">
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-muted">{t('project.name')}</label>
+            <label className="text-xs font-medium text-muted">{t('world.name')}</label>
             <Input
               value={session.state.name}
               onChange={(event) => {
@@ -91,10 +91,10 @@ export function ProjectEditor({ tab }: ProjectEditorProps): JSX.Element {
           </div>
         </NetworkObjectEditorSection>
 
-        <NetworkObjectEditorSection title={t('project.folder')} defaultOpen={false} viewMode="details">
+        <NetworkObjectEditorSection title={t('world.folder')} defaultOpen={false} viewMode="details">
           <NetworkObjectMetadataList
             items={[
-              { label: t('project.folder'), value: project.root_dir },
+              { label: t('world.folder'), value: world.root_dir },
             ]}
           />
         </NetworkObjectEditorSection>
@@ -102,8 +102,8 @@ export function ProjectEditor({ tab }: ProjectEditorProps): JSX.Element {
         <NetworkObjectEditorSection title={t('editorShell.metadata' as never)} defaultOpen={false} viewMode="details">
           <NetworkObjectMetadataList
             items={[
-              { label: t('editorShell.objectId' as never), value: <code className="font-mono text-xs">{project.id}</code> },
-              { label: 'Updated', value: project.updated_at },
+              { label: t('editorShell.objectId' as never), value: <code className="font-mono text-xs">{world.id}</code> },
+              { label: 'Updated', value: world.updated_at },
             ]}
           />
         </NetworkObjectEditorSection>

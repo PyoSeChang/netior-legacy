@@ -1,7 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import {
-  getInstancesByProject,
+  getInstancesByWorld,
   searchInstances,
   createInstance,
   updateInstance,
@@ -11,7 +11,7 @@ import {
 } from '../netior-service-client.js';
 import type { Instance, InstanceProperty, SchemaField } from '@netior/shared/types';
 import { emitChange } from '../events.js';
-import { projectIdSchema, registerNetiorTool, resolveProjectId } from './shared-tool-registry.js';
+import { rootNetworkIdSchema, registerNetiorTool, resolveRootNetworkId } from './shared-tool-registry.js';
 import { toAgentInstance } from './schema-surface.js';
 
 const instancePropertyFilterSchema = z.object({
@@ -190,17 +190,17 @@ export function registerInstanceTools(server: McpServer): void {
     server,
     'list_instances',
     {
-      project_id: projectIdSchema(),
+      root_network_id: rootNetworkIdSchema(),
       query: z.string().optional().describe('Search query to filter instances by title'),
       schema_id: z.string().optional().describe('Optional schema ID to narrow the instance set'),
       property_filters: z.array(instancePropertyFilterSchema).optional().describe('Optional property filters resolved against the schema'),
     },
-    async ({ project_id, query, schema_id, property_filters }) => {
+    async ({ root_network_id, query, schema_id, property_filters }) => {
       try {
-        const targetProjectId = resolveProjectId(project_id);
+        const targetRootNetworkId = resolveRootNetworkId(root_network_id);
         const baseInstances = query
-          ? await searchInstances(targetProjectId, query)
-          : await getInstancesByProject(targetProjectId);
+          ? await searchInstances(targetRootNetworkId, query)
+          : await getInstancesByWorld(targetRootNetworkId);
         const schemaInstances = schema_id
           ? baseInstances.filter((instance) => instance.schema_id === schema_id)
           : baseInstances;
@@ -222,7 +222,7 @@ export function registerInstanceTools(server: McpServer): void {
     server,
     'create_instance',
     {
-      project_id: projectIdSchema(),
+      root_network_id: rootNetworkIdSchema(),
       title: z.string().describe('Instance title'),
       schema_id: z.string().optional().describe('Schema ID to assign'),
       color: z.string().optional().describe('Color value'),
@@ -230,11 +230,11 @@ export function registerInstanceTools(server: McpServer): void {
       profile_image: z.string().nullable().optional().describe('Profile image source. Can be an image URL, data URL, file URL, or local file path. Stored in the instance icon field.'),
       content: z.string().nullable().optional().describe('Optional instance body content. May include Netior Editor semantic tokens such as [[target:...]] or ::netior-embed{...}.'),
     },
-    async ({ project_id, title, schema_id, color, icon, profile_image, content }) => {
+    async ({ root_network_id, title, schema_id, color, icon, profile_image, content }) => {
       try {
         const visual = resolveInstanceVisualValue({ icon, profile_image });
         const result = await createInstance({
-          project_id: resolveProjectId(project_id),
+          root_network_id: resolveRootNetworkId(root_network_id),
           title,
           schema_id: schema_id,
           color,

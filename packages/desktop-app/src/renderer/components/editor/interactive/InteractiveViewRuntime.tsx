@@ -17,7 +17,7 @@ import { useInstanceStore } from '../../../stores/instance-store';
 
 interface InteractiveViewContextValue {
   tabId?: string;
-  projectId: string;
+  rootNetworkId: string;
   schemaId: string;
   instanceId: string;
   fields: SchemaField[];
@@ -31,7 +31,7 @@ interface InteractiveViewContextValue {
 
 interface InteractiveViewProviderProps {
   tabId?: string;
-  projectId: string;
+  rootNetworkId: string;
   schemaId: string;
   instanceId: string;
   fields: SchemaField[];
@@ -50,7 +50,7 @@ export interface InteractiveFieldValue {
 
 export interface CurrentInteractiveInstance {
   id: string;
-  projectId: string;
+  rootNetworkId: string;
   schemaId: string;
   instanceId: string;
 }
@@ -75,7 +75,7 @@ function useInteractiveViewContext(): InteractiveViewContextValue {
 
 export function InteractiveViewProvider({
   tabId,
-  projectId,
+  rootNetworkId,
   schemaId,
   instanceId,
   fields,
@@ -108,7 +108,7 @@ export function InteractiveViewProvider({
         type: 'instance',
         targetId: refId,
         title: tabTitle,
-        projectId,
+        rootNetworkId,
         objectViewMode: 'interactive',
       });
       return;
@@ -117,14 +117,14 @@ export function InteractiveViewProvider({
       type: 'instance',
       targetId: refId,
       title: tabTitle,
-      projectId,
+      rootNetworkId,
       objectViewMode: 'interactive',
     });
-  }, [projectId, tabId]);
+  }, [rootNetworkId, tabId]);
 
   const value = useMemo<InteractiveViewContextValue>(() => ({
     tabId,
-    projectId,
+    rootNetworkId,
     schemaId,
     instanceId,
     fields,
@@ -134,7 +134,7 @@ export function InteractiveViewProvider({
     setViewStateValue,
     updateFieldValue,
     openObject,
-  }), [content, fields, instanceId, openObject, projectId, properties, schemaId, setViewStateValue, tabId, updateFieldValue, viewState]);
+  }), [content, fields, instanceId, openObject, rootNetworkId, properties, schemaId, setViewStateValue, tabId, updateFieldValue, viewState]);
 
   return (
     <InteractiveViewContext.Provider value={value}>
@@ -169,8 +169,8 @@ export function useContent(): string | null {
 }
 
 export function useCurrentInstance(): CurrentInteractiveInstance {
-  const { projectId, schemaId, instanceId } = useInteractiveViewContext();
-  return { id: instanceId, projectId, schemaId, instanceId };
+  const { rootNetworkId, schemaId, instanceId } = useInteractiveViewContext();
+  return { id: instanceId, rootNetworkId, schemaId, instanceId };
 }
 
 export function useOpenInstance(): (instanceId: string, title?: string) => void {
@@ -223,7 +223,7 @@ const INTERACTIVE_ICONS: Record<InteractiveIconName, React.ElementType<{ size?: 
 export function useDslValue<T extends NetiorDslValue = NetiorDslValue>(
   expression: NetiorDslExpression,
 ): InteractiveDslResult<T> {
-  const { projectId, schemaId, instanceId, properties, viewState } = useInteractiveViewContext();
+  const { rootNetworkId, schemaId, instanceId, properties, viewState } = useInteractiveViewContext();
   const [state, setState] = useState<InteractiveDslResult<T>>({
     value: null,
     loading: true,
@@ -235,7 +235,7 @@ export function useDslValue<T extends NetiorDslValue = NetiorDslValue>(
     setState((current) => ({ ...current, loading: true, error: null }));
     dslService.evaluate({
       context: {
-        projectId,
+        rootNetworkId,
         currentSchemaId: schemaId,
         currentInstanceId: instanceId,
         currentObject: { objectType: 'instance', refId: instanceId },
@@ -257,7 +257,7 @@ export function useDslValue<T extends NetiorDslValue = NetiorDslValue>(
         setState({ value: null, loading: false, error: (error as Error).message });
       });
     return () => { cancelled = true; };
-  }, [expression, instanceId, projectId, properties, schemaId, viewState]);
+  }, [expression, instanceId, rootNetworkId, properties, schemaId, viewState]);
 
   return state;
 }

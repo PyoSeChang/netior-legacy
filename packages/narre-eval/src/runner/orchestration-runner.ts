@@ -46,7 +46,7 @@ const EXECUTOR_SURFACE_ID = 'narre-eval-terminal-surface';
 export async function runOrchestrationScenario(
   adapter: NarreServerAdapter,
   scenario: EvalScenario,
-  projectId: string,
+  rootNetworkId: string,
   templateVars: Record<string, string> = {},
 ): Promise<Transcript> {
   const baseUrl = adapter.getBaseUrl();
@@ -57,20 +57,20 @@ export async function runOrchestrationScenario(
 
   try {
     const runSnapshot = await callTool<OrchestrationSnapshot>(baseUrl, toolCalls, 'supervisor.create_run', '/supervisor/runs', {
-      projectId,
+      rootNetworkId,
       userRequest,
       mode: 'orchestration',
     });
 
     await callTool(baseUrl, toolCalls, 'supervisor.register_executor', '/supervisor/executors/register', {
       id: EXECUTOR_ID,
-      projectId,
+      rootNetworkId,
       provider: 'terminal',
       surface: { kind: 'terminal', id: EXECUTOR_SURFACE_ID },
       capabilities: ['terminal'],
     });
 
-    const terminalAgentKey = await resolveTerminalAgentKey(baseUrl, projectId, toolCalls);
+    const terminalAgentKey = await resolveTerminalAgentKey(baseUrl, rootNetworkId, toolCalls);
     const task = await callTool<OrchestrationTask>(baseUrl, toolCalls, 'supervisor.create_task', '/supervisor/tasks', {
       runId: runSnapshot.run.id,
       title: 'Queue deterministic terminal assignment',
@@ -132,14 +132,14 @@ export async function runOrchestrationScenario(
 
 async function resolveTerminalAgentKey(
   baseUrl: string,
-  projectId: string,
+  rootNetworkId: string,
   toolCalls: ToolCallRecord[],
 ): Promise<string> {
   const agents = await getTool<AgentDefinition[]>(
     baseUrl,
     toolCalls,
     'supervisor.list_agents',
-    `/supervisor/agents?projectId=${encodeURIComponent(projectId)}`,
+    `/supervisor/agents?rootNetworkId=${encodeURIComponent(rootNetworkId)}`,
   );
   const terminalAgent = agents.find((agent) =>
     agent.kind === 'terminal' && agent.terminalAgentType === 'codex-cli',

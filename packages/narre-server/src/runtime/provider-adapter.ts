@@ -13,8 +13,8 @@ export interface NarreMcpServerConfig {
 
 export interface NarreProviderRunContext {
   traceId?: string;
-  projectId: string;
-  projectRootDir?: string | null;
+  rootNetworkId: string;
+  worldRootDir?: string | null;
   systemPrompt: string;
   userPrompt: string;
   sessionId: string;

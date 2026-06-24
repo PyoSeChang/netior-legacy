@@ -24,7 +24,7 @@ interface InstanceStore {
   loading: boolean;
   properties: Record<string, InstanceProperty[]>;
 
-  loadByProject: (projectId: string) => Promise<void>;
+  loadByWorld: (rootNetworkId: string) => Promise<void>;
   createInstance: (data: InstanceCreate) => Promise<Instance>;
   updateInstance: (id: string, data: InstanceUpdate) => Promise<void>;
   deleteInstance: (id: string) => Promise<void>;
@@ -44,10 +44,10 @@ export const useInstanceStore = create<InstanceStore>((set) => ({
   loading: false,
   properties: {},
 
-  loadByProject: async (projectId) => {
+  loadByWorld: async (rootNetworkId) => {
     set({ loading: true });
     try {
-      const instances = await instanceService.getByProject(projectId);
+      const instances = await instanceService.getByRootNetwork(rootNetworkId);
       set({ instances });
     } finally {
       set({ loading: false });

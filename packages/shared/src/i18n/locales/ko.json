@@ -26,28 +26,28 @@
     "recurringReadOnlyHint": "이 카드는 반복 일정의 개별 발생입니다. 전체 시리즈를 바꾸려면 원본 이벤트를 수정하세요.",
     "recurringVirtualHint": "이 발생을 편집하면 시리즈와 분리된 별도 항목이 만들어집니다."
   },
-  "project": {
-    "title": "프로젝트",
-    "create": "프로젝트 생성",
-    "name": "프로젝트 이름",
+  "world": {
+    "title": "월드",
+    "create": "월드 생성",
+    "name": "월드 이름",
     "selectFolder": "폴더 선택",
-    "noProjects": "프로젝트가 없습니다",
-    "deleteConfirm": "이 프로젝트를 삭제하시겠습니까?",
-    "newProject": "새 프로젝트",
-    "noProjectsYet": "아직 프로젝트가 없습니다",
-    "createFirst": "첫 프로젝트를 만들어보세요",
-    "deleteTitle": "프로젝트 삭제",
-    "deleteMessage": "프로젝트 참조가 삭제됩니다. 폴더의 파일은 삭제되지 않습니다.",
-    "missingPathTitle": "프로젝트 경로 없음",
-    "missingPathMessage": "프로젝트 경로를 찾을 수 없습니다: {path}\n새 경로를 지정해주세요.",
+    "noWorlds": "월드가 없습니다",
+    "deleteConfirm": "이 월드를 삭제하시겠습니까?",
+    "newWorld": "새 월드",
+    "noWorldsYet": "아직 월드가 없습니다",
+    "createFirst": "첫 월드를 만들어보세요",
+    "deleteTitle": "월드 삭제",
+    "deleteMessage": "월드 참조가 삭제됩니다. 폴더의 파일은 삭제되지 않습니다.",
+    "missingPathTitle": "월드 경로 없음",
+    "missingPathMessage": "월드 경로를 찾을 수 없습니다: {path}\n새 경로를 지정해주세요.",
     "selectNewPath": "경로 선택",
-    "folder": "프로젝트 폴더",
-    "namePlaceholder": "내 프로젝트",
+    "folder": "월드 폴더",
+    "namePlaceholder": "내 월드",
     "folderPlaceholder": "폴더를 선택하세요...",
-    "createFailed": "프로젝트를 생성하지 못했습니다.",
-    "duplicateRootDir": "이미 같은 폴더를 사용하는 프로젝트가 있습니다: {path}",
-    "goHome": "프로젝트 홈으로",
-    "noProject": "프로젝트 없음"
+    "createFailed": "월드를 생성하지 못했습니다.",
+    "duplicateRootDir": "이미 같은 폴더를 사용하는 월드가 있습니다: {path}",
+    "goHome": "월드 홈으로",
+    "noWorld": "월드 없음"
   },
   "network": {
     "create": "네트워크 생성",
@@ -96,7 +96,7 @@
     "deleteSubtreeTitle": "네트워크에서 제외",
     "deleteSubtreeMessage": "선택한 노드를 포함해 총 {count}개 노드를 이 네트워크에서 제외합니다. 원본 객체는 삭제되지 않습니다.",
     "deleteObjectTitle": "객체 완전 삭제",
-    "deleteObjectMessage": "{name} 객체를 프로젝트에서 완전히 삭제합니다. 이 객체가 배치된 모든 네트워크에서도 제거됩니다.",
+    "deleteObjectMessage": "{name} 객체를 월드에서 완전히 삭제합니다. 이 객체가 배치된 모든 네트워크에서도 제거됩니다.",
     "hierarchyLinkChildToParent": "Hierarchy 연결은 child에서 시작한 뒤 parent를 클릭합니다.",
     "hierarchyDropToParent": "강조된 노드 위에 놓으면 그 노드의 child가 됩니다.",
     "hierarchyDropRootChild": "Hierarchy 빈 공간에 놓으면 root child로 붙습니다.",
@@ -764,7 +764,8 @@
     "stadium": "스타디움",
     "detachMeaningConfirmTitle": "의미를 제거할까요?",
     "detachMeaningConfirmMessage": "{meaning} 의미를 제거해도 생성된 슬롯과 저장된 값은 유지됩니다.",
-    "detachMeaningConfirmAction": "의미 제거"
+    "detachMeaningConfirmAction": "의미 제거",
+    "sourceSchema": "소스 스키마"
   },
   "field": {
     "name": "필드 이름",
@@ -928,14 +929,14 @@
     "sidebarTopItems": "상단 기본 항목",
     "sidebarTopItemsDesc": "북마크 위에 고정으로 보이는 기본 사이드바 항목의 순서를 조정합니다.",
     "sidebarBookmarkedNetworks": "북마크한 네트워크",
-    "sidebarBookmarkedNetworksDesc": "프로젝트 네트워크를 activity bar에 고정합니다. 북마크는 상단/하단 기본 항목 사이에 표시됩니다.",
+    "sidebarBookmarkedNetworksDesc": "월드 네트워크를 activity bar에 고정합니다. 북마크는 상단/하단 기본 항목 사이에 표시됩니다.",
     "sidebarAvailableNetworks": "추가 가능한 네트워크",
-    "sidebarAvailableNetworksDesc": "현재 프로젝트의 네트워크를 북마크 영역에 추가합니다.",
+    "sidebarAvailableNetworksDesc": "현재 월드의 네트워크를 북마크 영역에 추가합니다.",
     "sidebarBottomItems": "하단 기본 항목",
     "sidebarBottomItemsDesc": "북마크 아래에 고정으로 보이는 유틸리티 항목의 순서를 조정합니다.",
-    "sidebarNoProject": "네트워크 북마크를 관리하려면 프로젝트를 열어야 합니다.",
+    "sidebarNoWorld": "네트워크 북마크를 관리하려면 월드를 열어야 합니다.",
     "sidebarNoBookmarks": "아직 북마크한 네트워크가 없습니다.",
-    "sidebarNoAvailableNetworks": "현재 프로젝트의 네트워크가 모두 북마크되어 있습니다.",
+    "sidebarNoAvailableNetworks": "현재 월드의 네트워크가 모두 북마크되어 있습니다.",
     "sidebarMoveUp": "위로 이동",
     "sidebarMoveDown": "아래로 이동",
     "appearanceMode": "표시 모드",
@@ -960,7 +961,7 @@
     "typographyDesc": "인터페이스, 본문, 코드, 터미널 폰트를 역할별로 나눠서 조정합니다. 선택기에는 이 머신에 설치된 폰트만 표시됩니다.",
     "interfaceFont": "인터페이스 폰트",
     "interfaceFontDesc": "메뉴, 사이드바, 대화상자, 일반 앱 크롬에 쓰는 기본 폰트입니다.",
-    "interfaceFontSample": "프로젝트 그래프, 설정 패널, 탐색 레이블",
+    "interfaceFontSample": "월드 그래프, 설정 패널, 탐색 레이블",
     "bodyFont": "본문 폰트",
     "bodyFontDesc": "노트, 마크다운, 여러 줄 텍스트 필드 같은 긴 글 읽기 영역에 적용합니다.",
     "bodyFontSample": "인스턴스 설명과 문서 본문을 조금 더 편하게 읽도록 맞춥니다.",
@@ -1081,8 +1082,8 @@
     "narreCodexRuntimeDesc": "이 옵션은 Narre가 Codex app-server를 띄울 때만 적용되며, 전역 Codex CLI 설정 파일을 덮어쓰지 않습니다.",
     "narreCodexModel": "Codex 모델",
     "narreCodexModelDesc": "Narre에서만 쓸 Codex 모델을 직접 지정할 때 사용합니다.",
-    "narreCodexUseProjectRoot": "프로젝트 디렉터리를 작업 디렉터리로 사용",
-    "narreCodexUseProjectRootDesc": "켜면 Codex의 작업 기준점을 Netior 소스가 아니라 대상 프로젝트 디렉터리로 맞춥니다.",
+    "narreCodexUseWorldRoot": "월드 디렉터리를 작업 디렉터리로 사용",
+    "narreCodexUseWorldRootDesc": "켜면 Codex의 작업 기준점을 Netior 소스가 아니라 대상 월드 디렉터리로 맞춥니다.",
     "narreCodexSandbox": "샌드박스",
     "narreCodexSandboxReadOnly": "읽기 전용",
     "narreCodexSandboxWorkspaceWrite": "워크스페이스 쓰기",
@@ -1282,7 +1283,7 @@
       "modal": "모달"
     },
     "when": {
-      "projectOpen": "프로젝트가 열려 있을 때",
+      "worldOpen": "월드가 열려 있을 때",
       "selectionExists": "선택 영역이 있을 때"
     },
     "items": {
@@ -1302,7 +1303,7 @@
         "openBrowserLabel": "브라우저 열기",
         "openBrowser": "새 브라우저 탭 열기",
         "openNarreLabel": "Narre 열기",
-        "openNarre": "현재 프로젝트의 Narre 탭 열기",
+        "openNarre": "현재 월드의 Narre 탭 열기",
         "toggleTocLabel": "목차 토글",
         "toggleToc": "마크다운 목차 패널 열기/닫기",
         "toggleEditorModeLabel": "에디터 모드 전환",
@@ -1482,7 +1483,7 @@
     "other": "기타"
   },
   "sidebar": {
-    "ontology": "온톨로지",
+    "rootNetwork": "루트 네트워크",
     "networks": "네트워크",
     "networkObjects": "네트워크 오브젝트",
     "objects": "오브젝트",
@@ -1585,7 +1586,7 @@
     "title": "에이전트",
     "refresh": "에이전트 새로고침",
     "newGlobal": "글로벌",
-    "newProject": "프로젝트",
+    "newWorld": "월드",
     "agentSectionTitle": "에이전트",
     "agentSectionDescription": "로컬 skill package owner에 대한 정의와 지속 프롬프트를 관리합니다",
     "skillSectionTitle": "스킬",
@@ -1596,7 +1597,7 @@
     "defaultSkillBodyDescription": "이 스킬은 다음 상황에서 사용합니다...",
     "scopeLabel": "범위",
     "scopeGlobal": "글로벌",
-    "scopeProject": "프로젝트",
+    "scopeWorld": "월드",
     "idLabel": "ID",
     "idPlaceholder": "agent-id",
     "nameLabel": "이름",
@@ -1622,7 +1623,7 @@
     "deleteAgentMessage": "{name}와 그 아래 로컬 스킬을 모두 삭제할까요?",
     "deleteSkillMessage": "/{name}를 삭제할까요?",
     "skillCount": "{count}개 스킬",
-    "projectRequired": "프로젝트 agent에는 활성 프로젝트가 필요합니다",
+    "worldRequired": "월드 agent에는 활성 월드가 필요합니다",
     "error": {
       "loadAgents": "에이전트를 불러오지 못했습니다",
       "saveAgent": "에이전트를 저장하지 못했습니다",
@@ -1633,7 +1634,7 @@
       "skillNameRequired": "스킬 이름이 필요합니다",
       "skillDescriptionRequired": "스킬 설명이 필요합니다",
       "skillBodyRequired": "스킬 본문이 필요합니다",
-      "projectIdRequired": "프로젝트 agent에는 활성 프로젝트가 필요합니다",
+      "rootNetworkIdRequired": "월드 agent에는 활성 월드가 필요합니다",
       "invalidId": "잘못된 ID입니다: {value}"
     }
   },
@@ -1682,10 +1683,10 @@
     "noAgents": "사용 가능한 에이전트가 없습니다",
     "agentScopes": {
       "system": "시스템",
-      "project": "프로젝트",
+      "world": "월드",
       "global": "글로벌",
       "systemAgent": "시스템 에이전트",
-      "projectAgent": "프로젝트 에이전트",
+      "worldAgent": "월드 에이전트",
       "globalAgent": "글로벌 에이전트"
     },
     "systemAgents": {
@@ -1881,7 +1882,7 @@
     "mentionTabHint": "Tab으로 유형 전환",
     "mentionSearch": "검색...",
     "command": {
-      "bootstrap": "프로젝트 부트스트랩",
+      "bootstrap": "월드 부트스트랩",
       "bootstrapHint": "도메인 설명을 바탕으로 초기 네트워크, 타입, 스타터 그래프를 구성합니다.",
       "index": "PDF 목차 인덱싱",
       "indexHint": "전송 전에 PDF 파일 멘션 1개가 필요합니다.",
@@ -1895,7 +1896,7 @@
     },
     "toolWrite": "쓰기",
     "toolCategory": {
-      "project": "프로젝트",
+      "world": "월드",
       "types": "타입",
       "instances": "인스턴스",
       "graph": "그래프",
@@ -1910,7 +1911,7 @@
       },
       "create_schema": {
         "name": "스키마 생성",
-        "description": "프로젝트 스키마를 생성하고 선택적으로 파일 템플릿과 의미를 연결합니다."
+        "description": "월드 스키마를 생성하고 선택적으로 파일 템플릿과 의미를 연결합니다."
       },
       "update_schema": {
         "name": "스키마 수정",
@@ -1964,14 +1965,14 @@
       },
       "evaluate_dsl": {
         "name": "DSL 평가",
-        "description": "프로젝트 context 안에서 read-only Netior DSL JSON AST expression을 평가합니다."
+        "description": "월드 context 안에서 read-only Netior DSL JSON AST expression을 평가합니다."
       },
       "list_instances": {
         "name": "인스턴스 목록 가져오기"
       },
       "create_instance": {
         "name": "인스턴스 생성",
-        "description": "프로젝트에 새 인스턴스를 만듭니다."
+        "description": "월드에 새 인스턴스를 만듭니다."
       },
       "update_instance": {
         "name": "인스턴스 수정"
@@ -2056,7 +2057,7 @@
       },
       "create_network": {
         "name": "네트워크 생성",
-        "description": "프로젝트 또는 앱 범위에 새 네트워크를 만듭니다."
+        "description": "월드 또는 앱 범위에 새 네트워크를 만듭니다."
       },
       "update_network": {
         "name": "네트워크 수정"
@@ -2070,8 +2071,9 @@
       "get_universe_network": {
         "name": "Universe 네트워크 가져오기"
       },
-      "get_project_ontology_network": {
-        "name": "온톨로지 네트워크 가져오기"
+      "get_root_network": {
+        "name": "루트 네트워크 가져오기",
+        "description": "현재 월드의 루트 네트워크를 가져옵니다."
       },
       "get_network_tree": {
         "name": "네트워크 트리 가져오기"
@@ -2169,8 +2171,9 @@
       "delete_relation_type": {
         "name": "관계 유형 삭제"
       },
-      "get_project_summary": {
-        "name": "프로젝트 정보 가져오기"
+      "get_world_summary": {
+        "name": "월드 정보 가져오기",
+        "description": "스키마, 의미, 인스턴스, 네트워크 context를 포함한 월드 요약을 가져옵니다."
       },
       "list_mcp_resources": {
         "name": "MCP 리소스 목록 가져오기"
@@ -2225,16 +2228,16 @@
       "parentNetwork": "상위 네트워크",
       "kind": "종류",
       "sortOrder": "정렬 순서",
-      "projectId": "프로젝트 ID"
+      "rootNetworkId": "루트 네트워크 ID"
     },
     "previewSummary": {
-      "createSchema": "프로젝트 스키마를 생성합니다.",
+      "createSchema": "월드 스키마를 생성합니다.",
       "updateSchemaSettings": "스키마 설정 {count}개를 수정합니다.",
       "createSchemaField": "스키마에 새 필드를 추가합니다.",
-      "createInstance": "현재 프로젝트에 인스턴스를 생성합니다.",
-      "createProjectNetwork": "프로젝트 네트워크를 생성합니다.",
+      "createInstance": "현재 월드에 인스턴스를 생성합니다.",
+      "createWorldNetwork": "월드 네트워크를 생성합니다.",
       "createAppNetwork": "앱 범위 네트워크를 생성합니다.",
-      "createSchemaWithMeanings": "프로젝트 스키마를 생성하고 의미 {count}개를 연결합니다.",
+      "createSchemaWithMeanings": "월드 스키마를 생성하고 의미 {count}개를 연결합니다.",
       "createMeaning": "재사용 가능한 의미를 생성합니다."
     },
     "card": {
@@ -2254,8 +2257,8 @@
       "permissionDecline": "거절",
       "permissionAllowed": "허용됨",
       "permissionDeclined": "거절됨",
-      "permissionAllowedProject": "이 프로젝트에서 항상 허용됨",
-      "permissionAllowProject": "이 프로젝트에서 항상 허용",
+      "permissionAllowedWorld": "이 월드에서 항상 허용됨",
+      "permissionAllowWorld": "이 월드에서 항상 허용",
       "permissionRequired": "허용 필요",
       "permissionDecisionLabel": "응답",
       "permissionDecisionRecorded": "이 요청에 대한 응답이 이미 기록되었습니다.",

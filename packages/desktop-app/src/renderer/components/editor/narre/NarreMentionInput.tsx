@@ -27,7 +27,7 @@ export interface NarreComposerSubmit {
 }
 
 interface NarreMentionInputProps {
-  projectId: string;
+  rootNetworkId: string;
   onSend: (payload: NarreComposerSubmit) => Promise<boolean | void> | boolean | void;
   disabled?: boolean;
   sendDisabled?: boolean;
@@ -321,7 +321,7 @@ function placeCaretAtEnd(el: HTMLDivElement): void {
 }
 
 export function NarreMentionInput({
-  projectId,
+  rootNetworkId,
   onSend,
   disabled = false,
   sendDisabled = false,
@@ -1049,7 +1049,7 @@ export function NarreMentionInput({
       {allowMentions && picker.isOpen && (
         <NarreMentionPicker
           query={picker.query}
-          projectId={projectId}
+          rootNetworkId={rootNetworkId}
           position={picker.position}
           initialCategory={pickerCategory}
           agentMentions={agentMentions}

@@ -20,9 +20,9 @@ import {
 export function registerAgentDefinitionIpc(): void {
   ipcMain.handle(
     IPC_CHANNELS.AGENT_LIST_DEFINITIONS,
-    async (_event, projectId?: string | null): Promise<IpcResult<UserAgentRecord[]>> => {
+    async (_event, rootNetworkId?: string | null): Promise<IpcResult<UserAgentRecord[]>> => {
       try {
-        return { success: true, data: await listUserAgents(projectId) };
+        return { success: true, data: await listUserAgents(rootNetworkId) };
       } catch (error) {
         return { success: false, error: (error as Error).message };
       }

@@ -1,8 +1,8 @@
 // ============================================
-// Project
+// World
 // ============================================
 
-export type OntologySourceKind = 'system' | 'package' | 'project' | 'imported';
+export type OntologySourceKind = 'system' | 'package' | 'world' | 'imported';
 
 export interface OntologySourceFields {
   source_kind: OntologySourceKind;
@@ -11,7 +11,7 @@ export interface OntologySourceFields {
   source_version: string | null;
 }
 
-export interface Project {
+export interface World {
   id: string;
   name: string;
   root_dir: string;
@@ -19,12 +19,12 @@ export interface Project {
   updated_at: string;
 }
 
-export interface ProjectCreate {
+export interface WorldCreate {
   name: string;
   root_dir: string;
 }
 
-export interface ProjectUpdate {
+export interface WorldUpdate {
   name?: string;
   root_dir?: string;
 }
@@ -35,7 +35,7 @@ export interface ProjectUpdate {
 
 export interface Instance {
   id: string;
-  project_id: string;
+  root_network_id: string;
   owner_network_id: string | null;
   schema_id: string | null;
   recurrence_source_instance_id: string | null;
@@ -54,7 +54,7 @@ export interface Instance {
 }
 
 export interface InstanceCreate {
-  project_id: string;
+  root_network_id: string;
   owner_network_id?: string | null;
   title: string;
   schema_id?: string;
@@ -92,20 +92,21 @@ export interface InstanceUpdate {
 
 export interface Network {
   id: string;
-  project_id: string | null;
+  root_network_id: string | null;
   network_type_id: string | null;
   scope: string;
   kind: NetworkKind;
   parent_network_id: string | null;
+  root_dir: string | null;
   name: string;
   created_at: string;
   updated_at: string;
 }
 
-export type NetworkKind = 'universe' | 'root' | 'ontology' | 'network';
+export type NetworkKind = 'universe' | 'root' | 'network';
 
 export interface NetworkCreate {
-  project_id: string | null;
+  root_network_id: string | null;
   name: string;
   scope?: string;
   kind?: NetworkKind;
@@ -124,7 +125,7 @@ export type SurfaceRuntimeKey = 'canvas' | 'grid';
 
 export interface NetworkType {
   id: string;
-  project_id: string | null;
+  root_network_id: string | null;
   key: string;
   name: string;
   description: string | null;
@@ -139,7 +140,7 @@ export interface NetworkType {
 }
 
 export interface NetworkTypeCreate {
-  project_id?: string | null;
+  root_network_id?: string | null;
   key: string;
   name: string;
   description?: string | null;
@@ -258,7 +259,7 @@ export type FileEntityType = 'file' | 'directory';
 
 export interface FileEntity {
   id: string;
-  project_id: string;
+  root_network_id: string;
   path: string;
   type: FileEntityType;
   metadata: string | null;
@@ -267,7 +268,7 @@ export interface FileEntity {
 }
 
 export interface FileEntityCreate {
-  project_id: string;
+  root_network_id: string;
   path: string;
   type: FileEntityType;
 }
@@ -330,7 +331,7 @@ export interface ContextMember {
 // ============================================
 
 export type NetworkObjectType =
-  | 'instance' | 'network' | 'project' | 'schema' | 'meaning'
+  | 'instance' | 'network' | 'schema' | 'meaning'
   | 'agent' | 'context'
   | 'file' | 'module' | 'folder';
 
@@ -396,7 +397,7 @@ export interface ObjectRecord {
   id: string;
   object_type: NetworkObjectType;
   scope: string;
-  project_id: string | null;
+  root_network_id: string | null;
   ref_id: string;
   created_at: string;
 }
@@ -481,7 +482,7 @@ export interface EdgeUpdate {
 
 export interface Relationship {
   id: string;
-  project_id: string;
+  root_network_id: string;
   owner_network_id: string | null;
   source_object_id: string;
   target_object_id: string;
@@ -497,7 +498,7 @@ export interface Relationship {
 }
 
 export interface RelationshipCreate {
-  project_id: string;
+  root_network_id: string;
   owner_network_id?: string | null;
   source_object_id: string;
   target_object_id: string;
@@ -522,7 +523,7 @@ export interface RelationshipUpdate {
 }
 
 export interface RelationshipListFilters {
-  project_id: string;
+  root_network_id: string;
   source_object_id?: string;
   target_object_id?: string;
   meaning_id?: string;
@@ -753,7 +754,7 @@ export interface MeaningContract {
 
 export interface Meaning {
   id: string;
-  project_id: string;
+  root_network_id: string;
   owner_network_id: string | null;
   key: MeaningRefKey;
   name: string;
@@ -780,7 +781,7 @@ export interface Meaning {
 }
 
 export interface MeaningCreate {
-  project_id: string;
+  root_network_id: string;
   owner_network_id?: string | null;
   key?: MeaningRefKey;
   name: string;
@@ -934,7 +935,7 @@ export interface FileTreeNode {
 
 export interface Module {
   id: string;
-  project_id: string;
+  root_network_id: string;
   name: string;
   path: string;
   created_at: string;
@@ -942,7 +943,7 @@ export interface Module {
 }
 
 export interface ModuleCreate {
-  project_id: string;
+  root_network_id: string;
   name: string;
   path: string;
 }
@@ -970,7 +971,7 @@ export interface ModuleDirectoryCreate {
 
 export interface Schema {
   id: string;
-  project_id: string;
+  root_network_id: string;
   owner_network_id: string | null;
   name: string;
   description: string | null;
@@ -987,7 +988,7 @@ export interface Schema {
 }
 
 export interface SchemaCreate {
-  project_id: string;
+  root_network_id: string;
   owner_network_id?: string | null;
   name: string;
   description?: string;
@@ -1242,7 +1243,7 @@ export interface NetworkBreadcrumbItem {
 // ============================================
 
 export type EditorViewMode = 'float' | 'full' | 'side' | 'detached';
-export type EditorTabType = 'instance' | 'file' | 'schema' | 'meaning' | 'terminal' | 'edge' | 'network' | 'networkViewer' | 'ontology' | 'project' | 'narre' | 'agent' | 'fileMetadata' | 'context' | 'browser';
+export type EditorTabType = 'instance' | 'file' | 'schema' | 'meaning' | 'terminal' | 'edge' | 'network' | 'networkViewer' | 'rootNetwork' | 'world' | 'narre' | 'agent' | 'fileMetadata' | 'context' | 'browser';
 
 /** Identifies a window that hosts editor tabs (main window or detached window) */
 export interface EditorHostState {
@@ -1285,8 +1286,8 @@ export interface EditorTab {
   title: string;
   /** Target entity identifier: instanceId for instance tabs, absolutePath for file tabs */
   targetId: string;
-  /** Owning project id for project-scoped tabs */
-  projectId?: string;
+  /** Owning root network id for world-scoped tabs */
+  rootNetworkId?: string;
   /** Host window this tab belongs to */
   hostId: string;
   viewMode: EditorViewMode;
@@ -1350,7 +1351,7 @@ export interface InstanceEditorPrefsUpdate {
 
 export interface InteractiveViewState {
   id: string;
-  project_id: string;
+  root_network_id: string;
   instance_id: string;
   view_template_id: string;
   state_json: string;
@@ -1374,7 +1375,7 @@ export interface InteractiveViewManifest {
   kind: 'interactive-view';
   sdkVersion: number;
   target?: {
-    kind?: 'project' | 'schema' | 'instance';
+    kind?: 'world' | 'schema' | 'instance';
     id?: string;
     schemaId?: string;
     instanceId?: string;
@@ -1390,7 +1391,7 @@ export interface InteractiveViewManifest {
 
 export interface InteractiveViewTemplate {
   id: string;
-  project_id: string;
+  root_network_id: string;
   target_kind: InteractiveViewTemplateTargetKind;
   target_id: string | null;
   name: string;
@@ -1408,7 +1409,7 @@ export interface InteractiveViewTemplate {
 }
 
 export interface InteractiveViewTemplateCreate {
-  project_id: string;
+  root_network_id: string;
   target_kind: InteractiveViewTemplateTargetKind;
   target_id?: string | null;
   name: string;
@@ -1439,14 +1440,14 @@ export interface InteractiveViewTemplateUpdate {
 }
 
 export interface InteractiveViewTemplateListQuery {
-  projectId: string;
+  rootNetworkId: string;
   schemaId?: string | null;
   instanceId?: string | null;
 }
 
 export interface InteractiveViewPreference {
   id: string;
-  project_id: string;
+  root_network_id: string;
   instance_id: string;
   preference_mode: 'inherit' | 'template' | 'none';
   selected_view_template_id: string | null;
@@ -1462,7 +1463,7 @@ export interface InteractiveViewPreferenceUpsert {
 
 export interface InteractiveViewSchemaPreference {
   id: string;
-  project_id: string;
+  root_network_id: string;
   schema_id: string;
   selected_view_template_id: string | null;
   created_at: string;
@@ -1512,7 +1513,7 @@ export interface NarreToolCall {
 }
 
 export type NarreToolCategory =
-  | 'project'
+  | 'world'
   | 'types'
   | 'instances'
   | 'graph'
@@ -1533,7 +1534,7 @@ export type NetiorMcpToolProfile =
   | 'interactive-view-authoring'
   | 'network-representation-authoring'
   | 'schema-field-behavior';
-export type NetiorMcpToolScope = 'app' | 'project' | 'network' | 'object' | 'file' | 'mixed';
+export type NetiorMcpToolScope = 'app' | 'world' | 'network' | 'object' | 'file' | 'mixed';
 
 export interface NetiorMcpToolSpec {
   key: string;
@@ -1545,7 +1546,7 @@ export interface NetiorMcpToolSpec {
   approvalMode: NarreToolApprovalMode;
   profiles?: readonly NetiorMcpToolProfile[];
   scope?: NetiorMcpToolScope;
-  defaultProjectBinding?: boolean;
+  defaultWorldBinding?: boolean;
 }
 
 export interface NarreToolMetadata {
@@ -1557,7 +1558,7 @@ export interface NarreToolMetadata {
   approvalMode: NarreToolApprovalMode;
   profiles?: readonly NetiorMcpToolProfile[];
   scope?: NetiorMcpToolScope;
-  defaultProjectBinding?: boolean;
+  defaultWorldBinding?: boolean;
 }
 
 export type NarreActorProvider = 'narre' | 'claude' | 'openai' | 'codex' | 'custom';
@@ -1649,7 +1650,7 @@ export interface NarreSessionFileV2 {
 }
 
 export interface NarreSessionDetail extends NarreSession {
-  projectId?: string;
+  rootNetworkId?: string;
   messages: NarreMessage[];
   transcript?: NarreTranscript;
 }
@@ -1667,7 +1668,7 @@ export type NarreCodexApprovalPolicy = 'untrusted' | 'on-request' | 'never';
 
 export interface NarreCodexSettings {
   model?: string;
-  useProjectRootAsWorkingDirectory: boolean;
+  useWorldRootAsWorkingDirectory: boolean;
   sandboxMode: NarreCodexSandboxMode;
   approvalPolicy: NarreCodexApprovalPolicy;
   enableShellTool: boolean;
@@ -1687,7 +1688,7 @@ export interface NarreStreamEvent {
   error?: string;
   card?: NarreCard;
   sessionId?: string;
-  projectId?: string;
+  rootNetworkId?: string;
 }
 
 // ============================================
@@ -1860,7 +1861,7 @@ export interface NetiorChangeEvent {
 export type AgentDefinitionKind = 'narre' | 'terminal';
 export type NarreAgentType = 'system' | 'user';
 export type NarreSystemAgentType = 'network-builder' | 'network-finder' | 'agent-operator';
-export type NarreUserAgentType = 'global' | 'project';
+export type NarreUserAgentType = 'global' | 'world';
 export type TerminalAgentType = 'codex-cli' | 'claude-code';
 export type AgentSkillPackageFormat = 'skill-md-directory';
 
@@ -1895,7 +1896,7 @@ export interface UserAgentRecord {
   description: string;
   systemPrompt: string;
   userAgentType: NarreUserAgentType;
-  projectId?: string;
+  rootNetworkId?: string;
   rootDir: string;
   createdAt: string;
   updatedAt: string;
@@ -1908,13 +1909,13 @@ export interface UpsertUserAgentInput {
   description?: string;
   systemPrompt?: string;
   userAgentType: NarreUserAgentType;
-  projectId?: string;
+  rootNetworkId?: string;
 }
 
 export interface UpsertUserAgentSkillInput {
   agentId: string;
   userAgentType: NarreUserAgentType;
-  projectId?: string;
+  rootNetworkId?: string;
   skillId?: string;
   name: string;
   description: string;
@@ -1924,7 +1925,7 @@ export interface UpsertUserAgentSkillInput {
 export interface DeleteUserAgentInput {
   agentId: string;
   userAgentType: NarreUserAgentType;
-  projectId?: string;
+  rootNetworkId?: string;
 }
 
 export interface DeleteUserAgentSkillInput extends DeleteUserAgentInput {
@@ -1953,17 +1954,17 @@ export interface NarreGlobalUserAgentDefinition extends BaseAgentDefinition {
   skills: AgentSkillRef[];
 }
 
-export interface NarreProjectUserAgentDefinition extends BaseAgentDefinition {
+export interface NarreWorldUserAgentDefinition extends BaseAgentDefinition {
   kind: 'narre';
   narreAgentType: 'user';
-  userAgentType: 'project';
-  projectId: string;
+  userAgentType: 'world';
+  rootNetworkId: string;
   skills: AgentSkillRef[];
 }
 
 export type NarreUserAgentDefinition =
   | NarreGlobalUserAgentDefinition
-  | NarreProjectUserAgentDefinition;
+  | NarreWorldUserAgentDefinition;
 
 export type NarreAgentDefinition =
   | NarreSystemAgentDefinition
@@ -1994,7 +1995,7 @@ export interface SupervisorAgentSessionSnapshot {
   reason: AgentAttentionReason | null;
   surface: AgentSurfaceRef;
   externalSessionId: string | null;
-  projectId?: string;
+  rootNetworkId?: string;
   currentRunId: string | null;
   currentTaskId: string | null;
   title?: string | null;
@@ -2019,7 +2020,7 @@ export interface SupervisorSessionReport {
   surface: AgentSurfaceRef;
   sessionId: string;
   externalSessionId?: string | null;
-  projectId?: string;
+  rootNetworkId?: string;
   currentRunId?: string | null;
   currentTaskId?: string | null;
   title?: string | null;
@@ -2065,7 +2066,7 @@ export type ConversationMode = 'direct' | 'orchestration';
 
 export interface Conversation {
   id: string;
-  projectId: string;
+  rootNetworkId: string;
   mode: ConversationMode;
   title: string;
   participantAgentKeys: string[];
@@ -2099,7 +2100,7 @@ export type AgentEventType =
 export interface OrchestrationRun {
   id: string;
   conversationId: string | null;
-  projectId: string;
+  rootNetworkId: string;
   mode: ConversationMode;
   userRequest: string;
   status: OrchestrationRunStatus;
@@ -2178,7 +2179,7 @@ export interface AgentEvent {
 }
 
 export interface CreateConversationInput {
-  projectId: string;
+  rootNetworkId: string;
   mode?: ConversationMode;
   title?: string;
   participantAgentKeys?: string[];
@@ -2186,7 +2187,7 @@ export interface CreateConversationInput {
 }
 
 export interface CreateOrchestrationRunInput {
-  projectId: string;
+  rootNetworkId: string;
   conversationId?: string | null;
   mode?: ConversationMode;
   userRequest: string;
@@ -2227,7 +2228,7 @@ export type AgentExecutorCommandStatus = 'queued' | 'running' | 'completed' | 'f
 
 export interface AgentExecutorRegistration {
   id: string;
-  projectId: string | null;
+  rootNetworkId: string | null;
   provider: AgentProvider | AgentRuntimeProvider;
   surface: AgentSurfaceRef;
   status: AgentExecutorStatus;

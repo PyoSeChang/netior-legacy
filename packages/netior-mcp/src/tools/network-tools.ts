@@ -6,18 +6,18 @@ import {
   getNetworkAncestors,
   getNetworkFull,
   getNetworkTree,
-  getProjectOntologyNetwork,
+  getRootNetwork,
   getUniverseNetwork,
   listNetworks,
   updateNetwork,
 } from '../netior-service-client.js';
 import { emitChange } from '../events.js';
 import {
-  projectIdOrNullSchema,
-  projectIdSchema,
+  rootNetworkIdOrNullSchema,
+  rootNetworkIdSchema,
   registerNetiorTool,
-  resolveNullableProjectId,
-  resolveProjectId,
+  resolveNullableRootNetworkId,
+  resolveRootNetworkId,
 } from './shared-tool-registry.js';
 
 export function registerNetworkTools(server: McpServer): void {
@@ -25,12 +25,12 @@ export function registerNetworkTools(server: McpServer): void {
     server,
     'list_networks',
     {
-      project_id: projectIdSchema(),
+      root_network_id: rootNetworkIdSchema(),
       root_only: z.boolean().optional().describe('Whether to return only root-level networks'),
     },
-    async ({ project_id, root_only }) => {
+    async ({ root_network_id, root_only }) => {
       try {
-        const result = await listNetworks(resolveProjectId(project_id), root_only);
+        const result = await listNetworks(resolveRootNetworkId(root_network_id), root_only);
         return {
           content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
         };
@@ -48,16 +48,16 @@ export function registerNetworkTools(server: McpServer): void {
     'create_network',
     {
       name: z.string().describe('Network name'),
-      project_id: projectIdOrNullSchema('Project ID or null for app scope'),
+      root_network_id: rootNetworkIdOrNullSchema('World ID or null for app scope'),
       scope: z.string().optional().describe('Optional network scope'),
       parent_network_id: z.string().optional().describe('Parent network ID'),
       network_type_id: z.string().optional().describe('Network type ID. Use built-in default or a custom network type.'),
     },
-    async ({ name, project_id, scope, parent_network_id, network_type_id }) => {
+    async ({ name, root_network_id, scope, parent_network_id, network_type_id }) => {
       try {
         const result = await createNetwork({
           name,
-          project_id: resolveNullableProjectId(project_id),
+          root_network_id: resolveNullableRootNetworkId(root_network_id),
           scope,
           parent_network_id,
           network_type_id,
@@ -184,11 +184,11 @@ export function registerNetworkTools(server: McpServer): void {
 
   registerNetiorTool(
     server,
-    'get_project_ontology_network',
-    { project_id: projectIdSchema() },
-    async ({ project_id }) => {
+    'get_root_network',
+    { root_network_id: rootNetworkIdSchema() },
+    async ({ root_network_id }) => {
       try {
-        const result = await getProjectOntologyNetwork(resolveProjectId(project_id));
+        const result = await getRootNetwork(resolveRootNetworkId(root_network_id));
         return {
           content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
         };
@@ -204,10 +204,10 @@ export function registerNetworkTools(server: McpServer): void {
   registerNetiorTool(
     server,
     'get_network_tree',
-    { project_id: projectIdSchema() },
-    async ({ project_id }) => {
+    { root_network_id: rootNetworkIdSchema() },
+    async ({ root_network_id }) => {
       try {
-        const result = await getNetworkTree(resolveProjectId(project_id));
+        const result = await getNetworkTree(resolveRootNetworkId(root_network_id));
         return {
           content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
         };

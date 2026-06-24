@@ -5,7 +5,7 @@ import {
   validateNetiorDslFieldBehaviorConfig,
 } from '@netior/shared/dsl';
 import { listMeanings, evaluateDsl } from '../netior-service-client.js';
-import { projectIdSchema, registerNetiorTool, resolveProjectId } from './shared-tool-registry.js';
+import { rootNetworkIdSchema, registerNetiorTool, resolveRootNetworkId } from './shared-tool-registry.js';
 import { toAgentMeaning } from './meaning-surface.js';
 
 const jsonObject = z.record(z.string(), z.unknown());
@@ -30,16 +30,16 @@ export function registerDslTools(server: McpServer): void {
     server,
     'evaluate_dsl',
     {
-      project_id: projectIdSchema(),
-      context: jsonObject.optional().describe('DSL evaluation context. projectId is filled from project_id when omitted.'),
+      root_network_id: rootNetworkIdSchema(),
+      context: jsonObject.optional().describe('DSL evaluation context. rootNetworkId is filled from root_network_id when omitted.'),
       expression: jsonObject.describe('DSL JSON AST expression to evaluate.'),
     },
-    async ({ project_id, context, expression }) => {
+    async ({ root_network_id, context, expression }) => {
       try {
-        const projectId = resolveProjectId(project_id);
+        const rootNetworkId = resolveRootNetworkId(root_network_id);
         const result = await evaluateDsl({
           context: {
-            projectId,
+            rootNetworkId,
             ...(context ?? {}),
           } as never,
           expression: expression as never,
@@ -57,10 +57,10 @@ export function registerDslTools(server: McpServer): void {
   registerNetiorTool(
     server,
     'list_meaning_catalog',
-    { project_id: projectIdSchema() },
-    async ({ project_id }) => {
+    { root_network_id: rootNetworkIdSchema() },
+    async ({ root_network_id }) => {
       try {
-        const meanings = await listMeanings(resolveProjectId(project_id));
+        const meanings = await listMeanings(resolveRootNetworkId(root_network_id));
         const result = meanings
           .filter((meaning) => meaning.built_in || meaning.source_kind === 'system' || meaning.source_kind === 'package')
           .map(toAgentMeaning);

@@ -23,7 +23,7 @@ import { useUIStore } from '../../stores/ui-store';
 import { useSchemaStore } from '../../stores/schema-store';
 import { useMeaningStore } from '../../stores/meaning-store';
 import { useContextStore } from '../../stores/context-store';
-import { useProjectStore } from '../../stores/project-store';
+import { useWorldStore } from '../../stores/world-store';
 import { useNetworkObjectSelectionStore } from '../../stores/network-object-selection-store';
 import type { Meaning, NetworkObjectType, SchemaField } from '@netior/shared/types';
 import { useI18n } from '../../hooks/useI18n';
@@ -56,7 +56,7 @@ import {
 } from '../../lib/edge-meanings';
 
 interface NetworkWorkspaceProps {
-  projectId: string | null;
+  rootNetworkId: string | null;
   initialNetworkId?: string | null;
   onOpenLayoutSettings?: (() => void) | null;
   onControlsChange?: (controls: LayoutControlsRendererProps | null) => void;
@@ -309,21 +309,21 @@ function applyMeaningSlotMetadata(
 }
 
 function pickInitialNetworkId(
-  projectId: string,
-  networks: Array<{ id: string; project_id: string | null; scope: string; kind?: string; parent_network_id: string | null }>,
+  rootNetworkId: string,
+  networks: Array<{ id: string; root_network_id: string | null; scope: string; kind?: string; parent_network_id: string | null }>,
 ): string | null {
-  const projectNetworks = networks.filter((network) => network.project_id === projectId);
-  if (projectNetworks.length === 0) return null;
+  const worldNetworks = networks.filter((network) => network.root_network_id === rootNetworkId);
+  if (worldNetworks.length === 0) return null;
 
-  const projectNetworkIds = new Set(projectNetworks.map((network) => network.id));
-  const topLevelProjectNetworks = projectNetworks.filter(
-    (network) => !network.parent_network_id || !projectNetworkIds.has(network.parent_network_id),
+  const worldNetworkIds = new Set(worldNetworks.map((network) => network.id));
+  const topLevelWorldNetworks = worldNetworks.filter(
+    (network) => !network.parent_network_id || !worldNetworkIds.has(network.parent_network_id),
   );
 
   const preferredRoot =
-    topLevelProjectNetworks.find((network) => network.kind === 'ontology') ??
-    topLevelProjectNetworks[0] ??
-    projectNetworks[0];
+    topLevelWorldNetworks.find((network) => network.kind === 'root') ??
+    topLevelWorldNetworks[0] ??
+    worldNetworks[0];
 
   return preferredRoot?.id ?? null;
 }
@@ -416,8 +416,8 @@ function getDefaultNodeDimensions(node: NetworkNodeWithObject): { width: number;
   }
 
   return {
-    width: isHierarchy ? 340 : isGroup ? 320 : objectType === 'project' ? 180 : 140,
-    height: isHierarchy ? 220 : isGroup ? 200 : objectType === 'project' ? 64 : 50,
+    width: isHierarchy ? 340 : isGroup ? 320 : objectType === 'world' ? 180 : 140,
+    height: isHierarchy ? 220 : isGroup ? 200 : objectType === 'world' ? 64 : 50,
   };
 }
 
@@ -698,7 +698,7 @@ function getGenericObjectPresentation(
   objectType?: string,
   objectRefId?: string,
   networkNames?: Map<string, string>,
-  projectNames?: Map<string, string>,
+  worldNames?: Map<string, string>,
   schemaNames?: Map<string, string>,
   schemaIcons?: Map<string, string | null>,
   meaningNames?: Map<string, string>,
@@ -712,11 +712,11 @@ function getGenericObjectPresentation(
         icon: 'globe',
         semanticTypeLabel: 'Network',
       };
-    case 'project':
+    case 'world':
       return {
-        label: (objectRefId ? projectNames?.get(objectRefId) : undefined) ?? 'Project',
+        label: (objectRefId ? worldNames?.get(objectRefId) : undefined) ?? 'World',
         icon: 'folder',
-        semanticTypeLabel: 'Project',
+        semanticTypeLabel: 'World',
       };
     case 'schema':
       return {
@@ -753,7 +753,7 @@ function toRenderNodes(
   posMap: Map<string, ParsedNodePosition>,
   networkNames: Map<string, string>,
   networkKinds: Map<string, string>,
-  projectNames: Map<string, string>,
+  worldNames: Map<string, string>,
   schemaNames: Map<string, string>,
   schemaIcons: Map<string, string | null>,
   meaningNames: Map<string, string>,
@@ -854,8 +854,8 @@ function toRenderNodes(
       const networkName = refId ? networkNames.get(refId) : undefined;
       const networkKind = refId ? networkKinds.get(refId) : undefined;
       const label = networkName ?? 'Network';
-      const icon = networkKind === 'ontology' ? 'boxes' : 'globe';
-      const semanticBaseLabel = networkKind === 'ontology' ? 'Ontology' : networkKind === 'universe' ? 'Universe' : 'Network';
+      const icon = networkKind === 'root' ? 'boxes' : 'globe';
+      const semanticBaseLabel = networkKind === 'root' ? 'Root Network' : networkKind === 'universe' ? 'Universe' : 'Network';
       const baseWidth = isPortal ? 180 : isHierarchy ? 340 : isGroup ? 320 : 160;
       return {
         id: n.id,
@@ -889,14 +889,14 @@ function toRenderNodes(
       objectType,
       n.object?.ref_id,
       networkNames,
-      projectNames,
+      worldNames,
       schemaNames,
       schemaIcons,
       meaningNames,
       meaningIcons,
       contextNames,
     );
-    const baseWidth = isHierarchy ? 340 : isGroup ? 320 : objectType === 'project' ? 180 : 140;
+    const baseWidth = isHierarchy ? 340 : isGroup ? 320 : objectType === 'world' ? 180 : 140;
 
     const semanticTypeLabel = genericObject.semanticTypeLabel
       ? isHierarchy
@@ -924,7 +924,7 @@ function toRenderNodes(
         }),
       height: isCollapsed
         ? (isHierarchy ? HIERARCHY_COLLAPSED_SIZE.height : GROUP_COLLAPSED_SIZE.height)
-        : pos?.height ?? (isHierarchy ? 220 : isGroup ? 200 : objectType === 'project' ? 64 : 50),
+        : pos?.height ?? (isHierarchy ? 220 : isGroup ? 200 : objectType === 'world' ? 64 : 50),
       nodeType: 'object' as const,
       objectType,
       objectTargetId: n.object?.ref_id ?? undefined,
@@ -1320,7 +1320,7 @@ function areStringSetsEqual(a: Set<string>, b: Set<string>): boolean {
 }
 
 export function NetworkWorkspace({
-  projectId,
+  rootNetworkId,
   initialNetworkId = null,
   onOpenLayoutSettings = null,
   onControlsChange,
@@ -1341,7 +1341,7 @@ export function NetworkWorkspace({
   const display = useMemo(() => createOntologyDisplayResolver(t), [t]);
   const networkObjectSelection = useNetworkObjectSelectionStore((s) => s.selection);
   const selectedNetworkObjects = useNetworkObjectSelectionStore((s) => s.selectedItems);
-  const openProject = useProjectStore((s) => s.openProject);
+  const openWorld = useWorldStore((s) => s.openWorld);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const ontologyLayoutRefreshRef = useRef<string | null>(null);
@@ -1373,7 +1373,7 @@ export function NetworkWorkspace({
     let cancelled = false;
 
     const initialize = async () => {
-      if (!projectId) {
+      if (!rootNetworkId) {
         const universe = await loadUniverseWorkspace();
         if (!universe || cancelled) return;
 
@@ -1391,7 +1391,7 @@ export function NetworkWorkspace({
         return;
       }
 
-      await loadNetworks(projectId);
+      await loadNetworks(rootNetworkId);
       if (cancelled) return;
 
       const store = useNetworkStore.getState();
@@ -1403,11 +1403,11 @@ export function NetworkWorkspace({
       }
 
       const needsInitialOpen =
-        !store.currentNetwork || store.currentNetwork.project_id !== projectId;
+        !store.currentNetwork || store.currentNetwork.root_network_id !== rootNetworkId;
       if (!needsInitialOpen) return;
 
-      const ontology = await networkService.getProjectOntology(projectId);
-      const fallbackNetworkId = ontology?.id ?? pickInitialNetworkId(projectId, store.networks);
+      const rootNetwork = await networkService.getRoot(rootNetworkId);
+      const fallbackNetworkId = rootNetwork?.id ?? pickInitialNetworkId(rootNetworkId, store.networks);
       if (fallbackNetworkId) {
         await store.openNetwork(fallbackNetworkId);
       }
@@ -1418,10 +1418,10 @@ export function NetworkWorkspace({
     return () => {
       cancelled = true;
     };
-  }, [initialNetworkId, loadUniverseWorkspace, loadNetworks, projectId]);
+  }, [initialNetworkId, loadUniverseWorkspace, loadNetworks, rootNetworkId]);
 
   useEffect(() => {
-    if (currentNetwork?.kind !== 'ontology') return;
+    if (currentNetwork?.kind !== 'root') return;
     const refreshKey = `${currentNetwork.id}:meaning-group-layout-v5`;
     if (ontologyLayoutRefreshRef.current === refreshKey) return;
     ontologyLayoutRefreshRef.current = refreshKey;
@@ -1552,9 +1552,9 @@ export function NetworkWorkspace({
   }, [viewportMode, wheelBehavior]);
 
   const meanings = useMeaningStore((s) => s.meanings);
-  const loadMeanings = useMeaningStore((s) => s.loadByProject);
+  const loadMeanings = useMeaningStore((s) => s.loadByWorld);
   const schemas = useSchemaStore((s) => s.schemas);
-  const loadSchemas = useSchemaStore((s) => s.loadByProject);
+  const loadSchemas = useSchemaStore((s) => s.loadByWorld);
   const meaningFieldsById = useSchemaStore((s) => s.fields);
   const loadMeaningFields = useSchemaStore((s) => s.loadFields);
   const contexts = useContextStore((s) => s.contexts);
@@ -1562,11 +1562,11 @@ export function NetworkWorkspace({
   const activeContextId = useContextStore((s) => s.activeContextId);
   const loadContexts = useContextStore((s) => s.loadContexts);
   const loadContextMembers = useContextStore((s) => s.loadMembers);
-  const projects = useProjectStore((s) => s.projects);
+  const worlds = useWorldStore((s) => s.worlds);
   const networks = useNetworkStore((s) => s.networks);
   const networkNames = useMemo(() => new Map(networks.map((n) => [n.id, n.name])), [networks]);
   const networkKinds = useMemo(() => new Map(networks.map((n) => [n.id, n.kind])), [networks]);
-  const projectNames = useMemo(() => new Map(projects.map((project) => [project.id, project.name])), [projects]);
+  const worldNames = useMemo(() => new Map(worlds.map((world) => [world.id, world.name])), [worlds]);
   const schemaNames = useMemo(() => new Map(schemas.map((schema) => [schema.id, schema.name])), [schemas]);
   const schemaIcons = useMemo(() => new Map(schemas.map((schema) => [schema.id, schema.icon])), [schemas]);
   const meaningNames = useMemo(
@@ -1576,11 +1576,11 @@ export function NetworkWorkspace({
   const meaningIcons = useMemo(() => new Map(meanings.map((meaning) => [meaning.id, meaning.icon])), [meanings]);
 
   useEffect(() => {
-    if (projectId) {
-      void loadMeanings(projectId);
-      void loadSchemas(projectId);
+    if (rootNetworkId) {
+      void loadMeanings(rootNetworkId);
+      void loadSchemas(rootNetworkId);
     }
-  }, [loadMeanings, loadSchemas, projectId]);
+  }, [loadMeanings, loadSchemas, rootNetworkId]);
   const isTemporalLayout =
     layoutPlugin.key === 'timeline'
     || layoutPlugin.key === 'gantt'
@@ -1775,7 +1775,7 @@ export function NetworkWorkspace({
         worldPosMap,
       networkNames,
       networkKinds,
-      projectNames,
+      worldNames,
       schemaNames,
       schemaIcons,
       meaningNames,
@@ -1818,7 +1818,7 @@ export function NetworkWorkspace({
     worldPosMap,
     networkNames,
     networkKinds,
-    projectNames,
+    worldNames,
     schemaNames,
     schemaIcons,
     meaningNames,
@@ -1861,7 +1861,7 @@ export function NetworkWorkspace({
     const baseEdges = toRenderEdges(edges, visualMap, meaningNames);
     const visibleNodeIds = new Set(visibleRenderNodes.map((node) => node.id));
     const visibleNodeMap = new Map(visibleRenderNodes.map((node) => [node.id, node] as const));
-    if (currentNetwork?.kind === 'ontology') {
+    if (currentNetwork?.kind === 'root') {
       debugOntologyWorkspace('render-input', {
         networkId: currentNetwork.id,
         rawNodes: nodes.map((node) => ({
@@ -2094,8 +2094,8 @@ export function NetworkWorkspace({
   );
 
   const projectedLayoutNodes = useMemo<LayoutRenderNode[]>(() => (
-    layoutPlugin.projectNodes
-      ? layoutPlugin.projectNodes({
+    layoutPlugin.worldNodes
+      ? layoutPlugin.worldNodes({
         nodes: resolvedLayoutGraph.renderNodes,
         edges: resolvedLayoutGraph.renderEdges,
         viewport: { width: containerSize.width, height: containerSize.height },
@@ -2235,7 +2235,7 @@ export function NetworkWorkspace({
         network_id: currentNetwork.id,
         source_node_id: nextHierarchyParentId,
         target_node_id: nodeId,
-        meaning_id: systemEdgeMeaningId(currentNetwork.project_id, HIERARCHY_PARENT_MEANING_KEY),
+        meaning_id: systemEdgeMeaningId(currentNetwork.root_network_id, HIERARCHY_PARENT_MEANING_KEY),
       });
     }
   }, [allHierarchyContainerIds, containsParentByChild, currentNetwork, edges, nodeById]);
@@ -2255,7 +2255,7 @@ export function NetworkWorkspace({
 
     let meaningId: string | null | undefined;
     if (shouldCreateHierarchyParent) {
-      meaningId = systemEdgeMeaningId(currentNetwork.project_id, HIERARCHY_PARENT_MEANING_KEY);
+      meaningId = systemEdgeMeaningId(currentNetwork.root_network_id, HIERARCHY_PARENT_MEANING_KEY);
 
       let current: string | undefined = parentNodeId;
       while (current) {
@@ -2277,9 +2277,9 @@ export function NetworkWorkspace({
     const targetEdgeNodeId = shouldCreateHierarchyParent ? childNodeId : targetNodeId;
     const sourceEdgeNode = nodeById.get(sourceEdgeNodeId);
     const targetEdgeNode = nodeById.get(targetEdgeNodeId);
-    const relationship = !shouldCreateHierarchyParent && currentNetwork.project_id && sourceEdgeNode?.object_id && targetEdgeNode?.object_id
+    const relationship = !shouldCreateHierarchyParent && currentNetwork.root_network_id && sourceEdgeNode?.object_id && targetEdgeNode?.object_id
       ? await networkService.relationship.create({
-        project_id: currentNetwork.project_id,
+        root_network_id: currentNetwork.root_network_id,
         source_object_id: sourceEdgeNode.object_id,
         target_object_id: targetEdgeNode.object_id,
       })
@@ -2357,7 +2357,7 @@ export function NetworkWorkspace({
         network_id: currentNetwork.id,
         source_node_id: sourceNodeId,
         target_node_id: targetNodeId,
-        meaning_id: systemEdgeMeaningId(currentNetwork.project_id, ENTRY_PORTAL_MEANING_KEY),
+        meaning_id: systemEdgeMeaningId(currentNetwork.root_network_id, ENTRY_PORTAL_MEANING_KEY),
       });
       await openNetwork(currentNetwork.id);
       return true;
@@ -2386,7 +2386,7 @@ export function NetworkWorkspace({
       network_id: currentNetwork.id,
       source_node_id: sourceNodeId,
       target_node_id: targetNode.id,
-      meaning_id: systemEdgeMeaningId(currentNetwork.project_id, ENTRY_PORTAL_MEANING_KEY),
+      meaning_id: systemEdgeMeaningId(currentNetwork.root_network_id, ENTRY_PORTAL_MEANING_KEY),
     });
     await openNetwork(currentNetwork.id);
     return true;
@@ -2404,10 +2404,10 @@ export function NetworkWorkspace({
       return;
     }
 
-    if (node.object?.object_type === 'project') {
-      const project = projects.find((item) => item.id === node.object?.ref_id);
-      if (project) {
-        void openProject(project);
+    if (node.object?.object_type === 'world') {
+      const world = worlds.find((item) => item.id === node.object?.ref_id);
+      if (world) {
+        void openWorld(world);
       }
       return;
     }
@@ -2443,7 +2443,7 @@ export function NetworkWorkspace({
         type: 'meaning',
         targetId: node.object.ref_id,
         title: meaningNames.get(node.object.ref_id) ?? t('meaning.title' as never),
-        projectId: currentNetwork?.project_id ?? undefined,
+        rootNetworkId: currentNetwork?.root_network_id ?? undefined,
       });
       return;
     }
@@ -2455,7 +2455,7 @@ export function NetworkWorkspace({
         title: contextNames.get(node.object.ref_id) ?? t('context.title'),
       });
     }
-  }, [contextNames, currentNetwork?.project_id, display, meaningNames, navigateToChild, openProject, projects, t]);
+  }, [contextNames, currentNetwork?.root_network_id, display, meaningNames, navigateToChild, openWorld, worlds, t]);
 
   const showNodeContextMenu = useCallback((node: NetworkNodeWithObject, x: number, y: number) => {
     const isInstance = node.object?.object_type === 'instance';
@@ -2478,7 +2478,7 @@ export function NetworkWorkspace({
         : undefined)
         ?? node.file?.path?.replace(/\\/g, '/').split('/').pop()
         ?? networkNames.get(node.object?.ref_id ?? '')
-        ?? projectNames.get(node.object?.ref_id ?? '')
+        ?? worldNames.get(node.object?.ref_id ?? '')
         ?? schemaNames.get(node.object?.ref_id ?? '')
         ?? meaningNames.get(node.object?.ref_id ?? '')
         ?? undefined,
@@ -2487,7 +2487,7 @@ export function NetworkWorkspace({
       filePath: node.file?.path ?? undefined,
       networkId: isNetwork ? node.object?.ref_id : undefined,
     });
-  }, [display, meaningNames, networkNames, projectNames, schemaNames]);
+  }, [display, meaningNames, networkNames, worldNames, schemaNames]);
 
   const openEdgeEditor = useCallback((edgeId: string) => {
     const edge = edges.find((candidate) => candidate.id === edgeId);
@@ -2520,7 +2520,7 @@ export function NetworkWorkspace({
       return;
     }
     const objectType = node.object.object_type;
-    if (!['network', 'project', 'instance', 'meaning', 'context'].includes(objectType)) {
+    if (!['network', 'world', 'instance', 'meaning', 'context'].includes(objectType)) {
       useNetworkObjectSelectionStore.getState().clearSelection();
       return;
     }
@@ -2528,29 +2528,29 @@ export function NetworkWorkspace({
       node.instance?.title ??
       node.file?.path?.replace(/\\/g, '/').split('/').pop() ??
       networkNames.get(node.object.ref_id) ??
-      projectNames.get(node.object.ref_id) ??
+      worldNames.get(node.object.ref_id) ??
       meaningNames.get(node.object.ref_id) ??
       contextNames.get(node.object.ref_id);
     useNetworkObjectSelectionStore.getState().setSelection({
-      objectType: objectType as 'network' | 'project' | 'instance' | 'meaning' | 'context',
+      objectType: objectType as 'network' | 'world' | 'instance' | 'meaning' | 'context',
       id: node.object.ref_id,
       title,
     });
-  }, [contextNames, meaningNames, networkNames, projectNames]);
+  }, [contextNames, meaningNames, networkNames, worldNames]);
 
   const syncSelectionFromNodeIds = useCallback((nodeIds: string[]) => {
     const selectedObjects = nodeIds
       .map((id) => nodes.find((node) => node.id === id))
       .filter((node): node is NetworkNodeWithObject =>
-        !!node?.object?.ref_id && ['network', 'project', 'instance', 'meaning', 'context'].includes(node.object.object_type))
+        !!node?.object?.ref_id && ['network', 'world', 'instance', 'meaning', 'context'].includes(node.object.object_type))
       .map((node) => ({
-        objectType: node.object!.object_type as 'network' | 'project' | 'instance' | 'meaning' | 'context',
+        objectType: node.object!.object_type as 'network' | 'world' | 'instance' | 'meaning' | 'context',
         id: node.object!.ref_id,
         title:
           node.instance?.title ??
           node.file?.path?.replace(/\\/g, '/').split('/').pop() ??
           networkNames.get(node.object!.ref_id) ??
-          projectNames.get(node.object!.ref_id) ??
+          worldNames.get(node.object!.ref_id) ??
           meaningNames.get(node.object!.ref_id) ??
           contextNames.get(node.object!.ref_id),
       }))
@@ -2560,7 +2560,7 @@ export function NetworkWorkspace({
       selection: selectedObjects[0] ?? null,
       selectedItems: selectedObjects,
     });
-  }, [contextNames, meaningNames, networkNames, nodes, projectNames]);
+  }, [contextNames, meaningNames, networkNames, nodes, worldNames]);
 
   // --- Mouse interaction (via useInteraction, same pattern as Culturium) ---
 
@@ -2648,7 +2648,7 @@ export function NetworkWorkspace({
     let materializedInstance = existingInstance;
     if (!materializedInstance) {
       materializedInstance = await createInstance({
-        project_id: sourceInstance.project_id,
+        root_network_id: sourceInstance.root_network_id,
         title: sourceInstance.title,
         schema_id: sourceInstance.schema_id ?? undefined,
         recurrence_source_instance_id: sourceInstance.id,
@@ -2771,7 +2771,7 @@ export function NetworkWorkspace({
           network_id: currentNetwork.id,
           source_node_id: parentGroupId,
           target_node_id: createdNode.id,
-          meaning_id: systemEdgeMeaningId(currentNetwork.project_id, CONTAINS_MEANING_KEY),
+          meaning_id: systemEdgeMeaningId(currentNetwork.root_network_id, CONTAINS_MEANING_KEY),
         });
       }
 
@@ -2782,14 +2782,14 @@ export function NetworkWorkspace({
           network_id: currentNetwork.id,
           source_node_id: sourceHierarchyParentId,
           target_node_id: createdNode.id,
-          meaning_id: systemEdgeMeaningId(currentNetwork.project_id, HIERARCHY_PARENT_MEANING_KEY),
+          meaning_id: systemEdgeMeaningId(currentNetwork.root_network_id, HIERARCHY_PARENT_MEANING_KEY),
         });
       } else if (parentGroupNode?.node_type === 'hierarchy' && parentGroupId) {
         await networkService.edge.create({
           network_id: currentNetwork.id,
           source_node_id: parentGroupId,
           target_node_id: createdNode.id,
-          meaning_id: systemEdgeMeaningId(currentNetwork.project_id, HIERARCHY_PARENT_MEANING_KEY),
+          meaning_id: systemEdgeMeaningId(currentNetwork.root_network_id, HIERARCHY_PARENT_MEANING_KEY),
         });
       }
 
@@ -3046,7 +3046,7 @@ export function NetworkWorkspace({
       network_id: currentNetwork.id,
       source_node_id: targetContainer.id,
       target_node_id: nodeId,
-      meaning_id: systemEdgeMeaningId(currentNetwork.project_id, CONTAINS_MEANING_KEY),
+      meaning_id: systemEdgeMeaningId(currentNetwork.root_network_id, CONTAINS_MEANING_KEY),
     });
     if (targetContainer.isHierarchy) {
       const existingHierarchyParents = edges.filter(
@@ -3060,7 +3060,7 @@ export function NetworkWorkspace({
         network_id: currentNetwork.id,
         source_node_id: hierarchyParentTarget?.id ?? targetContainer.id,
         target_node_id: nodeId,
-        meaning_id: systemEdgeMeaningId(currentNetwork.project_id, HIERARCHY_PARENT_MEANING_KEY),
+        meaning_id: systemEdgeMeaningId(currentNetwork.root_network_id, HIERARCHY_PARENT_MEANING_KEY),
       });
     } else {
       await syncHierarchyParentEdge(nodeId, targetContainer.id);
@@ -3434,7 +3434,7 @@ export function NetworkWorkspace({
           network_id: currentNetwork.id,
           source_node_id: nextParentGroupId,
           target_node_id: nodeId,
-          meaning_id: systemEdgeMeaningId(currentNetwork.project_id, CONTAINS_MEANING_KEY),
+          meaning_id: systemEdgeMeaningId(currentNetwork.root_network_id, CONTAINS_MEANING_KEY),
         });
       }
 
@@ -3450,7 +3450,7 @@ export function NetworkWorkspace({
           network_id: currentNetwork.id,
           source_node_id: effectiveHierarchyParentId ?? nextParentGroup.id,
           target_node_id: nodeId,
-          meaning_id: systemEdgeMeaningId(currentNetwork.project_id, HIERARCHY_PARENT_MEANING_KEY),
+          meaning_id: systemEdgeMeaningId(currentNetwork.root_network_id, HIERARCHY_PARENT_MEANING_KEY),
         });
       } else if (currentHierarchyContainerId && !nextHierarchyContainerId) {
         const movedHierarchyEdges = edges.filter(
@@ -3540,12 +3540,12 @@ export function NetworkWorkspace({
     type: 'file' | 'dir',
     position: { x: number; y: number },
   ) => {
-    if (!currentNetwork || !projectId) return;
+    if (!currentNetwork || !rootNetworkId) return;
 
-    let fileEntity = await fileService.getByPath(projectId, path);
+    let fileEntity = await fileService.getByPath(rootNetworkId, path);
     if (!fileEntity) {
       fileEntity = await fileService.create({
-        project_id: projectId,
+        root_network_id: rootNetworkId,
         path,
         type: type === 'file' ? 'file' : 'directory',
       });
@@ -3562,7 +3562,7 @@ export function NetworkWorkspace({
       object_id: fileObj.id,
     });
     await placeNodeAtPosition(node.id, position);
-  }, [addNode, currentNetwork, placeNodeAtPosition, projectId]);
+  }, [addNode, currentNetwork, placeNodeAtPosition, rootNetworkId]);
 
   const handleSelectionBox = useCallback((nodeIds: string[]) => {
     setSelectedIds(new Set(nodeIds));
@@ -4042,7 +4042,7 @@ export function NetworkWorkspace({
           void openNetworkViewerTab({
             networkId: currentNetwork.id,
             title: currentNetwork.name,
-            projectId: currentNetwork.project_id ?? projectId ?? null,
+            rootNetworkId: currentNetwork.root_network_id ?? rootNetworkId ?? null,
           });
         },
       }]
@@ -4060,7 +4060,7 @@ export function NetworkWorkspace({
               type: 'network',
               targetId: currentNetwork.id,
               title: currentNetwork.name,
-              projectId: currentNetwork.project_id ?? projectId ?? undefined,
+              rootNetworkId: currentNetwork.root_network_id ?? rootNetworkId ?? undefined,
             });
           },
         },
@@ -4090,7 +4090,7 @@ export function NetworkWorkspace({
     onOpenLayoutSettings,
     panX,
     panY,
-    projectId,
+    rootNetworkId,
     setPanX,
     setPanY,
     setZoom,
@@ -4220,7 +4220,7 @@ export function NetworkWorkspace({
       }}
       onDrop={async (e) => {
         const raw = e.dataTransfer.getData('application/netior-node');
-        if (!raw || !currentNetwork || !projectId) return;
+        if (!raw || !currentNetwork || !rootNetworkId) return;
         e.preventDefault();
         const dropItems = parseFileDropItems(raw);
         if (dropItems.length === 0) return;
@@ -4456,7 +4456,7 @@ export function NetworkWorkspace({
             const node = nodes.find((n) => n.object?.object_type === 'instance' && n.object.ref_id === instanceId);
             const name = node?.instance ? `${node.instance.title} Network` : 'New Network';
             const network = await networkService.create({
-              project_id: currentNetwork.project_id,
+              root_network_id: currentNetwork.root_network_id,
               name,
             });
             if (node) {
@@ -4464,13 +4464,13 @@ export function NetworkWorkspace({
             }
             // Reload networks list
             await openNetwork(currentNetwork.id);
-            if (currentNetwork.project_id) {
-              await useNetworkStore.getState().loadNetworks(currentNetwork.project_id);
+            if (currentNetwork.root_network_id) {
+              await useNetworkStore.getState().loadNetworks(currentNetwork.root_network_id);
             }
             void openNetworkViewerTab({
               networkId: network.id,
               title: network.name,
-              projectId: network.project_id,
+              rootNetworkId: network.root_network_id,
               isDirty: true,
             });
           }}
@@ -4500,7 +4500,7 @@ export function NetworkWorkspace({
         <NetworkContextMenu
           x={networkContextMenu.x}
           y={networkContextMenu.y}
-          onCreateInstance={projectId ? () => {
+          onCreateInstance={rootNetworkId ? () => {
             if (!currentNetwork) return;
             const draftId = `draft-${Date.now()}`;
             const worldX = networkContextMenu.worldX;
@@ -4529,7 +4529,7 @@ export function NetworkWorkspace({
             setObjectInsertPosition({ x: networkContextMenu.worldX, y: networkContextMenu.worldY });
             setObjectPickerOpen(true);
           }}
-          onAddFileNode={projectId ? () => {
+          onAddFileNode={rootNetworkId ? () => {
             setFileInsertPosition({ x: networkContextMenu.worldX, y: networkContextMenu.worldY });
             setFileNodeModalOpen(true);
             setNetworkContextMenu(null);
@@ -4583,7 +4583,7 @@ export function NetworkWorkspace({
           const node = await addNode({
             network_id: currentNetwork.id,
             object_id: objectRecord.id,
-            node_type: objectType === 'network' || objectType === 'project' ? 'portal' : 'basic',
+            node_type: objectType === 'network' || objectType === 'world' ? 'portal' : 'basic',
           });
           await placeNodeAtPosition(node.id, objectInsertPosition);
           closeObjectPicker();

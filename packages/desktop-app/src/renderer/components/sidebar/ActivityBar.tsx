@@ -2,7 +2,7 @@
 import { Waypoints } from 'lucide-react';
 import { useUIStore, type SidebarView } from '../../stores/ui-store';
 import { useEditorStore } from '../../stores/editor-store';
-import { useProjectStore } from '../../stores/project-store';
+import { useWorldStore } from '../../stores/world-store';
 import { useNetworkStore } from '../../stores/network-store';
 import { useActivityBarStore } from '../../stores/activity-bar-store';
 import { useSettingsStore } from '../../stores/settings-store';
@@ -14,7 +14,7 @@ import {
   ACTIVITY_BAR_TOP_ITEM_DEFINITIONS,
 } from '../../lib/activity-bar-items';
 import {
-  getProjectNetworkBookmarkIds,
+  getWorldNetworkBookmarkIds,
   type ActivityBarBottomItemKey,
   type ActivityBarTopItemKey,
 } from '../../lib/activity-bar-layout';
@@ -28,7 +28,7 @@ export function ActivityBar(): JSX.Element {
     sidebarOpen,
     toggleSidebar,
   } = useUIStore();
-  const currentProject = useProjectStore((state) => state.currentProject);
+  const currentWorld = useWorldStore((state) => state.currentWorld);
   const networks = useNetworkStore((state) => state.networks);
   const openNetwork = useNetworkStore((state) => state.openNetwork);
   const config = useActivityBarStore((state) => state.config);
@@ -54,33 +54,33 @@ export function ActivityBar(): JSX.Element {
   };
 
   const topItemKeys = useMemo(() => {
-    return currentProject
+    return currentWorld
       ? ([
-          'projects',
+          'worlds',
           'networks',
           'files',
           'sessions',
         ] as const satisfies readonly ActivityBarTopItemKey[])
-      : (['projects', 'networks'] as const satisfies readonly ActivityBarTopItemKey[]);
-  }, [currentProject]);
+      : (['worlds', 'networks'] as const satisfies readonly ActivityBarTopItemKey[]);
+  }, [currentWorld]);
 
   const bottomItemKeys = useMemo(() => {
-    return currentProject
-      ? (['ontology', 'narre', 'terminal', 'agents', 'browser', 'settings'] as const satisfies readonly ActivityBarBottomItemKey[])
+    return currentWorld
+      ? (['rootNetwork', 'narre', 'terminal', 'agents', 'browser', 'settings'] as const satisfies readonly ActivityBarBottomItemKey[])
       : (['agents', 'browser', 'settings'] as const satisfies readonly ActivityBarBottomItemKey[]);
-  }, [currentProject]);
+  }, [currentWorld]);
 
   const bookmarkNetworks = useMemo(() => {
-    if (!currentProject) {
+    if (!currentWorld) {
       return [];
     }
 
-    const bookmarkIds = getProjectNetworkBookmarkIds(config, currentProject.id);
+    const bookmarkIds = getWorldNetworkBookmarkIds(config, currentWorld.id);
     return bookmarkIds
       .map((bookmarkId) => networks.find((network) => network.id === bookmarkId))
       .filter((network): network is NonNullable<typeof network> => Boolean(network))
       .filter((network) => network.kind === 'network');
-  }, [config, currentProject, networks]);
+  }, [config, currentWorld, networks]);
 
   const handleBookmarkedNetworkClick = (networkId: string) => {
     void openNetwork(networkId);
@@ -88,22 +88,22 @@ export function ActivityBar(): JSX.Element {
 
   const handleBottomAction = (key: ActivityBarBottomItemKey) => {
     switch (key) {
-      case 'ontology':
-        if (!currentProject) return;
+      case 'rootNetwork':
+        if (!currentWorld) return;
         void useEditorStore.getState().openTab({
-          type: 'ontology',
-          targetId: currentProject.id,
-          title: t('sidebar.ontology' as never),
-          projectId: currentProject.id,
+          type: 'rootNetwork',
+          targetId: currentWorld.id,
+          title: t('sidebar.rootNetwork' as never),
+          rootNetworkId: currentWorld.id,
         });
         return;
       case 'narre':
-        if (!currentProject) return;
+        if (!currentWorld) return;
         void useEditorStore.getState().openTab({
           type: 'narre',
-          targetId: currentProject.id,
+          targetId: currentWorld.id,
           title: t('narre.title'),
-          projectId: currentProject.id,
+          rootNetworkId: currentWorld.id,
         });
         return;
       case 'terminal':
@@ -112,9 +112,9 @@ export function ActivityBar(): JSX.Element {
       case 'agents':
         void useEditorStore.getState().openTab({
           type: 'agent',
-          targetId: currentProject?.id ?? 'global',
+          targetId: currentWorld?.id ?? 'global',
           title: t('agentEditor.title' as never),
-          projectId: currentProject?.id,
+          rootNetworkId: currentWorld?.id,
         });
         return;
       case 'browser':

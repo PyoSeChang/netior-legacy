@@ -40,7 +40,7 @@ import { Spinner } from '../../ui/Spinner';
 import { NarreMessageBubble } from './NarreMessageBubble';
 import type { NarreComposerSubmit } from './NarreMentionInput';
 import { NarreInputSwitcher, type NarreInteractivePrompt } from './NarreInputSwitcher';
-import { useProjectStore } from '../../../stores/project-store';
+import { useWorldStore } from '../../../stores/world-store';
 import type { NarrePendingSkillInvocationState } from '../../../lib/narre-ui-state';
 import { toAbsolutePath } from '../../../utils/path-utils';
 import { buildIndexMessage } from '../../../utils/pdf-toc-utils';
@@ -48,7 +48,7 @@ import { getLocalizedAgentName } from './agent-display';
 
 interface NarreChatProps {
   sessionId: string | null;
-  projectId: string;
+  rootNetworkId: string;
   agentKey?: string | null;
   onBackToList: () => void;
   onSessionCreated?: (sessionId: string) => void;
@@ -245,7 +245,7 @@ function findActiveInteractivePrompt(blocks: NarreTranscriptBlock[]): NarreInter
 function getAgentKey(agent: AgentDefinition): string {
   if (agent.kind === 'terminal') return `terminal:${agent.terminalAgentType}:${agent.id}`;
   if (agent.narreAgentType === 'system') return `narre:system:${agent.systemAgentType}:${agent.id}`;
-  if (agent.userAgentType === 'project') return `narre:user:project:${agent.projectId}:${agent.id}`;
+  if (agent.userAgentType === 'world') return `narre:user:world:${agent.rootNetworkId}:${agent.id}`;
   return `narre:user:global:${agent.id}`;
 }
 
@@ -289,11 +289,11 @@ function userAgentRecordToAgentDefinition(record: UserAgentRecord): AgentDefinit
     },
   };
 
-  if (record.userAgentType === 'project') {
+  if (record.userAgentType === 'world') {
     return {
       ...base,
-      userAgentType: 'project',
-      projectId: record.projectId ?? '',
+      userAgentType: 'world',
+      rootNetworkId: record.rootNetworkId ?? '',
     };
   }
 
@@ -305,13 +305,13 @@ function userAgentRecordToAgentDefinition(record: UserAgentRecord): AgentDefinit
 
 export function NarreChat({
   sessionId: initialSessionId,
-  projectId,
+  rootNetworkId,
   agentKey = null,
   onBackToList,
   onSessionCreated,
 }: NarreChatProps): JSX.Element {
   const { t } = useI18n();
-  const currentProject = useProjectStore((s) => s.currentProject);
+  const currentWorld = useWorldStore((s) => s.currentWorld);
   const [sessionId, setSessionId] = useState<string | null>(initialSessionId);
   const [availableSkills, setAvailableSkills] = useState<readonly SkillDefinition[]>(SLASH_TRIGGER_SKILLS);
   const [activeAgent, setActiveAgent] = useState<AgentDefinition | null>(null);
@@ -330,7 +330,7 @@ export function NarreChat({
   }, [initialSessionId]);
 
   useSyncExternalStore(subscribeNarreSessionStore, getNarreSessionStoreVersion);
-  const sessionState = getNarreSessionState(projectId, sessionId);
+  const sessionState = getNarreSessionState(rootNetworkId, sessionId);
   const {
     messages,
     isStreaming,
@@ -369,8 +369,8 @@ export function NarreChat({
     return null;
   })();
   useEffect(() => {
-    void ensureNarreSessionLoaded(projectId, sessionId).catch(() => {});
-  }, [projectId, sessionId]);
+    void ensureNarreSessionLoaded(rootNetworkId, sessionId).catch(() => {});
+  }, [rootNetworkId, sessionId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -384,8 +384,8 @@ export function NarreChat({
     }
 
     void Promise.allSettled([
-      narreService.listSupervisorAgents(projectId),
-      agentService.listDefinitions(projectId),
+      narreService.listSupervisorAgents(rootNetworkId),
+      agentService.listDefinitions(rootNetworkId),
     ])
       .then(([supervisorAgentsResult, userAgentsResult]) => {
         if (cancelled) return;
@@ -412,12 +412,12 @@ export function NarreChat({
     return () => {
       cancelled = true;
     };
-  }, [effectiveAgentKey, projectId]);
+  }, [effectiveAgentKey, rootNetworkId]);
 
   useEffect(() => {
     let cancelled = false;
     setAvailableSkills(SLASH_TRIGGER_SKILLS);
-    void narreService.listSkills(projectId)
+    void narreService.listSkills(rootNetworkId)
       .then((skills) => {
         if (!cancelled) {
           setAvailableSkills(skills);
@@ -432,7 +432,7 @@ export function NarreChat({
     return () => {
       cancelled = true;
     };
-  }, [projectId]);
+  }, [rootNetworkId]);
 
   // Auto-scroll logic
   useEffect(() => {
@@ -454,8 +454,8 @@ export function NarreChat({
     }
 
     await narreService.respondToCard(sessionId, toolCallId, response);
-    updateNarreCardResponse(projectId, sessionId, toolCallId, response);
-  }, [projectId, sessionId]);
+    updateNarreCardResponse(rootNetworkId, sessionId, toolCallId, response);
+  }, [rootNetworkId, sessionId]);
 
   const scopedAvailableSkills = useMemo(() => {
     if (!effectiveAgentKey) {
@@ -515,16 +515,16 @@ export function NarreChat({
 
     if (!activeSessionId) {
       try {
-        const session = await narreService.createSession(projectId, { agentKey });
+        const session = await narreService.createSession(rootNetworkId, { agentKey });
         activeSessionId = session.id;
-        promoteNarreDraftSession(projectId, session.id, nextTitle);
+        promoteNarreDraftSession(rootNetworkId, session.id, nextTitle);
         setSessionId(session.id);
         onSessionCreated?.(session.id);
       } catch {
         return false;
       }
     } else {
-      primeNarreSession(projectId, activeSessionId, nextTitle);
+      primeNarreSession(rootNetworkId, activeSessionId, nextTitle);
     }
 
     const userMsg: NarreDisplayMessage = {
@@ -533,17 +533,17 @@ export function NarreChat({
       blocks: userBlocks,
       source: 'live',
     };
-    appendNarreUserMessage(projectId, activeSessionId, userMsg);
-    prepareNarreAssistantStream(projectId, activeSessionId, {
+    appendNarreUserMessage(rootNetworkId, activeSessionId, userMsg);
+    prepareNarreAssistantStream(rootNetworkId, activeSessionId, {
       draftHtml: composerHtml,
       pendingSkillInvocation: skillInvocationState,
       userTimestamp: userMsg.timestamp,
     });
-    beginNarreAssistantStream(projectId, activeSessionId);
-    setNarreSessionDraft(projectId, sessionId, '');
-    setNarreSessionDraft(projectId, activeSessionId, '');
-    setNarreSessionPendingSkillInvocation(projectId, sessionId, null);
-    setNarreSessionPendingSkillInvocation(projectId, activeSessionId, null);
+    beginNarreAssistantStream(rootNetworkId, activeSessionId);
+    setNarreSessionDraft(rootNetworkId, sessionId, '');
+    setNarreSessionDraft(rootNetworkId, activeSessionId, '');
+    setNarreSessionPendingSkillInvocation(rootNetworkId, sessionId, null);
+    setNarreSessionPendingSkillInvocation(rootNetworkId, activeSessionId, null);
     autoScrollRef.current = true;
 
     try {
@@ -552,26 +552,26 @@ export function NarreChat({
         : mentions;
       await narreService.sendMessage({
         sessionId: activeSessionId,
-        projectId,
+        rootNetworkId,
         message,
         mentions: runtimeMentions.length > 0 ? runtimeMentions : undefined,
         skillIds: resolvePendingSkillIds(skillInvocationState, scopedAvailableSkills),
       });
       return true;
     } catch (error) {
-      cancelPendingNarreAssistantTurn(projectId, activeSessionId, {
+      cancelPendingNarreAssistantTurn(rootNetworkId, activeSessionId, {
         draftHtml: composerHtml,
         pendingSkillInvocation: skillInvocationState,
         userTimestamp: userMsg.timestamp,
       });
       appendNarreAssistantErrorMessage(
-        projectId,
+        rootNetworkId,
         activeSessionId,
         error instanceof Error ? error.message : 'Failed to send Narre message',
       );
       return false;
     }
-  }, [agentKey, scopedAvailableSkills, sessionId, projectId, onSessionCreated]);
+  }, [agentKey, scopedAvailableSkills, sessionId, rootNetworkId, onSessionCreated]);
 
   const handleSend = useCallback(async ({
     text,
@@ -600,7 +600,7 @@ export function NarreChat({
             blocks: buildUserDisplayBlocks(text, mentions, null),
             source: 'live',
           };
-          appendNarreUserMessage(projectId, sessionId, userMsg);
+          appendNarreUserMessage(rootNetworkId, sessionId, userMsg);
           return true;
         } catch {
           setQueuedSubmissions((current) => [
@@ -643,7 +643,7 @@ export function NarreChat({
       }
 
       const absoluteFilePath = toAbsolutePath(
-        currentProject?.root_dir ?? '',
+        currentWorld?.root_dir ?? '',
         fileMention.path ?? fileMention.display,
       );
 
@@ -676,7 +676,7 @@ export function NarreChat({
       userBlocks: buildUserDisplayBlocks(normalizedText, mentions, skillInvocationState),
       pendingSkillInvocation: skillInvocationState,
     });
-  }, [buildSkillPreview, currentProject, isStreaming, projectId, sendToAgent, sessionId]);
+  }, [buildSkillPreview, currentWorld, isStreaming, rootNetworkId, sendToAgent, sessionId]);
 
   useEffect(() => {
     if (isStreaming || queuedSubmissions.length === 0 || isDequeuingRef.current) {
@@ -728,19 +728,19 @@ export function NarreChat({
 
     setIsSavingTitle(true);
     try {
-      const updated = await narreService.updateSessionTitle(projectId, sessionId, nextTitle);
-      setNarreSessionTitle(projectId, sessionId, updated.title || nextTitle);
+      const updated = await narreService.updateSessionTitle(rootNetworkId, sessionId, nextTitle);
+      setNarreSessionTitle(rootNetworkId, sessionId, updated.title || nextTitle);
       cancelRenameTitle();
     } catch (error) {
       appendNarreAssistantErrorMessage(
-        projectId,
+        rootNetworkId,
         sessionId,
         error instanceof Error ? error.message : 'Failed to rename Narre session',
       );
     } finally {
       setIsSavingTitle(false);
     }
-  }, [cancelRenameTitle, isSavingTitle, projectId, renameTitle, sessionId]);
+  }, [cancelRenameTitle, isSavingTitle, rootNetworkId, renameTitle, sessionId]);
 
   const openMoreMenu = useCallback(() => {
     const rect = moreButtonRef.current?.getBoundingClientRect();
@@ -759,26 +759,26 @@ export function NarreChat({
 
     const shouldRestorePendingTurn = !hasReceivedFirstStreamEvent;
 
-    setNarreSessionInterrupting(projectId, sessionId, true);
+    setNarreSessionInterrupting(rootNetworkId, sessionId, true);
 
     try {
       const interrupted = await narreService.interruptMessage(sessionId);
       if (!interrupted) {
-        setNarreSessionInterrupting(projectId, sessionId, false);
+        setNarreSessionInterrupting(rootNetworkId, sessionId, false);
         return;
       }
 
       if (shouldRestorePendingTurn) {
-        cancelPendingNarreAssistantTurn(projectId, sessionId, {
+        cancelPendingNarreAssistantTurn(rootNetworkId, sessionId, {
           draftHtml: pendingDraftHtml,
           pendingSkillInvocation: pendingDraftSkillInvocation,
           userTimestamp: pendingUserTimestamp,
         });
       }
     } catch (error) {
-      setNarreSessionInterrupting(projectId, sessionId, false);
+      setNarreSessionInterrupting(rootNetworkId, sessionId, false);
       appendNarreAssistantErrorMessage(
-        projectId,
+        rootNetworkId,
         sessionId,
         error instanceof Error ? error.message : t('narre.interruptFailed'),
       );
@@ -790,7 +790,7 @@ export function NarreChat({
     pendingDraftSkillInvocation,
     pendingDraftHtml,
     pendingUserTimestamp,
-    projectId,
+    rootNetworkId,
     sessionId,
     t,
   ]);
@@ -979,7 +979,7 @@ export function NarreChat({
       {/* Input area */}
       <div className="px-3 pb-3 pt-2">
         <NarreInputSwitcher
-          projectId={projectId}
+          rootNetworkId={rootNetworkId}
           onSend={handleSend}
           disabled={false}
           sendDisabled={sendLocked}
@@ -996,10 +996,10 @@ export function NarreChat({
           scheduledMessages={scheduledMessageSummaries}
           onRemoveScheduledMessage={removeQueuedSubmission}
           onDraftChange={(nextDraftHtml) => {
-            setNarreSessionDraft(projectId, sessionId, nextDraftHtml);
+            setNarreSessionDraft(rootNetworkId, sessionId, nextDraftHtml);
           }}
           onPendingSkillInvocationChange={(nextSkillInvocation) => {
-            setNarreSessionPendingSkillInvocation(projectId, sessionId, nextSkillInvocation);
+            setNarreSessionPendingSkillInvocation(rootNetworkId, sessionId, nextSkillInvocation);
           }}
         />
       </div>

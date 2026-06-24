@@ -16,8 +16,8 @@ export async function createMeaning(data: MeaningCreate): Promise<Meaning> {
   return unwrapIpc(await getMeaningApi().create(data as unknown as Record<string, unknown>));
 }
 
-export async function listMeanings(projectId: string): Promise<Meaning[]> {
-  return unwrapIpc(await getMeaningApi().list(projectId));
+export async function listMeanings(rootNetworkId: string): Promise<Meaning[]> {
+  return unwrapIpc(await getMeaningApi().list(rootNetworkId));
 }
 
 export async function getMeaning(id: string): Promise<Meaning | undefined> {

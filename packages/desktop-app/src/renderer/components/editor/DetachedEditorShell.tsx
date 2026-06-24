@@ -5,7 +5,7 @@ import { CloseConfirmDialog } from './CloseConfirmDialog';
 import { WindowAlwaysOnTopButton } from '../ui/WindowAlwaysOnTopButton';
 import { WindowControls } from '../ui/WindowControls';
 import { useEditorStore } from '../../stores/editor-store';
-import { useProjectStore } from '../../stores/project-store';
+import { useWorldStore } from '../../stores/world-store';
 import { useDetachedShortcuts } from '../../shortcuts/useDetachedShortcuts';
 import { initDetachedBridge } from '../../lib/editor-state-bridge';
 import { refreshAgentSessionStore } from '../../lib/agent-session-store';
@@ -34,8 +34,8 @@ export function DetachedEditorShell({ hostId }: DetachedEditorShellProps): JSX.E
     return () => cleanup?.();
   }, []);
 
-  const projectId = useProjectStore((s) => s.currentProject?.id ?? null);
-  useNetiorSync(projectId);
+  const rootNetworkId = useWorldStore((s) => s.currentWorld?.id ?? null);
+  useNetiorSync(rootNetworkId);
 
   const tabs = useEditorStore((s) => s.tabs.filter((t) => t.hostId === hostId));
   const host = useEditorStore((s) => s.hosts[hostId]);

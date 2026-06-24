@@ -10,7 +10,7 @@ import {
   upsertInteractiveViewSchemaPreference,
 } from '../netior-service-client.js';
 import { emitChange } from '../events.js';
-import { projectIdSchema, registerNetiorTool, resolveProjectId } from './shared-tool-registry.js';
+import { rootNetworkIdSchema, registerNetiorTool, resolveRootNetworkId } from './shared-tool-registry.js';
 
 const targetKindSchema = z.enum(['schema', 'instance']);
 const sourceKindSchema = z.enum(['manual', 'narre']);
@@ -77,14 +77,14 @@ export function registerInteractiveViewTools(server: McpServer): void {
     server,
     'list_interactive_view_templates',
     {
-      project_id: projectIdSchema(),
+      root_network_id: rootNetworkIdSchema(),
       schema_id: z.string().nullable().optional().describe('Optional schema ID to include schema-scoped templates'),
       instance_id: z.string().nullable().optional().describe('Optional instance ID to include instance-level override templates'),
     },
-    async ({ project_id, schema_id, instance_id }) => {
+    async ({ root_network_id, schema_id, instance_id }) => {
       try {
         const result = await listInteractiveViewTemplates({
-          projectId: resolveProjectId(project_id),
+          rootNetworkId: resolveRootNetworkId(root_network_id),
           schemaId: schema_id ?? undefined,
           instanceId: instance_id ?? undefined,
         });
@@ -116,9 +116,9 @@ export function registerInteractiveViewTools(server: McpServer): void {
     server,
     'create_interactive_view_template',
     {
-      project_id: projectIdSchema(),
+      root_network_id: rootNetworkIdSchema(),
       target_kind: targetKindSchema.describe('Scope for the template'),
-      target_id: z.string().nullable().optional().describe('Required for schema or instance templates; omit for project templates'),
+      target_id: z.string().nullable().optional().describe('Required for schema or instance templates; omit for world templates'),
       name: z.string().describe('User-facing template name'),
       description: z.string().nullable().optional(),
       source_code: z.string().describe('Restricted TSX source that exports View, InteractiveView, or default'),
@@ -130,11 +130,11 @@ export function registerInteractiveViewTools(server: McpServer): void {
       validation_status: validationStatusSchema.optional(),
       validation_errors_json: z.string().optional(),
     },
-    async ({ project_id, ...input }) => {
+    async ({ root_network_id, ...input }) => {
       try {
         const validation = formatValidationErrors(input.source_code, input.manifest_json);
         const result = await createInteractiveViewTemplate({
-          project_id: resolveProjectId(project_id),
+          root_network_id: resolveRootNetworkId(root_network_id),
           ...input,
           ...validation,
         });

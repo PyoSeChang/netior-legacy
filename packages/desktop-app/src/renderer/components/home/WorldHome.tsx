@@ -1,36 +1,36 @@
 ﻿import React, { useEffect, useState } from 'react';
 import { Plus } from 'lucide-react';
-import { useProjectStore } from '../../stores/project-store';
+import { useWorldStore } from '../../stores/world-store';
 import { useModuleStore } from '../../stores/module-store';
 import { useI18n } from '../../hooks/useI18n';
-import { ProjectCard } from './ProjectCard';
-import { ProjectCreateDialog } from './ProjectCreateDialog';
+import { WorldCard } from './WorldCard';
+import { WorldCreateDialog } from './WorldCreateDialog';
 import { Button } from '../ui/Button';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { Spinner } from '../ui/Spinner';
 
-export function ProjectHome(): JSX.Element {
+export function WorldHome(): JSX.Element {
   const { t } = useI18n();
-  const { projects, loading, loadProjects, restoreLastProject, createProject, openProject, deleteProject, missingPathProject, resolveMissingPath, dismissMissingPath } =
-    useProjectStore();
+  const { worlds, loading, loadWorlds, restoreLastWorld, createWorld, openWorld, deleteWorld, missingPathWorld, resolveMissingPath, dismissMissingPath } =
+    useWorldStore();
   const [showCreate, setShowCreate] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
   useEffect(() => {
-    loadProjects().then(() => restoreLastProject());
-  }, [loadProjects, restoreLastProject]);
+    loadWorlds().then(() => restoreLastWorld());
+  }, [loadWorlds, restoreLastWorld]);
 
   const handleCreate = async (name: string, rootDir: string) => {
-    const project = await createProject(name, rootDir);
+    const world = await createWorld(name, rootDir);
     const { createModule, setActiveModule } = useModuleStore.getState();
-    const mod = await createModule({ project_id: project.id, name, path: rootDir });
+    const mod = await createModule({ root_network_id: world.id, name, path: rootDir });
     await setActiveModule(mod.id);
-    openProject(project);
+    openWorld(world);
   };
 
   const handleDelete = async () => {
     if (deleteTarget) {
-      await deleteProject(deleteTarget);
+      await deleteWorld(deleteTarget);
       setDeleteTarget(null);
     }
   };
@@ -43,29 +43,29 @@ export function ProjectHome(): JSX.Element {
           <h1 className="text-xl font-semibold text-default">Netior</h1>
           <Button variant="primary" size="sm" onClick={() => setShowCreate(true)}>
             <Plus size={16} className="mr-1" />
-            {t('project.newProject')}
+            {t('world.newWorld')}
           </Button>
         </div>
 
-        {/* Project List */}
+        {/* World List */}
         {loading ? (
           <div className="flex justify-center py-12">
             <Spinner />
           </div>
-        ) : projects.length === 0 ? (
+        ) : worlds.length === 0 ? (
           <div className="rounded-lg border border-subtle py-12 text-center">
-            <p className="text-sm text-muted">{t('project.noProjectsYet')}</p>
+            <p className="text-sm text-muted">{t('world.noWorldsYet')}</p>
             <Button variant="ghost" size="sm" className="mt-2" onClick={() => setShowCreate(true)}>
-              {t('project.createFirst')}
+              {t('world.createFirst')}
             </Button>
           </div>
         ) : (
           <div className="flex flex-col gap-2">
-            {projects.map((p) => (
-              <ProjectCard
+            {worlds.map((p) => (
+              <WorldCard
                 key={p.id}
-                project={p}
-                onOpen={openProject}
+                world={p}
+                onOpen={openWorld}
                 onDelete={setDeleteTarget}
               />
             ))}
@@ -74,7 +74,7 @@ export function ProjectHome(): JSX.Element {
       </div>
 
       {/* Dialogs */}
-      <ProjectCreateDialog
+      <WorldCreateDialog
         open={showCreate}
         onClose={() => setShowCreate(false)}
         onCreate={handleCreate}
@@ -84,17 +84,17 @@ export function ProjectHome(): JSX.Element {
         onClose={() => setDeleteTarget(null)}
         onConfirm={handleDelete}
         variant="danger"
-        title={t('project.deleteTitle')}
-        message={t('project.deleteMessage')}
+        title={t('world.deleteTitle')}
+        message={t('world.deleteMessage')}
       />
       <ConfirmDialog
-        open={!!missingPathProject}
+        open={!!missingPathWorld}
         onClose={dismissMissingPath}
         onConfirm={resolveMissingPath}
         variant="primary"
-        title={t('project.missingPathTitle')}
-        message={t('project.missingPathMessage', { path: missingPathProject?.root_dir ?? '' })}
-        confirmLabel={t('project.selectNewPath')}
+        title={t('world.missingPathTitle')}
+        message={t('world.missingPathMessage', { path: missingPathWorld?.root_dir ?? '' })}
+        confirmLabel={t('world.selectNewPath')}
       />
     </div>
   );

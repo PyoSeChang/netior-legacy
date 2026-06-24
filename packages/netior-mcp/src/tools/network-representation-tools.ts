@@ -16,10 +16,10 @@ import {
   updateNodeType,
 } from '../netior-service-client.js';
 import { emitChange } from '../events.js';
-import { projectIdOrNullSchema, registerNetiorTool, resolveNullableProjectId } from './shared-tool-registry.js';
+import { rootNetworkIdOrNullSchema, registerNetiorTool, resolveNullableRootNetworkId } from './shared-tool-registry.js';
 
 const surfaceRuntimeModel = z.enum(['canvas', 'grid']);
-const sourceKindModel = z.enum(['system', 'package', 'project', 'imported']);
+const sourceKindModel = z.enum(['system', 'package', 'world', 'imported']);
 
 const jsonObjectTextModel = z.string().optional().describe('JSON object text. Omit to use {}.');
 
@@ -69,9 +69,9 @@ export function registerNetworkRepresentationTools(server: McpServer): void {
   registerNetiorTool(
     server,
     'list_network_types',
-    { project_id: projectIdOrNullSchema('Project ID or null for only global built-ins') },
-    async ({ project_id }) => {
-      const result = await listNetworkTypes(resolveNullableProjectId(project_id));
+    { root_network_id: rootNetworkIdOrNullSchema('World ID or null for only global built-ins') },
+    async ({ root_network_id }) => {
+      const result = await listNetworkTypes(resolveNullableRootNetworkId(root_network_id));
       return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] };
     },
   );
@@ -90,20 +90,20 @@ export function registerNetworkRepresentationTools(server: McpServer): void {
     server,
     'create_network_type',
     {
-      project_id: projectIdOrNullSchema('Project ID or null for app/global scope'),
-      key: z.string().describe('Stable project-local network type key'),
+      root_network_id: rootNetworkIdOrNullSchema('World ID or null for app/global scope'),
+      key: z.string().describe('Stable world-local network type key'),
       name: z.string().describe('Display name'),
       description: z.string().nullable().optional(),
       surface_runtime: surfaceRuntimeModel,
       grammar_json: jsonObjectTextModel,
     },
-    async ({ project_id, key, name, description, surface_runtime, grammar_json }) => {
+    async ({ root_network_id, key, name, description, surface_runtime, grammar_json }) => {
       const result = await createNetworkType({
-        project_id: resolveNullableProjectId(project_id),
+        root_network_id: resolveNullableRootNetworkId(root_network_id),
         key,
         name,
         description,
-        source_kind: 'project',
+        source_kind: 'world',
         surface_runtime,
         grammar_json: parseJsonObjectText(grammar_json, 'grammar_json'),
       });
@@ -172,7 +172,7 @@ export function registerNetworkRepresentationTools(server: McpServer): void {
     async (args) => {
       const result = await createNodeType({
         ...args,
-        source_kind: args.source_kind ?? 'project',
+        source_kind: args.source_kind ?? 'world',
         presentation_json: parseJsonObjectText(args.presentation_json, 'presentation_json'),
         projection_json: parseJsonObjectText(args.projection_json, 'projection_json'),
         interface_json: parseJsonObjectText(args.interface_json, 'interface_json'),
@@ -251,7 +251,7 @@ export function registerNetworkRepresentationTools(server: McpServer): void {
     async (args) => {
       const result = await createEdgeType({
         ...args,
-        source_kind: args.source_kind ?? 'project',
+        source_kind: args.source_kind ?? 'world',
         presentation_json: parseJsonObjectText(args.presentation_json, 'presentation_json'),
         routing_json: parseJsonObjectText(args.routing_json, 'routing_json'),
         interface_json: parseJsonObjectText(args.interface_json, 'interface_json'),

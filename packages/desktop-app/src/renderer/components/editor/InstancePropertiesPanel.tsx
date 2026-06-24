@@ -10,7 +10,7 @@ import {
 } from '@netior/shared/constants';
 import { useSchemaStore } from '../../stores/schema-store';
 import { useInstanceStore } from '../../stores/instance-store';
-import { useProjectStore } from '../../stores/project-store';
+import { useWorldStore } from '../../stores/world-store';
 import { Badge } from '../ui/Badge';
 import { Input } from '../ui/Input';
 import { TextArea } from '../ui/TextArea';
@@ -37,7 +37,7 @@ import { dslService } from '../../services/dsl-service';
 interface InstancePropertiesPanelProps {
   meaningId: string;
   instanceId?: string;
-  projectId?: string;
+  rootNetworkId?: string;
   properties: Record<string, string | null>;
   onChange: (fieldId: string, value: string | null) => void;
 }
@@ -150,7 +150,7 @@ interface UseFieldBehaviorStatesInput {
   fields: SchemaField[];
   schemaId?: string;
   instanceId?: string;
-  projectId?: string;
+  rootNetworkId?: string;
   properties: Record<string, string | null>;
 }
 
@@ -158,7 +158,7 @@ function useFieldBehaviorStates({
   fields,
   schemaId,
   instanceId,
-  projectId,
+  rootNetworkId,
   properties,
 }: UseFieldBehaviorStatesInput): Record<string, FieldBehaviorState> {
   const [states, setStates] = useState<Record<string, FieldBehaviorState>>({});
@@ -180,7 +180,7 @@ function useFieldBehaviorStates({
     let cancelled = false;
 
     async function evaluate(): Promise<void> {
-      if (!projectId || !schemaId || !instanceId || behaviorInputs.length === 0) {
+      if (!rootNetworkId || !schemaId || !instanceId || behaviorInputs.length === 0) {
         setStates({});
         return;
       }
@@ -195,7 +195,7 @@ function useFieldBehaviorStates({
         try {
           const result = await dslService.evaluate({
             context: {
-              projectId,
+              rootNetworkId,
               currentInstanceId: instanceId,
               currentSchemaId: schemaId,
               currentObject: { objectType: 'instance', refId: instanceId },
@@ -229,7 +229,7 @@ function useFieldBehaviorStates({
 
     void evaluate();
     return () => { cancelled = true; };
-  }, [behaviorInputs, instanceId, projectId, properties, schemaId]);
+  }, [behaviorInputs, instanceId, rootNetworkId, properties, schemaId]);
 
   return states;
 }
@@ -244,7 +244,7 @@ function parseFieldBehaviorConfig(raw: string | null): NetiorDslFieldBehaviorCon
   }
 }
 
-export function InstancePropertiesPanel({ meaningId, instanceId, projectId, properties, onChange }: InstancePropertiesPanelProps): JSX.Element {
+export function InstancePropertiesPanel({ meaningId, instanceId, rootNetworkId, properties, onChange }: InstancePropertiesPanelProps): JSX.Element {
   const fields = useSchemaStore((s) => s.fields[meaningId] ?? []);
   const loadFields = useSchemaStore((s) => s.loadFields);
 
@@ -259,7 +259,7 @@ export function InstancePropertiesPanel({ meaningId, instanceId, projectId, prop
       fields={fields}
       schemaId={meaningId}
       instanceId={instanceId}
-      projectId={projectId}
+      rootNetworkId={rootNetworkId}
       properties={properties}
       onChange={onChange}
     />
@@ -270,7 +270,7 @@ interface InstancePropertyInputsProps {
   fields: SchemaField[];
   schemaId?: string;
   instanceId?: string;
-  projectId?: string;
+  rootNetworkId?: string;
   properties: Record<string, string | null>;
   onChange: (fieldId: string, value: string | null) => void;
 }
@@ -279,7 +279,7 @@ export function InstancePropertyInputs({
   fields,
   schemaId,
   instanceId,
-  projectId,
+  rootNetworkId,
   properties,
   onChange,
 }: InstancePropertyInputsProps): JSX.Element | null {
@@ -287,7 +287,7 @@ export function InstancePropertyInputs({
     fields,
     schemaId,
     instanceId,
-    projectId,
+    rootNetworkId,
     properties,
   });
   const recurrenceFields = useMemo(
@@ -866,9 +866,9 @@ function EmbeddedModelPropertiesInput({
 }
 
 function useFieldChoiceOptions(field: SchemaField): { value: string; label: string; icon?: string | null }[] {
-  const currentProjectId = useProjectStore((state) => state.currentProject?.id ?? null);
+  const currentRootNetworkId = useWorldStore((state) => state.currentWorld?.id ?? null);
   const instances = useInstanceStore((state) => state.instances);
-  const loadInstances = useInstanceStore((state) => state.loadByProject);
+  const loadInstances = useInstanceStore((state) => state.loadByWorld);
   const optionsConfig = useMemo(() => parseSchemaFieldOptions(field.options), [field.options]);
   const bindingSourceIds = field.bindings
     .filter((binding) => binding.binding_kind === 'instance_select' || binding.binding_kind === 'instance_multi_select')
@@ -877,9 +877,9 @@ function useFieldChoiceOptions(field: SchemaField): { value: string; label: stri
   const sourceIds = bindingSourceIds;
 
   useEffect(() => {
-    if (sourceIds.length === 0 || !currentProjectId || instances.length > 0) return;
-    loadInstances(currentProjectId);
-  }, [instances.length, currentProjectId, loadInstances, sourceIds.length]);
+    if (sourceIds.length === 0 || !currentRootNetworkId || instances.length > 0) return;
+    loadInstances(currentRootNetworkId);
+  }, [instances.length, currentRootNetworkId, loadInstances, sourceIds.length]);
 
   return useMemo(() => {
     const staticOptions = optionsConfig.choices.map((choice) => ({

@@ -8,8 +8,8 @@ import { TerminalEditor } from './TerminalEditor';
 import { EdgeEditor } from './EdgeEditor';
 import { NetworkEditor } from './NetworkEditor';
 import { NetworkViewerEditor } from './NetworkViewerEditor';
-import { OntologyEditor } from './OntologyEditor';
-import { ProjectEditor } from './ProjectEditor';
+import { RootNetworkEditor } from './RootNetworkEditor';
+import { WorldEditor } from './WorldEditor';
 import { NarreEditor } from './NarreEditor';
 import { AgentEditor } from './AgentEditor';
 import { FileMetadataEditor } from './FileMetadataEditor';
@@ -75,10 +75,10 @@ export function EditorContent({ tab }: EditorContentProps): JSX.Element {
       content = <NetworkEditor tab={tab} />; break;
     case 'networkViewer':
       content = <NetworkViewerEditor tab={tab} />; break;
-    case 'ontology':
-      content = <OntologyEditor tab={tab} />; break;
-    case 'project':
-      content = <ProjectEditor tab={tab} />; break;
+    case 'rootNetwork':
+      content = <RootNetworkEditor tab={tab} />; break;
+    case 'world':
+      content = <WorldEditor tab={tab} />; break;
     case 'narre':
       content = <NarreEditor tab={tab} />; break;
     case 'agent':

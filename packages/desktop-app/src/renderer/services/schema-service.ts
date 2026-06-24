@@ -10,8 +10,8 @@ export async function createSchema(data: SchemaCreate): Promise<Schema> {
   return unwrapIpc(await window.electron.schema.create(data as unknown as Record<string, unknown>));
 }
 
-export async function listSchemas(projectId: string): Promise<Schema[]> {
-  return unwrapIpc(await window.electron.schema.list(projectId));
+export async function listSchemas(rootNetworkId: string): Promise<Schema[]> {
+  return unwrapIpc(await window.electron.schema.list(rootNetworkId));
 }
 
 export async function getSchema(id: string): Promise<Schema | undefined> {

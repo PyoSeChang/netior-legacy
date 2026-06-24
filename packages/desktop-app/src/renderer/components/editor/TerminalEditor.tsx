@@ -2,7 +2,7 @@
 import type { EditorTab } from '@netior/shared/types';
 import type { TranslationKey } from '@netior/shared/i18n';
 import { useEditorStore, MAIN_HOST_ID } from '../../stores/editor-store';
-import { useProjectStore } from '../../stores/project-store';
+import { useWorldStore } from '../../stores/world-store';
 import { adjustTerminalFontSize, resetTerminalFontSize } from '../../lib/terminal/hyper-fork/terminal-appearance';
 import { getTerminalEngine, type TerminalEngineInstance } from '../../lib/terminal/engine';
 import { TerminalSearchBar } from './TerminalSearchBar';
@@ -250,7 +250,7 @@ export function TerminalEditor({ tab }: TerminalEditorProps): JSX.Element {
   const sessionId = tab.targetId;
   useSyncExternalStore(subscribeAgentSessionStore, getAgentSessionStoreVersion);
   const agentState = getAgentSessionStateByTerminal(sessionId);
-  const currentProjectId = useProjectStore((s) => s.currentProject?.id ?? null);
+  const currentRootNetworkId = useWorldStore((s) => s.currentWorld?.id ?? null);
   const cwdRef = useRef(tab.terminalCwd ?? getDefaultTerminalCwd());
   const updateTitle = useEditorStore((s) => s.updateTitle);
   const isActive = useEditorStore((s) => {
@@ -463,7 +463,7 @@ export function TerminalEditor({ tab }: TerminalEditorProps): JSX.Element {
 
   useEffect(() => {
     cwdRef.current = tab.terminalCwd ?? getDefaultTerminalCwd();
-  }, [sessionId, tab.terminalCwd, currentProjectId]);
+  }, [sessionId, tab.terminalCwd, currentRootNetworkId]);
 
   useEffect(() => {
     let disposed = false;
@@ -990,7 +990,7 @@ export function TerminalEditor({ tab }: TerminalEditorProps): JSX.Element {
     tab.id,
     tab.title,
     updateTitle,
-    currentProjectId,
+    currentRootNetworkId,
     ignoreTerminalTitleChanges,
     showOverlayForText,
     showOverlayForTarget,

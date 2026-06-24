@@ -9,7 +9,7 @@ import {
 } from './netior-service-client.js';
 
 interface OperationPreviewContext {
-  projectId: string;
+  rootNetworkId: string;
 }
 
 function asString(value: unknown): string | null {
@@ -71,7 +71,7 @@ async function appendSchemaContext(
   preview: NarreOperationPreview,
   input: Record<string, unknown>,
 ): Promise<NarreOperationPreview> {
-  const schemas = await listSchemas(context.projectId);
+  const schemas = await listSchemas(context.rootNetworkId);
   const schemaId = asString(input.schema_id);
   const requestedName = asString(input.name);
   const existing = requestedName
@@ -87,7 +87,7 @@ async function appendSchemaContext(
   });
 
   if (modelKeys.length > 0) {
-    const meanings = await listMeanings(context.projectId);
+    const meanings = await listMeanings(context.rootNetworkId);
     const previewModels = modelKeys.map((key) => {
       const meaning = meanings.find((candidate) => candidate.key === key || candidate.id === key);
       return meaning
@@ -139,7 +139,7 @@ async function appendSchemaFieldContext(
   const schemaId = asString(input.schema_id);
   if (!schemaId) return preview;
 
-  const schemas = await listSchemas(context.projectId);
+  const schemas = await listSchemas(context.rootNetworkId);
   const schema = schemas.find((candidate) => candidate.id === schemaId);
   const fields = await listSchemaFields(schemaId);
   const requestedName = asString(input.name);
@@ -171,7 +171,7 @@ async function appendInstanceContext(
   const schemaId = asString(input.schema_id);
   if (!schemaId) return preview;
 
-  const schemas = await listSchemas(context.projectId);
+  const schemas = await listSchemas(context.rootNetworkId);
   const schema = schemas.find((candidate) => candidate.id === schemaId);
   if (!schema) return preview;
 
@@ -191,7 +191,7 @@ async function appendNetworkContext(
   const parentId = asString(input.parent_network_id);
   if (!requestedName && !parentId) return preview;
 
-  const tree = await getNetworkTree(context.projectId);
+  const tree = await getNetworkTree(context.rootNetworkId);
   const flat = flattenNetworkTree(tree);
   const existing = requestedName
     ? flat.find((network) => network.name.toLowerCase() === requestedName.toLowerCase())
@@ -364,7 +364,7 @@ export async function buildNarreOperationPreview(
         summary: validation.ok ? 'createInteractiveViewTemplate' : 'createInteractiveViewTemplate:invalid',
         items: [
           { label: 'Name', value: name },
-          { label: 'Target', value: `${asString(input.target_kind) ?? 'unknown'}:${asString(input.target_id) ?? 'project'}` },
+          { label: 'Target', value: `${asString(input.target_kind) ?? 'unknown'}:${asString(input.target_id) ?? 'world'}` },
           { label: 'Runtime', value: validation.runtime },
           { label: 'Validation', value: validation.ok ? 'passed' : 'failed' },
           { label: 'Source', value: `${source.length} chars` },
@@ -399,7 +399,7 @@ export async function buildNarreOperationPreview(
       const name = asString(input.name) ?? 'Untitled network';
       return withContext(context, normalizedToolName, input, createPreview(normalizedToolName, {
         title: `Create network: ${name}`,
-        summary: input.project_id === null ? 'createAppNetwork' : 'createProjectNetwork',
+        summary: input.root_network_id === null ? 'createAppNetwork' : 'createWorldNetwork',
         items: [
           ...(asString(input.scope) ? [{ label: 'Scope', value: asString(input.scope)! }] : []),
           ...(asString(input.parent_network_id) ? [{ label: 'Parent network', value: asString(input.parent_network_id)! }] : []),

@@ -13,7 +13,7 @@ export function buildBootstrapPrompt(
   behavior: NarreBehaviorSettings = DEFAULT_NARRE_BEHAVIOR_SETTINGS,
   historyTurns: NarreTranscriptTurn[] = [],
 ): string {
-  const { projectName, schemas, meanings } = params;
+  const { worldName, schemas, meanings } = params;
   const networkTree = params.networkTree ?? [];
   const relationMeanings = meanings.filter((meaning) => meaning.target_kind === 'relation' || meaning.target_kind === 'both');
   const bootstrapHistory = summarizeBootstrapHistory(historyTurns);
@@ -21,20 +21,20 @@ export function buildBootstrapPrompt(
   const hasExistingStructure = schemas.length > 0 || meanings.length > 0 || relationMeanings.length > 0 || networkTree.length > 1;
 
   const existingState = hasExistingStructure
-    ? `## Existing Project State
+    ? `## Existing World State
 Schemas (${schemas.length}): ${schemas.map((schema) => schema.name).join(', ') || 'none'}
 Semantic Meanings (${meanings.length}): ${meanings.map((meaning) => meaning.name).join(', ') || 'none'}
 Relation Meanings (${relationMeanings.length}): ${relationMeanings.map((meaning) => meaning.name).join(', ') || 'none'}
 Networks (${networkTree.length} top-level entries in digest): ${networkTree.map((n) => n.name).join(', ') || 'none'}
 
-This project is not empty. Bootstrap should refine or extend the structure instead of blindly recreating everything.`
-    : `This project has little or no graph structure yet. Bootstrap should elicit a domain brief and translate it into an initial usable workspace.`;
+This world is not empty. Bootstrap should refine or extend the structure instead of blindly recreating everything.`
+    : `This world has little or no graph structure yet. Bootstrap should elicit a domain brief and translate it into an initial usable workspace.`;
 
   const recoveryCheckpoint = buildRecoveryCheckpoint(bootstrapHistory);
 
   return `## Skill: /bootstrap
-You are in bootstrap mode for the current project "${projectName}".
-Use the base prompt's project identity, modeling digest, relation digest, and network digest as starting context.
+You are in bootstrap mode for the current world "${worldName}".
+Use the base prompt's world identity, modeling digest, relation digest, and network digest as starting context.
 
 Your job is to translate the user's domain description into an initial Netior workspace that they can actually use.
 You are not the domain author. The user owns the domain, terminology, categories, workflows, and business rules.
@@ -80,7 +80,7 @@ Follow this order unless the user explicitly narrows the task:
 - Keep interviews short and high-signal. Prefer 1 to 3 targeted questions.
 
 ### Stage 2: Ontology Reading
-- Derive the main ontology of the project from the user's explicit answers before deciding networks.
+- Derive the main ontology of the world from the user's explicit answers before deciding networks.
 - Identify from the user's answers:
   - which entity kinds are first-class
   - which relation kinds are stable and repeated
@@ -91,8 +91,8 @@ Follow this order unless the user explicitly narrows the task:
 - Networks and network types are the first workspace projection of the user-supplied ontology. They define where work happens before schemas define stored object shape.
 
 ### Stage 3: Work Surface and Network Type Projection
-- Before deriving schemas, decide what work surfaces this project needs: networks, network types, and the main network views the user will actually operate in.
-- Project the user-supplied ontology into candidate network types and concrete starter networks.
+- Before deriving schemas, decide what work surfaces this world needs: networks, network types, and the main network views the user will actually operate in.
+- World the user-supplied ontology into candidate network types and concrete starter networks.
 - Propose which concerns should live in separate networks and which should stay together.
 - Design sub-networks along an abstract-to-concrete axis. A parent network should hold the broader work surface or stable abstraction; a child network should hold a more concrete slice, case, phase, artifact set, or execution surface.
 - Split a sub-network only when changes inside that child should have low impact on the parent network's meaning, navigation, and layout. If child changes would constantly force parent changes, keep the concern in the parent or choose a different boundary.
@@ -123,7 +123,7 @@ Follow this order unless the user explicitly narrows the task:
 
 ## Stage Gates
 
-- Before Stage 1 is complete, do not mutate project structure.
+- Before Stage 1 is complete, do not mutate world structure.
 - During a fresh bootstrap, \`confirm\` is not a substitute for \`ask\`. Do not use \`confirm\` to skip the two-round ontology interview.
 - Before presenting a bootstrap proposal, do not jump directly into large-scale creation.
 - Before network and meaning approval, do not bulk-create starter instances or starter nodes.
@@ -141,10 +141,10 @@ Bad questions:
 - how should I place the nodes?
 
 Good questions:
-- what kinds of entities or things matter most in this project?
-- what kinds of outputs or artifacts does this project produce?
+- what kinds of entities or things matter most in this world?
+- what kinds of outputs or artifacts does this world produce?
 - which things get mixed together today and need clearer separation?
-- what flows over time in this project?
+- what flows over time in this world?
 - which relationships do you need to trace repeatedly?
 
 ## Proposal Shape
@@ -170,7 +170,7 @@ When presenting a bootstrap plan, prefer these sections:
 - **confirm**: Use before destructive or high-impact changes after interview/proposal checkpoints are already complete.
 - Never use provider-side generic user-input tools such as \`request_user_input\` for bootstrap interviews. Use the Netior conversation tools \`ask\`, \`propose\`, and \`confirm\` only.
 - Graph/object tools are for live state and actual creation after the bootstrap plan is accepted.
-- File-system tools are secondary. Use them only when project files materially improve the user-supplied ontology, artifact meaning, or workflow meaning.
+- File-system tools are secondary. Use them only when world files materially improve the user-supplied ontology, artifact meaning, or workflow meaning.
 - ${behavior.discourageLocalWorkspaceActions
     ? 'Do not inspect unrelated local workspace files. Read files only when they materially improve the bootstrap meaning.'
     : 'Inspect files only when they materially improve the bootstrap meaning.'}

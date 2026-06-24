@@ -1,10 +1,10 @@
 import { randomUUID } from 'crypto';
 import type Database from 'better-sqlite3';
 import type { Network, NetworkNode, NetworkObjectType, ObjectRecord } from '@netior/shared/types';
-import { listMeaningCategoriesForProjectDb } from './meaning-category';
+import { listMeaningCategoriesForWorldDb } from './meaning-category';
 
-type NetworkScope = 'app' | 'project';
-type SystemNetworkKind = 'universe' | 'ontology';
+type NetworkScope = 'app' | 'world';
+type SystemNetworkKind = 'universe';
 type OntologyObjectRole = 'meaning' | 'meaning_category';
 
 const DEFAULT_NETWORK_TYPE_ID = 'network-type-default';
@@ -44,16 +44,16 @@ function insertObject(
   db: Database.Database,
   objectType: NetworkObjectType,
   scope: NetworkScope,
-  projectId: string | null,
+  rootNetworkId: string | null,
   refId: string,
   now: string,
 ): ObjectRecord {
   const id = randomUUID();
 
   db.prepare(
-    `INSERT INTO objects (id, object_type, scope, project_id, ref_id, created_at)
+    `INSERT INTO objects (id, object_type, scope, root_network_id, ref_id, created_at)
      VALUES (?, ?, ?, ?, ?, ?)`,
-  ).run(id, objectType, scope, projectId, refId, now);
+  ).run(id, objectType, scope, rootNetworkId, refId, now);
 
   return db.prepare('SELECT * FROM objects WHERE id = ?').get(id) as ObjectRecord;
 }
@@ -62,20 +62,20 @@ function ensureObjectForDb(
   db: Database.Database,
   objectType: NetworkObjectType,
   scope: NetworkScope,
-  projectId: string | null,
+  rootNetworkId: string | null,
   refId: string,
   createdAt?: string,
 ): ObjectRecord {
   const existing = getObjectForDb(db, objectType, refId);
   if (existing) return existing;
 
-  return insertObject(db, objectType, scope, projectId, refId, createdAt ?? new Date().toISOString());
+  return insertObject(db, objectType, scope, rootNetworkId, refId, createdAt ?? new Date().toISOString());
 }
 
 function insertSystemNetwork(
   db: Database.Database,
   data: {
-    projectId: string | null;
+    rootNetworkId: string | null;
     name: string;
     scope: NetworkScope;
     kind: SystemNetworkKind;
@@ -86,12 +86,12 @@ function insertSystemNetwork(
   const now = new Date().toISOString();
 
   db.prepare(
-    `INSERT INTO networks (id, project_id, network_type_id, name, scope, kind, parent_network_id, created_at, updated_at)
+    `INSERT INTO networks (id, root_network_id, network_type_id, name, scope, kind, parent_network_id, created_at, updated_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-  ).run(id, data.projectId, DEFAULT_NETWORK_TYPE_ID, data.name, data.scope, data.kind, data.parentNetworkId, now, now);
+  ).run(id, data.rootNetworkId, DEFAULT_NETWORK_TYPE_ID, data.name, data.scope, data.kind, data.parentNetworkId, now, now);
 
   insertNetworkLayout(db, id, now);
-  ensureObjectForDb(db, 'network', data.scope, data.projectId, id, now);
+  ensureObjectForDb(db, 'network', data.scope, data.rootNetworkId, id, now);
 
   return db.prepare('SELECT * FROM networks WHERE id = ?').get(id) as Network;
 }
@@ -113,7 +113,7 @@ function normalizeSystemNetwork(
     && network.parent_network_id === data.parentNetworkId
     && network.network_type_id === DEFAULT_NETWORK_TYPE_ID
   ) {
-    ensureObjectForDb(db, 'network', data.scope, network.project_id, network.id, network.created_at);
+    ensureObjectForDb(db, 'network', data.scope, network.root_network_id, network.id, network.created_at);
     ensureNetworkLayout(db, network.id);
     return network;
   }
@@ -124,7 +124,7 @@ function normalizeSystemNetwork(
       WHERE id = ?`,
   ).run(data.name, data.scope, data.kind, data.parentNetworkId, DEFAULT_NETWORK_TYPE_ID, new Date().toISOString(), network.id);
 
-  ensureObjectForDb(db, 'network', data.scope, network.project_id, network.id, network.created_at);
+  ensureObjectForDb(db, 'network', data.scope, network.root_network_id, network.id, network.created_at);
   ensureNetworkLayout(db, network.id);
   return db.prepare('SELECT * FROM networks WHERE id = ?').get(network.id) as Network;
 }
@@ -244,7 +244,7 @@ export function ensureUniverseNetworkForDb(db: Database.Database): Network {
   }
 
   return insertSystemNetwork(db, {
-    projectId: null,
+    rootNetworkId: null,
     name: 'Universe',
     scope: 'app',
     kind: 'universe',
@@ -252,83 +252,46 @@ export function ensureUniverseNetworkForDb(db: Database.Database): Network {
   });
 }
 
-function getProjectOntologyNetworkRecordForDb(db: Database.Database, projectId: string): Network | undefined {
-  const ontology = db.prepare(
-    `SELECT * FROM networks
-      WHERE kind = 'ontology'
-        AND scope = 'project'
-        AND project_id = ?
-      ORDER BY created_at
-      LIMIT 1`,
-  ).get(projectId) as Network | undefined;
-  if (ontology) return ontology;
-
-  return db.prepare(
-    `SELECT * FROM networks
-      WHERE scope = 'project'
-        AND project_id = ?
-        AND parent_network_id IN (SELECT id FROM networks WHERE kind = 'universe')
-      ORDER BY created_at
-      LIMIT 1`,
-  ).get(projectId) as Network | undefined;
+export function getRootNetworkForDb(db: Database.Database, rootNetworkId: string): Network | undefined {
+  return db.prepare("SELECT * FROM networks WHERE id = ? AND kind = 'root'")
+    .get(rootNetworkId) as Network | undefined;
 }
 
-export function getProjectOntologyNetworkForDb(db: Database.Database, projectId: string): Network | undefined {
-  const ontology = getProjectOntologyNetworkRecordForDb(db, projectId);
-  if (!ontology) return undefined;
-
-  return normalizeSystemNetwork(db, ontology, {
-    name: 'Ontology',
-    scope: 'project',
-    kind: 'ontology',
-    parentNetworkId: null,
-  });
-}
-
-function ensureProjectOntologyNetworkRecordForDb(db: Database.Database, projectId: string): Network {
-  const existing = getProjectOntologyNetworkRecordForDb(db, projectId);
-  if (existing) {
-    return normalizeSystemNetwork(db, existing, {
-      name: 'Ontology',
-      scope: 'project',
-      kind: 'ontology',
-      parentNetworkId: null,
-    });
+export function ensureRootNetworkForDb(db: Database.Database, rootNetworkId: string): Network {
+  const root = getRootNetworkForDb(db, rootNetworkId);
+  if (!root) {
+    throw new Error('Root network not found: ' + rootNetworkId);
   }
 
-  return insertSystemNetwork(db, {
-    projectId,
-    name: 'Ontology',
-    scope: 'project',
-    kind: 'ontology',
-    parentNetworkId: null,
-  });
+  ensureObjectForDb(db, 'network', 'world', root.id, root.id, root.created_at);
+  ensureNetworkLayout(db, root.id);
+  return root;
 }
 
-function getProjectNodeInUniverseForDb(db: Database.Database, projectId: string): NetworkNode | undefined {
+function getRootNetworkNodeInUniverseForDb(db: Database.Database, rootNetworkId: string): NetworkNode | undefined {
   const universe = getUniverseNetworkForDb(db);
   if (!universe) return undefined;
 
-  return db.prepare(
-    `SELECT nn.*
-     FROM network_nodes nn
-     JOIN objects o ON nn.object_id = o.id
-     WHERE nn.network_id = ? AND o.object_type = 'project' AND o.ref_id = ?`,
-  ).get(universe.id, projectId) as NetworkNode | undefined;
+  return db.prepare([
+    'SELECT nn.*',
+    ' FROM network_nodes nn',
+    ' JOIN objects o ON nn.object_id = o.id',
+    "WHERE nn.network_id = ? AND o.object_type = 'network' AND o.ref_id = ?",
+  ].join('\n')).get(universe.id, rootNetworkId) as NetworkNode | undefined;
 }
 
-function getUniverseProjectNodeCount(db: Database.Database, universeId: string): number {
-  const row = db.prepare(
-    `SELECT COUNT(*) as count
-     FROM network_nodes nn
-     JOIN objects o ON nn.object_id = o.id
-     WHERE nn.network_id = ? AND o.object_type = 'project'`,
-  ).get(universeId) as { count: number };
+function getUniverseRootNetworkNodeCount(db: Database.Database, universeId: string): number {
+  const row = db.prepare([
+    'SELECT COUNT(*) as count',
+    ' FROM network_nodes nn',
+    ' JOIN objects o ON nn.object_id = o.id',
+    "WHERE nn.network_id = ? AND o.object_type = 'network'",
+  ].join('\n')).get(universeId) as { count: number };
 
   return row.count;
 }
 
-function getDefaultProjectNodePosition(index: number): string {
+function getDefaultRootNetworkNodePosition(index: number): string {
   const columns = 3;
   const horizontalGap = 320;
   const verticalGap = 220;
@@ -340,77 +303,77 @@ function getDefaultProjectNodePosition(index: number): string {
   return JSON.stringify({ x, y });
 }
 
-export function ensureProjectNodeInUniverseForDb(db: Database.Database, projectId: string): NetworkNode {
-  const existing = getProjectNodeInUniverseForDb(db, projectId);
+export function ensureRootNetworkNodeInUniverseForDb(db: Database.Database, rootNetworkId: string): NetworkNode {
+  const existing = getRootNetworkNodeInUniverseForDb(db, rootNetworkId);
   if (existing) return existing;
 
   const universe = ensureUniverseNetworkForDb(db);
-  const projectObject = ensureObjectForDb(db, 'project', 'app', null, projectId);
+  const root = ensureRootNetworkForDb(db, rootNetworkId);
+  const rootObject = ensureObjectForDb(db, 'network', 'world', root.id, root.id, root.created_at);
   const node = ensureObjectNodeInNetworkForDb(db, {
     networkId: universe.id,
-    objectId: projectObject.id,
+    objectId: rootObject.id,
     nodeType: 'portal',
-    metadata: JSON.stringify({ managedBy: 'universe', universeRole: 'project' }),
+    metadata: JSON.stringify({ managedBy: 'universe', universeRole: 'world' }),
   });
 
   const layoutId = ensureNetworkLayout(db, universe.id);
   if (layoutId) {
-    const positionIndex = getUniverseProjectNodeCount(db, universe.id) - 1;
-    ensureNodePosition(db, layoutId, node.id, getDefaultProjectNodePosition(positionIndex));
+    const positionIndex = getUniverseRootNetworkNodeCount(db, universe.id) - 1;
+    ensureNodePosition(db, layoutId, node.id, getDefaultRootNetworkNodePosition(positionIndex));
   }
 
   return node;
 }
 
-function ensureOntologyObjectRecordsForDb(db: Database.Database, projectId: string): void {
-  const categories = listMeaningCategoriesForProjectDb(db, projectId);
+function ensureOntologyObjectRecordsForDb(db: Database.Database, rootNetworkId: string): void {
+  const categories = listMeaningCategoriesForWorldDb(db, rootNetworkId);
   for (const category of categories) {
-    ensureObjectForDb(db, 'instance', 'project', projectId, category.id, category.created_at);
+    ensureObjectForDb(db, 'instance', 'world', rootNetworkId, category.id, category.created_at);
   }
 
-  const meanings = db.prepare(
-    'SELECT id, project_id, created_at FROM meanings WHERE project_id = ?',
-  ).all(projectId) as { id: string; project_id: string; created_at: string }[];
+  const meanings = db.prepare('SELECT id, root_network_id, created_at FROM meanings WHERE root_network_id = ?')
+    .all(rootNetworkId) as { id: string; root_network_id: string; created_at: string }[];
   for (const meaning of meanings) {
-    ensureObjectForDb(db, 'meaning', 'project', meaning.project_id, meaning.id, meaning.created_at);
+    ensureObjectForDb(db, 'meaning', 'world', meaning.root_network_id, meaning.id, meaning.created_at);
   }
 }
 
 function listOntologyObjectsForDb(
   db: Database.Database,
-  projectId: string,
+  rootNetworkId: string,
 ): Array<ObjectRecord & {
   ontology_role: OntologyObjectRole;
   sort_order: number;
   sort_created_at: string;
   category_instance_id?: string | null;
 }> {
-  return db.prepare(`
-    SELECT o.*, 'meaning_category' AS ontology_role,
-           CASE c.source_ref
-             WHEN 'meaning-category.time' THEN 0
-             WHEN 'meaning-category.workflow' THEN 1
-             WHEN 'meaning-category.structure' THEN 2
-             WHEN 'meaning-category.knowledge' THEN 3
-             WHEN 'meaning-category.space' THEN 4
-             WHEN 'meaning-category.quant' THEN 5
-             WHEN 'meaning-category.governance' THEN 6
-             ELSE 99
-           END AS sort_order,
-           c.created_at AS sort_created_at,
-           NULL AS category_instance_id
-      FROM objects o
-      JOIN instances c ON o.object_type = 'instance' AND o.ref_id = c.id
-      JOIN schemas s ON c.schema_id = s.id
-     WHERE c.project_id = ?
-       AND s.source_ref = 'schema.meaning_category'
-    UNION ALL
-    SELECT o.*, 'meaning' AS ontology_role, 1000 AS sort_order, sm.created_at AS sort_created_at, sm.category_instance_id AS category_instance_id
-      FROM objects o
-      JOIN meanings sm ON o.object_type = 'meaning' AND o.ref_id = sm.id
-     WHERE sm.project_id = ?
-     ORDER BY sort_order, sort_created_at
-  `).all(projectId, projectId) as Array<ObjectRecord & {
+  return db.prepare([
+    "SELECT o.*, 'meaning_category' AS ontology_role,",
+    '       CASE c.source_ref',
+    "         WHEN 'meaning-category.time' THEN 0",
+    "         WHEN 'meaning-category.workflow' THEN 1",
+    "         WHEN 'meaning-category.structure' THEN 2",
+    "         WHEN 'meaning-category.knowledge' THEN 3",
+    "         WHEN 'meaning-category.space' THEN 4",
+    "         WHEN 'meaning-category.quant' THEN 5",
+    "         WHEN 'meaning-category.governance' THEN 6",
+    '         ELSE 99',
+    '       END AS sort_order,',
+    '       c.created_at AS sort_created_at,',
+    '       NULL AS category_instance_id',
+    '  FROM objects o',
+    "  JOIN instances c ON o.object_type = 'instance' AND o.ref_id = c.id",
+    '  JOIN schemas s ON c.schema_id = s.id',
+    ' WHERE c.root_network_id = ?',
+    "   AND s.source_ref = 'schema.meaning_category'",
+    'UNION ALL',
+    "SELECT o.*, 'meaning' AS ontology_role, 1000 AS sort_order, sm.created_at AS sort_created_at, sm.category_instance_id AS category_instance_id",
+    '  FROM objects o',
+    "  JOIN meanings sm ON o.object_type = 'meaning' AND o.ref_id = sm.id",
+    ' WHERE sm.root_network_id = ?',
+    ' ORDER BY sort_order, sort_created_at',
+  ].join('\n')).all(rootNetworkId, rootNetworkId) as Array<ObjectRecord & {
     ontology_role: OntologyObjectRole;
     sort_order: number;
     sort_created_at: string;
@@ -453,85 +416,84 @@ function getOntologyNodeMetadata(role: OntologyObjectRole, order: number): strin
 
 function ensureOntologyContainsEdge(
   db: Database.Database,
-  data: { networkId: string; sourceNodeId: string; targetNodeId: string; projectId: string },
+  data: { networkId: string; sourceNodeId: string; targetNodeId: string; rootNetworkId: string },
 ): void {
-  const meaningId = `meaning-${data.projectId}-contains`;
-  const existing = db.prepare(
-    `SELECT id FROM edges
-      WHERE network_id = ?
-        AND source_node_id = ?
-        AND target_node_id = ?
-        AND meaning_id = ?`,
-  ).get(data.networkId, data.sourceNodeId, data.targetNodeId, meaningId);
+  const meaningId = 'meaning-' + data.rootNetworkId + '-contains';
+  const existing = db.prepare([
+    'SELECT id FROM edges',
+    ' WHERE network_id = ?',
+    '   AND source_node_id = ?',
+    '   AND target_node_id = ?',
+    '   AND meaning_id = ?',
+  ].join('\n')).get(data.networkId, data.sourceNodeId, data.targetNodeId, meaningId);
   if (existing) return;
 
-  db.prepare(
-    `INSERT INTO edges (id, network_id, source_node_id, target_node_id, meaning_id, description, created_at)
-     VALUES (?, ?, ?, ?, ?, NULL, ?)`,
-  ).run(randomUUID(), data.networkId, data.sourceNodeId, data.targetNodeId, meaningId, new Date().toISOString());
+  db.prepare([
+    'INSERT INTO edges (id, network_id, source_node_id, target_node_id, meaning_id, description, created_at)',
+    'VALUES (?, ?, ?, ?, ?, NULL, ?)',
+  ].join('\n')).run(randomUUID(), data.networkId, data.sourceNodeId, data.targetNodeId, meaningId, new Date().toISOString());
 }
 
 function removeManagedOntologyContainsEdges(
   db: Database.Database,
-  data: { networkId: string; projectId: string },
+  data: { networkId: string; rootNetworkId: string },
 ): void {
-  const meaningId = `meaning-${data.projectId}-contains`;
-  db.prepare(
-    `DELETE FROM edges
-      WHERE network_id = ?
-        AND meaning_id = ?
-        AND source_node_id IN (
-          SELECT id FROM network_nodes
-           WHERE network_id = ?
-             AND metadata LIKE '%managedBy%ontology%'
-        )
-        AND target_node_id IN (
-          SELECT id FROM network_nodes
-           WHERE network_id = ?
-             AND metadata LIKE '%managedBy%ontology%'
-        )`,
-  ).run(data.networkId, meaningId, data.networkId, data.networkId);
+  const meaningId = 'meaning-' + data.rootNetworkId + '-contains';
+  db.prepare([
+    'DELETE FROM edges',
+    ' WHERE network_id = ?',
+    '   AND meaning_id = ?',
+    '   AND source_node_id IN (',
+    '     SELECT id FROM network_nodes',
+    '      WHERE network_id = ?',
+    "        AND metadata LIKE '%managedBy%ontology%'",
+    '   )',
+    '   AND target_node_id IN (',
+    '     SELECT id FROM network_nodes',
+    '      WHERE network_id = ?',
+    "        AND metadata LIKE '%managedBy%ontology%'",
+    '   )',
+  ].join('\n')).run(data.networkId, meaningId, data.networkId, data.networkId);
 }
 
 function removeStaleManagedOntologyNodes(
   db: Database.Database,
-  ontologyNetworkId: string,
+  rootNetworkId: string,
   desiredObjectIds: string[],
 ): void {
   if (desiredObjectIds.length === 0) {
-    db.prepare(
-      `DELETE FROM network_nodes
-        WHERE network_id = ?
-          AND metadata LIKE '%managedBy%ontology%'`,
-    ).run(ontologyNetworkId);
+    db.prepare([
+      'DELETE FROM network_nodes',
+      ' WHERE network_id = ?',
+      "   AND metadata LIKE '%managedBy%ontology%'",
+    ].join('\n')).run(rootNetworkId);
     return;
   }
 
   const placeholders = desiredObjectIds.map(() => '?').join(', ');
-  db.prepare(
-    `DELETE FROM network_nodes
-      WHERE network_id = ?
-        AND metadata LIKE '%managedBy%ontology%'
-        AND object_id NOT IN (${placeholders})`,
-  ).run(ontologyNetworkId, ...desiredObjectIds);
+  db.prepare([
+    'DELETE FROM network_nodes',
+    ' WHERE network_id = ?',
+    "   AND metadata LIKE '%managedBy%ontology%'",
+    '   AND object_id NOT IN (' + placeholders + ')',
+  ].join('\n')).run(rootNetworkId, ...desiredObjectIds);
 }
 
 function getExcludedObjectIdsForNetwork(db: Database.Database, networkId: string): Set<string> {
-  const rows = db.prepare(
-    'SELECT object_id FROM network_node_exclusions WHERE network_id = ?',
-  ).all(networkId) as { object_id: string }[];
+  const rows = db.prepare('SELECT object_id FROM network_node_exclusions WHERE network_id = ?')
+    .all(networkId) as { object_id: string }[];
   return new Set(rows.map((row) => row.object_id));
 }
 
-export function syncProjectOntologyForDb(db: Database.Database, projectId: string): Network {
-  const ontology = ensureProjectOntologyNetworkRecordForDb(db, projectId);
-  ensureOntologyObjectRecordsForDb(db, projectId);
+export function syncRootNetworkOntologyForDb(db: Database.Database, rootNetworkId: string): Network {
+  const root = ensureRootNetworkForDb(db, rootNetworkId);
+  ensureOntologyObjectRecordsForDb(db, rootNetworkId);
 
-  const excludedObjectIds = getExcludedObjectIdsForNetwork(db, ontology.id);
-  const objects = listOntologyObjectsForDb(db, projectId)
+  const excludedObjectIds = getExcludedObjectIdsForNetwork(db, root.id);
+  const objects = listOntologyObjectsForDb(db, rootNetworkId)
     .filter((object) => !excludedObjectIds.has(object.id));
-  removeStaleManagedOntologyNodes(db, ontology.id, objects.map((object) => object.id));
-  removeManagedOntologyContainsEdges(db, { networkId: ontology.id, projectId });
+  removeStaleManagedOntologyNodes(db, root.id, objects.map((object) => object.id));
+  removeManagedOntologyContainsEdges(db, { networkId: root.id, rootNetworkId });
 
   const roleIndexes: Record<OntologyObjectRole, number> = {
     meaning_category: 0,
@@ -543,7 +505,7 @@ export function syncProjectOntologyForDb(db: Database.Database, projectId: strin
   for (const object of objects) {
     const index = roleIndexes[object.ontology_role]++;
     const node = ensureObjectNodeInNetworkForDb(db, {
-      networkId: ontology.id,
+      networkId: root.id,
       objectId: object.id,
       nodeType: object.ontology_role === 'meaning_category' ? 'group' : 'basic',
       metadata: getOntologyNodeMetadata(object.ontology_role, index),
@@ -561,16 +523,12 @@ export function syncProjectOntologyForDb(db: Database.Database, projectId: strin
     const categoryNode = categoryNodeByInstanceId.get(object.category_instance_id);
     if (!meaningNode || !categoryNode) continue;
     ensureOntologyContainsEdge(db, {
-      networkId: ontology.id,
+      networkId: root.id,
       sourceNodeId: categoryNode.id,
       targetNodeId: meaningNode.id,
-      projectId,
+      rootNetworkId,
     });
   }
 
-  return ontology;
-}
-
-export function ensureProjectOntologyNetworkForDb(db: Database.Database, projectId: string): Network {
-  return syncProjectOntologyForDb(db, projectId);
+  return root;
 }

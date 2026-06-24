@@ -2,7 +2,7 @@ verify:
   - name: "target PDF file entity exists"
     db:
       table: files
-      condition: "project_id = '{{project_id}}' AND path = 'Think Data Structure.pdf' AND type = 'file'"
+      condition: "root_network_id = '{{root_network_id}}' AND path = 'Think Data Structure.pdf' AND type = 'file'"
       expect:
         count: 1
 
@@ -42,14 +42,14 @@ verify:
   - name: "pdf_toc metadata has page count and enough entries"
     db:
       table: files
-      condition: "project_id = '{{project_id}}' AND path = 'Think Data Structure.pdf' AND json_extract(metadata, '$.pdf_toc.pageCount') = 184 AND json_array_length(json_extract(metadata, '$.pdf_toc.entries')) >= 10"
+      condition: "root_network_id = '{{root_network_id}}' AND path = 'Think Data Structure.pdf' AND json_extract(metadata, '$.pdf_toc.pageCount') = 184 AND json_array_length(json_extract(metadata, '$.pdf_toc.entries')) >= 10"
       expect:
         count: 1
 
   - name: "pdf_toc metadata includes viewer destinations"
     db:
       table: files
-      condition: "project_id = '{{project_id}}' AND path = 'Think Data Structure.pdf' AND metadata LIKE '%\"destPage\"%' AND metadata LIKE '%\"sourceMethod\":\"text\"%'"
+      condition: "root_network_id = '{{root_network_id}}' AND path = 'Think Data Structure.pdf' AND metadata LIKE '%\"destPage\"%' AND metadata LIKE '%\"sourceMethod\":\"text\"%'"
       expect:
         count: 1
 
@@ -58,7 +58,7 @@ verify:
       tool: read_pdf_pages_vision
       turn: 0
 
-  - name: "broad project discovery is not used during PDF indexing"
+  - name: "broad world discovery is not used during PDF indexing"
     tool_absent_in_turn:
-      tool: get_project_summary
+      tool: get_world_summary
       turn: 0

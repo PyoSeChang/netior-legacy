@@ -11,7 +11,7 @@ import { registerNetworkRepresentationTools } from './network-representation-too
 import { registerNetworkTools } from './network-tools.js';
 import { registerRelationshipTools } from './relationship-tools.js';
 import { registerObjectTools } from './object-tools.js';
-import { registerProjectTools } from './project-tools.js';
+import { registerWorldTools } from './world-tools.js';
 import { registerFilesystemTools } from './filesystem-tools.js';
 import { registerPdfTools } from './pdf-tools.js';
 import { registerModuleTools } from './module-tools.js';
@@ -35,7 +35,7 @@ export function registerAllTools(server: McpServer): void {
   registerRelationshipTools(server);
   registerNetworkNodeTools(server);
   registerEdgeTools(server);
-  registerProjectTools(server);
+  registerWorldTools(server);
   registerModuleTools(server);
   registerFilesystemTools(server);
   registerPdfTools(server);

@@ -10,12 +10,12 @@ export class CodexThreadStore {
 
   constructor(
     private readonly dataDir: string,
-    private readonly projectId: string,
+    private readonly rootNetworkId: string,
     private readonly sessionId: string,
   ) {
     this.stateFile = new OpenAIFamilyProviderStateFile(
       this.dataDir,
-      this.projectId,
+      this.rootNetworkId,
       this.sessionId,
       'codex',
       () => ({

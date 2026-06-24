@@ -229,8 +229,8 @@ export interface WorkspaceLayoutPlugin {
   /** Compute node positions */
   computeLayout(input: LayoutComputeInput): LayoutComputeResult;
 
-  /** Project source nodes into layout-specific render nodes */
-  projectNodes?: (input: LayoutComputeInput) => LayoutRenderNode[];
+  /** World source nodes into layout-specific render nodes */
+  worldNodes?: (input: LayoutComputeInput) => LayoutRenderNode[];
 
   /** Classify nodes into card vs overlay rendering */
   classifyNodes(nodes: LayoutRenderNode[], config: Record<string, unknown>): {

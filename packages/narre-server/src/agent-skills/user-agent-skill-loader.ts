@@ -8,19 +8,19 @@ import {
   listUserAgentSkillPackages,
   resolveGlobalAgentsRoot,
   resolveGlobalUserAgentSkillRoot,
-  resolveProjectAgentsRoot,
-  resolveProjectUserAgentSkillRoot,
+  resolveWorldAgentsRoot,
+  resolveWorldUserAgentSkillRoot,
 } from './user-agent-skill-store.js';
 
 const DEFAULT_USER_AGENT_ID = 'default';
 const SAFE_SLASH_TRIGGER_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 
-export type UserAgentSkillScope = 'global' | 'project';
+export type UserAgentSkillScope = 'global' | 'world';
 
 export interface LoadUserAgentSkillsOptions {
-  projectRootDir?: string | null;
+  worldRootDir?: string | null;
   sharedUserDataRootDir?: string | null;
-  projectAgentId?: string | null;
+  worldAgentId?: string | null;
   globalAgentId?: string | null;
 }
 
@@ -49,14 +49,14 @@ export async function loadUserAgentSkills(
 ): Promise<NarreSkillDefinition[]> {
   const skills: NarreSkillDefinition[] = [];
 
-  if (options.projectRootDir) {
+  if (options.worldRootDir) {
     const agentIds = await resolveAgentIds(
-      resolveProjectAgentsRoot(options.projectRootDir),
-      options.projectAgentId,
+      resolveWorldAgentsRoot(options.worldRootDir),
+      options.worldAgentId,
     );
     for (const agentId of agentIds) {
-      const rootDir = resolveProjectUserAgentSkillRoot(options.projectRootDir, agentId);
-      skills.push(...await loadSkillPackages(rootDir, 'project', agentId));
+      const rootDir = resolveWorldUserAgentSkillRoot(options.worldRootDir, agentId);
+      skills.push(...await loadSkillPackages(rootDir, 'world', agentId));
     }
   }
 
@@ -85,10 +85,10 @@ export async function loadUserAgentPromptDefinitions(
     prompts.push(...await loadPromptDefinitionsForScope(agentsRootDir, 'global', agentIds));
   }
 
-  if (options.projectRootDir) {
-    const agentsRootDir = resolveProjectAgentsRoot(options.projectRootDir);
-    const agentIds = await resolveAgentIds(agentsRootDir, options.projectAgentId);
-    prompts.push(...await loadPromptDefinitionsForScope(agentsRootDir, 'project', agentIds));
+  if (options.worldRootDir) {
+    const agentsRootDir = resolveWorldAgentsRoot(options.worldRootDir);
+    const agentIds = await resolveAgentIds(agentsRootDir, options.worldAgentId);
+    prompts.push(...await loadPromptDefinitionsForScope(agentsRootDir, 'world', agentIds));
   }
 
   return prompts;

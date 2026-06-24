@@ -1,9 +1,9 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { getFileEntity, updateFileMetadataField } from '../netior-service-client.js';
-import { validateProjectRootPath } from './path-validation.js';
+import { validateWorldRootPath } from './path-validation.js';
 import { emitChange } from '../events.js';
-import { projectIdSchema, registerNetiorTool, resolveProjectId } from './shared-tool-registry.js';
+import { rootNetworkIdSchema, registerNetiorTool, resolveRootNetworkId } from './shared-tool-registry.js';
 
 async function extractTextFromPage(pdfDoc: unknown, pageNum: number): Promise<string> {
   // pdfjs-dist types are complex; use dynamic typing here
@@ -21,14 +21,14 @@ export function registerPdfTools(server: McpServer): void {
     server,
     'read_pdf_pages',
     {
-      project_id: projectIdSchema(),
+      root_network_id: rootNetworkIdSchema(),
       file_path: z.string().describe('Absolute path to the PDF file'),
       start_page: z.number().int().min(1).describe('First page to read (1-based)'),
       end_page: z.number().int().min(1).describe('Last page to read (1-based, inclusive)'),
     },
-    async ({ project_id, file_path, start_page, end_page }) => {
+    async ({ root_network_id, file_path, start_page, end_page }) => {
       try {
-        const validationError = await validateProjectRootPath(resolveProjectId(project_id), file_path);
+        const validationError = await validateWorldRootPath(resolveRootNetworkId(root_network_id), file_path);
         if (validationError) {
           return {
             content: [{ type: 'text' as const, text: `Error: ${validationError}` }],
@@ -84,14 +84,14 @@ export function registerPdfTools(server: McpServer): void {
     server,
     'read_pdf_pages_vision',
     {
-      project_id: projectIdSchema(),
+      root_network_id: rootNetworkIdSchema(),
       file_path: z.string().describe('Absolute path to the PDF file'),
       start_page: z.number().int().min(1).describe('First page to render (1-based)'),
       end_page: z.number().int().min(1).describe('Last page to render (1-based, inclusive)'),
     },
-    async ({ project_id, file_path, start_page, end_page }) => {
+    async ({ root_network_id, file_path, start_page, end_page }) => {
       try {
-        const validationError = await validateProjectRootPath(resolveProjectId(project_id), file_path);
+        const validationError = await validateWorldRootPath(resolveRootNetworkId(root_network_id), file_path);
         if (validationError) {
           return {
             content: [{ type: 'text' as const, text: `Error: ${validationError}` }],
@@ -189,7 +189,7 @@ export function registerPdfTools(server: McpServer): void {
         const metadata = entity.metadata ? JSON.parse(entity.metadata) : null;
         const result = {
           id: entity.id,
-          project_id: entity.project_id,
+          root_network_id: entity.root_network_id,
           path: entity.path,
           type: entity.type,
           metadata,

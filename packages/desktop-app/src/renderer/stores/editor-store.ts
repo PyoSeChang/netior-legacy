@@ -32,7 +32,7 @@ interface OpenTabParams {
   viewMode?: EditorViewMode;
   isDirty?: boolean;
   draftData?: EditorTab['draftData'];
-  projectId?: string;
+  rootNetworkId?: string;
   networkId?: string;
   nodeId?: string;
   terminalCwd?: string;
@@ -545,7 +545,7 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
   focusedHostId: MAIN_HOST_ID,
   pendingCloseTabId: null,
 
-  openTab: async ({ type, targetId, title, viewMode, isDirty, draftData, projectId, networkId, nodeId, terminalCwd, terminalLaunchConfig, browserFaviconUrl, browserUrl, objectViewMode, sideSplitRatio, hostId }) => {
+  openTab: async ({ type, targetId, title, viewMode, isDirty, draftData, rootNetworkId, networkId, nodeId, terminalCwd, terminalLaunchConfig, browserFaviconUrl, browserUrl, objectViewMode, sideSplitRatio, hostId }) => {
     const { tabs } = get();
     const tabId = makeTabId(type, targetId);
     const resolvedHostId = hostId ?? MAIN_HOST_ID;
@@ -654,7 +654,7 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
       type,
       targetId,
       title,
-      projectId,
+      rootNetworkId,
       hostId: resolvedHostId,
       viewMode: resolvedMode,
       floatRect: normalizeFloatRect({
@@ -771,7 +771,7 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
             type: params.type,
             targetId: params.targetId,
             title: params.title,
-            projectId: params.projectId,
+            rootNetworkId: params.rootNetworkId,
             isDirty: params.isDirty ?? false,
             isStale: false,
             activeFilePath: null,

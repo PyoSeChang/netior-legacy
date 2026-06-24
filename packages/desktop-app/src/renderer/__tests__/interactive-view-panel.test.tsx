@@ -45,7 +45,7 @@ const fields: SchemaField[] = [
     meaning_bindings: [],
     slot_binding_locked: false,
     generated_by_meaning: false,
-    source_kind: 'project',
+    source_kind: 'world',
     source_id: null,
     source_ref: null,
     source_version: null,
@@ -64,7 +64,7 @@ const fields: SchemaField[] = [
     meaning_bindings: [],
     slot_binding_locked: false,
     generated_by_meaning: false,
-    source_kind: 'project',
+    source_kind: 'world',
     source_id: null,
     source_ref: null,
     source_version: null,
@@ -94,7 +94,7 @@ function renderPanel(overrides?: {
       ? null
       : {
         id: 'state-1',
-        project_id: 'project-1',
+        root_network_id: 'world-1',
         instance_id: 'instance-1',
         view_template_id: overrides?.preferenceTemplateId ?? 'template-1',
         state_json: overrides.stateJson,
@@ -104,7 +104,7 @@ function renderPanel(overrides?: {
   );
   mockInteractiveViewStateService.upsert.mockResolvedValue({
     id: 'state-1',
-    project_id: 'project-1',
+    root_network_id: 'world-1',
     instance_id: 'instance-1',
     view_template_id: overrides?.preferenceTemplateId ?? 'template-1',
     state_json: '{}',
@@ -112,7 +112,7 @@ function renderPanel(overrides?: {
     updated_at: '',
   });
   mockInteractiveViewTemplateService.list.mockResolvedValue((overrides?.templates ?? []).map((template) => ({
-    project_id: 'project-1',
+    root_network_id: 'world-1',
     target_kind: 'schema',
     target_id: 'schema-1',
     description: null,
@@ -130,7 +130,7 @@ function renderPanel(overrides?: {
     overrides?.preferenceMode || overrides?.preferenceTemplateId
       ? {
         id: 'preference-1',
-        project_id: 'project-1',
+        root_network_id: 'world-1',
         instance_id: 'instance-1',
         preference_mode: overrides.preferenceMode ?? 'template',
         selected_view_template_id: overrides.preferenceTemplateId,
@@ -146,7 +146,7 @@ function renderPanel(overrides?: {
       overrides?.schemaPreferenceTemplateId
       ? {
         id: 'schema-preference-1',
-        project_id: 'project-1',
+        root_network_id: 'world-1',
         schema_id: 'schema-1',
         selected_view_template_id: overrides.schemaPreferenceTemplateId,
         created_at: '',
@@ -157,7 +157,7 @@ function renderPanel(overrides?: {
   }
   mockInteractiveViewTemplateService.upsertPreference.mockResolvedValue({
     id: 'preference-1',
-    project_id: 'project-1',
+    root_network_id: 'world-1',
     instance_id: 'instance-1',
     preference_mode: 'inherit',
     selected_view_template_id: null,
@@ -169,7 +169,7 @@ function renderPanel(overrides?: {
   const rendered = render(
     <InteractiveViewPanel
       tabId={overrides?.tabId}
-      projectId="project-1"
+      rootNetworkId="world-1"
       schemaId="schema-1"
       instanceId="instance-1"
       fields={fields}

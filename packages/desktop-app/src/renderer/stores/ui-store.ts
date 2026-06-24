@@ -2,8 +2,8 @@
 
 export type WorkspaceMode = 'browse' | 'edit';
 export type SidebarView =
-  | 'projects'
-  | 'ontology'
+  | 'worlds'
+  | 'rootNetwork'
   | 'networks'
   | 'instances'
   | 'meanings'

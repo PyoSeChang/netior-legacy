@@ -2,11 +2,11 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { SchemaField } from '@netior/shared/types';
 import { z } from 'zod';
 import {
-  getInstancesByProject,
+  getInstancesByWorld,
   listSchemaFields,
   searchInstances,
 } from '../netior-service-client.js';
-import { projectIdSchema, registerNetiorTool, resolveProjectId } from './shared-tool-registry.js';
+import { rootNetworkIdSchema, registerNetiorTool, resolveRootNetworkId } from './shared-tool-registry.js';
 import { toAgentFieldType } from './schema-surface.js';
 
 function parseInlineOptions(options: string | null): string[] {
@@ -44,15 +44,15 @@ export function registerCandidateSourceTools(server: McpServer): void {
     server,
     'get_field_candidates',
     {
-      project_id: projectIdSchema(),
+      root_network_id: rootNetworkIdSchema(),
       schema_id: z.string().describe('The schema that owns the field'),
       field_id: z.string().describe('The field ID'),
       query: z.string().optional().describe('Optional search query for candidate instances'),
       max_results: z.number().optional().describe('Optional maximum number of candidates to return'),
     },
-    async ({ project_id, schema_id, field_id, query, max_results }) => {
+    async ({ root_network_id, schema_id, field_id, query, max_results }) => {
       try {
-        const targetProjectId = resolveProjectId(project_id);
+        const targetRootNetworkId = resolveRootNetworkId(root_network_id);
         const fields = await listSchemaFields(schema_id);
         const field = findField(fields, field_id);
 
@@ -68,8 +68,8 @@ export function registerCandidateSourceTools(server: McpServer): void {
         const sourceSchemaId = getCandidateSourceSchemaId(field);
         if (sourceSchemaId) {
           const instances = query
-            ? await searchInstances(targetProjectId, query)
-            : await getInstancesByProject(targetProjectId);
+            ? await searchInstances(targetRootNetworkId, query)
+            : await getInstancesByWorld(targetRootNetworkId);
           const filtered = instances
             .filter((instance) => instance.schema_id === sourceSchemaId)
             .slice(0, limit)

@@ -8,7 +8,7 @@ import { ScrollArea } from '../../ui/ScrollArea';
 import { Spinner } from '../../ui/Spinner';
 
 interface NarreSessionListProps {
-  projectId: string;
+  rootNetworkId: string;
   onSelectSession: (sessionId: string) => void;
   onNewChat: () => void;
 }
@@ -30,7 +30,7 @@ function formatRelativeTime(dateStr: string): string {
 }
 
 export function NarreSessionList({
-  projectId,
+  rootNetworkId,
   onSelectSession,
   onNewChat,
 }: NarreSessionListProps): JSX.Element {
@@ -41,7 +41,7 @@ export function NarreSessionList({
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    narreService.listSessions(projectId).then((data) => {
+    narreService.listSessions(rootNetworkId).then((data) => {
       if (!cancelled) {
         setSessions(data);
         setLoading(false);
@@ -50,7 +50,7 @@ export function NarreSessionList({
       if (!cancelled) setLoading(false);
     });
     return () => { cancelled = true; };
-  }, [projectId]);
+  }, [rootNetworkId]);
 
   if (loading) {
     return (

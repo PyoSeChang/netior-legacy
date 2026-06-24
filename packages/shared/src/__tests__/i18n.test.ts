@@ -29,14 +29,14 @@ describe('translate', () => {
   });
 
   it('should handle nested keys', () => {
-    expect(translate('ko', 'project.create')).toBe('프로젝트 생성');
-    expect(translate('en', 'project.create')).toBe('Create Project');
+    expect(translate('ko', 'world.create')).toBe('월드 생성');
+    expect(translate('en', 'world.create')).toBe('Create World');
   });
 
   it('should handle all defined keys without throwing', () => {
     const keys = [
       'common.create', 'common.delete', 'common.cancel', 'common.save',
-      'project.create', 'project.name',
+      'world.create', 'world.name',
       'network.create', 'network.defaultName',
       'instance.create', 'instance.defaultTitle',
       'edge.connect', 'edge.delete',

@@ -20,7 +20,7 @@ Representation boundaries:
 - representation primitives are fixed system-provided surface runtimes, projection sources, ports, routing strategies, and visual slots.
 
 Mutation policy:
-- Prefer existing built-in/project network types when they fit.
+- Prefer existing built-in/world network types when they fit.
 - Create a user-defined type only when the requested surface needs a distinct representation grammar.
 - Confirm before destructive changes or broad restructures.`;
 }

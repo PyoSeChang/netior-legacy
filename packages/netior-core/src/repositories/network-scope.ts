@@ -1,19 +1,18 @@
 import { randomUUID } from 'crypto';
 import type Database from 'better-sqlite3';
 
-export function getDefaultOwnerNetworkIdForProjectDb(
+export function getDefaultOwnerNetworkIdForWorldDb(
   db: Database.Database,
-  projectId: string | null | undefined,
+  rootNetworkId: string | null | undefined,
 ): string | null {
-  if (!projectId) return null;
+  if (!rootNetworkId) return null;
   const row = db.prepare(
     `SELECT id
        FROM networks
-      WHERE project_id = ?
-        AND kind = 'ontology'
-      ORDER BY created_at
+      WHERE id = ?
+        AND kind = 'root'
       LIMIT 1`,
-  ).get(projectId) as { id: string } | undefined;
+  ).get(rootNetworkId) as { id: string } | undefined;
   return row?.id ?? null;
 }
 
@@ -44,7 +43,7 @@ export function ensureObjectScopeBindingForDb(
     data.scopeNetworkId,
     data.includeDescendants === false ? 0 : 1,
     data.bindingKind ?? 'visible',
-    data.sourceKind ?? 'project',
+    data.sourceKind ?? 'world',
     data.sourceId ?? null,
     data.sourceRef ?? null,
     data.sourceVersion ?? null,

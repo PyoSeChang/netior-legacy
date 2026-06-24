@@ -355,7 +355,7 @@ function shouldIncludeOccurrence(
   return endAbsMinute > rangeStart * 1440 && startAbsMinute < rangeEnd * 1440;
 }
 
-function projectDailyOrWeeklyOccurrences(
+function worldDailyOrWeeklyOccurrences(
   node: LayoutRenderNode,
   recurrence: RecurrenceDefinition,
   duration: TemporalDuration,
@@ -408,7 +408,7 @@ function projectDailyOrWeeklyOccurrences(
   return occurrences;
 }
 
-function projectMonthlyOccurrences(
+function worldMonthlyOccurrences(
   node: LayoutRenderNode,
   recurrence: RecurrenceDefinition,
   duration: TemporalDuration,
@@ -461,7 +461,7 @@ function projectMonthlyOccurrences(
   return occurrences;
 }
 
-export function projectRecurringTemporalNodes(
+export function worldRecurringTemporalNodes(
   nodes: LayoutRenderNode[],
   rangeStart: number,
   rangeEnd: number,
@@ -492,8 +492,8 @@ export function projectRecurringTemporalNodes(
     }
 
     const occurrences = recurrence.freq === 'MONTHLY'
-      ? projectMonthlyOccurrences(node, recurrence, duration, rangeStart, rangeEnd)
-      : projectDailyOrWeeklyOccurrences(node, recurrence, duration, rangeStart, rangeEnd);
+      ? worldMonthlyOccurrences(node, recurrence, duration, rangeStart, rangeEnd)
+      : worldDailyOrWeeklyOccurrences(node, recurrence, duration, rangeStart, rangeEnd);
     const materializedKeys = node.instanceId
       ? materializedKeysBySourceInstanceId.get(node.instanceId)
       : undefined;

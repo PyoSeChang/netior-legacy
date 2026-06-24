@@ -10,7 +10,7 @@ import type { SystemPromptParams } from '../system-prompt.js';
 export interface NarreSkillContext {
   params: SystemPromptParams;
   behavior: NarreBehaviorSettings;
-  projectId: string;
+  rootNetworkId: string;
   historyTurns?: NarreTranscriptTurn[];
 }
 

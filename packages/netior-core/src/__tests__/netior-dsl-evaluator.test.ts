@@ -9,7 +9,7 @@ vi.mock('../connection', async (importOriginal) => {
   };
 });
 
-import { createProject } from '../repositories/project';
+import { createWorld } from '../repositories/world';
 import { createSchema } from '../repositories/schema';
 import { createInstance } from '../repositories/instance';
 import { upsertProperty } from '../repositories/instance-property';
@@ -43,10 +43,10 @@ describe('Netior DSL evaluator', () => {
   });
 
   it('reads exact field values with draft overrides', () => {
-    const project = createProject({ name: 'DSL', root_dir: '/tmp/dsl' });
-    const schema = createSchema({ project_id: project.id, name: 'Problem' });
+    const world = createWorld({ name: 'DSL', root_dir: '/tmp/dsl' });
+    const schema = createSchema({ root_network_id: world.id, name: 'Problem' });
     insertField('field-order', schema.id, 'Order', 'number');
-    const instance = createInstance({ project_id: project.id, schema_id: schema.id, title: 'Q1' });
+    const instance = createInstance({ root_network_id: world.id, schema_id: schema.id, title: 'Q1' });
     upsertProperty({ instance_id: instance.id, field_id: 'field-order', value: '1' });
 
     const result = evaluateNetiorDsl({
@@ -54,7 +54,7 @@ describe('Netior DSL evaluator', () => {
       of: { op: 'context.object' },
       fieldId: 'field-order',
     }, {
-      projectId: project.id,
+      rootNetworkId: world.id,
       currentInstanceId: instance.id,
       currentSchemaId: schema.id,
       overrides: { properties: { 'field-order': '2' } },
@@ -64,11 +64,11 @@ describe('Netior DSL evaluator', () => {
   });
 
   it('finds next instance inside a schema scope', () => {
-    const project = createProject({ name: 'DSL', root_dir: '/tmp/dsl' });
-    const schema = createSchema({ project_id: project.id, name: 'Problem' });
+    const world = createWorld({ name: 'DSL', root_dir: '/tmp/dsl' });
+    const schema = createSchema({ root_network_id: world.id, name: 'Problem' });
     insertField('field-order', schema.id, 'Order', 'number');
-    const first = createInstance({ project_id: project.id, schema_id: schema.id, title: 'Q1' });
-    const second = createInstance({ project_id: project.id, schema_id: schema.id, title: 'Q2' });
+    const first = createInstance({ root_network_id: world.id, schema_id: schema.id, title: 'Q1' });
+    const second = createInstance({ root_network_id: world.id, schema_id: schema.id, title: 'Q2' });
     upsertProperty({ instance_id: first.id, field_id: 'field-order', value: '1' });
     upsertProperty({ instance_id: second.id, field_id: 'field-order', value: '2' });
 
@@ -79,7 +79,7 @@ describe('Netior DSL evaluator', () => {
       current: { op: 'literal', value: { objectType: 'instance', refId: first.id } },
       orderBy: { fieldId: 'field-order' },
     }, {
-      projectId: project.id,
+      rootNetworkId: world.id,
       currentSchemaId: schema.id,
     });
 
@@ -90,13 +90,13 @@ describe('Netior DSL evaluator', () => {
   });
 
   it('follows instance reference fields before reading nested field values', () => {
-    const project = createProject({ name: 'DSL', root_dir: '/tmp/dsl' });
-    const characterSchema = createSchema({ project_id: project.id, name: 'Character' });
+    const world = createWorld({ name: 'DSL', root_dir: '/tmp/dsl' });
+    const characterSchema = createSchema({ root_network_id: world.id, name: 'Character' });
     insertField('field-job', characterSchema.id, 'Job', 'select');
-    const statSchema = createSchema({ project_id: project.id, name: 'Stat' });
+    const statSchema = createSchema({ root_network_id: world.id, name: 'Stat' });
     insertField('field-character', statSchema.id, 'Character', 'relation');
-    const character = createInstance({ project_id: project.id, schema_id: characterSchema.id, title: 'Merlin' });
-    const stat = createInstance({ project_id: project.id, schema_id: statSchema.id, title: 'Merlin Stats' });
+    const character = createInstance({ root_network_id: world.id, schema_id: characterSchema.id, title: 'Merlin' });
+    const stat = createInstance({ root_network_id: world.id, schema_id: statSchema.id, title: 'Merlin Stats' });
     upsertProperty({ instance_id: character.id, field_id: 'field-job', value: 'Wizard' });
     upsertProperty({ instance_id: stat.id, field_id: 'field-character', value: `instance:${character.id}` });
 
@@ -113,7 +113,7 @@ describe('Netior DSL evaluator', () => {
       },
       right: { op: 'literal', value: 'Wizard' },
     }, {
-      projectId: project.id,
+      rootNetworkId: world.id,
       currentInstanceId: stat.id,
       currentSchemaId: statSchema.id,
     });
@@ -122,8 +122,8 @@ describe('Netior DSL evaluator', () => {
   });
 
   it('discovers schemas by field meaning', () => {
-    const project = createProject({ name: 'DSL', root_dir: '/tmp/dsl' });
-    const schema = createSchema({ project_id: project.id, name: 'Event' });
+    const world = createWorld({ name: 'DSL', root_dir: '/tmp/dsl' });
+    const schema = createSchema({ root_network_id: world.id, name: 'Event' });
     insertField('field-start', schema.id, 'Start', 'datetime');
     bindMeaning('field-start', 'time.start');
 
@@ -131,7 +131,7 @@ describe('Netior DSL evaluator', () => {
       op: 'discover.schemas',
       requires: [{ fieldMeaning: 'time.start' }],
     }, {
-      projectId: project.id,
+      rootNetworkId: world.id,
     });
 
     expect(result).toEqual({
@@ -141,11 +141,11 @@ describe('Netior DSL evaluator', () => {
   });
 
   it('resolves objects placed in the current network scope', () => {
-    const project = createProject({ name: 'DSL', root_dir: '/tmp/dsl' });
-    const schema = createSchema({ project_id: project.id, name: 'Problem' });
-    const first = createInstance({ project_id: project.id, schema_id: schema.id, title: 'Q1' });
-    const second = createInstance({ project_id: project.id, schema_id: schema.id, title: 'Q2' });
-    const network = createNetwork({ project_id: project.id, name: 'Problem Set' });
+    const world = createWorld({ name: 'DSL', root_dir: '/tmp/dsl' });
+    const schema = createSchema({ root_network_id: world.id, name: 'Problem' });
+    const first = createInstance({ root_network_id: world.id, schema_id: schema.id, title: 'Q1' });
+    const second = createInstance({ root_network_id: world.id, schema_id: schema.id, title: 'Q2' });
+    const network = createNetwork({ root_network_id: world.id, name: 'Problem Set' });
     const firstObject = getObjectByRef('instance', first.id)!;
     const secondObject = getObjectByRef('instance', second.id)!;
     addNetworkNode({ network_id: network.id, object_id: firstObject.id });
@@ -154,7 +154,7 @@ describe('Netior DSL evaluator', () => {
     const result = evaluateNetiorDsl({
       op: 'objects.inNetwork',
     }, {
-      projectId: project.id,
+      rootNetworkId: world.id,
       currentNetworkId: network.id,
     });
 

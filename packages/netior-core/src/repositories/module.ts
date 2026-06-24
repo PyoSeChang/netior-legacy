@@ -51,19 +51,19 @@ export function createModule(data: ModuleCreate): Module {
   const now = new Date().toISOString();
 
   db.prepare(
-    `INSERT INTO modules (id, project_id, name, path, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`,
-  ).run(id, data.project_id, data.name, data.path, now, now);
+    `INSERT INTO modules (id, root_network_id, name, path, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`,
+  ).run(id, data.root_network_id, data.name, data.path, now, now);
 
   syncPrimaryModuleDirectory(id, data.path, now);
 
   return getModuleById(id) as Module;
 }
 
-export function listModules(projectId: string): Module[] {
+export function listModules(rootNetworkId: string): Module[] {
   const db = getDatabase();
   return db
-    .prepare('SELECT * FROM modules WHERE project_id = ? ORDER BY created_at')
-    .all(projectId) as Module[];
+    .prepare('SELECT * FROM modules WHERE root_network_id = ? ORDER BY created_at')
+    .all(rootNetworkId) as Module[];
 }
 
 export function updateModule(id: string, data: ModuleUpdate): Module | undefined {

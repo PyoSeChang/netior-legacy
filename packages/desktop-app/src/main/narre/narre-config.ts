@@ -20,7 +20,7 @@ export const DEFAULT_NARRE_BEHAVIOR_SETTINGS: NarreBehaviorSettings = {
 
 export const DEFAULT_NARRE_CODEX_SETTINGS: NarreCodexSettings = {
   model: '',
-  useProjectRootAsWorkingDirectory: true,
+  useWorldRootAsWorkingDirectory: true,
   sandboxMode: 'read-only',
   approvalPolicy: 'on-request',
   enableShellTool: false,
@@ -150,7 +150,7 @@ function normalizeCodexSettings(value: unknown): NarreCodexSettings {
   const source = value as Record<string, unknown>;
   return {
     model: typeof source.model === 'string' ? source.model.trim() : '',
-    useProjectRootAsWorkingDirectory: source.useProjectRootAsWorkingDirectory !== false,
+    useWorldRootAsWorkingDirectory: source.useWorldRootAsWorkingDirectory !== false,
     sandboxMode: source.sandboxMode === 'workspace-write' || source.sandboxMode === 'danger-full-access'
       ? source.sandboxMode
       : 'read-only',

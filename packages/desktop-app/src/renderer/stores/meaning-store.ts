@@ -10,7 +10,7 @@ interface ModelStore {
   meanings: Meaning[];
   loading: boolean;
 
-  loadByProject: (projectId: string) => Promise<void>;
+  loadByWorld: (rootNetworkId: string) => Promise<void>;
   createMeaning: (data: MeaningCreate) => Promise<Meaning>;
   updateMeaning: (id: string, data: MeaningUpdate) => Promise<void>;
   deleteMeaning: (id: string) => Promise<void>;
@@ -21,10 +21,10 @@ export const useMeaningStore = create<ModelStore>((set) => ({
   meanings: [],
   loading: false,
 
-  loadByProject: async (projectId) => {
+  loadByWorld: async (rootNetworkId) => {
     set({ loading: true });
     try {
-      const meanings = normalizeModels(await meaningService.list(projectId));
+      const meanings = normalizeModels(await meaningService.list(rootNetworkId));
       set({ meanings, loading: false });
     } catch (error) {
       console.error('[ModelStore] Failed to load meanings:', error);

@@ -1,7 +1,7 @@
 ﻿import type {
   AgentDefinition,
   NarreGlobalUserAgentDefinition,
-  NarreProjectUserAgentDefinition,
+  NarreWorldUserAgentDefinition,
   NarreSystemAgentDefinition,
   TerminalAgentDefinition,
 } from '@netior/shared/types';
@@ -9,8 +9,8 @@
 export const DEFAULT_USER_AGENT_ID = 'default';
 
 export interface SupervisorAgentRegistryOptions {
-  projectId?: string | null;
-  projectUserAgentId?: string | null;
+  rootNetworkId?: string | null;
+  worldUserAgentId?: string | null;
   globalUserAgentId?: string | null;
 }
 
@@ -119,14 +119,14 @@ export function listSupervisorAgentDefinitions(
   options: SupervisorAgentRegistryOptions = {},
 ): AgentDefinition[] {
   const globalAgentId = options.globalUserAgentId?.trim() || DEFAULT_USER_AGENT_ID;
-  const projectAgentId = options.projectUserAgentId?.trim() || DEFAULT_USER_AGENT_ID;
+  const worldAgentId = options.worldUserAgentId?.trim() || DEFAULT_USER_AGENT_ID;
   const agents: AgentDefinition[] = [
     ...SYSTEM_AGENTS,
     createGlobalUserAgentDefinition(globalAgentId),
   ];
 
-  if (options.projectId) {
-    agents.push(createProjectUserAgentDefinition(projectAgentId, options.projectId));
+  if (options.rootNetworkId) {
+    agents.push(createWorldUserAgentDefinition(worldAgentId, options.rootNetworkId));
   }
 
   agents.push(...TERMINAL_AGENTS);
@@ -137,7 +137,7 @@ export function createGlobalUserAgentDefinition(agentId: string): NarreGlobalUse
   return {
     id: agentId,
     name: agentId === DEFAULT_USER_AGENT_ID ? 'Global User Agent' : agentId,
-    description: 'Narre user agent shared across projects.',
+    description: 'Narre user agent shared across worlds.',
     kind: 'narre',
     narreAgentType: 'user',
     userAgentType: 'global',
@@ -152,18 +152,18 @@ export function createGlobalUserAgentDefinition(agentId: string): NarreGlobalUse
   };
 }
 
-export function createProjectUserAgentDefinition(
+export function createWorldUserAgentDefinition(
   agentId: string,
-  projectId: string,
-): NarreProjectUserAgentDefinition {
+  rootNetworkId: string,
+): NarreWorldUserAgentDefinition {
   return {
     id: agentId,
-    name: agentId === DEFAULT_USER_AGENT_ID ? 'Project User Agent' : agentId,
-    description: 'Narre user agent scoped to a single project.',
+    name: agentId === DEFAULT_USER_AGENT_ID ? 'World User Agent' : agentId,
+    description: 'Narre user agent scoped to a single world.',
     kind: 'narre',
     narreAgentType: 'user',
-    userAgentType: 'project',
-    projectId,
+    userAgentType: 'world',
+    rootNetworkId,
     skills: [],
     runtimeProfile: {
       provider: 'openai',
@@ -184,8 +184,8 @@ export function getSupervisorAgentKey(agent: AgentDefinition): string {
     return `narre:system:${agent.systemAgentType}:${agent.id}`;
   }
 
-  if (agent.userAgentType === 'project') {
-    return `narre:user:project:${agent.projectId}:${agent.id}`;
+  if (agent.userAgentType === 'world') {
+    return `narre:user:world:${agent.rootNetworkId}:${agent.id}`;
   }
 
   return `narre:user:global:${agent.id}`;

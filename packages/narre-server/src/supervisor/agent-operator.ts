@@ -26,7 +26,7 @@ export class AgentOperator {
       return snapshot;
     }
 
-    const agents = this.config.supervisor.listAgents(snapshot.run.projectId);
+    const agents = this.config.supervisor.listAgents(snapshot.run.rootNetworkId);
     const finderKey = requireAgentKey(agents, 'network-finder');
     const builderKey = requireAgentKey(agents, 'network-builder');
     const operatorKey = requireAgentKey(agents, 'agent-operator');
@@ -52,7 +52,7 @@ export class AgentOperator {
       if (fallback.useFinder) {
         createdTasks.push(this.createAssignedTask({
           runId,
-          title: 'Discover relevant project context',
+          title: 'Discover relevant world context',
           input: [
             'Find relevant instances, networks, files, meanings, relation types, and unresolved context for the user request.',
             'Return concise findings with stable references and avoid mutations.',
@@ -221,7 +221,7 @@ export class AgentOperator {
     try {
       const runtime = await this.config.createRuntime(operator.runtimeProfile);
       const result = await runtime.runChat({
-        projectId: snapshot.run.projectId,
+        rootNetworkId: snapshot.run.rootNetworkId,
         message: buildPlannerPrompt(snapshot, agents),
         traceId: `operator-plan:${snapshot.run.id}`,
         activeAgent: operator,

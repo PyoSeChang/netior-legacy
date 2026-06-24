@@ -87,7 +87,7 @@ export interface CodexTransportOptions {
 
 export const DEFAULT_CODEX_RUNTIME_SETTINGS: NarreCodexSettings = {
   model: '',
-  useProjectRootAsWorkingDirectory: true,
+  useWorldRootAsWorkingDirectory: true,
   sandboxMode: 'read-only',
   approvalPolicy: 'on-request',
   enableShellTool: false,
@@ -113,7 +113,7 @@ export function normalizeCodexRuntimeSettings(value: unknown): NarreCodexSetting
 
   return {
     model,
-    useProjectRootAsWorkingDirectory: source.useProjectRootAsWorkingDirectory !== false,
+    useWorldRootAsWorkingDirectory: source.useWorldRootAsWorkingDirectory !== false,
     sandboxMode,
     approvalPolicy,
     enableShellTool: source.enableShellTool === true,
@@ -153,7 +153,7 @@ export class CodexTransport implements OpenAIFamilyTransport {
 
   async run(context: OpenAIFamilyTransportRunContext) {
     const traceId = context.traceId ?? 'no-trace';
-    const threadStore = new CodexThreadStore(this.options.dataDir, context.projectId, context.sessionId);
+    const threadStore = new CodexThreadStore(this.options.dataDir, context.rootNetworkId, context.sessionId);
     const runtimeSettings = normalizeCodexRuntimeSettings(this.options.runtimeSettings);
     const client = new CodexAppServerClient(context, runtimeSettings, new ApprovalStore(this.options.dataDir));
     const trackedToolCalls = new Map<string, NarreToolCall>();
@@ -179,7 +179,7 @@ export class CodexTransport implements OpenAIFamilyTransport {
       await client.waitForMcpServers();
 
       console.log(
-        `[narre:${this.name}] trace=${traceId} Starting run session=${context.sessionId} project=${context.projectId} ` +
+        `[narre:${this.name}] trace=${traceId} Starting run session=${context.sessionId} world=${context.rootNetworkId} ` +
         `thread=${threadId} resume=${context.isResume ? 'yes' : 'no'} meaning=${this.resolveModel(runtimeSettings) ?? 'default'}`,
       );
 
@@ -272,12 +272,12 @@ export class CodexTransport implements OpenAIFamilyTransport {
     context: OpenAIFamilyTransportRunContext,
     runtimeSettings: NarreCodexSettings,
   ): string | undefined {
-    if (runtimeSettings.useProjectRootAsWorkingDirectory === false) {
+    if (runtimeSettings.useWorldRootAsWorkingDirectory === false) {
       return undefined;
     }
 
-    const projectRootDir = context.projectRootDir?.trim();
-    return projectRootDir && projectRootDir.length > 0 ? projectRootDir : undefined;
+    const worldRootDir = context.worldRootDir?.trim();
+    return worldRootDir && worldRootDir.length > 0 ? worldRootDir : undefined;
   }
 }
 
@@ -377,8 +377,8 @@ class CodexAppServerClient {
   }
 
   private resolveWorkingDirectory(): string | undefined {
-    const projectRootDir = this.context.projectRootDir?.trim();
-    return projectRootDir && projectRootDir.length > 0 ? projectRootDir : undefined;
+    const worldRootDir = this.context.worldRootDir?.trim();
+    return worldRootDir && worldRootDir.length > 0 ? worldRootDir : undefined;
   }
 
   async close(): Promise<void> {
@@ -744,7 +744,7 @@ class CodexAppServerClient {
 
     if (isNetiorMcpServerName(serverName) && requestedToolName) {
       const metadata = getNarreToolMetadata(requestedToolName);
-      const alwaysAllowed = await this.approvalStore.isToolAllowed(this.context.projectId, requestedToolName);
+      const alwaysAllowed = await this.approvalStore.isToolAllowed(this.context.rootNetworkId, requestedToolName);
 
       if (metadata.approvalMode === 'auto' || alwaysAllowed) {
         this.sendMessage({
@@ -767,7 +767,7 @@ class CodexAppServerClient {
         actions: [
           { key: 'accept', label: 'Approve' },
           ...(isNetiorMcpServerName(serverName) && requestedToolName
-            ? [{ key: 'accept_project', label: 'Always allow in this project' as const }]
+            ? [{ key: 'accept_world', label: 'Always allow in this world' as const }]
             : []),
           { key: 'decline', label: 'Decline', variant: 'danger' },
         ],
@@ -777,10 +777,10 @@ class CodexAppServerClient {
 
     const response = safeParseJson(responseText);
     const action = isActionResponse(response) ? response.action : null;
-    const approved = action === 'accept' || action === 'accept_project';
+    const approved = action === 'accept' || action === 'accept_world';
 
-    if (approved && action === 'accept_project' && isNetiorMcpServerName(serverName) && requestedToolName) {
-      await this.approvalStore.allowTool(this.context.projectId, requestedToolName);
+    if (approved && action === 'accept_world' && isNetiorMcpServerName(serverName) && requestedToolName) {
+      await this.approvalStore.allowTool(this.context.rootNetworkId, requestedToolName);
     }
 
     this.sendMessage({
@@ -940,7 +940,7 @@ class CodexAppServerClient {
       .sort((left, right) => right.startedAt - left.startedAt)[0];
 
     return buildNarreOperationPreview(
-      { projectId: this.context.projectId },
+      { rootNetworkId: this.context.rootNetworkId },
       normalizedToolName,
       recent?.input ?? {},
     );

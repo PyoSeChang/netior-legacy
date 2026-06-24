@@ -1,6 +1,6 @@
 import type Database from 'better-sqlite3';
 import { getDatabase } from '../connection';
-import { ensureObjectScopeBindingForDb, getDefaultOwnerNetworkIdForProjectDb } from './network-scope';
+import { ensureObjectScopeBindingForDb, getDefaultOwnerNetworkIdForWorldDb } from './network-scope';
 import {
   MEANING_CATEGORY_INSTANCE_DEFINITIONS,
   MEANING_CATEGORY_SCHEMA_SOURCE_REF,
@@ -13,42 +13,42 @@ function ensureObject(
   db: Database.Database,
   objectType: string,
   scope: string,
-  projectId: string | null,
+  rootNetworkId: string | null,
   refId: string,
   createdAt: string,
 ): string {
   const objectId = `object-${objectType}-${refId}`;
   db.prepare(`
-    INSERT OR IGNORE INTO objects (id, object_type, scope, project_id, ref_id, created_at)
+    INSERT OR IGNORE INTO objects (id, object_type, scope, root_network_id, ref_id, created_at)
     VALUES (?, ?, ?, ?, ?, ?)
-  `).run(objectId, objectType, scope, projectId, refId, createdAt);
+  `).run(objectId, objectType, scope, rootNetworkId, refId, createdAt);
   return objectId;
 }
 
-export function getMeaningCategorySchemaId(projectId: string): string {
-  return `schema-${projectId}-meaning_category`;
+export function getMeaningCategorySchemaId(rootNetworkId: string): string {
+  return `schema-${rootNetworkId}-meaning_category`;
 }
 
-export function getMeaningCategoryInstanceId(projectId: string, categoryKey: string): string {
-  return `instance-${projectId}-meaning-category-${categoryKey}`;
+export function getMeaningCategoryInstanceId(rootNetworkId: string, categoryKey: string): string {
+  return `instance-${rootNetworkId}-meaning-category-${categoryKey}`;
 }
 
-export function ensureMeaningCategoryTaxonomyForProjectDb(
+export function ensureMeaningCategoryTaxonomyForWorldDb(
   db: Database.Database,
-  projectId: string,
+  rootNetworkId: string,
 ): { schemaId: string; instancesByKey: Map<string, Instance> } {
   const now = new Date().toISOString();
-  const schemaId = getMeaningCategorySchemaId(projectId);
-  const ownerNetworkId = getDefaultOwnerNetworkIdForProjectDb(db, projectId);
+  const schemaId = getMeaningCategorySchemaId(rootNetworkId);
+  const ownerNetworkId = getDefaultOwnerNetworkIdForWorldDb(db, rootNetworkId);
 
   db.prepare(`
     INSERT OR IGNORE INTO schemas (
-      id, project_id, owner_network_id, name, description, icon, color, file_template, meanings,
+      id, root_network_id, owner_network_id, name, description, icon, color, file_template, meanings,
       source_kind, source_id, source_ref, source_version, created_at, updated_at
     )
     VALUES (?, ?, ?, 'Meaning Category', 'Built-in enum schema for semantic meaning categories.', 'folder-tree', '#6b7280', NULL, '[]',
       'system', ?, ?, ?, ?, ?)
-  `).run(schemaId, projectId, ownerNetworkId, SYSTEM_ONTOLOGY_SOURCE_ID, MEANING_CATEGORY_SCHEMA_SOURCE_REF, SYSTEM_ONTOLOGY_SOURCE_VERSION, now, now);
+  `).run(schemaId, rootNetworkId, ownerNetworkId, SYSTEM_ONTOLOGY_SOURCE_ID, MEANING_CATEGORY_SCHEMA_SOURCE_REF, SYSTEM_ONTOLOGY_SOURCE_VERSION, now, now);
   db.prepare(`
     UPDATE schemas
        SET owner_network_id = COALESCE(owner_network_id, ?),
@@ -59,7 +59,7 @@ export function ensureMeaningCategoryTaxonomyForProjectDb(
            updated_at = ?
      WHERE id = ?
   `).run(ownerNetworkId, SYSTEM_ONTOLOGY_SOURCE_ID, MEANING_CATEGORY_SCHEMA_SOURCE_REF, SYSTEM_ONTOLOGY_SOURCE_VERSION, now, schemaId);
-  const schemaObjectId = ensureObject(db, 'schema', 'project', projectId, schemaId, now);
+  const schemaObjectId = ensureObject(db, 'schema', 'world', rootNetworkId, schemaId, now);
   ensureObjectScopeBindingForDb(db, {
     objectId: schemaObjectId,
     scopeNetworkId: ownerNetworkId,
@@ -71,7 +71,7 @@ export function ensureMeaningCategoryTaxonomyForProjectDb(
 
   const insertInstance = db.prepare(`
     INSERT OR IGNORE INTO instances (
-      id, project_id, owner_network_id, schema_id, recurrence_source_instance_id, recurrence_occurrence_key,
+      id, root_network_id, owner_network_id, schema_id, recurrence_source_instance_id, recurrence_occurrence_key,
       title, color, icon, content, agent_content,
       source_kind, source_id, source_ref, source_version, created_at, updated_at
     )
@@ -91,10 +91,10 @@ export function ensureMeaningCategoryTaxonomyForProjectDb(
 
   const instancesByKey = new Map<string, Instance>();
   for (const category of MEANING_CATEGORY_INSTANCE_DEFINITIONS) {
-    const instanceId = getMeaningCategoryInstanceId(projectId, category.key);
-    insertInstance.run(instanceId, projectId, ownerNetworkId, schemaId, category.title, SYSTEM_ONTOLOGY_SOURCE_ID, category.sourceRef, SYSTEM_ONTOLOGY_SOURCE_VERSION, now, now);
+    const instanceId = getMeaningCategoryInstanceId(rootNetworkId, category.key);
+    insertInstance.run(instanceId, rootNetworkId, ownerNetworkId, schemaId, category.title, SYSTEM_ONTOLOGY_SOURCE_ID, category.sourceRef, SYSTEM_ONTOLOGY_SOURCE_VERSION, now, now);
     updateInstance.run(ownerNetworkId, schemaId, SYSTEM_ONTOLOGY_SOURCE_ID, category.sourceRef, SYSTEM_ONTOLOGY_SOURCE_VERSION, now, instanceId);
-    const instanceObjectId = ensureObject(db, 'instance', 'project', projectId, instanceId, now);
+    const instanceObjectId = ensureObject(db, 'instance', 'world', rootNetworkId, instanceId, now);
     ensureObjectScopeBindingForDb(db, {
       objectId: instanceObjectId,
       scopeNetworkId: ownerNetworkId,
@@ -110,12 +110,12 @@ export function ensureMeaningCategoryTaxonomyForProjectDb(
   return { schemaId, instancesByKey };
 }
 
-export function listMeaningCategoriesForProjectDb(db: Database.Database, projectId: string): Instance[] {
-  const { schemaId } = ensureMeaningCategoryTaxonomyForProjectDb(db, projectId);
+export function listMeaningCategoriesForWorldDb(db: Database.Database, rootNetworkId: string): Instance[] {
+  const { schemaId } = ensureMeaningCategoryTaxonomyForWorldDb(db, rootNetworkId);
   return db.prepare(`
     SELECT *
       FROM instances
-     WHERE project_id = ?
+     WHERE root_network_id = ?
        AND schema_id = ?
      ORDER BY
        CASE source_ref
@@ -129,9 +129,9 @@ export function listMeaningCategoriesForProjectDb(db: Database.Database, project
          ELSE 100
        END,
        title
-  `).all(projectId, schemaId) as Instance[];
+  `).all(rootNetworkId, schemaId) as Instance[];
 }
 
-export function listMeaningCategories(projectId: string): Instance[] {
-  return listMeaningCategoriesForProjectDb(getDatabase(), projectId);
+export function listMeaningCategories(rootNetworkId: string): Instance[] {
+  return listMeaningCategoriesForWorldDb(getDatabase(), rootNetworkId);
 }

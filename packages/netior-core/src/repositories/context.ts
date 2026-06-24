@@ -13,10 +13,10 @@ export function createContext(data: ContextCreate): Context {
      VALUES (?, ?, ?, ?, ?, ?)`,
   ).run(id, data.network_id, data.name, data.description ?? null, now, now);
 
-  // Register object record — look up project_id from the network
-  const network = db.prepare('SELECT project_id FROM networks WHERE id = ?').get(data.network_id) as { project_id: string | null } | undefined;
-  const projectId = network?.project_id ?? null;
-  createObject('context', 'project', projectId, id);
+  // Register object record — look up root_network_id from the network
+  const network = db.prepare('SELECT root_network_id FROM networks WHERE id = ?').get(data.network_id) as { root_network_id: string | null } | undefined;
+  const rootNetworkId = network?.root_network_id ?? null;
+  createObject('context', 'world', rootNetworkId, id);
 
   return db.prepare('SELECT * FROM contexts WHERE id = ?').get(id) as Context;
 }

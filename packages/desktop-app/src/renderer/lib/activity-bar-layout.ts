@@ -1,19 +1,19 @@
 ﻿export type ActivityBarTopItemKey =
-  | 'projects'
+  | 'worlds'
   | 'networks'
   | 'files'
   | 'sessions';
-export type ActivityBarBottomItemKey = 'ontology' | 'narre' | 'terminal' | 'agents' | 'browser' | 'settings';
+export type ActivityBarBottomItemKey = 'rootNetwork' | 'narre' | 'terminal' | 'agents' | 'browser' | 'settings';
 
 export const ACTIVITY_BAR_TOP_ITEM_KEYS = [
-  'projects',
+  'worlds',
   'networks',
   'files',
   'sessions',
 ] as const satisfies readonly ActivityBarTopItemKey[];
 
 export const ACTIVITY_BAR_BOTTOM_ITEM_KEYS = [
-  'ontology',
+  'rootNetwork',
   'narre',
   'terminal',
   'agents',
@@ -24,7 +24,7 @@ export const ACTIVITY_BAR_BOTTOM_ITEM_KEYS = [
 export interface ActivityBarLayoutConfig {
   topItemOrder: ActivityBarTopItemKey[];
   bottomItemOrder: ActivityBarBottomItemKey[];
-  networkBookmarksByProject: Record<string, string[]>;
+  networkBookmarksByWorld: Record<string, string[]>;
 }
 
 export const ACTIVITY_BAR_LAYOUT_CONFIG_KEY = 'ui.activityBarLayout';
@@ -32,7 +32,7 @@ export const ACTIVITY_BAR_LAYOUT_CONFIG_KEY = 'ui.activityBarLayout';
 export const DEFAULT_ACTIVITY_BAR_LAYOUT_CONFIG: ActivityBarLayoutConfig = {
   topItemOrder: [...ACTIVITY_BAR_TOP_ITEM_KEYS],
   bottomItemOrder: [...ACTIVITY_BAR_BOTTOM_ITEM_KEYS],
-  networkBookmarksByProject: {},
+  networkBookmarksByWorld: {},
 };
 
 function normalizeStringArray(value: unknown): string[] {
@@ -78,21 +78,21 @@ function normalizeBottomItemOrder(value: unknown): ActivityBarBottomItemKey[] {
   return normalizeItemOrder(entries, ACTIVITY_BAR_BOTTOM_ITEM_KEYS);
 }
 
-function normalizeNetworkBookmarksByProject(value: unknown): Record<string, string[]> {
+function normalizeNetworkBookmarksByWorld(value: unknown): Record<string, string[]> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     return {};
   }
 
   const next: Record<string, string[]> = {};
-  for (const [projectId, bookmarkIds] of Object.entries(value as Record<string, unknown>)) {
-    const normalizedProjectId = projectId.trim();
-    if (!normalizedProjectId) {
+  for (const [rootNetworkId, bookmarkIds] of Object.entries(value as Record<string, unknown>)) {
+    const normalizedRootNetworkId = rootNetworkId.trim();
+    if (!normalizedRootNetworkId) {
       continue;
     }
 
     const normalizedBookmarkIds = normalizeStringArray(bookmarkIds);
     if (normalizedBookmarkIds.length > 0) {
-      next[normalizedProjectId] = normalizedBookmarkIds;
+      next[normalizedRootNetworkId] = normalizedBookmarkIds;
     }
   }
 
@@ -107,7 +107,7 @@ export function normalizeActivityBarLayoutConfig(value: unknown): ActivityBarLay
   return {
     topItemOrder: normalizeTopItemOrder(source.topItemOrder),
     bottomItemOrder: normalizeBottomItemOrder(source.bottomItemOrder),
-    networkBookmarksByProject: normalizeNetworkBookmarksByProject(source.networkBookmarksByProject),
+    networkBookmarksByWorld: normalizeNetworkBookmarksByWorld(source.networkBookmarksByWorld),
   };
 }
 
@@ -140,38 +140,38 @@ export function moveOrderedItem<T>(
   return next;
 }
 
-export function getProjectNetworkBookmarkIds(
+export function getWorldNetworkBookmarkIds(
   config: ActivityBarLayoutConfig,
-  projectId: string | null | undefined,
+  rootNetworkId: string | null | undefined,
 ): string[] {
-  if (!projectId) {
+  if (!rootNetworkId) {
     return [];
   }
 
-  return config.networkBookmarksByProject[projectId] ?? [];
+  return config.networkBookmarksByWorld[rootNetworkId] ?? [];
 }
 
-export function setProjectNetworkBookmarkIds(
+export function setWorldNetworkBookmarkIds(
   config: ActivityBarLayoutConfig,
-  projectId: string,
+  rootNetworkId: string,
   bookmarkIds: readonly string[],
 ): ActivityBarLayoutConfig {
-  const normalizedProjectId = projectId.trim();
-  if (!normalizedProjectId) {
+  const normalizedRootNetworkId = rootNetworkId.trim();
+  if (!normalizedRootNetworkId) {
     return config;
   }
 
-  const nextBookmarksByProject = { ...config.networkBookmarksByProject };
+  const nextBookmarksByWorld = { ...config.networkBookmarksByWorld };
   const normalizedBookmarkIds = normalizeStringArray(bookmarkIds);
 
   if (normalizedBookmarkIds.length === 0) {
-    delete nextBookmarksByProject[normalizedProjectId];
+    delete nextBookmarksByWorld[normalizedRootNetworkId];
   } else {
-    nextBookmarksByProject[normalizedProjectId] = normalizedBookmarkIds;
+    nextBookmarksByWorld[normalizedRootNetworkId] = normalizedBookmarkIds;
   }
 
   return normalizeActivityBarLayoutConfig({
     ...config,
-    networkBookmarksByProject: nextBookmarksByProject,
+    networkBookmarksByWorld: nextBookmarksByWorld,
   });
 }

@@ -3,18 +3,18 @@ import { z } from 'zod';
 import type { SchemaField, NetworkTreeNode } from '@netior/shared/types';
 import {
   getUniverseNetwork,
-  getProjectById,
-  getProjectOntologyNetwork,
+  getWorldById,
+  getRootNetwork,
   getNetworkTree,
   listSchemaFields,
   listSchemas,
   listMeanings,
-  getInstancesByProject,
+  getInstancesByWorld,
   listNetworkTypes,
   listNetworks,
   listRelationships,
 } from '../netior-service-client.js';
-import { projectIdSchema, registerNetiorTool, resolveProjectId } from './shared-tool-registry.js';
+import { rootNetworkIdSchema, registerNetiorTool, resolveRootNetworkId } from './shared-tool-registry.js';
 import { toAgentInstance, toAgentFieldType } from './schema-surface.js';
 
 function buildOptionsPreview(options: string | null): string[] | undefined {
@@ -78,14 +78,14 @@ function mapSchemaFields(
   });
 }
 
-interface ProjectSummaryNetworkTreeNode {
+interface WorldSummaryNetworkTreeNode {
   id: string;
   name: string;
   kind: string;
-  children: ProjectSummaryNetworkTreeNode[];
+  children: WorldSummaryNetworkTreeNode[];
 }
 
-function mapNetworkTree(nodes: NetworkTreeNode[]): ProjectSummaryNetworkTreeNode[] {
+function mapNetworkTree(nodes: NetworkTreeNode[]): WorldSummaryNetworkTreeNode[] {
   return nodes.map((node) => ({
     id: node.network.id,
     name: node.network.name,
@@ -94,18 +94,18 @@ function mapNetworkTree(nodes: NetworkTreeNode[]): ProjectSummaryNetworkTreeNode
   }));
 }
 
-export function registerProjectTools(server: McpServer): void {
+export function registerWorldTools(server: McpServer): void {
   registerNetiorTool(
     server,
-    'get_project_summary',
-    { project_id: projectIdSchema() },
-    async ({ project_id }) => {
+    'get_world_summary',
+    { root_network_id: rootNetworkIdSchema() },
+    async ({ root_network_id }) => {
       try {
-        const targetProjectId = resolveProjectId(project_id);
-        const project = await getProjectById(targetProjectId);
-        if (!project) {
+        const targetRootNetworkId = resolveRootNetworkId(root_network_id);
+        const world = await getWorldById(targetRootNetworkId);
+        if (!world) {
           return {
-            content: [{ type: 'text' as const, text: `Error: Project not found: ${targetProjectId}` }],
+            content: [{ type: 'text' as const, text: `Error: World not found: ${targetRootNetworkId}` }],
             isError: true,
           };
         }
@@ -118,18 +118,18 @@ export function registerProjectTools(server: McpServer): void {
           networkTypes,
           relationships,
           universeNetwork,
-          ontologyNetwork,
+          rootNetwork,
           networkTree,
         ] = await Promise.all([
-          listSchemas(targetProjectId),
-          listMeanings(targetProjectId),
-          getInstancesByProject(targetProjectId),
-          listNetworks(targetProjectId),
-          listNetworkTypes(targetProjectId),
-          listRelationships({ projectId: targetProjectId }),
+          listSchemas(targetRootNetworkId),
+          listMeanings(targetRootNetworkId),
+          getInstancesByWorld(targetRootNetworkId),
+          listNetworks(targetRootNetworkId),
+          listNetworkTypes(targetRootNetworkId),
+          listRelationships({ rootNetworkId: targetRootNetworkId }),
           getUniverseNetwork(),
-          getProjectOntologyNetwork(targetProjectId),
-          getNetworkTree(targetProjectId),
+          getRootNetwork(targetRootNetworkId),
+          getNetworkTree(targetRootNetworkId),
         ]);
         const schemaNameMap = new Map<string, string>(schemas.map((schema) => [schema.id, schema.name]));
         const schemaFieldsById = new Map<string, SchemaField[]>(
@@ -140,10 +140,10 @@ export function registerProjectTools(server: McpServer): void {
         const relationMeanings = meanings.filter((meaning) => meaning.target_kind === 'relation' || meaning.target_kind === 'both');
 
         const summary = {
-          project: {
-            id: project.id,
-            name: project.name,
-            root_dir: project.root_dir,
+          world: {
+            id: world.id,
+            name: world.name,
+            root_dir: world.root_dir,
           },
           schemas: {
             count: schemas.length,
@@ -207,7 +207,7 @@ export function registerProjectTools(server: McpServer): void {
           },
           system_networks: {
             universe: universeNetwork ? { id: universeNetwork.id, name: universeNetwork.name } : null,
-            ontology: ontologyNetwork ? { id: ontologyNetwork.id, name: ontologyNetwork.name } : null,
+            root: rootNetwork ? { id: rootNetwork.id, name: rootNetwork.name } : null,
           },
           network_tree: mapNetworkTree(networkTree),
         };

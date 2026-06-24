@@ -5,7 +5,7 @@ import {
   deleteRemoteFile,
   getRemoteFile,
   getRemoteFileByPath,
-  listRemoteFilesByProject,
+  listRemoteFilesByWorld,
   updateRemoteFile,
 } from '../netior-service/netior-service-client';
 
@@ -26,17 +26,17 @@ export function registerFileIpc(): void {
     }
   });
 
-  ipcMain.handle('file:getByPath', async (_e, projectId: string, path: string): Promise<IpcResult<unknown>> => {
+  ipcMain.handle('file:getByPath', async (_e, rootNetworkId: string, path: string): Promise<IpcResult<unknown>> => {
     try {
-      return { success: true, data: await getRemoteFileByPath(projectId, path) };
+      return { success: true, data: await getRemoteFileByPath(rootNetworkId, path) };
     } catch (err) {
       return { success: false, error: (err as Error).message };
     }
   });
 
-  ipcMain.handle('file:getByProject', async (_e, projectId: string): Promise<IpcResult<unknown>> => {
+  ipcMain.handle('file:getByRootNetwork', async (_e, rootNetworkId: string): Promise<IpcResult<unknown>> => {
     try {
-      return { success: true, data: await listRemoteFilesByProject(projectId) };
+      return { success: true, data: await listRemoteFilesByWorld(rootNetworkId) };
     } catch (err) {
       return { success: false, error: (err as Error).message };
     }

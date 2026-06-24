@@ -5,8 +5,8 @@ export async function createInstance(data: InstanceCreate): Promise<Instance> {
   return unwrapIpc(await window.electron.instance.create(data as unknown as Record<string, unknown>));
 }
 
-export async function getInstancesByProject(projectId: string): Promise<Instance[]> {
-  return unwrapIpc(await window.electron.instance.getByProject(projectId));
+export async function getInstancesByWorld(rootNetworkId: string): Promise<Instance[]> {
+  return unwrapIpc(await window.electron.instance.getByRootNetwork(rootNetworkId));
 }
 
 export async function updateInstance(id: string, data: InstanceUpdate): Promise<Instance> {
@@ -19,7 +19,7 @@ export async function deleteInstance(id: string): Promise<boolean> {
 
 export const instanceService = {
   create: createInstance,
-  getByProject: getInstancesByProject,
+  getByRootNetwork: getInstancesByWorld,
   update: updateInstance,
   delete: deleteInstance,
 };

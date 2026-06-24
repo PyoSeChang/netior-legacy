@@ -8,7 +8,7 @@
   AgentUxState,
 } from '@netior/shared/types';
 import { useEditorStore } from '../stores/editor-store';
-import { updateCachedProjectEditorTab } from '../stores/project-state-cache';
+import { updateCachedWorldEditorTab } from '../stores/world-state-cache';
 
 export interface AgentSessionState {
   provider: AgentSessionEvent['provider'];
@@ -83,7 +83,7 @@ function syncTerminalTabTitle(state: AgentSessionState, name: string | null): vo
 
   const tabId = `terminal:${state.surface.id}`;
   useEditorStore.getState().updateTitle(tabId, name);
-  updateCachedProjectEditorTab(tabId, (tab) => ({ ...tab, title: name }));
+  updateCachedWorldEditorTab(tabId, (tab) => ({ ...tab, title: name }));
 }
 
 function toSessionState(snapshot: AgentSessionSnapshot): AgentSessionState {

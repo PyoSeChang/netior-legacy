@@ -1,9 +1,9 @@
 import type { NetworkTreeNode, Meaning, Schema, SchemaField, SchemaMeaning } from '@netior/shared/types';
 import type { SystemPromptParams } from './system-prompt.js';
 import {
-  getProjectOntologyNetwork,
+  getRootNetwork,
   getNetworkTree,
-  getProjectById,
+  getWorldById,
   getUniverseNetwork,
   listNetworkTypes,
   listMeaningCategories,
@@ -159,10 +159,10 @@ function mapMeaningCategories(categories: Awaited<ReturnType<typeof listMeaningC
   }));
 }
 
-export async function buildProjectPromptMetadata(projectId: string): Promise<SystemPromptParams> {
-  const project = await getProjectById(projectId);
-  if (!project) {
-    throw new Error(`Project not found: ${projectId}`);
+export async function buildWorldPromptMetadata(rootNetworkId: string): Promise<SystemPromptParams> {
+  const world = await getWorldById(rootNetworkId);
+  if (!world) {
+    throw new Error(`World not found: ${rootNetworkId}`);
   }
 
   const [
@@ -170,17 +170,17 @@ export async function buildProjectPromptMetadata(projectId: string): Promise<Sys
     meaningCategories,
     schemas,
     universeNetwork,
-    ontologyNetwork,
+    rootNetwork,
     networkTree,
     networkTypes,
   ] = await Promise.all([
-    listMeanings(projectId),
-    listMeaningCategories(projectId),
-    listSchemas(projectId),
+    listMeanings(rootNetworkId),
+    listMeaningCategories(rootNetworkId),
+    listSchemas(rootNetworkId),
     getUniverseNetwork(),
-    getProjectOntologyNetwork(projectId),
-    getNetworkTree(projectId),
-    listNetworkTypes(projectId),
+    getRootNetwork(rootNetworkId),
+    getNetworkTree(rootNetworkId),
+    listNetworkTypes(rootNetworkId),
   ]);
 
   const schemaNameMap = new Map<string, string>(schemas.map((schema) => [schema.id, schema.name]));
@@ -195,17 +195,17 @@ export async function buildProjectPromptMetadata(projectId: string): Promise<Sys
     ),
   );
   return {
-    projectId,
-    projectName: project.name,
-    projectRootDir: project.root_dir,
+    rootNetworkId,
+    worldName: world.name,
+    worldRootDir: world.root_dir,
     schemas: mapSchemas(schemas, schemaFieldsById, schemaMeaningsById, schemaNameMap),
     meanings: mapModels(meanings),
     meaningCategories: mapMeaningCategories(meaningCategories),
     universeNetwork: universeNetwork
       ? { id: universeNetwork.id, name: universeNetwork.name }
       : null,
-    ontologyNetwork: ontologyNetwork
-      ? { id: ontologyNetwork.id, name: ontologyNetwork.name }
+    rootNetwork: rootNetwork
+      ? { id: rootNetwork.id, name: rootNetwork.name }
       : null,
     networkTree: mapNetworkTree(networkTree),
     networkTypes: networkTypes.map((networkType) => ({

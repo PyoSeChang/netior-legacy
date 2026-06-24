@@ -26,7 +26,7 @@ export type CardHandler = (card: NarreCard) => unknown;
 
 export interface SendTurnInput {
   sessionId: string | null;
-  projectId: string;
+  rootNetworkId: string;
   message: string;
   mentions?: unknown[];
   /** If provided, called inline during the SSE stream for each card event. */

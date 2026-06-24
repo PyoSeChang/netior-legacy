@@ -2,10 +2,10 @@
 import {
   DEFAULT_ACTIVITY_BAR_LAYOUT_CONFIG,
   ACTIVITY_BAR_LAYOUT_CONFIG_KEY,
-  getProjectNetworkBookmarkIds,
+  getWorldNetworkBookmarkIds,
   moveOrderedItem,
   normalizeActivityBarLayoutConfig,
-  setProjectNetworkBookmarkIds,
+  setWorldNetworkBookmarkIds,
   type ActivityBarBottomItemKey,
   type ActivityBarLayoutConfig,
   type ActivityBarTopItemKey,
@@ -56,10 +56,10 @@ interface ActivityBarStore {
   setBottomItemOrder: (order: ActivityBarBottomItemKey[]) => Promise<void>;
   moveTopItem: (index: number, direction: -1 | 1) => Promise<void>;
   moveBottomItem: (index: number, direction: -1 | 1) => Promise<void>;
-  setProjectBookmarks: (projectId: string, bookmarkIds: string[]) => Promise<void>;
-  addBookmark: (projectId: string, networkId: string) => Promise<void>;
-  removeBookmark: (projectId: string, networkId: string) => Promise<void>;
-  moveBookmark: (projectId: string, index: number, direction: -1 | 1) => Promise<void>;
+  setWorldBookmarks: (rootNetworkId: string, bookmarkIds: string[]) => Promise<void>;
+  addBookmark: (rootNetworkId: string, networkId: string) => Promise<void>;
+  removeBookmark: (rootNetworkId: string, networkId: string) => Promise<void>;
+  moveBookmark: (rootNetworkId: string, index: number, direction: -1 | 1) => Promise<void>;
 }
 
 export const useActivityBarStore = create<ActivityBarStore>((set, get) => ({
@@ -136,31 +136,31 @@ export const useActivityBarStore = create<ActivityBarStore>((set, get) => ({
     await get().setBottomItemOrder(moveOrderedItem(get().config.bottomItemOrder, index, direction));
   },
 
-  setProjectBookmarks: async (projectId, bookmarkIds) => {
-    await get().replaceConfig(setProjectNetworkBookmarkIds(get().config, projectId, bookmarkIds));
+  setWorldBookmarks: async (rootNetworkId, bookmarkIds) => {
+    await get().replaceConfig(setWorldNetworkBookmarkIds(get().config, rootNetworkId, bookmarkIds));
   },
 
-  addBookmark: async (projectId, networkId) => {
-    const bookmarkIds = getProjectNetworkBookmarkIds(get().config, projectId);
+  addBookmark: async (rootNetworkId, networkId) => {
+    const bookmarkIds = getWorldNetworkBookmarkIds(get().config, rootNetworkId);
     if (bookmarkIds.includes(networkId)) {
       return;
     }
 
-    await get().setProjectBookmarks(projectId, [...bookmarkIds, networkId]);
+    await get().setWorldBookmarks(rootNetworkId, [...bookmarkIds, networkId]);
   },
 
-  removeBookmark: async (projectId, networkId) => {
-    const bookmarkIds = getProjectNetworkBookmarkIds(get().config, projectId);
+  removeBookmark: async (rootNetworkId, networkId) => {
+    const bookmarkIds = getWorldNetworkBookmarkIds(get().config, rootNetworkId);
     const nextBookmarkIds = bookmarkIds.filter((bookmarkId) => bookmarkId !== networkId);
     if (nextBookmarkIds.length === bookmarkIds.length) {
       return;
     }
 
-    await get().setProjectBookmarks(projectId, nextBookmarkIds);
+    await get().setWorldBookmarks(rootNetworkId, nextBookmarkIds);
   },
 
-  moveBookmark: async (projectId, index, direction) => {
-    const bookmarkIds = getProjectNetworkBookmarkIds(get().config, projectId);
-    await get().setProjectBookmarks(projectId, moveOrderedItem(bookmarkIds, index, direction));
+  moveBookmark: async (rootNetworkId, index, direction) => {
+    const bookmarkIds = getWorldNetworkBookmarkIds(get().config, rootNetworkId);
+    await get().setWorldBookmarks(rootNetworkId, moveOrderedItem(bookmarkIds, index, direction));
   },
 }));

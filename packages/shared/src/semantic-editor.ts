@@ -1,4 +1,4 @@
-export type SemanticObjectType = 'instance' | 'file' | 'network' | 'schema' | 'meaning' | 'project' | 'agent' | 'context';
+export type SemanticObjectType = 'instance' | 'file' | 'network' | 'schema' | 'meaning' | 'world' | 'agent' | 'context';
 
 export interface ContentAnchor {
   kind: 'heading' | 'block' | 'text-range';
@@ -70,7 +70,7 @@ export function parseSemanticTarget(value: string): SemanticTarget | null {
   const parts = head.split(':');
   const kind = parts[0];
 
-  if (kind === 'instance' || kind === 'file' || kind === 'network' || kind === 'schema' || kind === 'meaning' || kind === 'project' || kind === 'agent' || kind === 'context') {
+  if (kind === 'instance' || kind === 'file' || kind === 'network' || kind === 'schema' || kind === 'meaning' || kind === 'world' || kind === 'agent' || kind === 'context') {
     const objectId = parts[1];
     if (!objectId) return null;
     return { kind: 'object', objectType: kind, objectId };

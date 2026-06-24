@@ -19,7 +19,7 @@ export * from './netior-mcp-tools.js';
 // ============================================
 
 export const AGENT_SKILL_STORAGE = {
-  PROJECT_CONFIG_DIR: '.netior',
+  WORLD_CONFIG_DIR: '.netior',
   AGENTS_DIR: 'agents',
   AGENT_FILE_NAME: 'agent.json',
   SKILLS_DIR: 'skills',
@@ -110,15 +110,16 @@ export function findSkillBySlashTrigger(triggerName: string): SkillDefinition | 
 // ============================================
 
 export const IPC_CHANNELS = {
-  // Project
-  PROJECT_CREATE: 'project:create',
-  PROJECT_LIST: 'project:list',
-  PROJECT_DELETE: 'project:delete',
-  PROJECT_UPDATE_ROOT_DIR: 'project:updateRootDir',
+  // World
+  WORLD_CREATE: 'world:create',
+  WORLD_LIST: 'world:list',
+  WORLD_DELETE: 'world:delete',
+  WORLD_UPDATE: 'world:update',
+  WORLD_UPDATE_ROOT_DIR: 'world:updateRootDir',
 
   // Instance
   INSTANCE_CREATE: 'instance:create',
-  INSTANCE_GET_BY_PROJECT: 'instance:getByProject',
+  INSTANCE_GET_BY_ROOT_NETWORK: 'instance:getByRootNetwork',
   INSTANCE_UPDATE: 'instance:update',
   INSTANCE_DELETE: 'instance:delete',
   INSTANCE_SEARCH: 'instance:search',
@@ -174,7 +175,7 @@ export const IPC_CHANNELS = {
   FILE_CREATE: 'file:create',
   FILE_GET: 'file:get',
   FILE_GET_BY_PATH: 'file:getByPath',
-  FILE_GET_BY_PROJECT: 'file:getByProject',
+  FILE_GET_BY_ROOT_NETWORK: 'file:getByRootNetwork',
   FILE_UPDATE: 'file:update',
   FILE_DELETE: 'file:delete',
 

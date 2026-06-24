@@ -1,7 +1,7 @@
 ﻿import { useEffect } from 'react';
 import { useEditorStore, getActiveLeaf, collectLeaves, MAIN_HOST_ID } from '../stores/editor-store';
 import { getSession } from '../lib/editor-session-registry';
-import { useProjectStore } from '../stores/project-store';
+import { useWorldStore } from '../stores/world-store';
 import { useUIStore } from '../stores/ui-store';
 import { useSettingsStore } from '../stores/settings-store';
 import { jumpToNextUnacknowledgedAgent } from '../lib/terminal-agent-notifier';
@@ -86,12 +86,12 @@ function toggleEditorMode(): void {
 }
 
 function openNarreTab(): void {
-  const projectId = useProjectStore.getState().currentProject?.id;
-  if (!projectId) return;
+  const rootNetworkId = useWorldStore.getState().currentWorld?.id;
+  if (!rootNetworkId) return;
 
   void useEditorStore.getState().openTab({
     type: 'narre',
-    targetId: projectId,
+    targetId: rootNetworkId,
     title: 'Narre',
   });
 }

@@ -193,7 +193,7 @@ export class NarreServerAdapter implements EvalAgentAdapter {
 
   async sendTurn(input: SendTurnInput): Promise<AdapterTurnResult> {
     const body: Record<string, unknown> = {
-      projectId: input.projectId,
+      rootNetworkId: input.rootNetworkId,
       message: input.message,
     };
     if (input.sessionId) body.sessionId = input.sessionId;

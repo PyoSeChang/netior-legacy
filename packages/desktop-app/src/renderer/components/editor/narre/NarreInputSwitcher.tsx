@@ -21,7 +21,7 @@ export type NarreInteractivePrompt =
   | { kind: 'interview'; card: NarreInterviewCard };
 
 interface NarreInputSwitcherProps {
-  projectId: string;
+  rootNetworkId: string;
   disabled?: boolean;
   sendDisabled?: boolean;
   isStreaming?: boolean;
@@ -62,7 +62,7 @@ function NarrePromptShell({
 }
 
 export function NarreInputSwitcher({
-  projectId,
+  rootNetworkId,
   disabled = false,
   sendDisabled = false,
   isStreaming = false,
@@ -127,7 +127,7 @@ export function NarreInputSwitcher({
   return (
     <div className="flex items-end gap-2">
       <NarreMentionInput
-        projectId={projectId}
+        rootNetworkId={rootNetworkId}
         onSend={onSend}
         disabled={disabled}
         sendDisabled={sendDisabled}

@@ -16,7 +16,7 @@ const INTERACTIVE_VIEW_SELECTION_EVENT = 'netior:interactive-view-selection-chan
 
 interface InteractiveViewPanelProps {
   tabId?: string;
-  projectId: string;
+  rootNetworkId: string;
   schemaId: string;
   instanceId: string;
   fields: SchemaField[];
@@ -28,7 +28,7 @@ interface InteractiveViewPanelProps {
 
 export function InteractiveViewPanel({
   tabId,
-  projectId,
+  rootNetworkId,
   schemaId,
   instanceId,
   fields,
@@ -54,7 +54,7 @@ export function InteractiveViewPanel({
     setIsLoadingTemplates(true);
 
     Promise.all([
-      interactiveViewTemplateService.list({ projectId, schemaId, instanceId }),
+      interactiveViewTemplateService.list({ rootNetworkId, schemaId, instanceId }),
       interactiveViewTemplateService.getPreference(instanceId),
       interactiveViewTemplateService.getSchemaPreference(schemaId).catch(() => null),
     ])
@@ -95,7 +95,7 @@ export function InteractiveViewPanel({
     return () => {
       ignore = true;
     };
-  }, [instanceId, projectId, schemaId]);
+  }, [instanceId, rootNetworkId, schemaId]);
 
   useEffect(() => loadTemplateSelection(), [loadTemplateSelection]);
 
@@ -326,7 +326,7 @@ export function InteractiveViewPanel({
   ) : (
     <InteractiveViewProvider
       tabId={tabId}
-      projectId={projectId}
+      rootNetworkId={rootNetworkId}
       schemaId={schemaId}
       instanceId={instanceId}
       fields={fields}

@@ -16,7 +16,7 @@ import {
 } from './calendar-utils';
 import {
   formatTemporalSlotValueForWriteback,
-  projectRecurringTemporalNodes,
+  worldRecurringTemporalNodes,
 } from '../temporal-utils';
 import {
   getSemanticBoolean,
@@ -199,7 +199,7 @@ export const calendarPlugin: WorkspaceLayoutPlugin = {
     }).layout;
   },
 
-  projectNodes({ nodes, viewport, config }) {
+  worldNodes({ nodes, viewport, config }) {
     const frame = createCalendarFrame({
       view: normalizeCalendarView(config.view),
       focusEpochDay: normalizeFocusEpochDay(config._focusEpochDay),
@@ -207,7 +207,7 @@ export const calendarPlugin: WorkspaceLayoutPlugin = {
       width: viewport.width,
       height: viewport.height,
     });
-    return projectRecurringTemporalNodes(nodes, frame.rangeStart, frame.rangeEnd);
+    return worldRecurringTemporalNodes(nodes, frame.rangeStart, frame.rangeEnd);
   },
 
   classifyNodes(nodes, config) {

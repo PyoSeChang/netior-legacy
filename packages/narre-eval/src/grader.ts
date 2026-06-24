@@ -115,7 +115,7 @@ export async function gradeScenario(
   transcript: Transcript,
   verify: VerifyItem[],
   qualitative: QualitativeItem[],
-  projectId: string,
+  rootNetworkId: string,
   serviceUrl: string,
   runJudge: boolean,
   ctx: GradeContext,
@@ -125,7 +125,7 @@ export async function gradeScenario(
   let judgeReportMarkdown: string | null = null;
 
   const analysis = analyzeScenario(transcript, ctx.execution);
-  const verifyResults = await gradeVerify(verify, projectId, transcript, serviceUrl, analysis.toolUse);
+  const verifyResults = await gradeVerify(verify, rootNetworkId, transcript, serviceUrl, analysis.toolUse);
 
   if (runJudge && qualitative.length > 0) {
     const judgeResult = await runLlmJudge(
@@ -178,7 +178,7 @@ export async function gradeScenario(
 
 async function gradeVerify(
   items: VerifyItem[],
-  projectId: string,
+  rootNetworkId: string,
   transcript: Transcript,
   serviceUrl: string,
   toolUseAnalysis: ToolUseAnalysis,
@@ -187,19 +187,19 @@ async function gradeVerify(
 
   for (const item of items) {
     if (item.db) {
-      results.push(...await gradeDb(item.name, item.db, projectId, serviceUrl));
+      results.push(...await gradeDb(item.name, item.db, rootNetworkId, serviceUrl));
     }
     if (item.db_absent) {
-      results.push(await gradeDbAbsent(item.name, item.db_absent, projectId, serviceUrl));
+      results.push(await gradeDbAbsent(item.name, item.db_absent, rootNetworkId, serviceUrl));
     }
     if (item.db_row_match) {
-      results.push(await gradeDbRowMatch(item.name, item.db_row_match, projectId, serviceUrl));
+      results.push(await gradeDbRowMatch(item.name, item.db_row_match, rootNetworkId, serviceUrl));
     }
     if (item.side_effect) {
-      results.push(await gradeSideEffect(item.name, item.side_effect, projectId, serviceUrl));
+      results.push(await gradeSideEffect(item.name, item.side_effect, rootNetworkId, serviceUrl));
     }
     if (item.interactive_view_contract) {
-      results.push(...await gradeInteractiveViewContract(item.name, item.interactive_view_contract, projectId, serviceUrl));
+      results.push(...await gradeInteractiveViewContract(item.name, item.interactive_view_contract, rootNetworkId, serviceUrl));
     }
     if (item.tool) {
       results.push(gradeTool(item.name, item.tool, transcript));
@@ -224,12 +224,12 @@ async function gradeVerify(
 async function gradeInteractiveViewContract(
   name: string,
   spec: NonNullable<VerifyItem['interactive_view_contract']>,
-  projectId: string,
+  rootNetworkId: string,
   serviceUrl: string,
 ): Promise<VerifyResult[]> {
   const condition = spec.condition
-    ? spec.condition.replace(/\{\{project_id\}\}/g, projectId)
-    : `project_id = '${projectId}'`;
+    ? spec.condition.replace(/\{\{root_network_id\}\}/g, rootNetworkId)
+    : `root_network_id = '${rootNetworkId}'`;
 
   const rows = await evalQuery<{
     id: string;
@@ -281,14 +281,14 @@ async function gradeInteractiveViewContract(
 async function gradeDb(
   name: string,
   spec: NonNullable<VerifyItem['db']>,
-  projectId: string,
+  rootNetworkId: string,
   serviceUrl: string,
 ): Promise<VerifyResult[]> {
   const results: VerifyResult[] = [];
 
   const condition = spec.condition
-    ? spec.condition.replace(/\{\{project_id\}\}/g, projectId)
-    : `project_id = '${projectId}'`;
+    ? spec.condition.replace(/\{\{root_network_id\}\}/g, rootNetworkId)
+    : `root_network_id = '${rootNetworkId}'`;
 
   const rows = await evalQuery<Record<string, unknown>>(
     serviceUrl,
@@ -350,12 +350,12 @@ async function gradeDb(
 async function gradeDbAbsent(
   name: string,
   spec: NonNullable<VerifyItem['db_absent']>,
-  projectId: string,
+  rootNetworkId: string,
   serviceUrl: string,
 ): Promise<VerifyResult> {
   const condition = spec.condition
-    ? `${spec.condition} AND project_id = '${projectId}'`
-    : `project_id = '${projectId}'`;
+    ? `${spec.condition} AND root_network_id = '${rootNetworkId}'`
+    : `root_network_id = '${rootNetworkId}'`;
 
   const [row] = await evalQuery<{ cnt: number }>(
     serviceUrl,
@@ -407,7 +407,7 @@ function gradeToolUseAnalysis(
     discovery_call_count: analysis.summary.discoveryCallCount,
     prompt_redundant_lookup_count: analysis.summary.promptRedundantLookupCount,
     repeated_lookup_group_count: analysis.summary.repeatedLookupGroupCount,
-    project_binding_violation_count: analysis.summary.projectBindingViolationCount,
+    world_binding_violation_count: analysis.summary.worldBindingViolationCount,
     finding_count: analysis.findings.length,
     over_budget: analysis.summary.overBudget,
   };
@@ -418,7 +418,7 @@ function gradeToolUseAnalysis(
     'discovery_call_count',
     'prompt_redundant_lookup_count',
     'repeated_lookup_group_count',
-    'project_binding_violation_count',
+    'world_binding_violation_count',
     'finding_count',
   ] as const;
 
@@ -532,13 +532,13 @@ function gradeResponse(
 async function gradeDbRowMatch(
   name: string,
   spec: NonNullable<VerifyItem['db_row_match']>,
-  projectId: string,
+  rootNetworkId: string,
   serviceUrl: string,
 ): Promise<VerifyResult> {
   const matchEntries = Object.entries(spec.match);
   const whereClauses = matchEntries.map(([col]) => `${col} = ?`);
-  whereClauses.push('project_id = ?');
-  const params = [...matchEntries.map(([, val]) => val), projectId];
+  whereClauses.push('root_network_id = ?');
+  const params = [...matchEntries.map(([, val]) => val), rootNetworkId];
 
   const [row] = await evalQuery<Record<string, unknown>>(
     serviceUrl,
@@ -583,12 +583,12 @@ async function gradeDbRowMatch(
 async function gradeSideEffect(
   name: string,
   spec: NonNullable<VerifyItem['side_effect']>,
-  projectId: string,
+  rootNetworkId: string,
   serviceUrl: string,
 ): Promise<VerifyResult> {
   const condition = spec.condition
-    ? spec.condition.replace(/\{\{project_id\}\}/g, projectId)
-    : `project_id = '${projectId}'`;
+    ? spec.condition.replace(/\{\{root_network_id\}\}/g, rootNetworkId)
+    : `root_network_id = '${rootNetworkId}'`;
 
   const [row] = await evalQuery<{ cnt: number }>(
     serviceUrl,
@@ -724,8 +724,8 @@ async function runLlmJudge(
   const prompt = `You are evaluating an AI assistant's performance in Netior.
 
 ## Product Context
-Netior is a graph-based desktop app for modeling typed objects such as schemas, relation types, concepts, files, networks, and their relationships.
-In these eval scenarios, the assistant is usually asked to inspect or mutate project schema and graph state through tools.
+Netior is a graph-based desktop app for modeling typed objects such as schemas, semantic meanings, instances, files, networks, and their relationships.
+In these eval scenarios, the assistant is usually asked to inspect or mutate world schema and graph state through tools.
 The important product assumption is that the user usually knows their domain better than Netior internals, but does not necessarily know how networks, models, ORM-style schema_ref fields, or node placement should be designed.
 Narre is expected to infer and lead those structural choices from the domain brief instead of pushing internal Netior design back to the user.
 Judge whether the assistant handled the user's request well in that context.
@@ -1012,7 +1012,7 @@ function buildJudgeToolAnalysisSummary(toolUseAnalysis: ToolUseAnalysis): string
     `total_calls: ${toolUseAnalysis.summary.totalCalls}`,
     `unique_tool_count: ${toolUseAnalysis.summary.uniqueToolCount}`,
     `discovery_call_count: ${toolUseAnalysis.summary.discoveryCallCount}`,
-    `project_binding_violation_count: ${toolUseAnalysis.summary.projectBindingViolationCount}`,
+    `world_binding_violation_count: ${toolUseAnalysis.summary.worldBindingViolationCount}`,
     `over_budget: ${toolUseAnalysis.summary.overBudget}`,
   ];
 
@@ -1085,7 +1085,7 @@ function summarizeCreatedItemForJudge(tool: string, input: Record<string, unknow
     case 'create_schema_field':
       return `field:${stringValueForJudge(input.name)}`;
     case 'create_concept':
-      return `concept:${stringValueForJudge(input.title)}`;
+      return `instance:${stringValueForJudge(input.title)}`;
     case 'create_network':
       return `network:${stringValueForJudge(input.name)}`;
     default:

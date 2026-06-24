@@ -1,12 +1,12 @@
 ﻿import React from 'react';
-import { useProjectStore, type MissingFileEntry } from '../../stores/project-store';
+import { useWorldStore, type MissingFileEntry } from '../../stores/world-store';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { useI18n } from '../../hooks/useI18n';
 
 export function MissingFilesDialog(): JSX.Element | null {
   const { t } = useI18n();
-  const { missingFiles, resolveMissingFile, dismissMissingFiles } = useProjectStore();
+  const { missingFiles, resolveMissingFile, dismissMissingFiles } = useWorldStore();
 
   if (missingFiles.length === 0) return null;
 

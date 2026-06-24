@@ -225,11 +225,11 @@ export function BrowserEditor({ tab }: BrowserEditorProps): JSX.Element {
       type: 'browser',
       targetId: normalized,
       title: getBrowserTabTitle(normalized),
-      projectId: tab.projectId,
+      rootNetworkId: tab.rootNetworkId,
       browserFaviconUrl: getDefaultFaviconUrl(normalized),
       browserUrl: normalized,
     });
-  }, [navigateTab, tab.id, tab.projectId]);
+  }, [navigateTab, tab.id, tab.rootNetworkId]);
 
   const runWhenReady = useCallback((action: (webview: BrowserWebView) => void) => {
     const webview = webviewRef.current;

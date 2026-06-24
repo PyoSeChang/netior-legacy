@@ -481,7 +481,7 @@ function stackManagedOntologyCategoryGroups(
   }
 }
 
-function projectConfiguredGroupNodes(nodes: LayoutRenderNode[], edges: RenderEdge[]): LayoutRenderNode[] {
+function worldConfiguredGroupNodes(nodes: LayoutRenderNode[], edges: RenderEdge[]): LayoutRenderNode[] {
   const projectedNodes = nodes.map((node) => ({ ...node }));
   const nodeMap = new Map(projectedNodes.map((node) => [node.id, node] as const));
   const { childrenByParent, parentByChild } = buildContainsMaps(projectedNodes, edges);
@@ -546,8 +546,8 @@ export const freeformPlugin: WorkspaceLayoutPlugin = {
   wheelBehavior: 'freeform',
   persistViewport: true,
 
-  projectNodes({ nodes, edges }) {
-    return projectConfiguredGroupNodes(nodes, edges);
+  worldNodes({ nodes, edges }) {
+    return worldConfiguredGroupNodes(nodes, edges);
   },
 
   computeLayout({ nodes }) {

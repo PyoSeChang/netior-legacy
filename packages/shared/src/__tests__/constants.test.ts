@@ -12,15 +12,15 @@ import {
 } from '../constants';
 
 describe('IPC_CHANNELS', () => {
-  it('should have project channels', () => {
-    expect(IPC_CHANNELS.PROJECT_CREATE).toBe('project:create');
-    expect(IPC_CHANNELS.PROJECT_LIST).toBe('project:list');
-    expect(IPC_CHANNELS.PROJECT_DELETE).toBe('project:delete');
+  it('should have world channels', () => {
+    expect(IPC_CHANNELS.WORLD_CREATE).toBe('world:create');
+    expect(IPC_CHANNELS.WORLD_LIST).toBe('world:list');
+    expect(IPC_CHANNELS.WORLD_DELETE).toBe('world:delete');
   });
 
   it('should have instance channels', () => {
     expect(IPC_CHANNELS.INSTANCE_CREATE).toBe('instance:create');
-    expect(IPC_CHANNELS.INSTANCE_GET_BY_PROJECT).toBe('instance:getByProject');
+    expect(IPC_CHANNELS.INSTANCE_GET_BY_ROOT_NETWORK).toBe('instance:getByRootNetwork');
   });
 
   it('should have network channels', () => {
@@ -50,7 +50,7 @@ describe('DEFAULTS', () => {
 
 describe('AGENT_SKILL_STORAGE', () => {
   it('should expose the user agent skill package layout', () => {
-    expect(AGENT_SKILL_STORAGE.PROJECT_CONFIG_DIR).toBe('.netior');
+    expect(AGENT_SKILL_STORAGE.WORLD_CONFIG_DIR).toBe('.netior');
     expect(AGENT_SKILL_STORAGE.AGENTS_DIR).toBe('agents');
     expect(AGENT_SKILL_STORAGE.AGENT_FILE_NAME).toBe('agent.json');
     expect(AGENT_SKILL_STORAGE.SKILLS_DIR).toBe('skills');
@@ -83,17 +83,17 @@ describe('NETIOR_MCP_TOOL_SPECS', () => {
   });
 
   it('should build Narre tool metadata from the shared tool registry', () => {
-    const metadata = getNarreToolMetadata('get_project_summary');
+    const metadata = getNarreToolMetadata('get_world_summary');
 
-    expect(metadata.displayName).toBe('Project Summary');
-    expect(metadata.category).toBe('project');
+    expect(metadata.displayName).toBe('World Summary');
+    expect(metadata.category).toBe('world');
     expect(metadata.kind).toBe('analysis');
     expect(metadata.isMutation).toBe(false);
   });
 
-  it('should expose Universe and Ontology network tool specs', () => {
+  it('should expose Universe and Root network tool specs', () => {
     expect(getNetiorMcpToolSpec('get_universe_network')?.scope).toBe('app');
-    expect(getNetiorMcpToolSpec('get_project_ontology_network')?.scope).toBe('project');
+    expect(getNetiorMcpToolSpec('get_root_network')?.scope).toBe('world');
   });
 
   it('should list registered MCP tool specs', () => {

@@ -9,7 +9,7 @@ interface ModuleStore {
   directories: ModuleDirectory[];
   loading: boolean;
 
-  loadModules: (projectId: string) => Promise<void>;
+  loadModules: (rootNetworkId: string) => Promise<void>;
   createModule: (data: ModuleCreate) => Promise<Module>;
   updateModule: (id: string, data: ModuleUpdate) => Promise<void>;
   deleteModule: (id: string) => Promise<void>;
@@ -27,10 +27,10 @@ export const useModuleStore = create<ModuleStore>((set, get) => ({
   directories: [],
   loading: false,
 
-  loadModules: async (projectId) => {
+  loadModules: async (rootNetworkId) => {
     set({ loading: true });
     try {
-      const modules = await moduleService.list(projectId);
+      const modules = await moduleService.list(rootNetworkId);
       set({ modules });
       // Auto-activate first module if none active
       if (modules.length > 0 && !get().activeModuleId) {

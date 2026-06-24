@@ -15,7 +15,7 @@ import { Badge } from '../ui/Badge';
 
 export type NetworkBrowserObjectType =
   | 'network'
-  | 'project'
+  | 'world'
   | 'instance'
   | 'schema'
   | 'meaning'
@@ -52,7 +52,7 @@ interface NetworkObjectBrowserProps {
 
 const ICONS: Record<NetworkBrowserObjectType, React.ElementType> = {
   network: Waypoints,
-  project: FolderOpen,
+  world: FolderOpen,
   instance: CircleDot,
   schema: Boxes,
   meaning: Boxes,
@@ -262,7 +262,7 @@ export function NetworkObjectBrowser({
                   ) : (
                     <div className="flex flex-col">
                       {section.items.map((item) => {
-                        const Icon = item.objectType === 'network' && item.networkKind === 'ontology'
+                        const Icon = item.objectType === 'network' && item.networkKind === 'root'
                           ? Boxes
                           : ICONS[item.objectType];
                         const itemKey = `${item.objectType}:${item.id}`;

@@ -20,9 +20,9 @@ export function registerModelIpc(): void {
     }
   });
 
-  ipcMain.handle('meaning:list', async (_e, projectId: string): Promise<IpcResult<unknown>> => {
+  ipcMain.handle('meaning:list', async (_e, rootNetworkId: string): Promise<IpcResult<unknown>> => {
     try {
-      return { success: true, data: await listRemoteModels(projectId) };
+      return { success: true, data: await listRemoteModels(rootNetworkId) };
     } catch (err) {
       return { success: false, error: (err as Error).message };
     }

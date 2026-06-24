@@ -30,7 +30,7 @@ describe('interactive view validator', () => {
     const result = validateInteractiveViewSource(`
       import { useInstanceStore } from '@renderer/stores/instance-store';
       export function View() {
-        window.electron.instance.getByProject('project');
+        window.electron.instance.getByRootNetwork('world');
         return null;
       }
     `, manifest);

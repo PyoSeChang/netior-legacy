@@ -9,8 +9,8 @@ export type EdgeWithMeaning = Edge & {
   relationship?: Relationship & { meaning?: Meaning };
 };
 
-export function systemEdgeMeaningId(projectId: string | null | undefined, key: MeaningRefKey): string | null {
-  return projectId ? `meaning-${projectId}-${key}` : null;
+export function systemEdgeMeaningId(rootNetworkId: string | null | undefined, key: MeaningRefKey): string | null {
+  return rootNetworkId ? `meaning-${rootNetworkId}-${key}` : null;
 }
 
 export function getEdgeMeaningKey(edge: Pick<EdgeWithMeaning, 'meaning' | 'relationship'>): string | null {

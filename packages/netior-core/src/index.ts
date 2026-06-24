@@ -3,7 +3,7 @@ export { initDatabase, getDatabase, closeDatabase, hasColumn, tableExists } from
 export type { InitDatabaseOptions } from './connection';
 
 // Repositories
-export * from './repositories/project';
+export * from './repositories/world';
 export * from './repositories/instance';
 export * from './repositories/network';
 export * from './repositories/network-representation';

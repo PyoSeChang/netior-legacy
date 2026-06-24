@@ -140,7 +140,6 @@ function resolveSemanticTargetLines(token: SemanticEditorToken): ResolvedLine[] 
       schema: { table: 'schemas', labelColumn: 'name', kindLabel: 'schema' },
       meaning: { table: 'meanings', labelColumn: 'name', kindLabel: 'meaning' },
       network: { table: 'networks', labelColumn: 'name', kindLabel: 'network' },
-      project: { table: 'projects', labelColumn: 'name', kindLabel: 'project' },
       file: { table: 'files', labelColumn: 'path', kindLabel: 'file' },
     };
     const config = tableByType[target.objectType];

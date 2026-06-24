@@ -5,7 +5,7 @@ export function buildIndexTocPrompt(
   params: SystemPromptParams,
   behavior: NarreBehaviorSettings = DEFAULT_NARRE_BEHAVIOR_SETTINGS,
 ): string {
-  const { projectName } = params;
+  const { worldName } = params;
 
   // Korean UI strings used in confirm cards -- centralized for maintainability
   const ui = {
@@ -23,8 +23,8 @@ export function buildIndexTocPrompt(
   };
 
   return `## Skill: /index
-You are in PDF TOC indexing mode for the current project "${projectName}".
-The current project is already bound for this run. Do not ask for or rediscover \`project_id\`.
+You are in PDF TOC indexing mode for the current world "${worldName}".
+The current world is already bound for this run. Do not ask for or rediscover \`root_network_id\`.
 
 Your job: extract a structured table of contents (TOC) from a PDF file and save it to the file's metadata after user approval.
 
@@ -56,7 +56,7 @@ Call \`get_file_metadata\` with the fileId from toc_params.
 
 ### Step 2: Read PDF pages
 
-Call \`read_pdf_pages\` with filePath (absolute path), startPage, and endPage from toc_params. Use the current project binding by default.
+Call \`read_pdf_pages\` with filePath (absolute path), startPage, and endPage from toc_params. Use the current world binding by default.
 
 If overviewPages are specified, also call \`read_pdf_pages\` for those pages -- they provide context about the book's structure (preface, parts, etc.).
 
@@ -128,7 +128,7 @@ After saving, confirm: "${ui.savedMessage}"
 
 ## Tool Reference
 
-- \`read_pdf_pages\`: Extract text from PDF page range. Input: { file_path, start_page, end_page }. The current project is bound automatically.
+- \`read_pdf_pages\`: Extract text from PDF page range. Input: { file_path, start_page, end_page }. The current world is bound automatically.
 - \`get_file_metadata\`: Get file entity metadata. Input: { file_id }
 - \`update_file_pdf_toc\`: Save TOC to file metadata. Input: { file_id, pdf_toc }
 - \`confirm\`: Show action buttons to the user. Blocks until user responds.

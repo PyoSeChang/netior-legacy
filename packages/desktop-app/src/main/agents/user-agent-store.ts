@@ -10,7 +10,7 @@ import type {
   UserAgentRecord,
   UserAgentSkillSummary,
 } from '@netior/shared/types';
-import { getRemoteProject } from '../netior-service/netior-service-client';
+import { getRemoteWorld } from '../netior-service/netior-service-client';
 import { getSharedUserDataRoot } from '../runtime/runtime-paths';
 
 const AGENT_FILE_VERSION = 1;
@@ -23,7 +23,7 @@ interface PersistedUserAgent {
   description: string;
   systemPrompt: string;
   userAgentType: NarreUserAgentType;
-  projectId?: string;
+  rootNetworkId?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -34,19 +34,19 @@ interface ParsedSkillMarkdown {
   body: string;
 }
 
-export async function listUserAgents(projectId?: string | null): Promise<UserAgentRecord[]> {
+export async function listUserAgents(rootNetworkId?: string | null): Promise<UserAgentRecord[]> {
   const records: UserAgentRecord[] = [];
 
   records.push(...await listUserAgentsInRoot(resolveGlobalAgentsRoot(), 'global'));
 
-  if (projectId) {
-    const projectRoot = await resolveProjectRootDir(projectId);
-    records.push(...await listUserAgentsInRoot(resolveProjectAgentsRoot(projectRoot), 'project', projectId));
+  if (rootNetworkId) {
+    const worldRoot = await resolveWorldRootDir(rootNetworkId);
+    records.push(...await listUserAgentsInRoot(resolveWorldAgentsRoot(worldRoot), 'world', rootNetworkId));
   }
 
   return records.sort((a, b) => {
     if (a.userAgentType !== b.userAgentType) {
-      return a.userAgentType === 'project' ? -1 : 1;
+      return a.userAgentType === 'world' ? -1 : 1;
     }
     return a.name.localeCompare(b.name);
   });
@@ -59,7 +59,7 @@ export async function upsertUserAgent(input: UpsertUserAgentInput): Promise<User
     throw new Error('Agent name is required');
   }
 
-  const rootDir = await resolveAgentRoot(input.userAgentType, id, input.projectId);
+  const rootDir = await resolveAgentRoot(input.userAgentType, id, input.rootNetworkId);
   const filePath = path.join(rootDir, AGENT_SKILL_STORAGE.AGENT_FILE_NAME);
   const existing = await readAgentFile(filePath);
   const now = new Date().toISOString();
@@ -70,7 +70,7 @@ export async function upsertUserAgent(input: UpsertUserAgentInput): Promise<User
     description: input.description?.trim() ?? '',
     systemPrompt: input.systemPrompt?.trim() ?? '',
     userAgentType: input.userAgentType,
-    ...(input.userAgentType === 'project' && input.projectId ? { projectId: input.projectId } : {}),
+    ...(input.userAgentType === 'world' && input.rootNetworkId ? { rootNetworkId: input.rootNetworkId } : {}),
     createdAt: existing?.createdAt ?? now,
     updatedAt: now,
   };
@@ -82,7 +82,7 @@ export async function upsertUserAgent(input: UpsertUserAgentInput): Promise<User
 
 export async function deleteUserAgent(input: DeleteUserAgentInput): Promise<boolean> {
   const id = normalizeId(input.agentId);
-  const rootDir = await resolveAgentRoot(input.userAgentType, id, input.projectId);
+  const rootDir = await resolveAgentRoot(input.userAgentType, id, input.rootNetworkId);
   await rm(rootDir, { recursive: true, force: true });
   return true;
 }
@@ -104,11 +104,11 @@ export async function upsertUserAgentSkill(input: UpsertUserAgentSkillInput): Pr
     throw new Error('Skill body is required');
   }
 
-  const agentRoot = await resolveAgentRoot(input.userAgentType, agentId, input.projectId);
+  const agentRoot = await resolveAgentRoot(input.userAgentType, agentId, input.rootNetworkId);
   const skillRoot = path.join(agentRoot, AGENT_SKILL_STORAGE.SKILLS_DIR, skillId);
   const skillFilePath = path.join(skillRoot, AGENT_SKILL_STORAGE.SKILL_FILE_NAME);
 
-  await ensureAgentExists(agentRoot, agentId, input.userAgentType, input.projectId);
+  await ensureAgentExists(agentRoot, agentId, input.userAgentType, input.rootNetworkId);
   await mkdir(skillRoot, { recursive: true });
   await writeFile(skillFilePath, serializeSkillMarkdown({ name, description, body }), 'utf-8');
   return toSkillSummary(skillId, skillRoot, skillFilePath, { name, description, body });
@@ -117,7 +117,7 @@ export async function upsertUserAgentSkill(input: UpsertUserAgentSkillInput): Pr
 export async function deleteUserAgentSkill(input: DeleteUserAgentSkillInput): Promise<boolean> {
   const agentId = normalizeId(input.agentId);
   const skillId = normalizeId(input.skillId);
-  const agentRoot = await resolveAgentRoot(input.userAgentType, agentId, input.projectId);
+  const agentRoot = await resolveAgentRoot(input.userAgentType, agentId, input.rootNetworkId);
   const skillRoot = path.join(agentRoot, AGENT_SKILL_STORAGE.SKILLS_DIR, skillId);
   await rm(skillRoot, { recursive: true, force: true });
   return true;
@@ -126,7 +126,7 @@ export async function deleteUserAgentSkill(input: DeleteUserAgentSkillInput): Pr
 async function listUserAgentsInRoot(
   agentsRoot: string,
   userAgentType: NarreUserAgentType,
-  projectId?: string,
+  rootNetworkId?: string,
 ): Promise<UserAgentRecord[]> {
   let entries;
   try {
@@ -147,9 +147,9 @@ async function listUserAgentsInRoot(
     const rootDir = path.join(agentsRoot, entry.name);
     const filePath = path.join(rootDir, AGENT_SKILL_STORAGE.AGENT_FILE_NAME);
     const persisted = await readAgentFile(filePath);
-    const fallback = createFallbackAgent(entry.name, userAgentType, projectId);
+    const fallback = createFallbackAgent(entry.name, userAgentType, rootNetworkId);
     const agent = persisted
-      ? { ...persisted, userAgentType, ...(projectId ? { projectId } : {}) }
+      ? { ...persisted, userAgentType, ...(rootNetworkId ? { rootNetworkId } : {}) }
       : fallback;
     records.push(toUserAgentRecord(agent, rootDir, await listUserAgentSkills(rootDir)));
   }
@@ -192,7 +192,7 @@ async function ensureAgentExists(
   agentRoot: string,
   agentId: string,
   userAgentType: NarreUserAgentType,
-  projectId?: string,
+  rootNetworkId?: string,
 ): Promise<void> {
   const filePath = path.join(agentRoot, AGENT_SKILL_STORAGE.AGENT_FILE_NAME);
   if (await isFile(filePath)) {
@@ -200,7 +200,7 @@ async function ensureAgentExists(
   }
 
   const now = new Date().toISOString();
-  const fallback = createFallbackAgent(agentId, userAgentType, projectId, now);
+  const fallback = createFallbackAgent(agentId, userAgentType, rootNetworkId, now);
   await mkdir(agentRoot, { recursive: true });
   await writeFile(filePath, `${JSON.stringify(fallback, null, 2)}\n`, 'utf-8');
 }
@@ -216,7 +216,7 @@ function toUserAgentRecord(
     description: agent.description,
     systemPrompt: agent.systemPrompt,
     userAgentType: agent.userAgentType,
-    ...(agent.projectId ? { projectId: agent.projectId } : {}),
+    ...(agent.rootNetworkId ? { rootNetworkId: agent.rootNetworkId } : {}),
     rootDir,
     createdAt: agent.createdAt,
     updatedAt: agent.updatedAt,
@@ -244,7 +244,7 @@ async function toSkillSummary(
 function createFallbackAgent(
   id: string,
   userAgentType: NarreUserAgentType,
-  projectId?: string,
+  rootNetworkId?: string,
   timestamp = new Date().toISOString(),
 ): PersistedUserAgent {
   return {
@@ -254,7 +254,7 @@ function createFallbackAgent(
     description: '',
     systemPrompt: '',
     userAgentType,
-    ...(userAgentType === 'project' && projectId ? { projectId } : {}),
+    ...(userAgentType === 'world' && rootNetworkId ? { rootNetworkId } : {}),
     createdAt: timestamp,
     updatedAt: timestamp,
   };
@@ -267,7 +267,7 @@ async function readAgentFile(filePath: string): Promise<PersistedUserAgent | nul
       parsed.version !== AGENT_FILE_VERSION
       || !parsed.id
       || !parsed.name
-      || (parsed.userAgentType !== 'global' && parsed.userAgentType !== 'project')
+      || (parsed.userAgentType !== 'global' && parsed.userAgentType !== 'world')
     ) {
       return null;
     }
@@ -278,7 +278,7 @@ async function readAgentFile(filePath: string): Promise<PersistedUserAgent | nul
       description: parsed.description ?? '',
       systemPrompt: parsed.systemPrompt ?? '',
       userAgentType: parsed.userAgentType,
-      ...(parsed.projectId ? { projectId: parsed.projectId } : {}),
+      ...(parsed.rootNetworkId ? { rootNetworkId: parsed.rootNetworkId } : {}),
       createdAt: parsed.createdAt ?? new Date().toISOString(),
       updatedAt: parsed.updatedAt ?? new Date().toISOString(),
     };
@@ -371,32 +371,32 @@ function stripQuotes(value: string): string {
   return value;
 }
 
-async function resolveProjectRootDir(projectId?: string): Promise<string> {
-  if (!projectId) {
-    throw new Error('projectId is required for project agents');
+async function resolveWorldRootDir(rootNetworkId?: string): Promise<string> {
+  if (!rootNetworkId) {
+    throw new Error('rootNetworkId is required for world agents');
   }
 
-  const project = await getRemoteProject(projectId);
-  if (!project) {
-    throw new Error(`Project not found: ${projectId}`);
+  const world = await getRemoteWorld(rootNetworkId);
+  if (!world) {
+    throw new Error(`World not found: ${rootNetworkId}`);
   }
-  return project.root_dir;
+  return world.root_dir;
 }
 
 async function resolveAgentRoot(
   userAgentType: NarreUserAgentType,
   agentId: string,
-  projectId?: string,
+  rootNetworkId?: string,
 ): Promise<string> {
-  return userAgentType === 'project'
-    ? path.join(resolveProjectAgentsRoot(await resolveProjectRootDir(projectId)), agentId)
+  return userAgentType === 'world'
+    ? path.join(resolveWorldAgentsRoot(await resolveWorldRootDir(rootNetworkId)), agentId)
     : path.join(resolveGlobalAgentsRoot(), agentId);
 }
 
-function resolveProjectAgentsRoot(projectRootDir: string): string {
+function resolveWorldAgentsRoot(worldRootDir: string): string {
   return path.join(
-    projectRootDir,
-    AGENT_SKILL_STORAGE.PROJECT_CONFIG_DIR,
+    worldRootDir,
+    AGENT_SKILL_STORAGE.WORLD_CONFIG_DIR,
     AGENT_SKILL_STORAGE.AGENTS_DIR,
   );
 }

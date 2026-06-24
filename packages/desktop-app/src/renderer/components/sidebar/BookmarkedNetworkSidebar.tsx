@@ -6,7 +6,7 @@ import { useMeaningStore } from '../../stores/meaning-store';
 import { useContextStore } from '../../stores/context-store';
 import { useEditorStore } from '../../stores/editor-store';
 import { useNetworkStore } from '../../stores/network-store';
-import { useProjectStore } from '../../stores/project-store';
+import { useWorldStore } from '../../stores/world-store';
 import { useI18n } from '../../hooks/useI18n';
 import { openFileTab } from '../../lib/open-file-tab';
 import { createOntologyDisplayResolver } from '@netior/shared';
@@ -23,7 +23,7 @@ interface BookmarkedNetworkSidebarProps {
 
 type SupportedSidebarObjectType = Extract<
   NetworkObjectType,
-  'project' | 'network' | 'instance' | 'meaning' | 'context' | 'file'
+  'world' | 'network' | 'instance' | 'meaning' | 'context' | 'file'
 >;
 
 interface BookmarkedSidebarItem extends NetworkBrowserItem {
@@ -32,7 +32,7 @@ interface BookmarkedSidebarItem extends NetworkBrowserItem {
 }
 
 const SECTION_ORDER: SupportedSidebarObjectType[] = [
-  'project',
+  'world',
   'network',
   'instance',
   'file',
@@ -42,7 +42,7 @@ const SECTION_ORDER: SupportedSidebarObjectType[] = [
 
 function isSupportedSidebarObjectType(type: NetworkObjectType): type is SupportedSidebarObjectType {
   return (
-    type === 'project'
+    type === 'world'
     || type === 'network'
     || type === 'instance'
     || type === 'meaning'
@@ -52,7 +52,7 @@ function isSupportedSidebarObjectType(type: NetworkObjectType): type is Supporte
 }
 
 function getNetworkKindLabel(kind: string): string {
-  if (kind === 'ontology') return 'Ontology';
+  if (kind === 'root') return 'Root Network';
   if (kind === 'universe') return 'Universe';
   return 'Network';
 }
@@ -70,7 +70,7 @@ export function BookmarkedNetworkSidebar({ networkId }: BookmarkedNetworkSidebar
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const openNetwork = useNetworkStore((state) => state.openNetwork);
   const networks = useNetworkStore((state) => state.networks);
-  const projects = useProjectStore((state) => state.projects);
+  const worlds = useWorldStore((state) => state.worlds);
   const meanings = useMeaningStore((state) => state.meanings);
 
   useEffect(() => {
@@ -112,9 +112,9 @@ export function BookmarkedNetworkSidebar({ networkId }: BookmarkedNetworkSidebar
     () => new Map(networks.map((network) => [network.id, network])),
     [networks],
   );
-  const projectsById = useMemo(
-    () => new Map(projects.map((project) => [project.id, project])),
-    [projects],
+  const worldsById = useMemo(
+    () => new Map(worlds.map((world) => [world.id, world])),
+    [worlds],
   );
   const meaningsById = useMemo(
     () => new Map(meanings.map((meaning) => [meaning.id, meaning])),
@@ -127,7 +127,7 @@ export function BookmarkedNetworkSidebar({ networkId }: BookmarkedNetworkSidebar
 
   const sectionLabels = useMemo<Record<SupportedSidebarObjectType, string>>(
     () => ({
-      project: t('project.title' as never) ?? 'Projects',
+      world: t('world.title' as never) ?? 'Worlds',
       network: t('sidebar.networks'),
       instance: t('objectPanel.instance' as never),
       file: t('sidebar.files'),
@@ -158,13 +158,13 @@ export function BookmarkedNetworkSidebar({ networkId }: BookmarkedNetworkSidebar
       seen.add(itemKey);
 
       switch (object.object_type) {
-        case 'project': {
-          const project = projectsById.get(object.ref_id);
+        case 'world': {
+          const world = worldsById.get(object.ref_id);
           nextItems.push({
             id: object.ref_id,
-            objectType: 'project',
-            title: project?.name ?? object.ref_id,
-            subtitle: project?.root_dir ?? (t('project.title' as never) ?? 'Project'),
+            objectType: 'world',
+            title: world?.name ?? object.ref_id,
+            subtitle: world?.root_dir ?? (t('world.title' as never) ?? 'World'),
           });
           break;
         }
@@ -236,7 +236,7 @@ export function BookmarkedNetworkSidebar({ networkId }: BookmarkedNetworkSidebar
     contextsById,
     fullData,
     networksById,
-    projectsById,
+    worldsById,
     t,
   ]);
 
@@ -269,8 +269,8 @@ export function BookmarkedNetworkSidebar({ networkId }: BookmarkedNetworkSidebar
 
   const handleOpen = useCallback(async (item: BookmarkedSidebarItem) => {
     switch (item.objectType) {
-      case 'project':
-        await useEditorStore.getState().openTab({ type: 'project', targetId: item.id, title: item.title });
+      case 'world':
+        await useEditorStore.getState().openTab({ type: 'world', targetId: item.id, title: item.title });
         return;
       case 'network':
         await openNetwork(item.id);

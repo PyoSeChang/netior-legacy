@@ -3,14 +3,14 @@ import type {
   NarreMention,
   NarreStreamEvent,
   BuiltInSkillId,
-  Project,
-  ProjectCreate,
+  World,
+  WorldCreate,
   Schema,
   SchemaCreate,
   SchemaField,
   SchemaFieldCreate,
-  Model,
-  ModelCreate,
+  Meaning,
+  MeaningCreate,
   Instance,
   InstanceCreate,
   InstanceProperty,
@@ -100,7 +100,7 @@ export interface RunSpec {
   preserve?: boolean;
   dev_db?: boolean;
   db_path?: string;
-  project_id?: string;
+  root_network_id?: string;
   target_skill?: BuiltInSkillId;
   scenario_kind?: EvalScenarioKind;
   agent_id?: string;
@@ -268,7 +268,7 @@ export interface VerifyItem {
         discovery_call_count?: { count?: number; min?: number; max?: number };
         prompt_redundant_lookup_count?: { count?: number; min?: number; max?: number };
         repeated_lookup_group_count?: { count?: number; min?: number; max?: number };
-        project_binding_violation_count?: { count?: number; min?: number; max?: number };
+        world_binding_violation_count?: { count?: number; min?: number; max?: number };
         finding_count?: { count?: number; min?: number; max?: number };
         over_budget?: boolean;
       };
@@ -291,14 +291,13 @@ export interface QualitativeItem {
 export interface SeedContext {
   tempDir: string;
   scenarioDir: string;
-  projectId?: string;
+  rootNetworkId?: string;
   dbPath: string;
   preserve: boolean;
-  createProject(data: ProjectCreate): Promise<Project>;
+  createWorld(data: WorldCreate): Promise<World>;
   createSchema(data: SchemaCreate): Promise<Schema>;
   createSchemaField(data: SchemaFieldCreate): Promise<SchemaField>;
-  createRelationType(data: ModelCreate): Promise<Model>;
-  createConcept(data: InstanceCreate): Promise<Instance>;
+  createMeaning(data: MeaningCreate): Promise<Meaning>;
   createInstance(data: InstanceCreate): Promise<Instance>;
   upsertInstanceProperty(data: InstancePropertyUpsert): Promise<InstanceProperty>;
   createFileEntity(data: FileEntityCreate): Promise<FileEntity>;
@@ -418,7 +417,7 @@ export type ToolUseFindingKind =
   | 'prompt_digest_redundant_lookup'
   | 'broad_discovery_overuse'
   | 'redundant_repeated_lookup'
-  | 'project_binding_violation'
+  | 'world_binding_violation'
   | 'tool_budget_overrun';
 
 export interface ToolUseFinding {
@@ -436,7 +435,7 @@ export interface ToolUseAnalysisSummary {
   discoveryCallCount: number;
   promptRedundantLookupCount: number;
   repeatedLookupGroupCount: number;
-  projectBindingViolationCount: number;
+  worldBindingViolationCount: number;
   overBudget: boolean;
   budgetLimit: number;
 }
@@ -451,7 +450,7 @@ export interface ScenarioAnalysis {
 }
 
 export interface ScenarioSetupInfo {
-  projectId: string;
+  rootNetworkId: string;
   dbPath: string;
   tempDir: string;
   preserved: boolean;
@@ -509,5 +508,5 @@ export interface EvalOptions {
   preserve?: boolean;
   devDb?: boolean;
   dbPath?: string;
-  projectId?: string;
+  rootNetworkId?: string;
 }

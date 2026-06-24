@@ -3,7 +3,7 @@ import type { IpcResult } from '@netior/shared/types';
 import {
   createRemoteInstance,
   deleteRemoteInstance,
-  listRemoteInstancesByProject,
+  listRemoteInstancesByWorld,
   searchRemoteInstances,
   updateRemoteInstance,
 } from '../netior-service/netior-service-client';
@@ -20,9 +20,9 @@ export function registerInstanceIpc(): void {
     }
   });
 
-  ipcMain.handle('instance:getByProject', async (_e, projectId: string): Promise<IpcResult<unknown>> => {
+  ipcMain.handle('instance:getByRootNetwork', async (_e, rootNetworkId: string): Promise<IpcResult<unknown>> => {
     try {
-      return { success: true, data: await listRemoteInstancesByProject(projectId) };
+      return { success: true, data: await listRemoteInstancesByWorld(rootNetworkId) };
     } catch (err) {
       return { success: false, error: (err as Error).message };
     }
@@ -48,9 +48,9 @@ export function registerInstanceIpc(): void {
     }
   });
 
-  ipcMain.handle('instance:search', async (_e, projectId: string, query: string): Promise<IpcResult<unknown>> => {
+  ipcMain.handle('instance:search', async (_e, rootNetworkId: string, query: string): Promise<IpcResult<unknown>> => {
     try {
-      return { success: true, data: await searchRemoteInstances(projectId, query) };
+      return { success: true, data: await searchRemoteInstances(rootNetworkId, query) };
     } catch (err) {
       return { success: false, error: (err as Error).message };
     }

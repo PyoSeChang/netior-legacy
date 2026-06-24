@@ -5,7 +5,7 @@ import type { TranslationKey } from '@netior/shared/i18n';
 import { useI18n } from '../../hooks/useI18n';
 import { useSchemaStore } from '../../stores/schema-store';
 import { useInstanceStore } from '../../stores/instance-store';
-import { useProjectStore } from '../../stores/project-store';
+import { useWorldStore } from '../../stores/world-store';
 import { useAnchoredDropdown } from '../../hooks/useAnchoredDropdown';
 import { NodeVisual } from '../workspace/node-components/NodeVisual';
 
@@ -28,8 +28,8 @@ export function SchemaSourcePicker({
 }: SchemaSourcePickerProps): JSX.Element {
   const { t } = useI18n();
   const tk = (key: string) => t(key as TranslationKey);
-  const currentProjectId = useProjectStore((state) => state.currentProject?.id ?? null);
-  const loadInstances = useInstanceStore((state) => state.loadByProject);
+  const currentRootNetworkId = useWorldStore((state) => state.currentWorld?.id ?? null);
+  const loadInstances = useInstanceStore((state) => state.loadByWorld);
   const instances = useInstanceStore((state) => state.instances);
   const schemas = useSchemaStore((state) => state.schemas);
 
@@ -43,9 +43,9 @@ export function SchemaSourcePicker({
   }, dropdownRef);
 
   useEffect(() => {
-    if (mode !== 'instance' || !currentProjectId || instances.length > 0) return;
-    loadInstances(currentProjectId);
-  }, [mode, currentProjectId, instances.length, loadInstances]);
+    if (mode !== 'instance' || !currentRootNetworkId || instances.length > 0) return;
+    loadInstances(currentRootNetworkId);
+  }, [mode, currentRootNetworkId, instances.length, loadInstances]);
 
   useEffect(() => {
     if (!open) return;

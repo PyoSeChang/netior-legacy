@@ -73,8 +73,8 @@ function parseArgs(argv: string[]): EvalOptions {
       case '--db-path':
         options.dbPath = args[++i];
         break;
-      case '--project-id':
-        options.projectId = args[++i];
+      case '--root-network-id':
+        options.rootNetworkId = args[++i];
         break;
     }
   }
@@ -287,7 +287,7 @@ async function main() {
   } else if (scenarioDbPath) {
     console.log(`DB path: ${scenarioDbPath}`);
   }
-  if (options.projectId) console.log(`Project ID: ${options.projectId}`);
+  if (options.rootNetworkId) console.log(`World ID: ${options.rootNetworkId}`);
 
   const allResults: ScenarioResult[] = [];
   const scenarioExecutions: Array<{ scenarioId: string; execution: ScenarioExecutionConfig }> = [];
@@ -320,11 +320,11 @@ async function main() {
         console.log('  Setting up scenario...');
         setup = await setupScenario(scenario.scenarioDir, scenario.seed, scenario.id, {
           dbPath: scenarioDbPath,
-          projectId: options.projectId,
+          rootNetworkId: options.rootNetworkId,
           preserve: preserveScenarioData,
         });
         if (setup.preserve) {
-          console.log(`  Preserving scenario data: db=${setup.dbPath}, project=${setup.projectId}, dir=${setup.tempDir}`);
+          console.log(`  Preserving scenario data: db=${setup.dbPath}, world=${setup.rootNetworkId}, dir=${setup.tempDir}`);
         }
 
         console.log(`  Starting narre-server (${execution.provider})...`);
@@ -340,8 +340,8 @@ async function main() {
         console.log(execution.execution_mode === 'multi_agent' ? '  Running orchestration...' : '  Sending turns...');
         const startTime = Date.now();
         const transcript = execution.execution_mode === 'multi_agent'
-          ? await runOrchestrationScenario(adapter, scenario, setup.projectId, setup.templateVars)
-          : await runScenario(adapter, scenario, setup.projectId, setup.templateVars);
+          ? await runOrchestrationScenario(adapter, scenario, setup.rootNetworkId, setup.templateVars)
+          : await runScenario(adapter, scenario, setup.rootNetworkId, setup.templateVars);
         const durationMs = Date.now() - startTime;
 
         console.log(`  Completed in ${(durationMs / 1000).toFixed(1)}s (${transcript.totalToolCalls} tool calls)`);
@@ -364,13 +364,13 @@ async function main() {
           transcript,
           scenario.verify,
           scenario.qualitative,
-          setup.projectId,
+          setup.rootNetworkId,
           setup.serviceUrl,
           options.judge,
           gradeCtx,
         );
         result.setup = {
-          projectId: setup.projectId,
+          rootNetworkId: setup.rootNetworkId,
           dbPath: setup.dbPath,
           tempDir: setup.tempDir,
           preserved: setup.preserve,

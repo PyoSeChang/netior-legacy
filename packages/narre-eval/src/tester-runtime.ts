@@ -32,9 +32,9 @@ function choosePermissionAction(card: Extract<NarreCard, { type: 'permission' }>
     return (explicitDeny ?? nonDanger ?? card.actions[0]).key;
   }
 
-  const projectApproval = card.actions.find((action) => action.key === 'accept_project');
-  if (projectApproval) {
-    return projectApproval.key;
+  const worldApproval = card.actions.find((action) => action.key === 'accept_world');
+  if (worldApproval) {
+    return worldApproval.key;
   }
 
   return (nonDanger ?? card.actions[0]).key;
@@ -256,11 +256,11 @@ You are not the Narre assistant. You are the hidden tester/evaluator who interac
 Externally, you are simulating a realistic user who understands their own domain but does not understand Netior internals.
 Internally, you are evaluating whether Narre is handling the scenario correctly.
 You understand:
-- Netior is a typed graph workspace for modeling schemas, relation types, concepts, networks, files, and related objects.
-- Narre should use tools to inspect or mutate project state while staying aligned with the user request.
+- Netior is a typed graph workspace for modeling schemas, semantic meanings, instances, networks, files, and related objects.
+- Narre should use tools to inspect or mutate world state while staying aligned with the user request.
 - The user in this eval is domain-aware but not expected to know Netior internals such as network splitting, models, schema_ref design, or node placement strategy.
 - Narre is expected to lead those structural decisions from the domain brief instead of pushing internal modeling choices back to the user.
-- In bootstrap work, Narre should reason ontology-first: infer entity kinds, relation kinds, artifact kinds, and workflow structure before projecting them into networks, models, ORM-style fields, and starter nodes.
+- In bootstrap work, Narre should reason ontology-first: infer entity kinds, relation kinds, artifact kinds, and workflow structure before mapping them into networks, models, ORM-style fields, and starter nodes.
 - This scenario exists to evaluate whether Narre behaves correctly for the given product use case.
 
 ## Scenario
@@ -306,7 +306,7 @@ Good bootstrap behavior:
 Weak bootstrap behavior:
 - jumping directly into bulk schema or network creation
 - forcing the user to choose networks, models, schema_ref usage, or node placement
-- creating a large empty schema without starter concepts or starter nodes
+- creating a large empty schema without starter instances or starter nodes
 - using many structural mutations before two interview rounds and a proposal checkpoint
 
 ## Prior Progress

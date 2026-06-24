@@ -18,13 +18,13 @@
  */
 
 import { useEditorStore } from '../stores/editor-store';
-import { useProjectStore } from '../stores/project-store';
+import { useWorldStore } from '../stores/world-store';
 import { useInstanceStore } from '../stores/instance-store';
 import { useSchemaStore } from '../stores/schema-store';
 import { useMeaningStore } from '../stores/meaning-store';
 import { useNetworkStore } from '../stores/network-store';
 import { useModuleStore } from '../stores/module-store';
-import type { EditorTab, Project, SplitNode } from '@netior/shared/types';
+import type { EditorTab, World, SplitNode } from '@netior/shared/types';
 
 interface SyncState {
   tabs: EditorTab[];
@@ -33,13 +33,13 @@ interface SyncState {
   fullLayout: SplitNode | null;
   hosts: Record<string, { id: string; label: string; activeTabId: string | null }>;
   focusedHostId: string;
-  currentProject: Project | null;
+  currentWorld: World | null;
 }
 
 let _isSyncing = false;
 let _syncScheduled = false;
 let _unsubscribe: (() => void) | null = null;
-let _projectUnsubscribe: (() => void) | null = null;
+let _worldUnsubscribe: (() => void) | null = null;
 let _cleanupListener: (() => void) | null = null;
 
 function getSyncState(): SyncState {
@@ -51,7 +51,7 @@ function getSyncState(): SyncState {
     fullLayout: s.fullLayout,
     hosts: s.hosts,
     focusedHostId: s.focusedHostId,
-    currentProject: useProjectStore.getState().currentProject,
+    currentWorld: useWorldStore.getState().currentWorld,
   };
 }
 
@@ -67,27 +67,27 @@ function applySyncState(state: SyncState): void {
     focusedHostId: state.focusedHostId,
   });
 
-  // Sync project context for workspace stores
-  const currentProject = useProjectStore.getState().currentProject;
-  if (state.currentProject && currentProject?.id !== state.currentProject.id) {
-    bootstrapWorkspaceStores(state.currentProject);
-  } else if (!state.currentProject && currentProject) {
-    // Project closed in main window
-    useProjectStore.setState({ currentProject: null });
+  // Sync world context for workspace stores
+  const currentWorld = useWorldStore.getState().currentWorld;
+  if (state.currentWorld && currentWorld?.id !== state.currentWorld.id) {
+    bootstrapWorkspaceStores(state.currentWorld);
+  } else if (!state.currentWorld && currentWorld) {
+    // World closed in main window
+    useWorldStore.setState({ currentWorld: null });
   }
 
   _isSyncing = false;
 }
 
 /** Hydrate workspace stores from DB so editors in detached windows have full context. */
-function bootstrapWorkspaceStores(project: Project): void {
-  // Set project directly (skip openProject's filesystem checks / state cache logic)
-  useProjectStore.setState({ currentProject: project });
+function bootstrapWorkspaceStores(world: World): void {
+  // Set world directly (skip openWorld's filesystem checks / state cache logic)
+  useWorldStore.setState({ currentWorld: world });
 
-  const pid = project.id;
-  useInstanceStore.getState().loadByProject(pid);
-  useSchemaStore.getState().loadByProject(pid);
-  useMeaningStore.getState().loadByProject(pid);
+  const pid = world.id;
+  useInstanceStore.getState().loadByWorld(pid);
+  useSchemaStore.getState().loadByWorld(pid);
+  useMeaningStore.getState().loadByWorld(pid);
   useNetworkStore.getState().loadNetworks(pid);
   useModuleStore.getState().loadModules(pid);
 }
@@ -119,10 +119,10 @@ function startSubscription(): void {
     }
   });
 
-  // Also track project changes (main window may switch/close project)
-  _projectUnsubscribe = useProjectStore.subscribe((state, prev) => {
+  // Also track world changes (main window may switch/close world)
+  _worldUnsubscribe = useWorldStore.subscribe((state, prev) => {
     if (_isSyncing) return;
-    if (state.currentProject !== prev.currentProject) {
+    if (state.currentWorld !== prev.currentWorld) {
       schedulePush();
     }
   });
@@ -137,10 +137,10 @@ function startListener(): void {
 
 function cleanup(): void {
   _unsubscribe?.();
-  _projectUnsubscribe?.();
+  _worldUnsubscribe?.();
   _cleanupListener?.();
   _unsubscribe = null;
-  _projectUnsubscribe = null;
+  _worldUnsubscribe = null;
   _cleanupListener = null;
 }
 

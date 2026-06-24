@@ -28,38 +28,38 @@ export function getActiveNetiorMcpToolProfile(): NetiorMcpToolProfile {
   }
 }
 
-export function projectIdSchema(): z.ZodOptional<z.ZodString> {
+export function rootNetworkIdSchema(): z.ZodOptional<z.ZodString> {
   return z.string().optional().describe(
-    'Project ID. Prefer omitting this to use the current active project binding. Provide it only for explicit cross-project work.',
+    'World ID. Prefer omitting this to use the current active world binding. Provide it only for explicit cross-world work.',
   );
 }
 
-export function projectIdOrNullSchema(description: string): z.ZodOptional<z.ZodNullable<z.ZodString>> {
+export function rootNetworkIdOrNullSchema(description: string): z.ZodOptional<z.ZodNullable<z.ZodString>> {
   return z.string().nullable().optional().describe(
-    `${description}. Prefer omitting this to use the current active project binding. Provide it only for explicit cross-project work.`,
+    `${description}. Prefer omitting this to use the current active world binding. Provide it only for explicit cross-world work.`,
   );
 }
 
-export function resolveProjectId(projectId?: string | null): string {
-  const explicit = typeof projectId === 'string' ? projectId.trim() : '';
+export function resolveRootNetworkId(rootNetworkId?: string | null): string {
+  const explicit = typeof rootNetworkId === 'string' ? rootNetworkId.trim() : '';
   if (explicit) {
     return explicit;
   }
 
-  const fallback = process.env.NETIOR_MCP_DEFAULT_PROJECT_ID?.trim();
+  const fallback = process.env.NETIOR_MCP_DEFAULT_WORLD_ID?.trim();
   if (fallback) {
     return fallback;
   }
 
-  throw new Error('No current active project is bound. Pass project_id only for explicit cross-project work.');
+  throw new Error('No current active world is bound. Pass root_network_id only for explicit cross-world work.');
 }
 
-export function resolveNullableProjectId(projectId?: string | null): string | null {
-  if (projectId === null) {
+export function resolveNullableRootNetworkId(rootNetworkId?: string | null): string | null {
+  if (rootNetworkId === null) {
     return null;
   }
 
-  return resolveProjectId(projectId);
+  return resolveRootNetworkId(rootNetworkId);
 }
 
 export function registerNetiorTool<TSchema extends NetiorMcpToolSchema>(

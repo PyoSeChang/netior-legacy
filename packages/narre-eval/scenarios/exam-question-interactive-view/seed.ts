@@ -1,18 +1,18 @@
 import type { SeedContext } from '../../src/types.js';
 
 export default async function seed(ctx: SeedContext): Promise<void> {
-  const project = await ctx.createProject({
+  const world = await ctx.createWorld({
     name: 'Interactive View Exam Fixture',
     root_dir: ctx.tempDir,
   });
   await ctx.createModule({
-    project_id: project.id,
+    root_network_id: world.id,
     name: 'Ontology',
     path: ctx.tempDir,
   });
 
   const schema = await ctx.createSchema({
-    project_id: project.id,
+    root_network_id: world.id,
     name: 'Exam Question',
     description: 'A question with choices, answer, and explanation fields.',
     icon: 'circle-help',
@@ -25,7 +25,7 @@ export default async function seed(ctx: SeedContext): Promise<void> {
     field_type: 'textarea',
     sort_order: 0,
     required: true,
-    source_kind: 'project',
+    source_kind: 'world',
     source_ref: 'exam.question.question',
   });
   const choicesField = await ctx.createSchemaField({
@@ -34,7 +34,7 @@ export default async function seed(ctx: SeedContext): Promise<void> {
     field_type: 'textarea',
     sort_order: 1,
     required: true,
-    source_kind: 'project',
+    source_kind: 'world',
     source_ref: 'exam.question.choices',
   });
   const answerField = await ctx.createSchemaField({
@@ -43,7 +43,7 @@ export default async function seed(ctx: SeedContext): Promise<void> {
     field_type: 'text',
     sort_order: 2,
     required: true,
-    source_kind: 'project',
+    source_kind: 'world',
     source_ref: 'exam.question.answer',
   });
   const explanationField = await ctx.createSchemaField({
@@ -52,12 +52,12 @@ export default async function seed(ctx: SeedContext): Promise<void> {
     field_type: 'textarea',
     sort_order: 3,
     required: false,
-    source_kind: 'project',
+    source_kind: 'world',
     source_ref: 'exam.question.explanation',
   });
 
   const instance = await ctx.createInstance({
-    project_id: project.id,
+    root_network_id: world.id,
     schema_id: schema.id,
     title: 'Photosynthesis Multiple Choice',
     content: 'Use the interactive view to answer the question.',
@@ -85,7 +85,7 @@ export default async function seed(ctx: SeedContext): Promise<void> {
   });
 
   ctx.setTemplateVars({
-    project_id: project.id,
+    root_network_id: world.id,
     schema_id: schema.id,
     question_instance_id: instance.id,
     question_instance_title: instance.title,

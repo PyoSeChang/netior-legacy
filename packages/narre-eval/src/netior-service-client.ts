@@ -5,10 +5,10 @@ import type {
   FileEntityCreate,
   Module,
   ModuleCreate,
-  Project,
-  ProjectCreate,
-  Model,
-  ModelCreate,
+  World,
+  WorldCreate,
+  Meaning,
+  MeaningCreate,
   NetiorServiceResponse,
   Instance,
   InstanceCreate,
@@ -53,15 +53,15 @@ async function requestJson<T>(baseUrl: string, path: string, init?: RequestInit)
   return payload.data;
 }
 
-export async function createProject(baseUrl: string, data: ProjectCreate): Promise<Project> {
-  return requestJson<Project>(baseUrl, '/projects', {
+export async function createWorld(baseUrl: string, data: WorldCreate): Promise<World> {
+  return requestJson<World>(baseUrl, '/worlds', {
     method: 'POST',
     body: JSON.stringify(data),
   });
 }
 
-export async function getProjectById(baseUrl: string, projectId: string): Promise<Project | null> {
-  return requestJson<Project | null>(baseUrl, `/projects/${encodeURIComponent(projectId)}`);
+export async function getWorldById(baseUrl: string, rootNetworkId: string): Promise<World | null> {
+  return requestJson<World | null>(baseUrl, `/worlds/${encodeURIComponent(rootNetworkId)}`);
 }
 
 export async function createSchema(baseUrl: string, data: SchemaCreate): Promise<Schema> {
@@ -71,24 +71,21 @@ export async function createSchema(baseUrl: string, data: SchemaCreate): Promise
   });
 }
 
-export async function listSchemas(baseUrl: string, projectId: string): Promise<Schema[]> {
-  return requestJson<Schema[]>(baseUrl, `/schemas${toQueryString({ projectId })}`);
+export async function listSchemas(baseUrl: string, rootNetworkId: string): Promise<Schema[]> {
+  return requestJson<Schema[]>(baseUrl, `/schemas${toQueryString({ rootNetworkId })}`);
 }
 
-export async function createRelationType(baseUrl: string, data: ModelCreate): Promise<Model> {
-  return requestJson<Model>(baseUrl, '/models', {
+export async function createMeaning(baseUrl: string, data: MeaningCreate): Promise<Meaning> {
+  return requestJson<Meaning>(baseUrl, '/meanings', {
     method: 'POST',
     body: JSON.stringify(data),
   });
 }
 
-export async function listRelationTypes(baseUrl: string, projectId: string): Promise<Model[]> {
-  return requestJson<Model[]>(baseUrl, `/models${toQueryString({ projectId })}`);
+export async function listMeanings(baseUrl: string, rootNetworkId: string): Promise<Meaning[]> {
+  return requestJson<Meaning[]>(baseUrl, `/meanings${toQueryString({ rootNetworkId })}`);
 }
 
-export async function createConcept(baseUrl: string, data: InstanceCreate): Promise<Instance> {
-  return createInstance(baseUrl, data);
-}
 
 export async function createInstance(baseUrl: string, data: InstanceCreate): Promise<Instance> {
   return requestJson<Instance>(baseUrl, '/instances', {

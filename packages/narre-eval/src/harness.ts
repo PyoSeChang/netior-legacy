@@ -7,12 +7,11 @@ import {
   createInstance,
   createSchema,
   createSchemaField,
-  createConcept,
   createFileEntity,
   createModule,
-  createProject,
-  getProjectById,
-  createRelationType,
+  createWorld,
+  getWorldById,
+  createMeaning,
   upsertInstanceProperty,
 } from './netior-service-client.js';
 import { startNetiorServiceForEval } from './netior-service-process.js';
@@ -20,7 +19,7 @@ import { startNetiorServiceForEval } from './netior-service-process.js';
 let currentRunId: string | null = null;
 
 export interface SetupResult {
-  projectId: string;
+  rootNetworkId: string;
   tempDir: string;
   dbPath: string;
   preserve: boolean;
@@ -31,7 +30,7 @@ export interface SetupResult {
 
 export interface SetupScenarioOptions {
   dbPath?: string;
-  projectId?: string;
+  rootNetworkId?: string;
   preserve?: boolean;
 }
 
@@ -69,7 +68,7 @@ export async function setupScenario(
 
   const service = await startNetiorServiceForEval(dbPath);
 
-  let projectId: string | null = options.projectId ?? null;
+  let rootNetworkId: string | null = options.rootNetworkId ?? null;
   let templateVars: Record<string, string> = {};
   const pendingOperations: Promise<unknown>[] = [];
 
@@ -81,24 +80,24 @@ export async function setupScenario(
   const ctx: SeedContext = {
     tempDir,
     scenarioDir,
-    projectId: projectId ?? undefined,
+    rootNetworkId: rootNetworkId ?? undefined,
     dbPath,
     preserve: options.preserve ?? false,
-    async createProject(data) {
-      if (options.projectId) {
-        const project = await track(getProjectById(service.baseUrl, options.projectId));
-        if (!project) {
-          throw new Error(`Project not found for --project-id: ${options.projectId}`);
+    async createWorld(data) {
+      if (options.rootNetworkId) {
+        const world = await track(getWorldById(service.baseUrl, options.rootNetworkId));
+        if (!world) {
+          throw new Error(`World not found for --root-network-id: ${options.rootNetworkId}`);
         }
-        projectId = project.id;
-        return project;
+        rootNetworkId = world.id;
+        return world;
       }
-      const project = await track(createProject(service.baseUrl, {
+      const world = await track(createWorld(service.baseUrl, {
         ...data,
         root_dir: data.root_dir || tempDir,
       }));
-      projectId = project.id;
-      return project;
+      rootNetworkId = world.id;
+      return world;
     },
     createSchema(data) {
       return track(createSchema(service.baseUrl, data));
@@ -106,11 +105,8 @@ export async function setupScenario(
     createSchemaField(data) {
       return track(createSchemaField(service.baseUrl, data));
     },
-    createRelationType(data) {
-      return track(createRelationType(service.baseUrl, data));
-    },
-    createConcept(data) {
-      return track(createConcept(service.baseUrl, data));
+    createMeaning(data) {
+      return track(createMeaning(service.baseUrl, data));
     },
     createInstance(data) {
       return track(createInstance(service.baseUrl, data));
@@ -140,12 +136,12 @@ export async function setupScenario(
     await seedFn(ctx);
     await Promise.all(pendingOperations);
 
-    if (!projectId) {
-      throw new Error('seed function must call ctx.createProject()');
+    if (!rootNetworkId) {
+      throw new Error('seed function must call ctx.createWorld()');
     }
 
     return {
-      projectId,
+      rootNetworkId,
       tempDir,
       dbPath,
       preserve: options.preserve ?? false,

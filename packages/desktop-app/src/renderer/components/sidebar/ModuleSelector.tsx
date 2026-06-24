@@ -6,11 +6,11 @@ import { fsService } from '../../services';
 import { Tooltip } from '../ui/Tooltip';
 
 interface ModuleSelectorProps {
-  projectId: string;
-  projectRootDir: string;
+  rootNetworkId: string;
+  worldRootDir: string;
 }
 
-export function ModuleSelector({ projectId, projectRootDir }: ModuleSelectorProps): JSX.Element {
+export function ModuleSelector({ rootNetworkId, worldRootDir }: ModuleSelectorProps): JSX.Element {
   const { t } = useI18n();
   const { modules, activeModuleId, setActiveModule, createModule, deleteModule, updateModule } =
     useModuleStore();
@@ -59,7 +59,7 @@ export function ModuleSelector({ projectId, projectRootDir }: ModuleSelectorProp
 
   const handleCreate = async () => {
     if (!newName.trim()) return;
-    const mod = await createModule({ project_id: projectId, name: newName.trim(), path: projectRootDir });
+    const mod = await createModule({ root_network_id: rootNetworkId, name: newName.trim(), path: worldRootDir });
     await setActiveModule(mod.id);
     setNewName('');
     setCreating(false);

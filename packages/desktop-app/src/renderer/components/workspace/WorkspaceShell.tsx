@@ -1,6 +1,6 @@
 ﻿import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
-import type { Project, EditorViewMode, SplitLeaf, EditorTab } from '@netior/shared/types';
+import type { World, EditorViewMode, SplitLeaf, EditorTab } from '@netior/shared/types';
 import { ActivityBar } from '../sidebar/ActivityBar';
 import { Sidebar } from '../sidebar/Sidebar';
 import { NetworkWorkspace } from './NetworkWorkspace';
@@ -35,7 +35,7 @@ import type { DropResult } from '../editor/DropZoneOverlay';
 import { useFileTabStaleWatcher } from '../../hooks/useFileTabStaleWatcher';
 
 interface WorkspaceShellProps {
-  project: Project | null;
+  world: World | null;
   rightChrome?: React.ReactNode;
 }
 
@@ -149,7 +149,7 @@ async function openDroppedFilesInSideLeaf(
   }
 }
 
-export function WorkspaceShell({ project, rightChrome = null }: WorkspaceShellProps): JSX.Element {
+export function WorkspaceShell({ world, rightChrome = null }: WorkspaceShellProps): JSX.Element {
   useFileTabStaleWatcher();
 
   const activeTabId = useEditorStore((s) => s.activeTabId);
@@ -487,7 +487,7 @@ export function WorkspaceShell({ project, rightChrome = null }: WorkspaceShellPr
       <NetworkTabStrip controls={networkControls} />
       <div className="pane-surface pane-surface--network relative min-h-0 flex-1 overflow-hidden">
         <NetworkWorkspace
-          projectId={project?.id ?? null}
+          rootNetworkId={world?.id ?? null}
           onControlsChange={handleNetworkControlsChange}
         />
       </div>
@@ -586,7 +586,7 @@ export function WorkspaceShell({ project, rightChrome = null }: WorkspaceShellPr
         {rightChrome && <div className="h-[35px] shrink-0" aria-hidden="true" />}
         <div className="flex min-h-0 flex-1 justify-end pb-2">
           {sidebarOpen && <ResizeHandle onMouseDown={handleSidebarResizeStart} />}
-          {sidebarOpen && <Sidebar project={project} />}
+          {sidebarOpen && <Sidebar world={world} />}
           <ActivityBar />
         </div>
       </div>

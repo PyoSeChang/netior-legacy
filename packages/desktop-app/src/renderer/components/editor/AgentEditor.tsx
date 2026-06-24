@@ -3,7 +3,7 @@ import { ArrowLeft, FileText, Plus, RefreshCw, Save, Trash2 } from 'lucide-react
 import type { EditorTab, NarreUserAgentType, UserAgentRecord, UserAgentSkillSummary } from '@netior/shared/types';
 import { agentService } from '../../services/agent-service';
 import { useI18n } from '../../hooks/useI18n';
-import { useProjectStore } from '../../stores/project-store';
+import { useWorldStore } from '../../stores/world-store';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { TextArea } from '../ui/TextArea';
@@ -79,8 +79,8 @@ export function AgentEditor({ tab }: AgentEditorProps): JSX.Element {
   const { t } = useI18n();
   const tk = (key: string, params?: Record<string, string | number>) =>
     t(key as import('@netior/shared/i18n').TranslationKey, params);
-  const currentProject = useProjectStore((state) => state.currentProject);
-  const projectId = tab.targetId === 'global' ? currentProject?.id ?? null : tab.targetId;
+  const currentWorld = useWorldStore((state) => state.currentWorld);
+  const rootNetworkId = tab.targetId === 'global' ? currentWorld?.id ?? null : tab.targetId;
   const [agents, setAgents] = useState<UserAgentRecord[]>([]);
   const [selectedAgentKey, setSelectedAgentKey] = useState<string | null>(null);
   const [agentDraft, setAgentDraft] = useState<AgentDraft | null>(null);
@@ -135,9 +135,9 @@ export function AgentEditor({ tab }: AgentEditorProps): JSX.Element {
         return tk('agentEditor.error.skillDescriptionRequired');
       case 'Skill body is required':
         return tk('agentEditor.error.skillBodyRequired');
-      case 'projectId is required for project agents':
-      case 'Project agent requires an active project':
-        return tk('agentEditor.error.projectIdRequired');
+      case 'rootNetworkId is required for world agents':
+      case 'World agent requires an active world':
+        return tk('agentEditor.error.rootNetworkIdRequired');
       default:
         if (message.startsWith('Invalid id: ')) {
           return tk('agentEditor.error.invalidId', { value: message.slice('Invalid id: '.length) });
@@ -161,7 +161,7 @@ export function AgentEditor({ tab }: AgentEditorProps): JSX.Element {
     setLoading(true);
     setError(null);
     try {
-      const nextAgents = await agentService.listDefinitions(projectId);
+      const nextAgents = await agentService.listDefinitions(rootNetworkId);
       setAgents(nextAgents);
       const currentSelection = selectionRef.current;
       const nextSelected = nextAgents.find((agent) => getAgentKey(agent) === preferredAgentKey)
@@ -193,7 +193,7 @@ export function AgentEditor({ tab }: AgentEditorProps): JSX.Element {
     } finally {
       setLoading(false);
     }
-  }, [projectId, translateAgentError]);
+  }, [rootNetworkId, translateAgentError]);
 
   useEffect(() => {
     void loadAgents();
@@ -203,7 +203,7 @@ export function AgentEditor({ tab }: AgentEditorProps): JSX.Element {
     setSelectedAgentKey(null);
     setAgentDraft({
       id: '',
-      name: userAgentType === 'project' ? tk('agentEditor.scopeProject') : tk('agentEditor.scopeGlobal'),
+      name: userAgentType === 'world' ? tk('agentEditor.scopeWorld') : tk('agentEditor.scopeGlobal'),
       description: '',
       systemPrompt: '',
       userAgentType,
@@ -219,8 +219,8 @@ export function AgentEditor({ tab }: AgentEditorProps): JSX.Element {
     if (!agentDraft) {
       return;
     }
-    if (agentDraft.userAgentType === 'project' && !projectId) {
-      setError(tk('agentEditor.projectRequired'));
+    if (agentDraft.userAgentType === 'world' && !rootNetworkId) {
+      setError(tk('agentEditor.worldRequired'));
       return;
     }
 
@@ -233,7 +233,7 @@ export function AgentEditor({ tab }: AgentEditorProps): JSX.Element {
         description: agentDraft.description,
         systemPrompt: agentDraft.systemPrompt,
         userAgentType: agentDraft.userAgentType,
-        ...(agentDraft.userAgentType === 'project' && projectId ? { projectId } : {}),
+        ...(agentDraft.userAgentType === 'world' && rootNetworkId ? { rootNetworkId } : {}),
       });
       await loadAgents(getAgentKey(saved), selectedSkillId);
       setView('detail');
@@ -251,7 +251,7 @@ export function AgentEditor({ tab }: AgentEditorProps): JSX.Element {
       await agentService.deleteDefinition({
         agentId: agent.id,
         userAgentType: agent.userAgentType,
-        ...(agent.projectId ? { projectId: agent.projectId } : {}),
+        ...(agent.rootNetworkId ? { rootNetworkId: agent.rootNetworkId } : {}),
       });
       setPendingDelete(null);
       setView('list');
@@ -291,7 +291,7 @@ export function AgentEditor({ tab }: AgentEditorProps): JSX.Element {
       const saved = await agentService.upsertSkill({
         agentId: selectedAgent.id,
         userAgentType: selectedAgent.userAgentType,
-        ...(selectedAgent.projectId ? { projectId: selectedAgent.projectId } : {}),
+        ...(selectedAgent.rootNetworkId ? { rootNetworkId: selectedAgent.rootNetworkId } : {}),
         skillId: skillDraft.id || undefined,
         name: skillDraft.name,
         description: skillDraft.description,
@@ -312,7 +312,7 @@ export function AgentEditor({ tab }: AgentEditorProps): JSX.Element {
       await agentService.deleteSkill({
         agentId: agent.id,
         userAgentType: agent.userAgentType,
-        ...(agent.projectId ? { projectId: agent.projectId } : {}),
+        ...(agent.rootNetworkId ? { rootNetworkId: agent.rootNetworkId } : {}),
         skillId: skill.id,
       });
       setPendingDelete(null);
@@ -324,7 +324,7 @@ export function AgentEditor({ tab }: AgentEditorProps): JSX.Element {
     }
   };
 
-  const canCreateProjectAgent = Boolean(projectId);
+  const canCreateWorldAgent = Boolean(rootNetworkId);
 
   const handleBackToList = (): void => {
     setView('list');
@@ -378,11 +378,11 @@ export function AgentEditor({ tab }: AgentEditorProps): JSX.Element {
             <Button
               size="sm"
               variant="secondary"
-              disabled={!canCreateProjectAgent}
-              onClick={() => startNewAgent('project')}
+              disabled={!canCreateWorldAgent}
+              onClick={() => startNewAgent('world')}
             >
               <Plus size={14} />
-              {tk('agentEditor.newProject')}
+              {tk('agentEditor.newWorld')}
             </Button>
           </div>
 
@@ -416,8 +416,8 @@ export function AgentEditor({ tab }: AgentEditorProps): JSX.Element {
                         <span className="block truncate text-base font-semibold text-default">{agent.name}</span>
                         <span className="mt-1 block truncate text-sm text-secondary">{agent.description || agent.id}</span>
                       </span>
-                      <Badge variant={agent.userAgentType === 'project' ? 'accent' : 'default'}>
-                        {agent.userAgentType === 'project' ? tk('agentEditor.scopeProject') : tk('agentEditor.scopeGlobal')}
+                      <Badge variant={agent.userAgentType === 'world' ? 'accent' : 'default'}>
+                        {agent.userAgentType === 'world' ? tk('agentEditor.scopeWorld') : tk('agentEditor.scopeGlobal')}
                       </Badge>
                     </span>
                     <span className="mt-4 flex items-center justify-between gap-3 text-xs text-muted">
@@ -502,11 +502,11 @@ export function AgentEditor({ tab }: AgentEditorProps): JSX.Element {
                         <Button
                           size="sm"
                           variant="secondary"
-                          isActive={agentDraft.userAgentType === 'project'}
-                          disabled={!isNewAgent || !canCreateProjectAgent}
-                          onClick={() => setAgentDraft({ ...agentDraft, userAgentType: 'project' })}
+                          isActive={agentDraft.userAgentType === 'world'}
+                          disabled={!isNewAgent || !canCreateWorldAgent}
+                          onClick={() => setAgentDraft({ ...agentDraft, userAgentType: 'world' })}
                         >
-                          {tk('agentEditor.scopeProject')}
+                          {tk('agentEditor.scopeWorld')}
                         </Button>
                       </div>
                     </Field>

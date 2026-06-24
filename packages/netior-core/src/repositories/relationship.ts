@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto';
 import { getDatabase } from '../connection';
-import { getDefaultOwnerNetworkIdForProjectDb } from './network-scope';
+import { getDefaultOwnerNetworkIdForWorldDb } from './network-scope';
 import type {
   Relationship,
   RelationshipCreate,
@@ -23,8 +23,8 @@ function validateJsonObject(raw: string | null | undefined, label: string): stri
 
 export function listRelationships(filters: RelationshipListFilters): Relationship[] {
   const db = getDatabase();
-  const where = ['project_id = ?'];
-  const values: unknown[] = [filters.project_id];
+  const where = ['root_network_id = ?'];
+  const values: unknown[] = [filters.root_network_id];
 
   if (filters.source_object_id) {
     where.push('source_object_id = ?');
@@ -56,25 +56,25 @@ export function createRelationship(data: RelationshipCreate): Relationship {
   const id = randomUUID();
   const now = new Date().toISOString();
   const propertiesJson = validateJsonObject(data.properties_json, 'properties_json');
-  const ownerNetworkId = data.owner_network_id ?? getDefaultOwnerNetworkIdForProjectDb(db, data.project_id);
+  const ownerNetworkId = data.owner_network_id ?? getDefaultOwnerNetworkIdForWorldDb(db, data.root_network_id);
 
   db.prepare(`
     INSERT INTO relationships (
-      id, project_id, owner_network_id, source_object_id, target_object_id, meaning_id, description,
+      id, root_network_id, owner_network_id, source_object_id, target_object_id, meaning_id, description,
       properties_json, source_kind, source_id, source_ref, source_version,
       created_at, updated_at
     )
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     id,
-    data.project_id,
+    data.root_network_id,
     ownerNetworkId,
     data.source_object_id,
     data.target_object_id,
     data.meaning_id ?? null,
     data.description ?? null,
     propertiesJson,
-    data.source_kind ?? 'project',
+    data.source_kind ?? 'world',
     data.source_id ?? null,
     data.source_ref ?? null,
     data.source_version ?? null,

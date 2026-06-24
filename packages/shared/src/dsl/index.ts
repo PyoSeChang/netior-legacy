@@ -11,7 +11,7 @@ export interface NetiorDslObjectRef {
 export type NetiorDslValue = NetiorDslScalar | NetiorDslObjectRef | NetiorDslObjectRef[];
 
 export interface NetiorDslContext {
-  projectId: string;
+  rootNetworkId: string;
   currentObject?: NetiorDslObjectRef;
   currentInstanceId?: string;
   currentSchemaId?: string;
@@ -89,7 +89,7 @@ export interface NetiorDslObjectsInNetworkExpression {
 export interface NetiorDslInstancesExpression {
   op: 'instances';
   schemaId?: string;
-  projectId?: string;
+  rootNetworkId?: string;
 }
 
 export interface NetiorDslFieldValueExpression {
@@ -159,7 +159,7 @@ export interface NetiorDslRelativeExpression {
 
 export interface NetiorDslDiscoverSchemasExpression {
   op: 'discover.schemas';
-  projectId?: string;
+  rootNetworkId?: string;
   requires?: NetiorDslDiscoveryRequirement[];
   optional?: NetiorDslDiscoveryRequirement[];
 }
@@ -270,8 +270,8 @@ function validateExpression(
       if (input.schemaId != null && typeof input.schemaId !== 'string') {
         errors.push({ path: `${path}.schemaId`, message: 'schemaId must be a string' });
       }
-      if (input.projectId != null && typeof input.projectId !== 'string') {
-        errors.push({ path: `${path}.projectId`, message: 'projectId must be a string' });
+      if (input.rootNetworkId != null && typeof input.rootNetworkId !== 'string') {
+        errors.push({ path: `${path}.rootNetworkId`, message: 'rootNetworkId must be a string' });
       }
       break;
     case 'related':

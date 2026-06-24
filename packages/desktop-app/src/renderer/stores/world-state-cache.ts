@@ -172,7 +172,7 @@ function restore(snapshot: WorkspaceSnapshot): void {
   useFileStore.setState(snapshot.file);
 }
 
-export function clearAllProjectStores(): void {
+export function clearAllWorldStores(): void {
   useNetworkStore.getState().clear();
   useEditorStore.getState().clear();
   useModuleStore.getState().clear();
@@ -203,23 +203,23 @@ export function hasCachedState(workspaceKey: string): boolean {
 }
 
 export interface CachedEditorTabRef {
-  projectId: string;
+  rootNetworkId: string;
   tab: EditorTab;
 }
 
-export function findCachedProjectEditorTab(tabId: string): CachedEditorTabRef | null {
+export function findCachedWorldEditorTab(tabId: string): CachedEditorTabRef | null {
   for (const [workspaceKey, snapshot] of cache.entries()) {
     if (workspaceKey === APP_WORKSPACE_CACHE_KEY) continue;
     const tab = snapshot.editor.tabs.find((entry) => entry.id === tabId);
     if (tab) {
-      return { projectId: tab.projectId ?? workspaceKey, tab };
+      return { rootNetworkId: tab.rootNetworkId ?? workspaceKey, tab };
     }
   }
 
   return null;
 }
 
-export function updateCachedProjectEditorTab(
+export function updateCachedWorldEditorTab(
   tabId: string,
   updater: (tab: EditorTab) => EditorTab,
 ): void {
@@ -240,8 +240,8 @@ export function updateCachedProjectEditorTab(
   }
 }
 
-export function focusCachedProjectEditorTab(projectId: string, tabId: string): void {
-  const snapshot = cache.get(projectId);
+export function focusCachedWorldEditorTab(rootNetworkId: string, tabId: string): void {
+  const snapshot = cache.get(rootNetworkId);
   if (!snapshot) return;
 
   const editor = normalizeEditorSnapshot(snapshot.editor);
@@ -261,7 +261,7 @@ export function focusCachedProjectEditorTab(projectId: string, tabId: string): v
       }
     : editor.hosts;
 
-  cache.set(projectId, {
+  cache.set(rootNetworkId, {
     ...snapshot,
     editor: {
       ...editor,
@@ -276,16 +276,16 @@ export function focusCachedProjectEditorTab(projectId: string, tabId: string): v
   });
 }
 
-export function saveProjectState(projectId: string): void {
-  saveWorkspaceState(projectId);
+export function saveWorldState(rootNetworkId: string): void {
+  saveWorkspaceState(rootNetworkId);
 }
 
-export function restoreProjectState(projectId: string): boolean {
-  return restoreWorkspaceState(projectId);
+export function restoreWorldState(rootNetworkId: string): boolean {
+  return restoreWorkspaceState(rootNetworkId);
 }
 
-export function deleteProjectState(projectId: string): void {
-  deleteWorkspaceState(projectId);
+export function deleteWorldState(rootNetworkId: string): void {
+  deleteWorkspaceState(rootNetworkId);
 }
 
 export function saveAppState(): void {

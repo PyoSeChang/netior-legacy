@@ -15,19 +15,19 @@ type NetiorMcpToolSpecEntry = Omit<NetiorMcpToolSpec, 'key' | 'isMutation' | 'ap
 
 export const NETIOR_MCP_TOOL_SPECS = {
   list_schemas: {
-    description: 'List all schemas for a project, including attached meanings',
+    description: 'List all schemas for a world, including attached meanings',
     category: 'types',
     kind: 'query',
     profiles: ['discovery'],
-    scope: 'project',
-    defaultProjectBinding: true,
+    scope: 'world',
+    defaultWorldBinding: true,
   },
   create_schema: {
-    description: 'Create a new schema for a project, including file template and attached meanings',
+    description: 'Create a new schema for a world, including file template and attached meanings',
     category: 'types',
     kind: 'mutation',
-    scope: 'project',
-    defaultProjectBinding: true,
+    scope: 'world',
+    defaultWorldBinding: true,
   },
   update_schema: {
     description: 'Update an existing schema, including file template and attached meanings',
@@ -102,20 +102,20 @@ export const NETIOR_MCP_TOOL_SPECS = {
     kind: 'mutation',
   },
   list_meanings: {
-    description: 'List meanings for a project',
+    description: 'List meanings for a world',
     category: 'types',
     kind: 'query',
     profiles: ['discovery', 'bootstrap-execution'],
-    scope: 'project',
-    defaultProjectBinding: true,
+    scope: 'world',
+    defaultWorldBinding: true,
   },
   list_meaning_categories: {
-    description: 'List Meaning Category instances for a project. Meaning categories are schema-backed instances, not meaning string fields.',
+    description: 'List Meaning Category instances for a world. Meaning categories are schema-backed instances, not meaning string fields.',
     category: 'types',
     kind: 'query',
     profiles: ['discovery', 'bootstrap-execution'],
-    scope: 'project',
-    defaultProjectBinding: true,
+    scope: 'world',
+    defaultWorldBinding: true,
   },
   get_meaning: {
     description: 'Get a meaning by ID',
@@ -126,8 +126,8 @@ export const NETIOR_MCP_TOOL_SPECS = {
     description: 'Create an advanced custom meaning only after built-in and curated meanings are insufficient',
     category: 'types',
     kind: 'mutation',
-    scope: 'project',
-    defaultProjectBinding: true,
+    scope: 'world',
+    defaultWorldBinding: true,
   },
   update_meaning: {
     description: 'Update a meaning. Do not mutate built-in/curated meaning meaning unless explicitly requested',
@@ -144,38 +144,38 @@ export const NETIOR_MCP_TOOL_SPECS = {
     category: 'types',
     kind: 'query',
     profiles: ['discovery', 'bootstrap-execution'],
-    scope: 'project',
-    defaultProjectBinding: true,
+    scope: 'world',
+    defaultWorldBinding: true,
   },
   validate_dsl: {
     description: 'Validate a Netior DSL JSON AST expression or field behavior config',
     category: 'analysis',
     kind: 'query',
     profiles: ['discovery', 'bootstrap-execution', 'schema-field-behavior', 'interactive-view-authoring'],
-    scope: 'project',
-    defaultProjectBinding: true,
+    scope: 'world',
+    defaultWorldBinding: true,
   },
   evaluate_dsl: {
-    description: 'Evaluate a read-only Netior DSL JSON AST expression against a project context',
+    description: 'Evaluate a read-only Netior DSL JSON AST expression against a world context',
     category: 'analysis',
     kind: 'query',
     profiles: ['discovery', 'bootstrap-execution'],
-    scope: 'project',
-    defaultProjectBinding: true,
+    scope: 'world',
+    defaultWorldBinding: true,
   },
   list_instances: {
-    description: 'List or search instances in a project. Supports title query, schema narrowing, and property-based filters.',
+    description: 'List or search instances in a world. Supports title query, schema narrowing, and property-based filters.',
     category: 'instances',
     kind: 'query',
-    scope: 'project',
-    defaultProjectBinding: true,
+    scope: 'world',
+    defaultWorldBinding: true,
   },
   create_instance: {
-    description: 'Create a new instance in a project, including body content and either an icon or a profile image source',
+    description: 'Create a new instance in a world, including body content and either an icon or a profile image source',
     category: 'instances',
     kind: 'mutation',
-    scope: 'project',
-    defaultProjectBinding: true,
+    scope: 'world',
+    defaultWorldBinding: true,
   },
   update_instance: {
     description: 'Update an existing instance, including body content and either an icon or a profile image source',
@@ -203,12 +203,12 @@ export const NETIOR_MCP_TOOL_SPECS = {
     kind: 'mutation',
   },
   list_interactive_view_templates: {
-    description: 'List interactive view templates available for a project, schema, or instance',
+    description: 'List interactive view templates available for a world, schema, or instance',
     category: 'instances',
     kind: 'query',
     profiles: ['interactive-view-authoring'],
-    scope: 'project',
-    defaultProjectBinding: true,
+    scope: 'world',
+    defaultWorldBinding: true,
   },
   dry_run_interactive_view_template: {
     description: 'Validate an Interactive View Restricted TSX source and manifest without saving it',
@@ -221,8 +221,8 @@ export const NETIOR_MCP_TOOL_SPECS = {
     category: 'instances',
     kind: 'mutation',
     profiles: ['interactive-view-authoring'],
-    scope: 'project',
-    defaultProjectBinding: true,
+    scope: 'world',
+    defaultWorldBinding: true,
   },
   update_interactive_view_template: {
     description: 'Update an existing interactive view template source, manifest, scope, or validation metadata',
@@ -268,8 +268,8 @@ export const NETIOR_MCP_TOOL_SPECS = {
     category: 'files',
     kind: 'query',
     profiles: ['bootstrap-skill', 'bootstrap-interview', 'bootstrap-execution'],
-    scope: 'project',
-    defaultProjectBinding: true,
+    scope: 'world',
+    defaultWorldBinding: true,
   },
   read_file: {
     displayName: 'Read File',
@@ -277,8 +277,8 @@ export const NETIOR_MCP_TOOL_SPECS = {
     category: 'files',
     kind: 'query',
     profiles: ['bootstrap-skill', 'bootstrap-interview', 'bootstrap-execution'],
-    scope: 'project',
-    defaultProjectBinding: true,
+    scope: 'world',
+    defaultWorldBinding: true,
   },
   glob_files: {
     displayName: 'Find Files',
@@ -286,8 +286,8 @@ export const NETIOR_MCP_TOOL_SPECS = {
     category: 'search',
     kind: 'query',
     profiles: ['bootstrap-skill', 'bootstrap-interview', 'bootstrap-execution'],
-    scope: 'project',
-    defaultProjectBinding: true,
+    scope: 'world',
+    defaultWorldBinding: true,
   },
   grep_files: {
     displayName: 'Search File Contents',
@@ -295,24 +295,24 @@ export const NETIOR_MCP_TOOL_SPECS = {
     category: 'search',
     kind: 'analysis',
     profiles: ['bootstrap-skill', 'bootstrap-interview', 'bootstrap-execution'],
-    scope: 'project',
-    defaultProjectBinding: true,
+    scope: 'world',
+    defaultWorldBinding: true,
   },
   list_modules: {
-    description: 'List all modules for a project',
+    description: 'List all modules for a world',
     category: 'modules',
     kind: 'query',
     profiles: ['discovery'],
-    scope: 'project',
-    defaultProjectBinding: true,
+    scope: 'world',
+    defaultWorldBinding: true,
   },
   get_field_candidates: {
     displayName: 'Suggest Field Options',
     description: 'Get candidate values or candidate instances for a field definition. Use this before assigning relational or choice values.',
     category: 'types',
     kind: 'analysis',
-    scope: 'project',
-    defaultProjectBinding: true,
+    scope: 'world',
+    defaultWorldBinding: true,
   },
   create_network_node: {
     description: 'Create a node in a network for an existing object record, including optional node type and structured node config metadata',
@@ -330,19 +330,19 @@ export const NETIOR_MCP_TOOL_SPECS = {
     kind: 'mutation',
   },
   list_networks: {
-    description: 'List networks in a project',
+    description: 'List networks in a world',
     category: 'graph',
     kind: 'query',
     profiles: ['discovery'],
-    scope: 'project',
-    defaultProjectBinding: true,
+    scope: 'world',
+    defaultWorldBinding: true,
   },
   create_network: {
     description: 'Create a network for graph organization and navigation',
     category: 'graph',
     kind: 'mutation',
-    scope: 'project',
-    defaultProjectBinding: true,
+    scope: 'world',
+    defaultWorldBinding: true,
   },
   update_network: {
     description: 'Update a network name, scope, or parent',
@@ -367,22 +367,22 @@ export const NETIOR_MCP_TOOL_SPECS = {
     profiles: ['discovery'],
     scope: 'app',
   },
-  get_project_ontology_network: {
-    description: 'Get the Ontology network for a project',
+  get_root_network: {
+    description: 'Get the Root network for a world',
     category: 'graph',
     kind: 'query',
     profiles: ['discovery'],
-    scope: 'project',
-    defaultProjectBinding: true,
+    scope: 'world',
+    defaultWorldBinding: true,
   },
   get_network_tree: {
     displayName: 'Browse Network Tree',
-    description: 'Get the network hierarchy tree for a project',
+    description: 'Get the network hierarchy tree for a world',
     category: 'graph',
     kind: 'query',
     profiles: ['discovery'],
-    scope: 'project',
-    defaultProjectBinding: true,
+    scope: 'world',
+    defaultWorldBinding: true,
   },
   get_network_ancestors: {
     description: 'Get breadcrumb ancestors for a network',
@@ -394,16 +394,16 @@ export const NETIOR_MCP_TOOL_SPECS = {
     category: 'graph',
     kind: 'query',
     profiles: ['discovery', 'bootstrap-execution', 'network-representation-authoring'],
-    scope: 'project',
-    defaultProjectBinding: true,
+    scope: 'world',
+    defaultWorldBinding: true,
   },
   list_network_types: {
-    description: 'List built-in and project network types, including surface runtime keys',
+    description: 'List built-in and world network types, including surface runtime keys',
     category: 'graph',
     kind: 'query',
     profiles: ['discovery', 'bootstrap-execution', 'network-representation-authoring'],
-    scope: 'project',
-    defaultProjectBinding: true,
+    scope: 'world',
+    defaultWorldBinding: true,
   },
   get_network_type: {
     description: 'Get a network type grammar by ID',
@@ -416,8 +416,8 @@ export const NETIOR_MCP_TOOL_SPECS = {
     category: 'graph',
     kind: 'mutation',
     profiles: ['network-representation-authoring', 'bootstrap-execution'],
-    scope: 'project',
-    defaultProjectBinding: true,
+    scope: 'world',
+    defaultWorldBinding: true,
   },
   update_network_type: {
     description: 'Update a user-defined network type grammar',
@@ -480,32 +480,32 @@ export const NETIOR_MCP_TOOL_SPECS = {
     profiles: ['network-representation-authoring', 'bootstrap-execution'],
   },
   list_relationships: {
-    description: 'List project-level object relationships independent of network occurrence',
+    description: 'List world-level object relationships independent of network occurrence',
     category: 'graph',
     kind: 'query',
     profiles: ['discovery', 'bootstrap-execution'],
-    scope: 'project',
-    defaultProjectBinding: true,
+    scope: 'world',
+    defaultWorldBinding: true,
   },
   get_relationship: {
-    description: 'Get a project-level object relationship by ID',
+    description: 'Get a world-level object relationship by ID',
     category: 'graph',
     kind: 'query',
   },
   create_relationship: {
-    description: 'Create a project-level relationship between two object records',
+    description: 'Create a world-level relationship between two object records',
     category: 'graph',
     kind: 'mutation',
-    scope: 'project',
-    defaultProjectBinding: true,
+    scope: 'world',
+    defaultWorldBinding: true,
   },
   update_relationship: {
-    description: 'Update a project-level object relationship meaning or metadata',
+    description: 'Update a world-level object relationship meaning or metadata',
     category: 'graph',
     kind: 'mutation',
   },
   delete_relationship: {
-    description: 'Delete a project-level object relationship',
+    description: 'Delete a world-level object relationship',
     category: 'graph',
     kind: 'mutation',
   },
@@ -532,8 +532,8 @@ export const NETIOR_MCP_TOOL_SPECS = {
     category: 'files',
     kind: 'analysis',
     profiles: ['index-skill'],
-    scope: 'project',
-    defaultProjectBinding: true,
+    scope: 'world',
+    defaultWorldBinding: true,
   },
   read_pdf_pages_vision: {
     displayName: 'Read PDF with Vision',
@@ -541,8 +541,8 @@ export const NETIOR_MCP_TOOL_SPECS = {
     category: 'files',
     kind: 'analysis',
     profiles: ['index-skill'],
-    scope: 'project',
-    defaultProjectBinding: true,
+    scope: 'world',
+    defaultWorldBinding: true,
   },
   get_file_metadata: {
     displayName: 'Read File Metadata',
@@ -560,14 +560,14 @@ export const NETIOR_MCP_TOOL_SPECS = {
     profiles: ['index-skill'],
     scope: 'file',
   },
-  get_project_summary: {
-    displayName: 'Project Summary',
-    description: 'Get a summary of a project including schema, meaning, instance, and network context',
-    category: 'project',
+  get_world_summary: {
+    displayName: 'World Summary',
+    description: 'Get a summary of a world including schema, meaning, instance, and network context',
+    category: 'world',
     kind: 'analysis',
     profiles: ['discovery'],
-    scope: 'project',
-    defaultProjectBinding: true,
+    scope: 'world',
+    defaultWorldBinding: true,
   },
 } as const satisfies Record<string, NetiorMcpToolSpecEntry>;
 
@@ -601,8 +601,8 @@ function inferToolCategory(toolName: string): NarreToolCategory {
   if (toolName.includes('search') || toolName.includes('glob') || toolName.includes('grep')) {
     return 'search';
   }
-  if (toolName.includes('project')) {
-    return 'project';
+  if (toolName.includes('world')) {
+    return 'world';
   }
   return 'analysis';
 }
@@ -631,13 +631,13 @@ function inferToolScope(toolName: string): NetiorMcpToolScope {
     return 'file';
   }
   if (
-    toolName.includes('project')
+    toolName.includes('world')
     || toolName.includes('schema')
     || toolName.includes('meaning')
     || toolName.includes('instance')
     || toolName.includes('module')
   ) {
-    return 'project';
+    return 'world';
   }
   return 'mixed';
 }
@@ -654,7 +654,7 @@ function buildToolSpec(toolName: string, entry: NetiorMcpToolSpecEntry): NetiorM
     approvalMode: entry.approvalMode ?? (isMutation ? 'prompt' : 'auto'),
     profiles: entry.profiles ?? [DEFAULT_NETIOR_MCP_TOOL_PROFILE],
     scope: entry.scope ?? inferToolScope(toolName),
-    defaultProjectBinding: entry.defaultProjectBinding ?? false,
+    defaultWorldBinding: entry.defaultWorldBinding ?? false,
   };
 }
 
@@ -710,7 +710,7 @@ export function getNarreToolMetadata(toolName: string): NarreToolMetadata {
       approvalMode: spec.approvalMode,
       profiles: spec.profiles,
       scope: spec.scope,
-      defaultProjectBinding: spec.defaultProjectBinding,
+      defaultWorldBinding: spec.defaultWorldBinding,
     };
   }
 
@@ -723,6 +723,6 @@ export function getNarreToolMetadata(toolName: string): NarreToolMetadata {
     approvalMode: kind === 'mutation' ? 'prompt' : 'auto',
     profiles: [DEFAULT_NETIOR_MCP_TOOL_PROFILE],
     scope: inferToolScope(normalizedToolName),
-    defaultProjectBinding: false,
+    defaultWorldBinding: false,
   };
 }

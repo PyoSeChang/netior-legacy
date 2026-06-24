@@ -60,9 +60,10 @@ import { migrate057 } from './migrations/057-meaning-ontology-node-metadata';
 import { migrate058 } from './migrations/058-remove-field-behavior-meanings';
 import { migrate059 } from './migrations/059-add-dependency-meaning';
 import { migrate060 } from './migrations/060-network-owned-ontology-scope';
+import { migrate061 } from './migrations/061-root-network-world-boundary';
 import {
-  ensureProjectNodeInUniverseForDb,
-  ensureProjectOntologyNetworkForDb,
+  ensureRootNetworkNodeInUniverseForDb,
+  syncRootNetworkOntologyForDb,
   ensureUniverseNetworkForDb,
 } from './repositories/system-networks';
 
@@ -133,6 +134,7 @@ const migrations: Migration[] = [
   { version: 58, migrate: migrate058 },
   { version: 59, migrate: migrate059 },
   { version: 60, migrate: migrate060 },
+  { version: 61, migrate: migrate061 },
 ];
 
 export function hasColumn(db: Database.Database, table: string, column: string): boolean {
@@ -227,10 +229,10 @@ export function initDatabase(dbPath: string, options?: InitDatabaseOptions): voi
 
   ensureUniverseNetworkForDb(db);
 
-  const projectRows = db.prepare('SELECT id FROM projects').all() as { id: string }[];
-  for (const project of projectRows) {
-    ensureProjectOntologyNetworkForDb(db, project.id);
-    ensureProjectNodeInUniverseForDb(db, project.id);
+  const worldRows = db.prepare("SELECT id FROM networks WHERE kind = 'root'").all() as { id: string }[];
+  for (const world of worldRows) {
+    syncRootNetworkOntologyForDb(db, world.id);
+    ensureRootNetworkNodeInUniverseForDb(db, world.id);
   }
 }
 

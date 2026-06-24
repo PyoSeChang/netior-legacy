@@ -1,4 +1,4 @@
-import { registerProjectIpc } from './project-ipc';
+import { registerWorldIpc } from './world-ipc';
 import { registerInstanceIpc } from './instance-ipc';
 import { registerNetworkIpc } from './network-ipc';
 import { registerLayoutIpc } from './layout-ipc';
@@ -20,7 +20,7 @@ import { registerAgentDefinitionIpc } from './agent-definition-ipc';
 import { registerDslIpc } from './dsl-ipc';
 
 export function registerAllIpc(): void {
-  registerProjectIpc();
+  registerWorldIpc();
   registerInstanceIpc();
   registerNetworkIpc();
   registerLayoutIpc();

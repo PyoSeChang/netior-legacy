@@ -80,7 +80,7 @@ export const SHORTCUT_REGISTRY: ShortcutDefinition[] = [
     owner: 'globalDispatcher',
     priority: 'global',
     implemented: true,
-    whenKey: 'shortcuts.when.projectOpen',
+    whenKey: 'shortcuts.when.worldOpen',
   },
   {
     id: 'shortcut.global.nextTab',

@@ -9,12 +9,12 @@ export async function getFileEntity(id: string): Promise<FileEntity | undefined>
   return unwrapIpc(await window.electron.fileEntity.get(id));
 }
 
-export async function getFileEntityByPath(projectId: string, path: string): Promise<FileEntity | undefined> {
-  return unwrapIpc(await window.electron.fileEntity.getByPath(projectId, path));
+export async function getFileEntityByPath(rootNetworkId: string, path: string): Promise<FileEntity | undefined> {
+  return unwrapIpc(await window.electron.fileEntity.getByPath(rootNetworkId, path));
 }
 
-export async function getFileEntitiesByProject(projectId: string): Promise<FileEntity[]> {
-  return unwrapIpc(await window.electron.fileEntity.getByProject(projectId));
+export async function getFileEntitiesByWorld(rootNetworkId: string): Promise<FileEntity[]> {
+  return unwrapIpc(await window.electron.fileEntity.getByRootNetwork(rootNetworkId));
 }
 
 export async function updateFileEntity(id: string, data: FileEntityUpdate): Promise<FileEntity> {
@@ -29,7 +29,7 @@ export const fileService = {
   create: createFileEntity,
   get: getFileEntity,
   getByPath: getFileEntityByPath,
-  getByProject: getFileEntitiesByProject,
+  getByRootNetwork: getFileEntitiesByWorld,
   update: updateFileEntity,
   delete: deleteFileEntity,
 };

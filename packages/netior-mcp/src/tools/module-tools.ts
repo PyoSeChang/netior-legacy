@@ -1,15 +1,15 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { listModules } from '../netior-service-client.js';
-import { projectIdSchema, registerNetiorTool, resolveProjectId } from './shared-tool-registry.js';
+import { rootNetworkIdSchema, registerNetiorTool, resolveRootNetworkId } from './shared-tool-registry.js';
 
 export function registerModuleTools(server: McpServer): void {
   registerNetiorTool(
     server,
     'list_modules',
-    { project_id: projectIdSchema() },
-    async ({ project_id }) => {
+    { root_network_id: rootNetworkIdSchema() },
+    async ({ root_network_id }) => {
       try {
-        const result = await listModules(resolveProjectId(project_id));
+        const result = await listModules(resolveRootNetworkId(root_network_id));
         return {
           content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
         };

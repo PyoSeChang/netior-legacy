@@ -15,29 +15,29 @@ import type {
 
 const DEFAULT_JSON = '{}';
 
-function assertProjectOwned(kind: string, row: { source_kind: string; key: string }): void {
-  if (row.source_kind !== 'project') {
+function assertWorldOwned(kind: string, row: { source_kind: string; key: string }): void {
+  if (row.source_kind !== 'world') {
     throw new Error(`Built-in ${kind} cannot be mutated: ${row.key}`);
   }
 }
 
 function sourceKind(value: OntologySourceKind | undefined): OntologySourceKind {
-  return value ?? 'project';
+  return value ?? 'world';
 }
 
-export function listNetworkTypes(projectId?: string | null): NetworkType[] {
+export function listNetworkTypes(rootNetworkId?: string | null): NetworkType[] {
   const db = getDatabase();
-  if (projectId) {
+  if (rootNetworkId) {
     return db.prepare(
       `SELECT * FROM network_types
-        WHERE project_id IS NULL OR project_id = ?
+        WHERE root_network_id IS NULL OR root_network_id = ?
         ORDER BY CASE source_kind WHEN 'system' THEN 0 ELSE 1 END, name`,
-    ).all(projectId) as NetworkType[];
+    ).all(rootNetworkId) as NetworkType[];
   }
 
   return db.prepare(
     `SELECT * FROM network_types
-      WHERE project_id IS NULL
+      WHERE root_network_id IS NULL
       ORDER BY CASE source_kind WHEN 'system' THEN 0 ELSE 1 END, name`,
   ).all() as NetworkType[];
 }
@@ -47,19 +47,19 @@ export function getNetworkType(id: string): NetworkType | undefined {
   return db.prepare('SELECT * FROM network_types WHERE id = ?').get(id) as NetworkType | undefined;
 }
 
-export function getNetworkTypeByKey(key: string, projectId?: string | null): NetworkType | undefined {
+export function getNetworkTypeByKey(key: string, rootNetworkId?: string | null): NetworkType | undefined {
   const db = getDatabase();
-  if (projectId) {
+  if (rootNetworkId) {
     return db.prepare(
       `SELECT * FROM network_types
-        WHERE key = ? AND (project_id = ? OR project_id IS NULL)
-        ORDER BY CASE WHEN project_id = ? THEN 0 ELSE 1 END
+        WHERE key = ? AND (root_network_id = ? OR root_network_id IS NULL)
+        ORDER BY CASE WHEN root_network_id = ? THEN 0 ELSE 1 END
         LIMIT 1`,
-    ).get(key, projectId, projectId) as NetworkType | undefined;
+    ).get(key, rootNetworkId, rootNetworkId) as NetworkType | undefined;
   }
 
   return db.prepare(
-    `SELECT * FROM network_types WHERE key = ? AND project_id IS NULL LIMIT 1`,
+    `SELECT * FROM network_types WHERE key = ? AND root_network_id IS NULL LIMIT 1`,
   ).get(key) as NetworkType | undefined;
 }
 
@@ -70,13 +70,13 @@ export function createNetworkType(data: NetworkTypeCreate): NetworkType {
 
   db.prepare(`
     INSERT INTO network_types (
-      id, project_id, key, name, description, source_kind, source_id, source_ref,
+      id, root_network_id, key, name, description, source_kind, source_id, source_ref,
       source_version, surface_runtime, grammar_json, created_at, updated_at
     )
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     id,
-    data.project_id ?? null,
+    data.root_network_id ?? null,
     data.key,
     data.name,
     data.description ?? null,
@@ -97,7 +97,7 @@ export function updateNetworkType(id: string, data: NetworkTypeUpdate): NetworkT
   const db = getDatabase();
   const existing = getNetworkType(id);
   if (!existing) return undefined;
-  assertProjectOwned('network type', existing);
+  assertWorldOwned('network type', existing);
 
   db.prepare(`
     UPDATE network_types
@@ -121,7 +121,7 @@ export function deleteNetworkType(id: string): boolean {
   const db = getDatabase();
   const existing = getNetworkType(id);
   if (!existing) return false;
-  assertProjectOwned('network type', existing);
+  assertWorldOwned('network type', existing);
   const result = db.prepare('DELETE FROM network_types WHERE id = ?').run(id);
   return result.changes > 0;
 }
@@ -177,7 +177,7 @@ export function updateNodeType(id: string, data: NetworkNodeTypeUpdate): Network
   const db = getDatabase();
   const existing = getNodeType(id);
   if (!existing) return undefined;
-  assertProjectOwned('node type', existing);
+  assertWorldOwned('node type', existing);
 
   db.prepare(`
     UPDATE node_types
@@ -211,7 +211,7 @@ export function deleteNodeType(id: string): boolean {
   const db = getDatabase();
   const existing = getNodeType(id);
   if (!existing) return false;
-  assertProjectOwned('node type', existing);
+  assertWorldOwned('node type', existing);
   const result = db.prepare('DELETE FROM node_types WHERE id = ?').run(id);
   return result.changes > 0;
 }
@@ -266,7 +266,7 @@ export function updateEdgeType(id: string, data: NetworkEdgeTypeUpdate): Network
   const db = getDatabase();
   const existing = getEdgeType(id);
   if (!existing) return undefined;
-  assertProjectOwned('edge type', existing);
+  assertWorldOwned('edge type', existing);
 
   db.prepare(`
     UPDATE edge_types
@@ -298,7 +298,7 @@ export function deleteEdgeType(id: string): boolean {
   const db = getDatabase();
   const existing = getEdgeType(id);
   if (!existing) return false;
-  assertProjectOwned('edge type', existing);
+  assertWorldOwned('edge type', existing);
   const result = db.prepare('DELETE FROM edge_types WHERE id = ?').run(id);
   return result.changes > 0;
 }

@@ -237,7 +237,7 @@ async function healHierarchyOrphans(networkId: string): Promise<void> {
         network_id: networkId,
         source_node_id: directContainerId,
         target_node_id: node.id,
-        meaning_id: systemEdgeMeaningId(full.network.project_id, HIERARCHY_PARENT_MEANING_KEY),
+        meaning_id: systemEdgeMeaningId(full.network.root_network_id, HIERARCHY_PARENT_MEANING_KEY),
       });
     }
   }
@@ -288,8 +288,8 @@ interface NetworkStore {
 
   // Network CRUD
   loadUniverseWorkspace: () => Promise<Network | null>;
-  loadNetworks: (projectId: string) => Promise<void>;
-  loadNetworkTree: (projectId: string) => Promise<void>;
+  loadNetworks: (rootNetworkId: string) => Promise<void>;
+  loadNetworkTree: (rootNetworkId: string) => Promise<void>;
   createNetwork: (data: NetworkCreate) => Promise<Network>;
   openNetwork: (networkId: string) => Promise<void>;
   updateNetwork: (id: string, data: NetworkUpdate) => Promise<void>;
@@ -343,13 +343,13 @@ export const useNetworkStore = create<NetworkStore>((set, get) => ({
     return universe ?? null;
   },
 
-  loadNetworks: async (projectId) => {
-    const networks = await networkService.list(projectId);
+  loadNetworks: async (rootNetworkId) => {
+    const networks = await networkService.list(rootNetworkId);
     set({ networks });
   },
 
-  loadNetworkTree: async (projectId) => {
-    const tree = await networkService.getTree(projectId);
+  loadNetworkTree: async (rootNetworkId) => {
+    const tree = await networkService.getTree(rootNetworkId);
     set({ networkTree: tree });
   },
 
@@ -473,8 +473,8 @@ export const useNetworkStore = create<NetworkStore>((set, get) => ({
     const nodeById = new Map(nodes.map((candidate) => [candidate.id, candidate]));
     const hierarchyContainerIds = getHierarchyContainerIds(nodes);
     const hierarchyParentByChild = buildHierarchyParentMap(nodes, edges, containsParentByChild);
-    const containsModelId = systemEdgeMeaningId(currentNetwork?.project_id, CONTAINS_MEANING_KEY);
-    const hierarchyParentModelId = systemEdgeMeaningId(currentNetwork?.project_id, HIERARCHY_PARENT_MEANING_KEY);
+    const containsModelId = systemEdgeMeaningId(currentNetwork?.root_network_id, CONTAINS_MEANING_KEY);
+    const hierarchyParentModelId = systemEdgeMeaningId(currentNetwork?.root_network_id, HIERARCHY_PARENT_MEANING_KEY);
 
     const outerContainerId = containsParentByChild.get(id) ?? null;
     const directContainedEdges = edges.filter(
@@ -633,7 +633,7 @@ export const useNetworkStore = create<NetworkStore>((set, get) => ({
           network_id: edge.network_id,
           source_node_id: hierarchyContainerId,
           target_node_id: edge.target_node_id,
-          meaning_id: systemEdgeMeaningId(currentNetwork?.project_id, HIERARCHY_PARENT_MEANING_KEY),
+          meaning_id: systemEdgeMeaningId(currentNetwork?.root_network_id, HIERARCHY_PARENT_MEANING_KEY),
         });
       }
     }

@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { useI18n } from '../../hooks/useI18n';
 import { useAnchoredDropdown } from '../../hooks/useAnchoredDropdown';
-import { useProjectStore } from '../../stores/project-store';
+import { useWorldStore } from '../../stores/world-store';
 import { useInstanceStore } from '../../stores/instance-store';
 import { useNetworkStore } from '../../stores/network-store';
 import { useMeaningStore } from '../../stores/meaning-store';
@@ -215,7 +215,7 @@ export function ObjectPanel({ types }: ObjectPanelProps = {}): JSX.Element {
   const { t } = useI18n();
   const display = useMemo(() => createOntologyDisplayResolver(t), [t]);
   const tk = (key: string) => t(key as TranslationKey);
-  const currentProject = useProjectStore((state) => state.currentProject);
+  const currentWorld = useWorldStore((state) => state.currentWorld);
   const currentNetwork = useNetworkStore((state) => state.currentNetwork);
   const networks = useNetworkStore((state) => state.networks);
   const instances = useInstanceStore((state) => state.instances);
@@ -288,7 +288,7 @@ export function ObjectPanel({ types }: ObjectPanelProps = {}): JSX.Element {
         kind: 'object',
         objectType: 'network',
         title: network.name,
-        subtitle: network.kind === 'ontology' ? 'Ontology' : network.kind === 'universe' ? 'Universe' : 'Network',
+        subtitle: network.kind === 'root' ? 'Root Network' : network.kind === 'universe' ? 'Universe' : 'Network',
         isActive: currentNetwork?.id === network.id,
         networkKind: network.kind,
       },
@@ -439,10 +439,10 @@ export function ObjectPanel({ types }: ObjectPanelProps = {}): JSX.Element {
         break;
       case 'network':
         await openNetwork(item.id);
-        await openNetworkViewerTab({ networkId: item.id, title: item.title, projectId: currentProject?.id ?? null });
+        await openNetworkViewerTab({ networkId: item.id, title: item.title, rootNetworkId: currentWorld?.id ?? null });
         break;
       case 'meaning':
-        await useEditorStore.getState().openTab({ type: 'meaning', targetId: item.id, title: item.title, projectId: currentProject?.id });
+        await useEditorStore.getState().openTab({ type: 'meaning', targetId: item.id, title: item.title, rootNetworkId: currentWorld?.id });
         break;
       case 'context':
         await useEditorStore.getState().openTab({ type: 'context', targetId: item.id, title: item.title });
@@ -469,7 +469,7 @@ export function ObjectPanel({ types }: ObjectPanelProps = {}): JSX.Element {
   };
 
   const handleCreateObject = async (objectType: PanelObjectType | null = primaryType) => {
-    if (!currentProject || !objectType || !canCreateObjectType(objectType)) return;
+    if (!currentWorld || !objectType || !canCreateObjectType(objectType)) return;
     expandSection(objectType);
     switch (objectType) {
       case 'instance': {
@@ -484,22 +484,22 @@ export function ObjectPanel({ types }: ObjectPanelProps = {}): JSX.Element {
       }
       case 'network': {
         const created = await createNetwork({
-          project_id: currentProject.id,
+          root_network_id: currentWorld.id,
           name: t('network.defaultName'),
         });
-        await loadNetworkTree(currentProject.id);
+        await loadNetworkTree(currentWorld.id);
         await openNetwork(created.id);
         await openNetworkViewerTab({
           networkId: created.id,
           title: created.name,
-          projectId: currentProject.id,
+          rootNetworkId: currentWorld.id,
           isDirty: true,
         });
         break;
       }
       case 'meaning': {
-        const created = await createMeaning({ project_id: currentProject.id, name: t('meaning.newDefault' as never) });
-        await useEditorStore.getState().openTab({ type: 'meaning', targetId: created.id, title: created.name, projectId: currentProject.id, isDirty: true });
+        const created = await createMeaning({ root_network_id: currentWorld.id, name: t('meaning.newDefault' as never) });
+        await useEditorStore.getState().openTab({ type: 'meaning', targetId: created.id, title: created.name, rootNetworkId: currentWorld.id, isDirty: true });
         break;
       }
       case 'context': {
@@ -517,7 +517,7 @@ export function ObjectPanel({ types }: ObjectPanelProps = {}): JSX.Element {
         break;
       case 'network':
         await deleteNetwork(item.id);
-        if (currentProject) await loadNetworkTree(currentProject.id);
+        if (currentWorld) await loadNetworkTree(currentWorld.id);
         break;
       case 'meaning':
         await deleteMeaning(item.id);
@@ -649,7 +649,7 @@ export function ObjectPanel({ types }: ObjectPanelProps = {}): JSX.Element {
       case 'instance':
         return <CircleDot size={14} className="shrink-0 text-secondary" />;
       case 'network':
-        if (row.item.networkKind === 'ontology') {
+        if (row.item.networkKind === 'root') {
           return <Boxes size={14} className="shrink-0 text-secondary" />;
         }
         return <Waypoints size={14} className="shrink-0 text-secondary" />;

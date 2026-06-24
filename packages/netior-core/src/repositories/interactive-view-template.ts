@@ -15,7 +15,7 @@ function normalizeTargetId(targetKind: InteractiveViewTemplateCreate['target_kin
   return targetId ?? null;
 }
 
-function assertTemplateTarget(projectId: string, targetKind: string, targetId: string | null): void {
+function assertTemplateTarget(rootNetworkId: string, targetKind: string, targetId: string | null): void {
   const db = getDatabase();
 
   if (targetKind !== 'schema' && targetKind !== 'instance') {
@@ -27,13 +27,13 @@ function assertTemplateTarget(projectId: string, targetKind: string, targetId: s
   }
 
   if (targetKind === 'schema') {
-    const schema = db.prepare('SELECT id FROM schemas WHERE id = ? AND project_id = ?').get(targetId, projectId);
+    const schema = db.prepare('SELECT id FROM schemas WHERE id = ? AND root_network_id = ?').get(targetId, rootNetworkId);
     if (!schema) throw new Error(`Schema not found for interactive view template: ${targetId}`);
     return;
   }
 
   if (targetKind === 'instance') {
-    const instance = db.prepare('SELECT id FROM instances WHERE id = ? AND project_id = ?').get(targetId, projectId);
+    const instance = db.prepare('SELECT id FROM instances WHERE id = ? AND root_network_id = ?').get(targetId, rootNetworkId);
     if (!instance) throw new Error(`Instance not found for interactive view template: ${targetId}`);
   }
 }
@@ -41,7 +41,7 @@ function assertTemplateTarget(projectId: string, targetKind: string, targetId: s
 export function listInteractiveViewTemplates(query: InteractiveViewTemplateListQuery): InteractiveViewTemplate[] {
   const db = getDatabase();
   const targetClauses: string[] = [];
-  const params: unknown[] = [query.projectId];
+  const params: unknown[] = [query.rootNetworkId];
 
   if (query.schemaId) {
     targetClauses.push('(target_kind = ? AND target_id = ?)');
@@ -60,7 +60,7 @@ export function listInteractiveViewTemplates(query: InteractiveViewTemplateListQ
   return db.prepare(
     `SELECT *
      FROM interactive_view_templates
-     WHERE project_id = ?
+     WHERE root_network_id = ?
        AND enabled = 1
        AND target_kind IN ('schema', 'instance')
        AND (${targetClauses.join(' OR ')})
@@ -82,18 +82,18 @@ export function createInteractiveViewTemplate(data: InteractiveViewTemplateCreat
   const id = randomUUID();
   const now = new Date().toISOString();
   const targetId = normalizeTargetId(data.target_kind, data.target_id);
-  assertTemplateTarget(data.project_id, data.target_kind, targetId);
+  assertTemplateTarget(data.root_network_id, data.target_kind, targetId);
 
   db.prepare(
     `INSERT INTO interactive_view_templates (
-       id, project_id, target_kind, target_id, name, description, source_code,
+       id, root_network_id, target_kind, target_id, name, description, source_code,
        manifest_json, source_kind, trust_level, default_runtime, enabled,
        validation_status, validation_errors_json, created_at, updated_at
      )
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     id,
-    data.project_id,
+    data.root_network_id,
     data.target_kind,
     targetId,
     data.name,
@@ -125,7 +125,7 @@ export function updateInteractiveViewTemplate(
   const nextTargetId = Object.prototype.hasOwnProperty.call(data, 'target_id')
     ? normalizeTargetId(nextTargetKind, data.target_id)
     : normalizeTargetId(nextTargetKind, current.target_id);
-  assertTemplateTarget(current.project_id, nextTargetKind, nextTargetId);
+  assertTemplateTarget(current.root_network_id, nextTargetKind, nextTargetId);
 
   db.prepare(
     `UPDATE interactive_view_templates
@@ -178,8 +178,8 @@ export function getInteractiveViewPreference(instanceId: string): InteractiveVie
 
 export function upsertInteractiveViewPreference(data: InteractiveViewPreferenceUpsert): InteractiveViewPreference {
   const db = getDatabase();
-  const instance = db.prepare('SELECT id, project_id FROM instances WHERE id = ?').get(data.instance_id) as
-    | { id: string; project_id: string }
+  const instance = db.prepare('SELECT id, root_network_id FROM instances WHERE id = ?').get(data.instance_id) as
+    | { id: string; root_network_id: string }
     | undefined;
   if (!instance) {
     throw new Error(`Instance not found for interactive view preference upsert: ${data.instance_id}`);
@@ -194,14 +194,14 @@ export function upsertInteractiveViewPreference(data: InteractiveViewPreferenceU
   }
   if (data.selected_view_template_id) {
     const template = getInteractiveViewTemplate(data.selected_view_template_id);
-    if (!template || template.project_id !== instance.project_id) {
+    if (!template || template.root_network_id !== instance.root_network_id) {
       throw new Error(`Interactive view template not found for instance preference: ${data.selected_view_template_id}`);
     }
   }
 
   db.prepare(
     `INSERT INTO interactive_view_preferences (
-       id, project_id, instance_id, preference_mode, selected_view_template_id, created_at, updated_at
+       id, root_network_id, instance_id, preference_mode, selected_view_template_id, created_at, updated_at
      )
      VALUES (?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(instance_id) DO UPDATE SET
@@ -210,7 +210,7 @@ export function upsertInteractiveViewPreference(data: InteractiveViewPreferenceU
        updated_at = excluded.updated_at`,
   ).run(
     id,
-    instance.project_id,
+    instance.root_network_id,
     data.instance_id,
     preferenceMode,
     data.selected_view_template_id,
@@ -232,8 +232,8 @@ export function upsertInteractiveViewSchemaPreference(
   data: InteractiveViewSchemaPreferenceUpsert,
 ): InteractiveViewSchemaPreference {
   const db = getDatabase();
-  const schema = db.prepare('SELECT id, project_id FROM schemas WHERE id = ?').get(data.schema_id) as
-    | { id: string; project_id: string }
+  const schema = db.prepare('SELECT id, root_network_id FROM schemas WHERE id = ?').get(data.schema_id) as
+    | { id: string; root_network_id: string }
     | undefined;
   if (!schema) {
     throw new Error(`Schema not found for interactive view schema preference upsert: ${data.schema_id}`);
@@ -241,7 +241,7 @@ export function upsertInteractiveViewSchemaPreference(
 
   if (data.selected_view_template_id) {
     const template = getInteractiveViewTemplate(data.selected_view_template_id);
-    if (!template || template.project_id !== schema.project_id) {
+    if (!template || template.root_network_id !== schema.root_network_id) {
       throw new Error(`Interactive view template not found for schema preference: ${data.selected_view_template_id}`);
     }
   }
@@ -251,7 +251,7 @@ export function upsertInteractiveViewSchemaPreference(
 
   db.prepare(
     `INSERT INTO interactive_view_schema_preferences (
-       id, project_id, schema_id, selected_view_template_id, created_at, updated_at
+       id, root_network_id, schema_id, selected_view_template_id, created_at, updated_at
      )
      VALUES (?, ?, ?, ?, ?, ?)
      ON CONFLICT(schema_id) DO UPDATE SET
@@ -259,7 +259,7 @@ export function upsertInteractiveViewSchemaPreference(
        updated_at = excluded.updated_at`,
   ).run(
     id,
-    schema.project_id,
+    schema.root_network_id,
     data.schema_id,
     data.selected_view_template_id,
     now,

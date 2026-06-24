@@ -19,7 +19,7 @@ import {
 } from './agent-display';
 
 interface NarreHomeProps {
-  projectId: string;
+  rootNetworkId: string;
   onSelectSession: (sessionId: string, agentKey?: string | null) => void;
   onNewChat: (agentKey: string) => void;
   onStartAgentTeam: () => void;
@@ -46,7 +46,7 @@ function formatRelativeTime(dateStr: string): string {
 function getAgentKey(agent: AgentDefinition): string {
   if (agent.kind === 'terminal') return `terminal:${agent.terminalAgentType}:${agent.id}`;
   if (agent.narreAgentType === 'system') return `narre:system:${agent.systemAgentType}:${agent.id}`;
-  if (agent.userAgentType === 'project') return `narre:user:project:${agent.projectId}:${agent.id}`;
+  if (agent.userAgentType === 'world') return `narre:user:world:${agent.rootNetworkId}:${agent.id}`;
   return `narre:user:global:${agent.id}`;
 }
 
@@ -82,11 +82,11 @@ function userAgentRecordToAgentDefinition(record: UserAgentRecord): AgentDefinit
     },
   };
 
-  if (record.userAgentType === 'project') {
+  if (record.userAgentType === 'world') {
     return {
       ...base,
-      userAgentType: 'project',
-      projectId: record.projectId ?? '',
+      userAgentType: 'world',
+      rootNetworkId: record.rootNetworkId ?? '',
     };
   }
 
@@ -97,7 +97,7 @@ function userAgentRecordToAgentDefinition(record: UserAgentRecord): AgentDefinit
 }
 
 export function NarreHome({
-  projectId,
+  rootNetworkId,
   onSelectSession,
   onNewChat,
   onStartAgentTeam,
@@ -121,11 +121,11 @@ export function NarreHome({
     setError(null);
     try {
       const [nextSessions, nextAgents, nextAgentSessions] = await Promise.all([
-        narreService.listSessions(projectId),
-        narreService.listSupervisorAgents(projectId),
+        narreService.listSessions(rootNetworkId),
+        narreService.listSupervisorAgents(rootNetworkId),
         narreService.listSupervisorSessions(),
       ]);
-      const nextUserAgents = await agentService.listDefinitions(projectId);
+      const nextUserAgents = await agentService.listDefinitions(rootNetworkId);
       setSessions(nextSessions);
       setAgents(nextAgents);
       setUserAgents(nextUserAgents);
@@ -139,19 +139,19 @@ export function NarreHome({
 
   useEffect(() => {
     void load();
-  }, [projectId]);
+  }, [rootNetworkId]);
 
   const activeByAgentKey = useMemo(() => {
     const map = new Map<string, SupervisorAgentSessionSnapshot>();
     for (const session of agentSessions) {
-      if (session.projectId && session.projectId !== projectId) continue;
+      if (session.rootNetworkId && session.rootNetworkId !== rootNetworkId) continue;
       const current = map.get(session.agentKey);
       if (!current || current.updatedAt < session.updatedAt) {
         map.set(session.agentKey, session);
       }
     }
     return map;
-  }, [agentSessions, projectId]);
+  }, [agentSessions, rootNetworkId]);
 
   const sortedSessions = useMemo(
     () => [...sessions].sort((a, b) => b.last_message_at.localeCompare(a.last_message_at)),
@@ -209,7 +209,7 @@ export function NarreHome({
     setRenamingSessionId(session.id);
     setError(null);
     try {
-      const updated = await narreService.updateSessionTitle(projectId, session.id, title);
+      const updated = await narreService.updateSessionTitle(rootNetworkId, session.id, title);
       setSessions((current) => current.map((item) => item.id === updated.id ? updated : item));
       cancelRenameSession();
     } catch (err) {

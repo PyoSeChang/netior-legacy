@@ -56,20 +56,20 @@ function flattenToolCalls(transcript: Transcript): ToolCallTraceItem[] {
   );
 }
 
-function hasProjectBindingKey(value: unknown): boolean {
+function hasWorldBindingKey(value: unknown): boolean {
   if (!value || typeof value !== 'object') {
     return false;
   }
 
   if (Array.isArray(value)) {
-    return value.some(hasProjectBindingKey);
+    return value.some(hasWorldBindingKey);
   }
 
   return Object.entries(value as Record<string, unknown>).some(([key, nested]) => {
-    if (key === 'project_id' || key === 'projectId') {
+    if (key === 'root_network_id' || key === 'rootNetworkId') {
       return true;
     }
-    return hasProjectBindingKey(nested);
+    return hasWorldBindingKey(nested);
   });
 }
 
@@ -104,7 +104,7 @@ export function emptyScenarioAnalysis(): ScenarioAnalysis {
         discoveryCallCount: 0,
         promptRedundantLookupCount: 0,
         repeatedLookupGroupCount: 0,
-        projectBindingViolationCount: 0,
+        worldBindingViolationCount: 0,
         overBudget: false,
         budgetLimit: 0,
       },
@@ -172,7 +172,7 @@ export function analyzeScenario(
     findings.push({
       kind: 'prompt_digest_redundant_lookup',
       severity: discoveryCalls.length >= 3 ? 'warn' : 'info',
-      message: 'Discovery tools were used even though project schema and hierarchy digest should already be present in the system prompt.',
+      message: 'Discovery tools were used even though world schema and hierarchy digest should already be present in the system prompt.',
       tools: [...new Set(discoveryCalls.map((toolCall) => toolCall.tool))],
       count: discoveryCalls.length,
       turnIndexes: [...new Set(discoveryCalls.map((toolCall) => toolCall.turnIndex))],
@@ -183,7 +183,7 @@ export function analyzeScenario(
     findings.push({
       kind: 'broad_discovery_overuse',
       severity: 'warn',
-      message: 'Broad discovery lookups were used repeatedly. Prefer prompt digest and targeted inspection before project-wide discovery.',
+      message: 'Broad discovery lookups were used repeatedly. Prefer prompt digest and targeted inspection before world-scope discovery.',
       tools: [...new Set(discoveryCalls.map((toolCall) => toolCall.tool))],
       count: discoveryCalls.length,
       turnIndexes: [...new Set(discoveryCalls.map((toolCall) => toolCall.turnIndex))],
@@ -215,15 +215,15 @@ export function analyzeScenario(
     });
   }
 
-  const projectBindingViolations = toolCalls.filter((toolCall) => {
+  const worldBindingViolations = toolCalls.filter((toolCall) => {
     const spec = getNetiorMcpToolSpec(toolCall.tool);
-    return Boolean(spec?.defaultProjectBinding) && hasProjectBindingKey(toolCall.input);
+    return Boolean(spec?.defaultWorldBinding) && hasWorldBindingKey(toolCall.input);
   });
-  for (const violation of projectBindingViolations) {
+  for (const violation of worldBindingViolations) {
     findings.push({
-      kind: 'project_binding_violation',
+      kind: 'world_binding_violation',
       severity: 'warn',
-      message: `Tool "${violation.tool}" explicitly passed project_id even though current-project binding should be used by default.`,
+      message: `Tool "${violation.tool}" explicitly passed root_network_id even though current-world binding should be used by default.`,
       tools: [violation.tool],
       count: 1,
       turnIndexes: [violation.turnIndex],
@@ -249,7 +249,7 @@ export function analyzeScenario(
       discoveryCallCount: discoveryCalls.length,
       promptRedundantLookupCount: discoveryCalls.length,
       repeatedLookupGroupCount: repeatedLookups.length,
-      projectBindingViolationCount: projectBindingViolations.length,
+      worldBindingViolationCount: worldBindingViolations.length,
       overBudget: toolCalls.length > budgetLimit,
       budgetLimit,
     },
@@ -275,8 +275,8 @@ export function buildAnalysisMetrics(analysis: ScenarioAnalysis): Record<string,
       source: 'derived',
       confidence: 'exact',
     },
-    project_binding_violation_count: {
-      value: analysis.toolUse.summary.projectBindingViolationCount,
+    world_binding_violation_count: {
+      value: analysis.toolUse.summary.worldBindingViolationCount,
       source: 'derived',
       confidence: 'exact',
     },

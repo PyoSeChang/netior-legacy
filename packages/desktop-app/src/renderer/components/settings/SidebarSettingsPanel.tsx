@@ -14,9 +14,9 @@ import {
   ACTIVITY_BAR_BOTTOM_ITEM_DEFINITIONS,
   ACTIVITY_BAR_TOP_ITEM_DEFINITIONS,
 } from '../../lib/activity-bar-items';
-import { getProjectNetworkBookmarkIds } from '../../lib/activity-bar-layout';
+import { getWorldNetworkBookmarkIds } from '../../lib/activity-bar-layout';
 import { useNetworkStore } from '../../stores/network-store';
-import { useProjectStore } from '../../stores/project-store';
+import { useWorldStore } from '../../stores/world-store';
 import { useActivityBarStore } from '../../stores/activity-bar-store';
 import { Button } from '../ui/Button';
 
@@ -25,7 +25,7 @@ function getSectionId(label: string): string {
 }
 
 function getNetworkIcon(network: Network): LucideIcon {
-  return network.kind === 'ontology' ? Boxes : Waypoints;
+  return network.kind === 'root' ? Boxes : Waypoints;
 }
 
 function MoveButtons({
@@ -116,7 +116,7 @@ function ReorderableRow({
 
 export function SidebarSettingsPanel(): JSX.Element {
   const { t } = useI18n();
-  const currentProject = useProjectStore((state) => state.currentProject);
+  const currentWorld = useWorldStore((state) => state.currentWorld);
   const networks = useNetworkStore((state) => state.networks);
   const loadNetworks = useNetworkStore((state) => state.loadNetworks);
   const config = useActivityBarStore((state) => state.config);
@@ -132,12 +132,12 @@ export function SidebarSettingsPanel(): JSX.Element {
   }, [ensureLoaded]);
 
   useEffect(() => {
-    if (!currentProject) {
+    if (!currentWorld) {
       return;
     }
 
-    void loadNetworks(currentProject.id);
-  }, [currentProject?.id, currentProject, loadNetworks]);
+    void loadNetworks(currentWorld.id);
+  }, [currentWorld?.id, currentWorld, loadNetworks]);
 
   const moveUpLabel = t('settings.sidebarMoveUp' as never);
   const moveDownLabel = t('settings.sidebarMoveDown' as never);
@@ -145,29 +145,29 @@ export function SidebarSettingsPanel(): JSX.Element {
   const bookmarkedNetworksTitle = t('settings.sidebarBookmarkedNetworks' as never);
   const bottomItemsTitle = t('settings.sidebarBottomItems' as never);
 
-  const projectNetworks = useMemo(
-    () => currentProject
-      ? networks.filter((network) => network.project_id === currentProject.id)
+  const worldNetworks = useMemo(
+    () => currentWorld
+      ? networks.filter((network) => network.root_network_id === currentWorld.id)
         .filter((network) => network.kind === 'network')
       : [],
-    [currentProject, networks],
+    [currentWorld, networks],
   );
 
-  const bookmarkIds = currentProject
-    ? getProjectNetworkBookmarkIds(config, currentProject.id)
+  const bookmarkIds = currentWorld
+    ? getWorldNetworkBookmarkIds(config, currentWorld.id)
     : [];
 
   const bookmarkNetworks = useMemo(
     () => bookmarkIds
-      .map((bookmarkId) => projectNetworks.find((network) => network.id === bookmarkId))
+      .map((bookmarkId) => worldNetworks.find((network) => network.id === bookmarkId))
       .filter((network): network is Network => Boolean(network)),
-    [bookmarkIds, projectNetworks],
+    [bookmarkIds, worldNetworks],
   );
 
   const availableNetworks = useMemo(() => {
     const bookmarkIdSet = new Set(bookmarkIds);
-    return projectNetworks.filter((network) => !bookmarkIdSet.has(network.id));
-  }, [bookmarkIds, projectNetworks]);
+    return worldNetworks.filter((network) => !bookmarkIdSet.has(network.id));
+  }, [bookmarkIds, worldNetworks]);
 
   return (
     <div data-section="sidebar">
@@ -198,9 +198,9 @@ export function SidebarSettingsPanel(): JSX.Element {
         <h3 className="text-base font-semibold text-default">{bookmarkedNetworksTitle}</h3>
         <p className="mb-4 mt-1 text-sm text-secondary">{t('settings.sidebarBookmarkedNetworksDesc' as never)}</p>
 
-        {!currentProject ? (
+        {!currentWorld ? (
           <div className="rounded-lg border border-subtle bg-surface-card px-3 py-3 text-sm text-muted">
-            {t('settings.sidebarNoProject' as never)}
+            {t('settings.sidebarNoWorld' as never)}
           </div>
         ) : (
           <div className="space-y-5">
@@ -219,8 +219,8 @@ export function SidebarSettingsPanel(): JSX.Element {
                         label={network.name}
                         canMoveUp={index > 0}
                         canMoveDown={index < bookmarkNetworks.length - 1}
-                        onMoveUp={() => { void moveBookmark(currentProject.id, index, -1); }}
-                        onMoveDown={() => { void moveBookmark(currentProject.id, index, 1); }}
+                        onMoveUp={() => { void moveBookmark(currentWorld.id, index, -1); }}
+                        onMoveDown={() => { void moveBookmark(currentWorld.id, index, 1); }}
                         moveUpLabel={moveUpLabel}
                         moveDownLabel={moveDownLabel}
                         action={(
@@ -229,7 +229,7 @@ export function SidebarSettingsPanel(): JSX.Element {
                             variant="ghost"
                             size="sm"
                             className="shrink-0"
-                            onClick={() => { void removeBookmark(currentProject.id, network.id); }}
+                            onClick={() => { void removeBookmark(currentWorld.id, network.id); }}
                           >
                             <PinOff size={14} />
                             {t('common.remove')}
@@ -268,7 +268,7 @@ export function SidebarSettingsPanel(): JSX.Element {
                           variant="ghost"
                           size="sm"
                           className="shrink-0"
-                          onClick={() => { void addBookmark(currentProject.id, network.id); }}
+                          onClick={() => { void addBookmark(currentWorld.id, network.id); }}
                         >
                           <Pin size={14} />
                           {t('common.add')}

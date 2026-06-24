@@ -103,14 +103,14 @@ export interface SystemPromptNetworkTypeSummary {
 }
 
 export interface SystemPromptParams {
-  projectId: string;
-  projectName: string;
-  projectRootDir?: string | null;
+  rootNetworkId: string;
+  worldName: string;
+  worldRootDir?: string | null;
   schemas: SystemPromptSchemaSummary[];
   meanings: SystemPromptMeaningSummary[];
   meaningCategories?: SystemPromptModelCategorySummary[];
   universeNetwork?: SystemPromptNetworkSummary | null;
-  ontologyNetwork?: SystemPromptNetworkSummary | null;
+  rootNetwork?: SystemPromptNetworkSummary | null;
   networkTree?: SystemPromptNetworkTreeSummary[];
   networkTypes?: SystemPromptNetworkTypeSummary[];
 }
@@ -154,8 +154,8 @@ export function buildBehaviorGuidanceSection(behavior: NarreBehaviorSettings): s
     '- Prefer a small set of primitive families: schema/meaning discovery and mutation, instance discovery and mutation, candidate source discovery, and graph discovery and mutation.',
     '- Do not proactively create or manage modules or contexts in this phase. They are out of scope for Narre-owned changes.',
     behavior.graphPriority === 'strict'
-      ? '- Stay anchored to the project graph. Do not drift into generic repo analysis unless the user explicitly asks for local file inspection.'
-      : '- Keep the project graph as the default center of gravity, even when discussing nearby files or documents.',
+      ? '- Stay anchored to the world graph. Do not drift into generic repo analysis unless the user explicitly asks for local file inspection.'
+      : '- Keep the world graph as the default center of gravity, even when discussing nearby files or documents.',
     behavior.discourageLocalWorkspaceActions
       ? '- Do not inspect, edit, or reason about unrelated local workspace files unless the user explicitly requests that file-level work.'
       : '- Use local workspace inspection only when it materially helps with the requested Netior task.',
@@ -278,7 +278,7 @@ function buildMeaningList(meanings: SystemPromptMeaningSummary[]): string {
       `key=${meaning.key}`,
       `category=${meaning.category_instance_title ?? meaning.category_instance_source_ref ?? 'none'}`,
       `target=${meaning.target_kind ?? 'object'}`,
-    `source=${meaning.source_kind ?? 'project'}${meaning.source_ref ? `:${meaning.source_ref}` : ''}`,
+    `source=${meaning.source_kind ?? 'world'}${meaning.source_ref ? `:${meaning.source_ref}` : ''}`,
       ...(meaning.description ? [`description=${meaning.description}`] : []),
     ];
     return `- ${meaning.name} [id=${meaning.id}]: ${details.join(', ')}; meanings=${meaningLabels}`;
@@ -290,7 +290,7 @@ function buildMeaningCategoryList(categories: SystemPromptModelCategorySummary[]
     return '- (none defined yet)';
   }
   return categories.map((category) => {
-    const source = `${category.source_kind ?? 'project'}${category.source_ref ? `:${category.source_ref}` : ''}`;
+    const source = `${category.source_kind ?? 'world'}${category.source_ref ? `:${category.source_ref}` : ''}`;
     return `- ${category.title} [id=${category.id}, source=${source}]`;
   }).join('\n');
 }
@@ -365,15 +365,15 @@ function collectNetworkTreeLines(
 
 function buildNetworkContextSection(
   universeNetwork: SystemPromptNetworkSummary | null | undefined,
-  ontologyNetwork: SystemPromptNetworkSummary | null | undefined,
+  rootNetwork: SystemPromptNetworkSummary | null | undefined,
   networkTree: SystemPromptNetworkTreeSummary[] | undefined,
   networkTypes: SystemPromptNetworkTypeSummary[] | undefined,
 ): string {
   const lines: string[] = [
     `- universe=${universeNetwork ? `${universeNetwork.name} [id=${universeNetwork.id}]` : 'none'}`,
-    `- ontology=${ontologyNetwork ? `${ontologyNetwork.name} [id=${ontologyNetwork.id}]` : 'none'}`,
-    '- universe_role=app-wide project portal network; do not edit it like a normal network',
-    '- ontology_role=project ontology network for schemas, semantic meanings, and their relations',
+    `- root_network=${rootNetwork ? `${rootNetwork.name} [id=${rootNetwork.id}]` : 'none'}`,
+    '- universe_role=app-wide world portal network; do not edit it like a normal network',
+    '- root_network_role=world work surface for schemas, semantic meanings, and their relations',
   ];
 
   const treeLines: string[] = [];
@@ -400,9 +400,9 @@ export function buildSystemPrompt(
   behavior: NarreBehaviorSettings = DEFAULT_NARRE_BEHAVIOR_SETTINGS,
 ): string {
   const {
-    projectId,
-    projectName,
-    projectRootDir,
+    rootNetworkId,
+    worldName,
+    worldRootDir,
     schemas,
     meanings,
     meaningCategories,
@@ -410,26 +410,26 @@ export function buildSystemPrompt(
     networkTypes,
   } = params;
   const universeNetwork = params.universeNetwork;
-  const ontologyNetwork = params.ontologyNetwork;
+  const rootNetwork = params.rootNetwork;
 
   const meaningList = buildMeaningList(meanings);
   const meaningCategoryList = buildMeaningCategoryList(meaningCategories);
   const schemaSurfaceList = buildSchemaSurfaceList(schemas);
   const relationalSchema = buildRelationalSchemaSection(schemas);
   const relationMeaningList = buildRelationMeaningList(meanings);
-  const networkContext = buildNetworkContextSection(universeNetwork, ontologyNetwork, networkTree, networkTypes);
+  const networkContext = buildNetworkContextSection(universeNetwork, rootNetwork, networkTree, networkTypes);
 
   return `You are Narre, the AI assistant for Netior (Map of Instances).
-You help users meaning and organize a Netior project graph.
+You help users meaning and organize a Netior world graph.
 
 ## Current Execution
-- current_project_id=${projectId}
-- current_project_name=${projectName}
-- current_project_root=${projectRootDir ?? '(unknown)'}
+- current_root_network_id=${rootNetworkId}
+- current_world_name=${worldName}
+- current_world_root=${worldRootDir ?? '(unknown)'}
 
-The active project is already fixed for this run. Do not search for which project to use unless the user explicitly asks for cross-project work.
+The active world is already fixed for this run. Do not search for which world to use unless the user explicitly asks for cross-world work.
 
-## Project Modeling Digest
+## World Modeling Digest
 Use this digest as the primary search surface before calling tools.
 
 ## Semantic Meanings (${meanings.length})
@@ -493,7 +493,7 @@ ${networkContext}
 - To create or change relationships, use relationship tools. To make a relationship visible in a network, use edge tools with relationship_id. To change stored instance body text, use the high-level instance update flow rather than inventing low-level token-management operations.
 
 ## Tool Policy
-- Stable project schemas, semantic meanings, field search surfaces, and network hierarchy index are already in this prompt. Do not broad-search for them again unless the live state may have diverged.
+- Stable world schemas, semantic meanings, field search surfaces, and network hierarchy index are already in this prompt. Do not broad-search for them again unless the live state may have diverged.
 - Prefer this decision order:
   1. mentioned object
   2. prompt digest
@@ -502,8 +502,8 @@ ${networkContext}
 - Use tools for live state, IDs that are still missing, membership, current values, ambiguity resolution, candidate sets, and destructive-change verification.
 - Do not re-fetch meaning lists or network hierarchy just because those tools exist.
 - For custom network, node, or edge type authoring, use the network-representation skill instead of carrying detailed grammar rules in the base prompt.
-- The active project is already bound for this run. Do not search for project identity or pass raw 'project_id' values unless the user explicitly asks for cross-project work.
-- When a tool supports default project binding, omit 'project_id' and use the current project by default.
+- The active world is already bound for this run. Do not search for world identity or pass raw 'root_network_id' values unless the user explicitly asks for cross-world work.
+- When a tool supports default world binding, omit 'root_network_id' and use the current world by default.
 - Prefer one precise inspection over multiple exploratory searches.
 
 ## Schema Field Authoring
@@ -525,7 +525,7 @@ ${networkContext}
 - If a DSL evaluation returns ambiguity, do not choose silently. Inspect candidates or ask the user.
 
 ## Guidelines
-- When the project has little or no structure, proactively offer a bootstrap interview based on the project topic. Start from the user's domain answers, then project them into candidate network types and networks before schemas, semantic meanings, meanings, and fields. Avoid making the user choose Netior-internal structures prematurely, but do not define the user's domain for them.
+- When the world has little or no structure, proactively offer a bootstrap interview based on the world topic. Start from the user's domain answers, then world them into candidate network types and networks before schemas, semantic meanings, meanings, and fields. Avoid making the user choose Netior-internal structures prematurely, but do not define the user's domain for them.
 - Always confirm before destructive operations (delete, bulk modify).
 - When deleting an entity with dependent data, warn about cascading effects.
 - Respond in the same language the user uses.

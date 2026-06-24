@@ -9,7 +9,7 @@ export interface NarrePendingSkillInvocationState {
   indexArgs?: NarrePendingIndexSkillState;
 }
 
-export interface NarreProjectUiState {
+export interface NarreWorldUiState {
   view: 'sessionList' | 'chat';
   activeSessionId: string | null;
   activeAgentKey: string | null;
@@ -17,28 +17,28 @@ export interface NarreProjectUiState {
   pendingSkillInvocations: Record<string, NarrePendingSkillInvocationState>;
 }
 
-type NarreProjectUiStateListener = (state: NarreProjectUiState) => void;
+type NarreWorldUiStateListener = (state: NarreWorldUiState) => void;
 
 const STORAGE_PREFIX = 'netior:narre-ui:';
-const DEFAULT_PROJECT_UI_STATE: NarreProjectUiState = {
+const DEFAULT_WORLD_UI_STATE: NarreWorldUiState = {
   view: 'sessionList',
   activeSessionId: null,
   activeAgentKey: null,
   drafts: {},
   pendingSkillInvocations: {},
 };
-const projectUiStateListeners = new Map<string, Set<NarreProjectUiStateListener>>();
+const worldUiStateListeners = new Map<string, Set<NarreWorldUiStateListener>>();
 
 function canUseStorage(): boolean {
   return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
 }
 
-function getStorageKey(projectId: string): string {
-  return `${STORAGE_PREFIX}${projectId}`;
+function getStorageKey(rootNetworkId: string): string {
+  return `${STORAGE_PREFIX}${rootNetworkId}`;
 }
 
-function notifyNarreProjectUiState(projectId: string, state: NarreProjectUiState): void {
-  const listeners = projectUiStateListeners.get(projectId);
+function notifyNarreWorldUiState(rootNetworkId: string, state: NarreWorldUiState): void {
+  const listeners = worldUiStateListeners.get(rootNetworkId);
   if (!listeners || listeners.size === 0) {
     return;
   }
@@ -48,12 +48,12 @@ function notifyNarreProjectUiState(projectId: string, state: NarreProjectUiState
   }
 }
 
-function sanitizeProjectUiState(value: unknown): NarreProjectUiState {
+function sanitizeWorldUiState(value: unknown): NarreWorldUiState {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    return { ...DEFAULT_PROJECT_UI_STATE };
+    return { ...DEFAULT_WORLD_UI_STATE };
   }
 
-  const source = value as Partial<NarreProjectUiState>;
+  const source = value as Partial<NarreWorldUiState>;
   const drafts = source.drafts && typeof source.drafts === 'object' && !Array.isArray(source.drafts)
     ? Object.fromEntries(
         Object.entries(source.drafts)
@@ -103,70 +103,70 @@ function sanitizeProjectUiState(value: unknown): NarreProjectUiState {
   };
 }
 
-export function getNarreProjectUiState(projectId: string): NarreProjectUiState {
+export function getNarreWorldUiState(rootNetworkId: string): NarreWorldUiState {
   if (!canUseStorage()) {
-    return { ...DEFAULT_PROJECT_UI_STATE };
+    return { ...DEFAULT_WORLD_UI_STATE };
   }
 
   try {
-    const raw = window.localStorage.getItem(getStorageKey(projectId));
+    const raw = window.localStorage.getItem(getStorageKey(rootNetworkId));
     if (!raw) {
-      return { ...DEFAULT_PROJECT_UI_STATE };
+      return { ...DEFAULT_WORLD_UI_STATE };
     }
 
-    return sanitizeProjectUiState(JSON.parse(raw));
+    return sanitizeWorldUiState(JSON.parse(raw));
   } catch {
-    return { ...DEFAULT_PROJECT_UI_STATE };
+    return { ...DEFAULT_WORLD_UI_STATE };
   }
 }
 
-export function updateNarreProjectUiState(
-  projectId: string,
-  updater: (prev: NarreProjectUiState) => NarreProjectUiState,
-): NarreProjectUiState {
-  const next = sanitizeProjectUiState(updater(getNarreProjectUiState(projectId)));
+export function updateNarreWorldUiState(
+  rootNetworkId: string,
+  updater: (prev: NarreWorldUiState) => NarreWorldUiState,
+): NarreWorldUiState {
+  const next = sanitizeWorldUiState(updater(getNarreWorldUiState(rootNetworkId)));
   if (!canUseStorage()) {
     return next;
   }
 
   try {
-    window.localStorage.setItem(getStorageKey(projectId), JSON.stringify(next));
+    window.localStorage.setItem(getStorageKey(rootNetworkId), JSON.stringify(next));
   } catch {
     // Ignore storage failures; Narre still works with in-memory state.
   }
 
-  notifyNarreProjectUiState(projectId, next);
+  notifyNarreWorldUiState(rootNetworkId, next);
   return next;
 }
 
-export function subscribeNarreProjectUiState(
-  projectId: string,
-  listener: NarreProjectUiStateListener,
+export function subscribeNarreWorldUiState(
+  rootNetworkId: string,
+  listener: NarreWorldUiStateListener,
 ): () => void {
-  const listeners = projectUiStateListeners.get(projectId) ?? new Set<NarreProjectUiStateListener>();
+  const listeners = worldUiStateListeners.get(rootNetworkId) ?? new Set<NarreWorldUiStateListener>();
   listeners.add(listener);
-  projectUiStateListeners.set(projectId, listeners);
+  worldUiStateListeners.set(rootNetworkId, listeners);
 
   return () => {
-    const current = projectUiStateListeners.get(projectId);
+    const current = worldUiStateListeners.get(rootNetworkId);
     if (!current) {
       return;
     }
 
     current.delete(listener);
     if (current.size === 0) {
-      projectUiStateListeners.delete(projectId);
+      worldUiStateListeners.delete(rootNetworkId);
     }
   };
 }
 
-export function setNarreProjectDraft(
-  projectId: string,
+export function setNarreWorldDraft(
+  rootNetworkId: string,
   sessionId: string | null,
   draftHtml: string,
 ): void {
   const draftKey = sessionId ?? '__new__';
-  updateNarreProjectUiState(projectId, (prev) => {
+  updateNarreWorldUiState(rootNetworkId, (prev) => {
     const drafts = { ...prev.drafts };
     if (draftHtml) {
       drafts[draftKey] = draftHtml;
@@ -181,12 +181,12 @@ export function setNarreProjectDraft(
   });
 }
 
-export function getNarreProjectDraft(projectId: string, sessionId: string | null): string {
-  return getNarreProjectUiState(projectId).drafts[sessionId ?? '__new__'] ?? '';
+export function getNarreWorldDraft(rootNetworkId: string, sessionId: string | null): string {
+  return getNarreWorldUiState(rootNetworkId).drafts[sessionId ?? '__new__'] ?? '';
 }
 
-export function moveNarreProjectDraft(
-  projectId: string,
+export function moveNarreWorldDraft(
+  rootNetworkId: string,
   fromSessionId: string | null,
   toSessionId: string | null,
 ): void {
@@ -197,7 +197,7 @@ export function moveNarreProjectDraft(
     return;
   }
 
-  updateNarreProjectUiState(projectId, (prev) => {
+  updateNarreWorldUiState(rootNetworkId, (prev) => {
     const drafts = { ...prev.drafts };
     const fromDraft = drafts[fromKey];
     if (typeof fromDraft === 'string' && fromDraft.length > 0 && !drafts[toKey]) {
@@ -212,13 +212,13 @@ export function moveNarreProjectDraft(
   });
 }
 
-export function setNarreProjectPendingSkillInvocation(
-  projectId: string,
+export function setNarreWorldPendingSkillInvocation(
+  rootNetworkId: string,
   sessionId: string | null,
   skillInvocationState: NarrePendingSkillInvocationState | null,
 ): void {
   const draftKey = sessionId ?? '__new__';
-  updateNarreProjectUiState(projectId, (prev) => {
+  updateNarreWorldUiState(rootNetworkId, (prev) => {
     const pendingSkillInvocations = { ...prev.pendingSkillInvocations };
     if (skillInvocationState) {
       pendingSkillInvocations[draftKey] = skillInvocationState;
@@ -233,15 +233,15 @@ export function setNarreProjectPendingSkillInvocation(
   });
 }
 
-export function getNarreProjectPendingSkillInvocation(
-  projectId: string,
+export function getNarreWorldPendingSkillInvocation(
+  rootNetworkId: string,
   sessionId: string | null,
 ): NarrePendingSkillInvocationState | null {
-  return getNarreProjectUiState(projectId).pendingSkillInvocations[sessionId ?? '__new__'] ?? null;
+  return getNarreWorldUiState(rootNetworkId).pendingSkillInvocations[sessionId ?? '__new__'] ?? null;
 }
 
-export function moveNarreProjectPendingSkillInvocation(
-  projectId: string,
+export function moveNarreWorldPendingSkillInvocation(
+  rootNetworkId: string,
   fromSessionId: string | null,
   toSessionId: string | null,
 ): void {
@@ -252,7 +252,7 @@ export function moveNarreProjectPendingSkillInvocation(
     return;
   }
 
-  updateNarreProjectUiState(projectId, (prev) => {
+  updateNarreWorldUiState(rootNetworkId, (prev) => {
     const pendingSkillInvocations = { ...prev.pendingSkillInvocations };
     const fromInvocation = pendingSkillInvocations[fromKey];
     if (fromInvocation && !pendingSkillInvocations[toKey]) {

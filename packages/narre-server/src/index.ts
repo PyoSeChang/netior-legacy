@@ -29,8 +29,8 @@ import { NarreRuntime } from './runtime/narre-runtime.js';
 import type { NarreProviderAdapter } from './runtime/provider-adapter.js';
 import { ClaudeProviderAdapter } from './providers/claude.js';
 import { initNarreLogging } from './logging.js';
-import { buildProjectPromptMetadata } from './project-prompt-metadata.js';
-import { getProjectById } from './netior-service-client.js';
+import { buildWorldPromptMetadata } from './world-prompt-metadata.js';
+import { getWorldById } from './netior-service-client.js';
 import { SupervisorRegistry } from './supervisor/supervisor-registry.js';
 import { getSupervisorAgentKey } from './supervisor/agent-registry.js';
 import { OrchestrationRegistry } from './supervisor/orchestration-registry.js';
@@ -51,7 +51,7 @@ const PORT = parseInt(process.env.PORT ?? '3100', 10);
 const MOC_DATA_DIR = process.env.MOC_DATA_DIR;
 const NETIOR_SHARED_USER_DATA_ROOT = process.env.NETIOR_SHARED_USER_DATA_ROOT;
 const NARRE_GLOBAL_USER_AGENT_ID = process.env.NARRE_GLOBAL_USER_AGENT_ID;
-const NARRE_PROJECT_USER_AGENT_ID = process.env.NARRE_PROJECT_USER_AGENT_ID;
+const NARRE_WORLD_USER_AGENT_ID = process.env.NARRE_WORLD_USER_AGENT_ID;
 const NARRE_TRACE_HEADER = 'x-netior-trace-id';
 
 if (!MOC_DATA_DIR) {
@@ -88,7 +88,7 @@ const sessionStore = new SessionStore(MOC_DATA_DIR);
 const sharedUserDataRootDir = NETIOR_SHARED_USER_DATA_ROOT ?? inferSharedUserDataRoot(MOC_DATA_DIR);
 const supervisor = new SupervisorRegistry({
   globalUserAgentId: NARRE_GLOBAL_USER_AGENT_ID,
-  projectUserAgentId: NARRE_PROJECT_USER_AGENT_ID,
+  worldUserAgentId: NARRE_WORLD_USER_AGENT_ID,
 });
 const orchestration = new OrchestrationRegistry({
   storagePath: join(MOC_DATA_DIR, 'narre', 'supervisor', 'orchestration.json'),
@@ -113,44 +113,44 @@ app.get('/health', (_req, res) => {
 });
 
 app.get('/sessions', async (req, res) => {
-  const projectId = req.query.projectId as string;
-  if (!projectId) {
-    res.status(400).json({ error: 'projectId required' });
+  const rootNetworkId = req.query.rootNetworkId as string;
+  if (!rootNetworkId) {
+    res.status(400).json({ error: 'rootNetworkId required' });
     return;
   }
   try {
-    res.json(await sessionStore.listSessions(projectId));
+    res.json(await sessionStore.listSessions(rootNetworkId));
   } catch (error) {
     res.status(500).json({ error: (error as Error).message });
   }
 });
 
 app.get('/skills', async (req, res) => {
-  const projectId = req.query.projectId as string;
-  if (!projectId) {
-    res.status(400).json({ error: 'projectId required' });
+  const rootNetworkId = req.query.rootNetworkId as string;
+  if (!rootNetworkId) {
+    res.status(400).json({ error: 'rootNetworkId required' });
     return;
   }
   try {
-    res.json(await runtime.listSkills(projectId));
+    res.json(await runtime.listSkills(rootNetworkId));
   } catch (error) {
     res.status(500).json({ error: (error as Error).message });
   }
 });
 
 app.get('/supervisor/agents', (req, res) => {
-  const projectId = typeof req.query.projectId === 'string' ? req.query.projectId : null;
-  res.json(supervisor.listAgents(projectId));
+  const rootNetworkId = typeof req.query.rootNetworkId === 'string' ? req.query.rootNetworkId : null;
+  res.json(supervisor.listAgents(rootNetworkId));
 });
 
 app.get('/supervisor/skills', async (req, res) => {
-  const projectId = req.query.projectId as string;
-  if (!projectId) {
-    res.status(400).json({ error: 'projectId required' });
+  const rootNetworkId = req.query.rootNetworkId as string;
+  if (!rootNetworkId) {
+    res.status(400).json({ error: 'rootNetworkId required' });
     return;
   }
   try {
-    res.json(await runtime.listSkills(projectId));
+    res.json(await runtime.listSkills(rootNetworkId));
   } catch (error) {
     res.status(500).json({ error: (error as Error).message });
   }
@@ -178,8 +178,8 @@ app.post('/supervisor/sessions/report', (req, res) => {
 });
 
 app.get('/supervisor/conversations', (req, res) => {
-  const projectId = typeof req.query.projectId === 'string' ? req.query.projectId : null;
-  res.json(orchestration.listConversations(projectId));
+  const rootNetworkId = typeof req.query.rootNetworkId === 'string' ? req.query.rootNetworkId : null;
+  res.json(orchestration.listConversations(rootNetworkId));
 });
 
 app.post('/supervisor/conversations', (req, res) => {
@@ -197,8 +197,8 @@ app.post('/supervisor/conversations', (req, res) => {
 });
 
 app.get('/supervisor/runs', (req, res) => {
-  const projectId = typeof req.query.projectId === 'string' ? req.query.projectId : null;
-  res.json(orchestration.listRuns(projectId));
+  const rootNetworkId = typeof req.query.rootNetworkId === 'string' ? req.query.rootNetworkId : null;
+  res.json(orchestration.listRuns(rootNetworkId));
 });
 
 app.post('/supervisor/runs', (req, res) => {
@@ -332,14 +332,14 @@ app.post('/supervisor/approvals/:id/resolve', (req, res) => {
 });
 
 app.get('/supervisor/executors', (req, res) => {
-  const projectId = typeof req.query.projectId === 'string' ? req.query.projectId : null;
-  res.json(executors.list(projectId));
+  const rootNetworkId = typeof req.query.rootNetworkId === 'string' ? req.query.rootNetworkId : null;
+  res.json(executors.list(rootNetworkId));
 });
 
 app.post('/supervisor/executors/register', (req, res) => {
   const body = req.body as {
     id?: unknown;
-    projectId?: unknown;
+    rootNetworkId?: unknown;
     provider?: unknown;
     surface?: unknown;
     capabilities?: unknown;
@@ -355,7 +355,7 @@ app.post('/supervisor/executors/register', (req, res) => {
 
   const executor = executors.register({
     id: typeof body.id === 'string' ? body.id : undefined,
-    projectId: typeof body.projectId === 'string' ? body.projectId : null,
+    rootNetworkId: typeof body.rootNetworkId === 'string' ? body.rootNetworkId : null,
     provider: body.provider as never,
     surface: body.surface,
     capabilities: Array.isArray(body.capabilities)
@@ -534,13 +534,13 @@ app.post('/supervisor/runs/:id/status', (req, res) => {
 });
 
 app.post('/sessions', async (req, res) => {
-  const { projectId, agentKey } = req.body as { projectId?: string; agentKey?: unknown };
-  if (!projectId) {
-    res.status(400).json({ error: 'projectId required' });
+  const { rootNetworkId, agentKey } = req.body as { rootNetworkId?: string; agentKey?: unknown };
+  if (!rootNetworkId) {
+    res.status(400).json({ error: 'rootNetworkId required' });
     return;
   }
   try {
-    res.json(await sessionStore.createSession(projectId, undefined, typeof agentKey === 'string' ? agentKey : null));
+    res.json(await sessionStore.createSession(rootNetworkId, undefined, typeof agentKey === 'string' ? agentKey : null));
   } catch (error) {
     res.status(500).json({ error: (error as Error).message });
   }
@@ -548,9 +548,9 @@ app.post('/sessions', async (req, res) => {
 
 app.get('/sessions/:id', async (req, res) => {
   try {
-    const projectId = req.query.projectId as string | undefined;
-    const result = projectId
-      ? await sessionStore.getSession(req.params.id, projectId)
+    const rootNetworkId = req.query.rootNetworkId as string | undefined;
+    const result = rootNetworkId
+      ? await sessionStore.getSession(req.params.id, rootNetworkId)
       : await sessionStore.getSessionById(req.params.id);
     if (!result) {
       res.status(404).json({ error: 'Session not found' });
@@ -563,13 +563,13 @@ app.get('/sessions/:id', async (req, res) => {
 });
 
 app.patch('/sessions/:id', async (req, res) => {
-  const projectId = typeof req.body?.projectId === 'string'
-    ? req.body.projectId
-    : req.query.projectId as string | undefined;
+  const rootNetworkId = typeof req.body?.rootNetworkId === 'string'
+    ? req.body.rootNetworkId
+    : req.query.rootNetworkId as string | undefined;
   const title = typeof req.body?.title === 'string' ? req.body.title.trim() : '';
 
-  if (!projectId) {
-    res.status(400).json({ error: 'projectId required' });
+  if (!rootNetworkId) {
+    res.status(400).json({ error: 'rootNetworkId required' });
     return;
   }
   if (!title) {
@@ -578,7 +578,7 @@ app.patch('/sessions/:id', async (req, res) => {
   }
 
   try {
-    const session = await sessionStore.updateSessionTitle(req.params.id, projectId, title);
+    const session = await sessionStore.updateSessionTitle(req.params.id, rootNetworkId, title);
     if (!session) {
       res.status(404).json({ error: 'Session not found' });
       return;
@@ -591,9 +591,9 @@ app.patch('/sessions/:id', async (req, res) => {
 
 app.delete('/sessions/:id', async (req, res) => {
   try {
-    const projectId = req.query.projectId as string | undefined;
-    const deleted = projectId
-      ? await sessionStore.deleteSession(req.params.id, projectId)
+    const rootNetworkId = req.query.rootNetworkId as string | undefined;
+    const deleted = rootNetworkId
+      ? await sessionStore.deleteSession(req.params.id, rootNetworkId)
       : await sessionStore.deleteSessionById(req.params.id);
     if (!deleted) {
       res.status(404).json({ error: 'Session not found' });
@@ -648,8 +648,8 @@ app.post('/chat/steer', async (req, res) => {
     }
 
     const session = await sessionStore.getSessionById(sessionId);
-    if (session?.projectId) {
-      await sessionStore.appendMessage(sessionId, session.projectId, {
+    if (session?.rootNetworkId) {
+      await sessionStore.appendMessage(sessionId, session.rootNetworkId, {
         role: 'user',
         content: message,
         timestamp: new Date().toISOString(),
@@ -663,9 +663,9 @@ app.post('/chat/steer', async (req, res) => {
 });
 
 app.post('/chat', async (req, res) => {
-  const { sessionId, projectId, message, mentions, agentKey, skillIds } = req.body as {
+  const { sessionId, rootNetworkId, message, mentions, agentKey, skillIds } = req.body as {
     sessionId?: string;
-    projectId: string;
+    rootNetworkId: string;
     message: string;
     mentions?: NarreMention[];
     agentKey?: string | null;
@@ -684,8 +684,8 @@ app.post('/chat', async (req, res) => {
     sendSSEEvent(res, event);
   };
 
-  if (!projectId || !message) {
-    res.status(400).json({ error: 'projectId and message are required' });
+  if (!rootNetworkId || !message) {
+    res.status(400).json({ error: 'rootNetworkId and message are required' });
     return;
   }
 
@@ -713,20 +713,20 @@ app.post('/chat', async (req, res) => {
   try {
     console.log(
       `[narre:server] trace=${traceId} stage=request.accept provider=${provider.name} ` +
-      `project=${projectId} session=${sessionId ?? 'new'} ` +
+      `world=${rootNetworkId} session=${sessionId ?? 'new'} ` +
       `chars=${message.length} mentions=${mentions?.length ?? 0}`,
     );
 
-    const session = sessionId ? await sessionStore.getSession(sessionId, projectId) : null;
+    const session = sessionId ? await sessionStore.getSession(sessionId, rootNetworkId) : null;
     const effectiveAgentKey = agentKey ?? session?.agentKey ?? mentions?.find((mention) => mention.type === 'agent')?.id ?? null;
     const activeAgent = effectiveAgentKey
-      ? supervisor.listAgents(projectId).find((agent) => getSupervisorAgentKey(agent) === effectiveAgentKey)
+      ? supervisor.listAgents(rootNetworkId).find((agent) => getSupervisorAgentKey(agent) === effectiveAgentKey)
       : undefined;
 
     const result = await runtime.runChat(
       {
         sessionId,
-        projectId,
+        rootNetworkId,
         message,
         mentions,
         traceId,
@@ -807,11 +807,11 @@ function createRuntimeConfig(provider: NarreProviderAdapter): ConstructorParamet
     behaviorSettings,
     provider,
     resolveMcpServerPath,
-    resolvePromptMetadata: buildProjectPromptMetadata,
-    resolveProjectRootDir,
+    resolvePromptMetadata: buildWorldPromptMetadata,
+    resolveWorldRootDir,
     sharedUserDataRootDir,
     globalUserAgentId: NARRE_GLOBAL_USER_AGENT_ID,
-    projectUserAgentId: NARRE_PROJECT_USER_AGENT_ID,
+    worldUserAgentId: NARRE_WORLD_USER_AGENT_ID,
     supervisor,
     sessionStore,
   };
@@ -842,12 +842,12 @@ function inferSharedUserDataRoot(dataDir: string): string {
     : dataDir;
 }
 
-async function resolveProjectRootDir(projectId: string): Promise<string | null> {
-  const project = await getProjectById(projectId);
-  if (!project) {
-    throw new Error(`Project not found: ${projectId}`);
+async function resolveWorldRootDir(rootNetworkId: string): Promise<string | null> {
+  const world = await getWorldById(rootNetworkId);
+  if (!world) {
+    throw new Error(`World not found: ${rootNetworkId}`);
   }
-  return project.root_dir;
+  return world.root_dir;
 }
 
 function isSupervisorSessionReport(value: unknown): value is SupervisorSessionReport {
@@ -878,7 +878,7 @@ function isCreateConversationInput(value: unknown): value is CreateConversationI
   if (!isPlainObject(value)) {
     return false;
   }
-  return typeof value.projectId === 'string' && value.projectId.length > 0;
+  return typeof value.rootNetworkId === 'string' && value.rootNetworkId.length > 0;
 }
 
 function isCreateRunInput(value: unknown): value is CreateOrchestrationRunInput {
@@ -886,8 +886,8 @@ function isCreateRunInput(value: unknown): value is CreateOrchestrationRunInput 
     return false;
   }
   return (
-    typeof value.projectId === 'string'
-    && value.projectId.length > 0
+    typeof value.rootNetworkId === 'string'
+    && value.rootNetworkId.length > 0
     && typeof value.userRequest === 'string'
     && value.userRequest.trim().length > 0
   );
@@ -1098,7 +1098,7 @@ function normalizeCodexSettings(value: unknown): NarreCodexSettings {
   const source = value as Record<string, unknown>;
   return {
     model: typeof source.model === 'string' ? source.model.trim() : '',
-    useProjectRootAsWorkingDirectory: source.useProjectRootAsWorkingDirectory !== false,
+    useWorldRootAsWorkingDirectory: source.useWorldRootAsWorkingDirectory !== false,
     sandboxMode: source.sandboxMode === 'workspace-write' || source.sandboxMode === 'danger-full-access'
       ? source.sandboxMode
       : 'read-only',
@@ -1116,7 +1116,7 @@ function normalizeCodexSettings(value: unknown): NarreCodexSettings {
 function getDefaultCodexSettings(): NarreCodexSettings {
   return {
     model: '',
-    useProjectRootAsWorkingDirectory: true,
+    useWorldRootAsWorkingDirectory: true,
     sandboxMode: 'read-only',
     approvalPolicy: 'on-request',
     enableShellTool: false,

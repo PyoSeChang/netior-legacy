@@ -17,8 +17,8 @@ export interface DesktopRuntimeInstanceRecord {
   pid: number;
   startedAt: string;
   updatedAt?: string;
-  projectId?: string | null;
-  projectRoot?: string | null;
+  rootNetworkId?: string | null;
+  worldRoot?: string | null;
   relayPort?: number | null;
 }
 
@@ -44,9 +44,9 @@ export function registerDesktopRuntimeInstance(): void {
   );
 }
 
-export function updateDesktopRuntimeProjectContext(context: {
-  projectId: string | null;
-  projectRoot: string | null;
+export function updateDesktopRuntimeWorldContext(context: {
+  rootNetworkId: string | null;
+  worldRoot: string | null;
 }): void {
   mkdirSync(getRuntimeInstanceDir(), { recursive: true });
 
@@ -57,8 +57,8 @@ export function updateDesktopRuntimeProjectContext(context: {
   };
   const record: DesktopRuntimeInstanceRecord = {
     ...current,
-    projectId: context.projectId,
-    projectRoot: context.projectRoot,
+    rootNetworkId: context.rootNetworkId,
+    worldRoot: context.worldRoot,
     updatedAt: new Date().toISOString(),
   };
 
@@ -263,8 +263,8 @@ function readDesktopRuntimeInstance(instanceId: string): DesktopRuntimeInstanceR
       pid: parsed.pid,
       startedAt: parsed.startedAt,
       updatedAt: typeof parsed.updatedAt === 'string' ? parsed.updatedAt : undefined,
-      projectId: typeof parsed.projectId === 'string' || parsed.projectId === null ? parsed.projectId : undefined,
-      projectRoot: typeof parsed.projectRoot === 'string' || parsed.projectRoot === null ? parsed.projectRoot : undefined,
+      rootNetworkId: typeof parsed.rootNetworkId === 'string' || parsed.rootNetworkId === null ? parsed.rootNetworkId : undefined,
+      worldRoot: typeof parsed.worldRoot === 'string' || parsed.worldRoot === null ? parsed.worldRoot : undefined,
       relayPort: typeof parsed.relayPort === 'number' || parsed.relayPort === null ? parsed.relayPort : undefined,
     };
   } catch {

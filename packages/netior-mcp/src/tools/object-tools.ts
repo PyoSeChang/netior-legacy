@@ -7,7 +7,7 @@ import { fromAgentObjectType, toAgentObject, type AgentObjectType } from './sche
 const objectTypeSchema = z.enum([
   'instance',
   'network',
-  'project',
+  'world',
   'schema',
   'meaning',
   'agent',

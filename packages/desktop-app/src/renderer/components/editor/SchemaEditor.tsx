@@ -121,8 +121,8 @@ export function SchemaEditor({ tab }: SchemaEditorProps): JSX.Element {
   const rawSchemas = useSchemaStore((s) => s.schemas);
   const rawFields = useSchemaStore((s) => s.fields[schemaId]);
   const rawMeanings = useSchemaStore((s) => s.meanings[schemaId]);
-  const rawProjectMeanings = useMeaningStore((s) => s.meanings);
-  const loadProjectMeanings = useMeaningStore((s) => s.loadByProject);
+  const rawWorldMeanings = useMeaningStore((s) => s.meanings);
+  const loadWorldMeanings = useMeaningStore((s) => s.loadByWorld);
   const {
     loadFields,
     loadMeanings,
@@ -142,7 +142,7 @@ export function SchemaEditor({ tab }: SchemaEditorProps): JSX.Element {
   const schemas = Array.isArray(rawSchemas) ? rawSchemas : EMPTY_LIST;
   const fields = Array.isArray(rawFields) ? rawFields : EMPTY_LIST;
   const meanings = Array.isArray(rawMeanings) ? rawMeanings : EMPTY_LIST;
-  const projectMeanings = Array.isArray(rawProjectMeanings) ? rawProjectMeanings : EMPTY_LIST;
+  const worldMeanings = Array.isArray(rawWorldMeanings) ? rawWorldMeanings : EMPTY_LIST;
 
   const schema = schemas.find((a) => a.id === schemaId);
 
@@ -152,10 +152,10 @@ export function SchemaEditor({ tab }: SchemaEditorProps): JSX.Element {
   }, [schemaId, loadFields, loadMeanings]);
 
   useEffect(() => {
-    if (schema?.project_id) {
-      void loadProjectMeanings(schema.project_id);
+    if (schema?.root_network_id) {
+      void loadWorldMeanings(schema.root_network_id);
     }
-  }, [schema?.project_id, loadProjectMeanings]);
+  }, [schema?.root_network_id, loadWorldMeanings]);
 
   const session = useEditorSession<SchemaState>({
     tabId: tab.id,
@@ -194,7 +194,7 @@ export function SchemaEditor({ tab }: SchemaEditorProps): JSX.Element {
     [editorState.meanings],
   );
   const meaningDefinitions = useMemo<readonly MeaningOptionDefinition[]>(() => {
-    const schemaModels = projectMeanings.filter((meaning) => (
+    const schemaModels = worldMeanings.filter((meaning) => (
       meaning.target_kind === 'object' || meaning.target_kind === 'both'
     ));
     if (schemaModels.length > 0) {
@@ -222,7 +222,7 @@ export function SchemaEditor({ tab }: SchemaEditorProps): JSX.Element {
       optionalSlots: definition.optionalSlots,
       builtIn: true,
     }));
-  }, [projectMeanings, t]);
+  }, [worldMeanings, t]);
   const meaningCategories = useMemo<readonly MeaningCategoryOption[]>(() => {
     const categoryByKey = new Map<SemanticCategoryRefKey, MeaningCategoryOption>();
     const getCategoryOption = (key: SemanticCategoryRefKey, fallbackLabel: string): MeaningCategoryOption => {
@@ -247,7 +247,7 @@ export function SchemaEditor({ tab }: SchemaEditorProps): JSX.Element {
       }
     }
 
-    for (const meaning of projectMeanings) {
+    for (const meaning of worldMeanings) {
       const categoryKey = getCategoryKeyFromModelSource(meaning.category_instance_source_ref);
       if ((meaning.target_kind === 'object' || meaning.target_kind === 'both') && !categoryByKey.has(categoryKey)) {
         categoryByKey.set(categoryKey, getCategoryOption(categoryKey, meaning.category_instance_title ?? categoryKey));
@@ -255,7 +255,7 @@ export function SchemaEditor({ tab }: SchemaEditorProps): JSX.Element {
     }
 
     return [...categoryByKey.values()];
-  }, [display, meaningDefinitions, projectMeanings]);
+  }, [display, meaningDefinitions, worldMeanings]);
   const meaningDefinitionByKey = useMemo(
     () => new Map(meaningDefinitions.map((definition) => [definition.key, definition])),
     [meaningDefinitions],
@@ -538,7 +538,7 @@ export function SchemaEditor({ tab }: SchemaEditorProps): JSX.Element {
             size="sm"
             variant="ghost"
             className="bg-status-error/10 text-status-error hover:bg-status-error/15 hover:text-status-error"
-            disabled={schema.source_kind !== 'project'}
+            disabled={schema.source_kind !== 'world'}
             onClick={() => { void handleDelete(); }}
           >
             {t('common.delete')}

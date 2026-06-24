@@ -14,7 +14,7 @@ import { computeTimelineLayout } from './timeline-layout';
 import { PIXELS_PER_DAY, todayEpochDays } from './scale-utils';
 import {
   formatTemporalSlotValueForWriteback,
-  projectRecurringTemporalNodes,
+  worldRecurringTemporalNodes,
 } from '../temporal-utils';
 import {
   getSemanticBoolean,
@@ -52,12 +52,12 @@ export const horizontalTimelinePlugin: WorkspaceLayoutPlugin = {
 
   computeLayout: computeTimelineLayout,
 
-  projectNodes({ nodes, viewport, viewportState, config }) {
+  worldNodes({ nodes, viewport, viewportState, config }) {
     const originDay = (config._originDay as number) ?? todayEpochDays();
     const pxPerDay = Math.max(PIXELS_PER_DAY * viewportState.zoom, 0.0001);
     const rangeStart = Math.floor(originDay + (-viewportState.panX) / pxPerDay) - 2;
     const rangeEnd = Math.ceil(originDay + (viewport.width - viewportState.panX) / pxPerDay) + 2;
-    return projectRecurringTemporalNodes(nodes, rangeStart, rangeEnd);
+    return worldRecurringTemporalNodes(nodes, rangeStart, rangeEnd);
   },
 
   classifyNodes(nodes: LayoutRenderNode[]) {

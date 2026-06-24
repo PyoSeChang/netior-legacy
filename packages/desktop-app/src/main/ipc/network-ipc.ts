@@ -12,7 +12,7 @@ import {
   getRemoteNetworkAncestors,
   getRemoteNetworkFull,
   getRemoteNetworkTree,
-  getRemoteProjectOntologyNetwork,
+  getRemoteRootNetwork,
   getRemoteRelationship,
   getRemoteUniverseNetwork,
   listRemoteNetworks,
@@ -37,9 +37,9 @@ export function registerNetworkIpc(): void {
     }
   });
 
-  ipcMain.handle('network:list', async (_e, projectId: string, rootOnly?: boolean): Promise<IpcResult<unknown>> => {
+  ipcMain.handle('network:list', async (_e, rootNetworkId: string, rootOnly?: boolean): Promise<IpcResult<unknown>> => {
     try {
-      return { success: true, data: await listRemoteNetworks(projectId, rootOnly) };
+      return { success: true, data: await listRemoteNetworks(rootNetworkId, rootOnly) };
     } catch (err) {
       return { success: false, error: (err as Error).message };
     }
@@ -82,14 +82,14 @@ export function registerNetworkIpc(): void {
   };
   ipcMain.handle('network:getUniverse', handleGetUniverseNetwork);
 
-  const handleGetProjectOntologyNetwork = async (_e: IpcMainInvokeEvent, projectId: string): Promise<IpcResult<unknown>> => {
+  const handleGetRootNetwork = async (_e: IpcMainInvokeEvent, rootNetworkId: string): Promise<IpcResult<unknown>> => {
     try {
-      return { success: true, data: await getRemoteProjectOntologyNetwork(projectId) };
+      return { success: true, data: await getRemoteRootNetwork(rootNetworkId) };
     } catch (err) {
       return { success: false, error: (err as Error).message };
     }
   };
-  ipcMain.handle('network:getProjectOntology', handleGetProjectOntologyNetwork);
+  ipcMain.handle('network:getRoot', handleGetRootNetwork);
 
   ipcMain.handle('network:getAncestors', async (_e, networkId: string): Promise<IpcResult<unknown>> => {
     try {
@@ -99,9 +99,9 @@ export function registerNetworkIpc(): void {
     }
   });
 
-  ipcMain.handle('network:getTree', async (_e, projectId: string): Promise<IpcResult<unknown>> => {
+  ipcMain.handle('network:getTree', async (_e, rootNetworkId: string): Promise<IpcResult<unknown>> => {
     try {
-      return { success: true, data: await getRemoteNetworkTree(projectId) };
+      return { success: true, data: await getRemoteNetworkTree(rootNetworkId) };
     } catch (err) {
       return { success: false, error: (err as Error).message };
     }

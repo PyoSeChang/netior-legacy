@@ -3,7 +3,7 @@ import { createRuntimeScope, createScopedPort, extractWorktreeLabel } from './ru
 
 describe('runtime-scope', () => {
   it('uses main for the primary repo path', () => {
-    expect(extractWorktreeLabel('C:\\PyoSeChang\\projects\\netior')).toBe('main');
+    expect(extractWorktreeLabel('C:\\PyoSeChang\\worlds\\netior')).toBe('main');
   });
 
   it('extracts the worktree label from a codex worktree path', () => {
@@ -12,11 +12,11 @@ describe('runtime-scope', () => {
 
   it('creates stable but distinct runtime scopes for dev roots', () => {
     const mainScope = createRuntimeScope({
-      cwd: 'C:\\PyoSeChang\\projects\\netior',
+      cwd: 'C:\\PyoSeChang\\worlds\\netior',
       packaged: false,
     });
     const worktreeScope = createRuntimeScope({
-      cwd: 'C:\\PyoSeChang\\projects\\netior\\.claude\\worktrees\\terminal-refactor',
+      cwd: 'C:\\PyoSeChang\\worlds\\netior\\.claude\\worktrees\\terminal-refactor',
       packaged: false,
     });
 
@@ -32,7 +32,7 @@ describe('runtime-scope', () => {
 
   it('assigns deterministic dev ports per runtime scope', () => {
     const runtimeScope = createRuntimeScope({
-      cwd: 'C:\\PyoSeChang\\projects\\netior\\.claude\\worktrees\\terminal-refactor',
+      cwd: 'C:\\PyoSeChang\\worlds\\netior\\.claude\\worktrees\\terminal-refactor',
       packaged: false,
     });
 

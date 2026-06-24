@@ -8,7 +8,7 @@ import {
   deleteSchema,
 } from '../netior-service-client.js';
 import { emitChange } from '../events.js';
-import { projectIdSchema, registerNetiorTool, resolveProjectId } from './shared-tool-registry.js';
+import { rootNetworkIdSchema, registerNetiorTool, resolveRootNetworkId } from './shared-tool-registry.js';
 import { toAgentSchema } from './schema-surface.js';
 
 const modelKeySchema = z.string().regex(
@@ -21,10 +21,10 @@ export function registerSchemaTools(server: McpServer): void {
   registerNetiorTool(
     server,
     'list_schemas',
-    { project_id: projectIdSchema() },
-    async ({ project_id }) => {
+    { root_network_id: rootNetworkIdSchema() },
+    async ({ root_network_id }) => {
       try {
-        const result = (await listSchemas(resolveProjectId(project_id))).map(toAgentSchema);
+        const result = (await listSchemas(resolveRootNetworkId(root_network_id))).map(toAgentSchema);
         return {
           content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
         };
@@ -41,7 +41,7 @@ export function registerSchemaTools(server: McpServer): void {
     server,
     'create_schema',
     {
-      project_id: projectIdSchema(),
+      root_network_id: rootNetworkIdSchema(),
       name: z.string().describe('Schema name'),
       icon: z.string().optional().describe('Icon identifier'),
       color: z.string().optional().describe('Color value'),
@@ -49,10 +49,10 @@ export function registerSchemaTools(server: McpServer): void {
       file_template: z.string().nullable().optional().describe('Optional file template for new instances'),
       meanings: modelKeysSchema.optional().describe('Meaning keys attached to this schema'),
     },
-    async ({ project_id, name, icon, color, description, file_template, meanings }) => {
+    async ({ root_network_id, name, icon, color, description, file_template, meanings }) => {
       try {
         const result = await createSchema({
-          project_id: resolveProjectId(project_id),
+          root_network_id: resolveRootNetworkId(root_network_id),
           name,
           icon,
           color,

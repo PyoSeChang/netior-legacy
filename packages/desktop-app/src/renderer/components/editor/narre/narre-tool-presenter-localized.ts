@@ -131,11 +131,11 @@ function summarizeToolError(error: string | undefined, locale: Locale): string |
   if (!error) return null;
   const message = trimErrorPrefix(error);
 
-  if (/^Project not found:\s*(.+)$/i.test(message)) {
-    const [, projectId] = message.match(/^Project not found:\s*(.+)$/i) ?? [];
+  if (/^World not found:\s*(.+)$/i.test(message)) {
+    const [, rootNetworkId] = message.match(/^World not found:\s*(.+)$/i) ?? [];
     return locale === 'ko'
-      ? `Project ${projectId} was not found`
-      : `Project ${projectId} was not found`;
+      ? `World ${rootNetworkId} was not found`
+      : `World ${rootNetworkId} was not found`;
   }
 
   if (/^Instance not found:\s*(.+)$/i.test(message)) {
@@ -156,8 +156,8 @@ function summarizeToolError(error: string | undefined, locale: Locale): string |
     return 'This MCP server does not support resource template listing';
   }
 
-  if (message === 'No module paths registered for this project') {
-    return 'No module paths are registered for this project';
+  if (message === 'No module paths registered for this world') {
+    return 'No module paths are registered for this world';
   }
 
   if (message === 'end_page must be >= start_page') {

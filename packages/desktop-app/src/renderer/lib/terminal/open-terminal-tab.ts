@@ -1,11 +1,11 @@
 ﻿import { useEditorStore, MAIN_HOST_ID } from '../../stores/editor-store';
-import { useProjectStore } from '../../stores/project-store';
+import { useWorldStore } from '../../stores/world-store';
 import type { TerminalLaunchConfig } from '@netior/shared/types';
 
 const DEFAULT_CODEX_SESSION_NAME = 'codex';
 
 function resolveTerminalCwd(): string | undefined {
-  return useProjectStore.getState().currentProject?.root_dir ?? undefined;
+  return useWorldStore.getState().currentWorld?.root_dir ?? undefined;
 }
 
 interface OpenTerminalTabOptions {
@@ -19,14 +19,14 @@ export function openTerminalTab(
   options: OpenTerminalTabOptions = {},
 ): void {
   const sessionId = `term-${Date.now()}`;
-  const currentProject = useProjectStore.getState().currentProject;
-  const terminalCwd = options.terminalCwd ?? currentProject?.root_dir ?? resolveTerminalCwd();
+  const currentWorld = useWorldStore.getState().currentWorld;
+  const terminalCwd = options.terminalCwd ?? currentWorld?.root_dir ?? resolveTerminalCwd();
 
   void useEditorStore.getState().openTab({
     type: 'terminal',
     targetId: sessionId,
     title,
-    projectId: currentProject?.id,
+    rootNetworkId: currentWorld?.id,
     hostId,
     terminalCwd,
     terminalLaunchConfig: options.terminalLaunchConfig,

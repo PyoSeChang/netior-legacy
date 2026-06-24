@@ -52,8 +52,8 @@ const electronAPI = {
   app: {
     worktreeLabel: getWorktreeLabel(),
     readyForOpenFiles: () => ipcRenderer.send('app:renderer-ready-for-open-files'),
-    updateProjectContext: (context: { projectId?: string | null; projectRoot?: string | null }) =>
-      ipcRenderer.send('app:update-project-context', context),
+    updateWorldContext: (context: { rootNetworkId?: string | null; worldRoot?: string | null }) =>
+      ipcRenderer.send('app:update-world-context', context),
     onOpenFiles: (callback: (filePaths: string[]) => void) => {
       const handler = (_event: IpcRendererEvent, filePaths: string[]) => callback(filePaths);
       ipcRenderer.on('app:open-files', handler);
@@ -104,46 +104,46 @@ const electronAPI = {
   notifications: {
     notifyAgent: (payload: {
       tabId: string;
-      projectId?: string | null;
+      rootNetworkId?: string | null;
       title: string;
       message: string;
       playSound: boolean;
     }) => ipcRenderer.invoke('agent:notifyNative', payload) as Promise<boolean>,
     playSound: (kind: 'completion' | 'attention' | 'error') =>
       ipcRenderer.invoke('agent:playInAppSound', kind) as Promise<boolean>,
-    onFocusTab: (callback: (payload: { tabId: string; projectId?: string | null }) => void) => {
-      const handler = (_event: IpcRendererEvent, payload: { tabId: string; projectId?: string | null }) => callback(payload);
+    onFocusTab: (callback: (payload: { tabId: string; rootNetworkId?: string | null }) => void) => {
+      const handler = (_event: IpcRendererEvent, payload: { tabId: string; rootNetworkId?: string | null }) => callback(payload);
       ipcRenderer.on('agent:focusTab', handler);
       return () => { ipcRenderer.removeListener('agent:focusTab', handler); };
     },
   },
-  project: {
+  world: {
     create: (data: { name: string; root_dir: string }) =>
-      ipcRenderer.invoke('project:create', data),
-    list: () => ipcRenderer.invoke('project:list'),
-    delete: (id: string) => ipcRenderer.invoke('project:delete', id),
-    update: (id: string, data: Record<string, unknown>) => ipcRenderer.invoke('project:update', id, data),
-    updateRootDir: (id: string, rootDir: string) => ipcRenderer.invoke('project:updateRootDir', id, rootDir),
+      ipcRenderer.invoke('world:create', data),
+    list: () => ipcRenderer.invoke('world:list'),
+    delete: (id: string) => ipcRenderer.invoke('world:delete', id),
+    update: (id: string, data: Record<string, unknown>) => ipcRenderer.invoke('world:update', id, data),
+    updateRootDir: (id: string, rootDir: string) => ipcRenderer.invoke('world:updateRootDir', id, rootDir),
   },
   instance: {
     create: (data: Record<string, unknown>) => ipcRenderer.invoke('instance:create', data),
-    getByProject: (projectId: string) => ipcRenderer.invoke('instance:getByProject', projectId),
+    getByRootNetwork: (rootNetworkId: string) => ipcRenderer.invoke('instance:getByRootNetwork', rootNetworkId),
     update: (id: string, data: Record<string, unknown>) =>
       ipcRenderer.invoke('instance:update', id, data),
     delete: (id: string) => ipcRenderer.invoke('instance:delete', id),
   },
   network: {
     create: (data: Record<string, unknown>) => ipcRenderer.invoke('network:create', data),
-    list: (projectId: string, rootOnly?: boolean) =>
-      ipcRenderer.invoke('network:list', projectId, rootOnly),
+    list: (rootNetworkId: string, rootOnly?: boolean) =>
+      ipcRenderer.invoke('network:list', rootNetworkId, rootOnly),
     update: (id: string, data: Record<string, unknown>) =>
       ipcRenderer.invoke('network:update', id, data),
     delete: (id: string) => ipcRenderer.invoke('network:delete', id),
     getFull: (networkId: string) => ipcRenderer.invoke('network:getFull', networkId),
     getUniverse: () => ipcRenderer.invoke('network:getUniverse'),
-    getProjectOntology: (projectId: string) => ipcRenderer.invoke('network:getProjectOntology', projectId),
+    getRoot: (rootNetworkId: string) => ipcRenderer.invoke('network:getRoot', rootNetworkId),
     getAncestors: (networkId: string) => ipcRenderer.invoke('network:getAncestors', networkId),
-    getTree: (projectId: string) => ipcRenderer.invoke('network:getTree', projectId),
+    getTree: (rootNetworkId: string) => ipcRenderer.invoke('network:getTree', rootNetworkId),
   },
   networkNode: {
     add: (data: Record<string, unknown>) => ipcRenderer.invoke('networkNode:add', data),
@@ -204,14 +204,14 @@ const electronAPI = {
   fileEntity: {
     create: (data: Record<string, unknown>) => ipcRenderer.invoke('file:create', data),
     get: (id: string) => ipcRenderer.invoke('file:get', id),
-    getByPath: (projectId: string, path: string) => ipcRenderer.invoke('file:getByPath', projectId, path),
-    getByProject: (projectId: string) => ipcRenderer.invoke('file:getByProject', projectId),
+    getByPath: (rootNetworkId: string, path: string) => ipcRenderer.invoke('file:getByPath', rootNetworkId, path),
+    getByRootNetwork: (rootNetworkId: string) => ipcRenderer.invoke('file:getByRootNetwork', rootNetworkId),
     update: (id: string, data: Record<string, unknown>) => ipcRenderer.invoke('file:update', id, data),
     delete: (id: string) => ipcRenderer.invoke('file:delete', id),
   },
   module: {
     create: (data: Record<string, unknown>) => ipcRenderer.invoke('module:create', data),
-    list: (projectId: string) => ipcRenderer.invoke('module:list', projectId),
+    list: (rootNetworkId: string) => ipcRenderer.invoke('module:list', rootNetworkId),
     update: (id: string, data: Record<string, unknown>) =>
       ipcRenderer.invoke('module:update', id, data),
     delete: (id: string) => ipcRenderer.invoke('module:delete', id),
@@ -224,7 +224,7 @@ const electronAPI = {
   },
   schema: {
     create: (data: Record<string, unknown>) => ipcRenderer.invoke('schema:create', data),
-    list: (projectId: string) => ipcRenderer.invoke('schema:list', projectId),
+    list: (rootNetworkId: string) => ipcRenderer.invoke('schema:list', rootNetworkId),
     get: (id: string) => ipcRenderer.invoke('schema:get', id),
     update: (id: string, data: Record<string, unknown>) =>
       ipcRenderer.invoke('schema:update', id, data),
@@ -246,7 +246,7 @@ const electronAPI = {
   },
   meaning: {
     create: (data: Record<string, unknown>) => ipcRenderer.invoke('meaning:create', data),
-    list: (projectId: string) => ipcRenderer.invoke('meaning:list', projectId),
+    list: (rootNetworkId: string) => ipcRenderer.invoke('meaning:list', rootNetworkId),
     get: (id: string) => ipcRenderer.invoke('meaning:get', id),
     update: (id: string, data: Record<string, unknown>) =>
       ipcRenderer.invoke('meaning:update', id, data),
@@ -406,8 +406,8 @@ const electronAPI = {
       ipcRenderer.invoke('agent:getSnapshot') as Promise<AgentSessionSnapshot[]>,
     setName: (terminalSessionId: string, name: string) =>
       ipcRenderer.invoke('agent:setName', terminalSessionId, name) as Promise<boolean>,
-    listDefinitions: (projectId?: string | null) =>
-      ipcRenderer.invoke('agent:listDefinitions', projectId),
+    listDefinitions: (rootNetworkId?: string | null) =>
+      ipcRenderer.invoke('agent:listDefinitions', rootNetworkId),
     upsertDefinition: (input: Record<string, unknown>) =>
       ipcRenderer.invoke('agent:upsertDefinition', input),
     deleteDefinition: (input: Record<string, unknown>) =>
@@ -438,13 +438,13 @@ const electronAPI = {
     },
   },
   narre: {
-    listSessions: (projectId: string) => ipcRenderer.invoke('narre:listSessions', projectId),
-    listSkills: (projectId: string) => ipcRenderer.invoke('narre:listSkills', projectId),
-    listSupervisorAgents: (projectId?: string | null) => ipcRenderer.invoke('narre:supervisorListAgents', projectId),
-    listSupervisorSkills: (projectId: string) => ipcRenderer.invoke('narre:supervisorListSkills', projectId),
+    listSessions: (rootNetworkId: string) => ipcRenderer.invoke('narre:listSessions', rootNetworkId),
+    listSkills: (rootNetworkId: string) => ipcRenderer.invoke('narre:listSkills', rootNetworkId),
+    listSupervisorAgents: (rootNetworkId?: string | null) => ipcRenderer.invoke('narre:supervisorListAgents', rootNetworkId),
+    listSupervisorSkills: (rootNetworkId: string) => ipcRenderer.invoke('narre:supervisorListSkills', rootNetworkId),
     listSupervisorSessions: () => ipcRenderer.invoke('narre:supervisorListSessions'),
     listSupervisorEvents: (afterSeq?: number | null) => ipcRenderer.invoke('narre:supervisorListEvents', afterSeq),
-    listSupervisorRuns: (projectId?: string | null) => ipcRenderer.invoke('narre:supervisorListRuns', projectId),
+    listSupervisorRuns: (rootNetworkId?: string | null) => ipcRenderer.invoke('narre:supervisorListRuns', rootNetworkId),
     createSupervisorRun: (data: Record<string, unknown>) => ipcRenderer.invoke('narre:supervisorCreateRun', data),
     getSupervisorRun: (runId: string) => ipcRenderer.invoke('narre:supervisorGetRun', runId),
     planSupervisorRun: (runId: string) => ipcRenderer.invoke('narre:supervisorPlanRun', runId),
@@ -458,7 +458,7 @@ const electronAPI = {
     deleteSession: (sessionId: string) => ipcRenderer.invoke('narre:deleteSession', sessionId),
     getApiKeyStatus: () => ipcRenderer.invoke('narre:getApiKeyStatus'),
     setApiKey: (key: string) => ipcRenderer.invoke('narre:setApiKey', key),
-    searchMentions: (projectId: string, query: string) => ipcRenderer.invoke('narre:searchMentions', projectId, query),
+    searchMentions: (rootNetworkId: string, query: string) => ipcRenderer.invoke('narre:searchMentions', rootNetworkId, query),
     sendMessage: (data: Record<string, unknown>) => ipcRenderer.invoke('narre:sendMessage', data),
     respondToCard: (data: Record<string, unknown>) => ipcRenderer.invoke('narre:respondCard', data),
     interruptMessage: (data: Record<string, unknown>) => ipcRenderer.invoke('narre:interruptMessage', data),

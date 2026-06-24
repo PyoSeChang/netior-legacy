@@ -11,8 +11,8 @@ import { dismissToastByKey, showCustomToast } from '../components/ui/Toast';
 import { ClaudeIcon, CodexIcon } from '../components/ui/AgentProviderIcons';
 import { MAIN_HOST_ID, useEditorStore } from '../stores/editor-store';
 import { useSettingsStore } from '../stores/settings-store';
-import { useProjectStore } from '../stores/project-store';
-import { findCachedProjectEditorTab, focusCachedProjectEditorTab } from '../stores/project-state-cache';
+import { useWorldStore } from '../stores/world-store';
+import { findCachedWorldEditorTab, focusCachedWorldEditorTab } from '../stores/world-state-cache';
 
 type AgentProvider = AgentSessionState['provider'];
 type AgentTurnState = AgentSessionState['turnState'];
@@ -44,7 +44,7 @@ type AgentNotifierGlobal = {
 
 interface UnacknowledgedEntry {
   tabId: string;
-  projectId: string | null;
+  rootNetworkId: string | null;
   provider: AgentProvider;
   title: string;
   timestamp: number;
@@ -53,8 +53,8 @@ interface UnacknowledgedEntry {
 interface AgentTabRef {
   tabId: string;
   tab: EditorTab | null;
-  projectId: string | null;
-  isCurrentProject: boolean;
+  rootNetworkId: string | null;
+  isCurrentWorld: boolean;
 }
 
 const unacknowledgedQueue: UnacknowledgedEntry[] = [];
@@ -109,7 +109,7 @@ export function jumpToNextUnacknowledgedAgent(): void {
   if (unacknowledgedQueue.length === 0) return;
 
   const entry = unacknowledgedQueue[0];
-  void focusAgentTab(entry.tabId, entry.projectId).then((focused) => {
+  void focusAgentTab(entry.tabId, entry.rootNetworkId).then((focused) => {
     if (!focused) unacknowledgedQueue.shift();
   });
 }
@@ -167,36 +167,36 @@ function getTerminalTabId(sessionId: string): string {
 }
 
 function resolveAgentTabRef(tabId: string): AgentTabRef {
-  const currentProjectId = useProjectStore.getState().currentProject?.id ?? null;
+  const currentRootNetworkId = useWorldStore.getState().currentWorld?.id ?? null;
   const currentTab = useEditorStore.getState().tabs.find((candidate) => candidate.id === tabId);
   if (currentTab) {
     return {
       tabId,
       tab: currentTab,
-      projectId: currentTab.projectId ?? currentProjectId,
-      isCurrentProject: true,
+      rootNetworkId: currentTab.rootNetworkId ?? currentRootNetworkId,
+      isCurrentWorld: true,
     };
   }
 
-  const cached = findCachedProjectEditorTab(tabId);
+  const cached = findCachedWorldEditorTab(tabId);
   if (cached) {
     return {
       tabId,
       tab: cached.tab,
-      projectId: cached.projectId,
-      isCurrentProject: false,
+      rootNetworkId: cached.rootNetworkId,
+      isCurrentWorld: false,
     };
   }
 
   return {
     tabId,
     tab: null,
-    projectId: null,
-    isCurrentProject: false,
+    rootNetworkId: null,
+    isCurrentWorld: false,
   };
 }
 
-async function focusAgentTab(tabId: string, projectId?: string | null): Promise<boolean> {
+async function focusAgentTab(tabId: string, rootNetworkId?: string | null): Promise<boolean> {
   const store = useEditorStore.getState();
   const currentTab = store.tabs.find((candidate) => candidate.id === tabId);
   if (currentTab) {
@@ -206,23 +206,23 @@ async function focusAgentTab(tabId: string, projectId?: string | null): Promise<
     return true;
   }
 
-  const cachedProjectId = projectId ?? findCachedProjectEditorTab(tabId)?.projectId ?? null;
-  if (!cachedProjectId) {
+  const cachedRootNetworkId = rootNetworkId ?? findCachedWorldEditorTab(tabId)?.rootNetworkId ?? null;
+  if (!cachedRootNetworkId) {
     return false;
   }
 
-  focusCachedProjectEditorTab(cachedProjectId, tabId);
+  focusCachedWorldEditorTab(cachedRootNetworkId, tabId);
 
-  let project = useProjectStore.getState().projects.find((candidate) => candidate.id === cachedProjectId) ?? null;
-  if (!project) {
-    await useProjectStore.getState().loadProjects();
-    project = useProjectStore.getState().projects.find((candidate) => candidate.id === cachedProjectId) ?? null;
+  let world = useWorldStore.getState().worlds.find((candidate) => candidate.id === cachedRootNetworkId) ?? null;
+  if (!world) {
+    await useWorldStore.getState().loadWorlds();
+    world = useWorldStore.getState().worlds.find((candidate) => candidate.id === cachedRootNetworkId) ?? null;
   }
-  if (!project) {
+  if (!world) {
     return false;
   }
 
-  await useProjectStore.getState().openProject(project);
+  await useWorldStore.getState().openWorld(world);
 
   const nextStore = useEditorStore.getState();
   let tab = nextStore.tabs.find((candidate) => candidate.id === tabId);
@@ -424,7 +424,7 @@ async function maybeShowNativeNotification(
   tabId: string,
   title: string,
   message: string,
-  projectId?: string | null,
+  rootNetworkId?: string | null,
 ): Promise<boolean> {
   if (!useSettingsStore.getState().nativeAgentNotificationsEnabled) {
     console.log('[AgentNotify] native notification skipped, disabled in settings', { tabId });
@@ -434,7 +434,7 @@ async function maybeShowNativeNotification(
   try {
     const shown = await window.electron.notifications.notifyAgent({
       tabId,
-      projectId,
+      rootNetworkId,
       title,
       message,
       playSound: useSettingsStore.getState().agentNotificationSoundEnabled,
@@ -453,19 +453,19 @@ function getUnreadCount(isActive: boolean): number {
 
 function maybeQueueUnacknowledged(
   tabId: string,
-  projectId: string | null,
+  rootNetworkId: string | null,
   snapshot: AgentTerminalSnapshot,
   title: string,
   isActive: boolean,
 ): void {
   if (!isActive && !unacknowledgedQueue.find((entry) => entry.tabId === tabId)) {
-    unacknowledgedQueue.push({ tabId, projectId, provider: snapshot.provider, title, timestamp: Date.now() });
+    unacknowledgedQueue.push({ tabId, rootNetworkId, provider: snapshot.provider, title, timestamp: Date.now() });
   }
 }
 
 function shouldShowAgentToast(tabRef: AgentTabRef): boolean {
   if (!tabRef.tab) return windowContext.kind === 'main';
-  if (!tabRef.isCurrentProject) return windowContext.kind === 'main';
+  if (!tabRef.isCurrentWorld) return windowContext.kind === 'main';
   return shouldShowToast(tabRef.tab.hostId, tabRef.tabId);
 }
 
@@ -476,7 +476,7 @@ function getAgentToastAction(tabRef: AgentTabRef): Pick<
   return {
     actionLabel: 'Go to Agent (Ctrl+.)',
     onAction: () => {
-      void focusAgentTab(tabRef.tabId, tabRef.projectId);
+      void focusAgentTab(tabRef.tabId, tabRef.rootNetworkId);
     },
   };
 }
@@ -485,17 +485,17 @@ async function maybeNotifyCompletion(snapshot: AgentTerminalSnapshot): Promise<v
   const tabId = getTerminalTabId(snapshot.terminalSessionId);
   const tabRef = resolveAgentTabRef(tabId);
   const title = tabRef.tab?.title || snapshot.terminalName || `${getProviderLabel(snapshot.provider)} Terminal`;
-  const isActive = tabRef.isCurrentProject && tabRef.tab ? isTabActiveInHost(tabId) : false;
+  const isActive = tabRef.isCurrentWorld && tabRef.tab ? isTabActiveInHost(tabId) : false;
 
-  maybeQueueUnacknowledged(tabId, tabRef.projectId, snapshot, title, isActive);
+  maybeQueueUnacknowledged(tabId, tabRef.rootNetworkId, snapshot, title, isActive);
   const otherUnread = getUnreadCount(isActive);
   const message = otherUnread > 0
     ? `${getProviderLabel(snapshot.provider)} finished responding. (${otherUnread} more unread)`
     : `${getProviderLabel(snapshot.provider)} finished responding.`;
   dismissAgentToasts(tabId);
 
-  const nativeShown = windowContext.kind === 'main' || tabRef.isCurrentProject
-    ? await maybeShowNativeNotification(tabId, title, message, tabRef.projectId)
+  const nativeShown = windowContext.kind === 'main' || tabRef.isCurrentWorld
+    ? await maybeShowNativeNotification(tabId, title, message, tabRef.rootNetworkId)
     : false;
   if (nativeShown) return;
   if (!shouldShowAgentToast(tabRef)) return;
@@ -534,8 +534,8 @@ function initNativeFocusListener(): void {
   if (nativeFocusListenerInitialized) return;
   nativeFocusListenerInitialized = true;
 
-  window.electron.notifications.onFocusTab(({ tabId, projectId }) => {
-    void focusAgentTab(tabId, projectId);
+  window.electron.notifications.onFocusTab(({ tabId, rootNetworkId }) => {
+    void focusAgentTab(tabId, rootNetworkId);
   });
 }
 
@@ -553,15 +553,15 @@ async function maybeNotifyAttention(snapshot: AgentTerminalSnapshot): Promise<vo
   const tabId = getTerminalTabId(snapshot.terminalSessionId);
   const tabRef = resolveAgentTabRef(tabId);
   const title = tabRef.tab?.title || snapshot.terminalName || `${getProviderLabel(snapshot.provider)} Terminal`;
-  const isActive = tabRef.isCurrentProject && tabRef.tab ? isTabActiveInHost(tabId) : false;
+  const isActive = tabRef.isCurrentWorld && tabRef.tab ? isTabActiveInHost(tabId) : false;
 
-  maybeQueueUnacknowledged(tabId, tabRef.projectId, snapshot, title, isActive);
+  maybeQueueUnacknowledged(tabId, tabRef.rootNetworkId, snapshot, title, isActive);
   const otherUnread = getUnreadCount(isActive);
   dismissAgentToasts(tabId);
   const message = getAttentionMessage(snapshot, otherUnread);
 
-  const nativeShown = windowContext.kind === 'main' || tabRef.isCurrentProject
-    ? await maybeShowNativeNotification(tabId, title, message, tabRef.projectId)
+  const nativeShown = windowContext.kind === 'main' || tabRef.isCurrentWorld
+    ? await maybeShowNativeNotification(tabId, title, message, tabRef.rootNetworkId)
     : false;
   if (nativeShown) return;
   if (!shouldShowAgentToast(tabRef)) return;
@@ -591,15 +591,15 @@ async function maybeNotifyError(snapshot: AgentTerminalSnapshot): Promise<void> 
   const tabId = getTerminalTabId(snapshot.terminalSessionId);
   const tabRef = resolveAgentTabRef(tabId);
   const title = tabRef.tab?.title || snapshot.terminalName || `${getProviderLabel(snapshot.provider)} Terminal`;
-  const isActive = tabRef.isCurrentProject && tabRef.tab ? isTabActiveInHost(tabId) : false;
+  const isActive = tabRef.isCurrentWorld && tabRef.tab ? isTabActiveInHost(tabId) : false;
 
-  maybeQueueUnacknowledged(tabId, tabRef.projectId, snapshot, title, isActive);
+  maybeQueueUnacknowledged(tabId, tabRef.rootNetworkId, snapshot, title, isActive);
   const otherUnread = getUnreadCount(isActive);
   dismissAgentToasts(tabId);
   const message = getErrorMessage(snapshot, otherUnread);
 
-  const nativeShown = windowContext.kind === 'main' || tabRef.isCurrentProject
-    ? await maybeShowNativeNotification(tabId, title, message, tabRef.projectId)
+  const nativeShown = windowContext.kind === 'main' || tabRef.isCurrentWorld
+    ? await maybeShowNativeNotification(tabId, title, message, tabRef.rootNetworkId)
     : false;
   if (nativeShown) return;
   if (!shouldShowAgentToast(tabRef)) return;

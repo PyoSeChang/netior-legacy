@@ -1,17 +1,17 @@
 import type { SeedContext } from '../../src/types.js';
 
 export default async function seed(ctx: SeedContext): Promise<void> {
-  const project = await ctx.createProject({
+  const world = await ctx.createWorld({
     name: 'Character Stat Conditional Field Fixture',
     root_dir: ctx.tempDir,
   });
   await ctx.createModule({
-    project_id: project.id,
+    root_network_id: world.id,
     name: 'Ontology',
     path: ctx.tempDir,
   });
 
   ctx.setTemplateVars({
-    project_id: project.id,
+    root_network_id: world.id,
   });
 }

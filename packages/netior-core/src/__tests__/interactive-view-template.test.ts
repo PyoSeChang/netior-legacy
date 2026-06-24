@@ -9,7 +9,7 @@ vi.mock('../connection', async (importOriginal) => {
   };
 });
 
-import { createProject } from '../repositories/project';
+import { createWorld } from '../repositories/world';
 import { createSchema } from '../repositories/schema';
 import { createInstance, deleteInstance } from '../repositories/instance';
 import {
@@ -32,12 +32,12 @@ describe('interactive view template repository', () => {
   });
 
   it('lists templates that match schema and instance scope', () => {
-    const project = createProject({ name: 'Project', root_dir: '/tmp/interactive-view-template' });
-    const schema = createSchema({ project_id: project.id, name: 'Schema' });
-    const instance = createInstance({ project_id: project.id, schema_id: schema.id, title: 'Instance' });
+    const world = createWorld({ name: 'World', root_dir: '/tmp/interactive-view-template' });
+    const schema = createSchema({ root_network_id: world.id, name: 'Schema' });
+    const instance = createInstance({ root_network_id: world.id, schema_id: schema.id, title: 'Instance' });
 
     const schemaTemplate = createInteractiveViewTemplate({
-      project_id: project.id,
+      root_network_id: world.id,
       target_kind: 'schema',
       target_id: schema.id,
       name: 'Schema View',
@@ -45,7 +45,7 @@ describe('interactive view template repository', () => {
       manifest_json: '{"kind":"interactive-view","sdkVersion":1}',
     });
     const instanceTemplate = createInteractiveViewTemplate({
-      project_id: project.id,
+      root_network_id: world.id,
       target_kind: 'instance',
       target_id: instance.id,
       name: 'Instance View',
@@ -54,7 +54,7 @@ describe('interactive view template repository', () => {
     });
 
     const templates = listInteractiveViewTemplates({
-      projectId: project.id,
+      rootNetworkId: world.id,
       schemaId: schema.id,
       instanceId: instance.id,
     });
@@ -65,25 +65,25 @@ describe('interactive view template repository', () => {
     ]);
   });
 
-  it('rejects project-scoped templates', () => {
-    const project = createProject({ name: 'Project', root_dir: '/tmp/interactive-view-project-rejected' });
+  it('rejects world-scoped templates', () => {
+    const world = createWorld({ name: 'World', root_dir: '/tmp/interactive-view-world-rejected' });
 
     expect(() => createInteractiveViewTemplate({
-      project_id: project.id,
-      target_kind: 'project' as 'schema',
+      root_network_id: world.id,
+      target_kind: 'world' as 'schema',
       target_id: null,
-      name: 'Project View',
+      name: 'World View',
       source_code: 'export function View() { return null }',
       manifest_json: '{"kind":"interactive-view","sdkVersion":1}',
     })).toThrow(/Unsupported interactive view template target kind/);
   });
 
   it('stores validation metadata and per-instance template preference', () => {
-    const project = createProject({ name: 'Project', root_dir: '/tmp/interactive-view-preference' });
-    const instance = createInstance({ project_id: project.id, title: 'Instance' });
-    const schema = createSchema({ project_id: project.id, name: 'Schema' });
+    const world = createWorld({ name: 'World', root_dir: '/tmp/interactive-view-preference' });
+    const instance = createInstance({ root_network_id: world.id, title: 'Instance' });
+    const schema = createSchema({ root_network_id: world.id, name: 'Schema' });
     const template = createInteractiveViewTemplate({
-      project_id: project.id,
+      root_network_id: world.id,
       target_kind: 'schema',
       target_id: schema.id,
       name: 'Generated View',
@@ -107,17 +107,17 @@ describe('interactive view template repository', () => {
       selected_view_template_id: template.id,
     });
 
-    expect(preference.project_id).toBe(project.id);
+    expect(preference.root_network_id).toBe(world.id);
     expect(preference.preference_mode).toBe('template');
     expect(getInteractiveViewPreference(instance.id)?.selected_view_template_id).toBe(template.id);
   });
 
   it('stores schema defaults separately from instance overrides', () => {
-    const project = createProject({ name: 'Project', root_dir: '/tmp/interactive-view-schema-preference' });
-    const schema = createSchema({ project_id: project.id, name: 'Question' });
-    const instance = createInstance({ project_id: project.id, schema_id: schema.id, title: 'Instance' });
+    const world = createWorld({ name: 'World', root_dir: '/tmp/interactive-view-schema-preference' });
+    const schema = createSchema({ root_network_id: world.id, name: 'Question' });
+    const instance = createInstance({ root_network_id: world.id, schema_id: schema.id, title: 'Instance' });
     const schemaTemplate = createInteractiveViewTemplate({
-      project_id: project.id,
+      root_network_id: world.id,
       target_kind: 'schema',
       target_id: schema.id,
       name: 'Schema View',
@@ -125,7 +125,7 @@ describe('interactive view template repository', () => {
       manifest_json: '{"kind":"interactive-view","sdkVersion":1}',
     });
     const instanceTemplate = createInteractiveViewTemplate({
-      project_id: project.id,
+      root_network_id: world.id,
       target_kind: 'instance',
       target_id: instance.id,
       name: 'Instance View',
@@ -150,8 +150,8 @@ describe('interactive view template repository', () => {
   });
 
   it('cascades preferences when an instance is deleted', () => {
-    const project = createProject({ name: 'Project', root_dir: '/tmp/interactive-view-preference-cascade' });
-    const instance = createInstance({ project_id: project.id, title: 'Instance' });
+    const world = createWorld({ name: 'World', root_dir: '/tmp/interactive-view-preference-cascade' });
+    const instance = createInstance({ root_network_id: world.id, title: 'Instance' });
 
     upsertInteractiveViewPreference({
       instance_id: instance.id,

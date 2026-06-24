@@ -1,11 +1,11 @@
 ﻿import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_ACTIVITY_BAR_LAYOUT_CONFIG,
-  getProjectNetworkBookmarkIds,
+  getWorldNetworkBookmarkIds,
   getVisibleOrderedItems,
   moveOrderedItem,
   normalizeActivityBarLayoutConfig,
-  setProjectNetworkBookmarkIds,
+  setWorldNetworkBookmarkIds,
 } from '../lib/activity-bar-layout';
 
 describe('normalizeActivityBarLayoutConfig', () => {
@@ -13,22 +13,22 @@ describe('normalizeActivityBarLayoutConfig', () => {
     const normalized = normalizeActivityBarLayoutConfig({
       topItemOrder: ['files', 'networks', 'objects', 'sessions', 'files', 'unknown'],
       bottomItemOrder: ['sessions', 'settings'],
-      networkBookmarksByProject: {
-        projectA: ['network-2', '', 'network-2', 'network-1'],
+      networkBookmarksByWorld: {
+        worldA: ['network-2', '', 'network-2', 'network-1'],
         '   ': ['ignored'],
-        projectB: 'invalid',
+        worldB: 'invalid',
       },
     });
 
     expect(normalized.topItemOrder).toEqual([
-      'projects',
+      'worlds',
       'networks',
       'files',
       'sessions',
     ]);
-    expect(normalized.bottomItemOrder).toEqual(['ontology', 'narre', 'terminal', 'agents', 'settings']);
-    expect(normalized.networkBookmarksByProject).toEqual({
-      projectA: ['network-2', 'network-1'],
+    expect(normalized.bottomItemOrder).toEqual(['rootNetwork', 'narre', 'terminal', 'agents', 'browser', 'settings']);
+    expect(normalized.networkBookmarksByWorld).toEqual({
+      worldA: ['network-2', 'network-1'],
     });
   });
 
@@ -56,17 +56,17 @@ describe('moveOrderedItem', () => {
   });
 });
 
-describe('project bookmark helpers', () => {
-  it('sets and clears project bookmark ids', () => {
-    const withBookmarks = setProjectNetworkBookmarkIds(
+describe('world bookmark helpers', () => {
+  it('sets and clears world bookmark ids', () => {
+    const withBookmarks = setWorldNetworkBookmarkIds(
       DEFAULT_ACTIVITY_BAR_LAYOUT_CONFIG,
-      'project-1',
+      'world-1',
       ['network-1', 'network-2', 'network-1'],
     );
 
-    expect(getProjectNetworkBookmarkIds(withBookmarks, 'project-1')).toEqual(['network-1', 'network-2']);
+    expect(getWorldNetworkBookmarkIds(withBookmarks, 'world-1')).toEqual(['network-1', 'network-2']);
 
-    const cleared = setProjectNetworkBookmarkIds(withBookmarks, 'project-1', []);
-    expect(getProjectNetworkBookmarkIds(cleared, 'project-1')).toEqual([]);
+    const cleared = setWorldNetworkBookmarkIds(withBookmarks, 'world-1', []);
+    expect(getWorldNetworkBookmarkIds(cleared, 'world-1')).toEqual([]);
   });
 });

@@ -1,11 +1,11 @@
 import React, { useEffect, useCallback, useState } from 'react';
 import { ExternalLink, Plus, RefreshCw } from 'lucide-react';
-import type { Project } from '@netior/shared/types';
+import type { World } from '@netior/shared/types';
 import { useNetworkStore } from '../../stores/network-store';
 import { useFileStore } from '../../stores/file-store';
 import { useModuleStore } from '../../stores/module-store';
 import { useUIStore } from '../../stores/ui-store';
-import { useProjectStore } from '../../stores/project-store';
+import { useWorldStore } from '../../stores/world-store';
 import { NetworkList } from './NetworkList';
 import { FileTree } from './FileTree';
 import { ModuleSelector } from './ModuleSelector';
@@ -19,13 +19,13 @@ import { Tooltip } from '../ui/Tooltip';
 import { fsService } from '../../services';
 import { useI18n } from '../../hooks/useI18n';
 import { openFileTab } from '../../lib/open-file-tab';
-import { ProjectCreateDialog } from '../home/ProjectCreateDialog';
+import { WorldCreateDialog } from '../home/WorldCreateDialog';
 import { AgentSessionPanel } from './AgentSessionPanel';
 import { ContextMenu, type ContextMenuEntry } from '../ui/ContextMenu';
 import { useEditorStore } from '../../stores/editor-store';
 
 interface SidebarProps {
-  project: Project | null;
+  world: World | null;
 }
 
 const OBJECT_PANEL_TYPES = {
@@ -37,39 +37,39 @@ const OBJECT_PANEL_TYPES = {
 function AppWorkspaceSidebar(): JSX.Element {
   const { t } = useI18n();
   const currentNetwork = useNetworkStore((s) => s.currentNetwork);
-  const projects = useProjectStore((s) => s.projects);
-  const createProject = useProjectStore((s) => s.createProject);
-  const openProject = useProjectStore((s) => s.openProject);
-  const currentProject = useProjectStore((s) => s.currentProject);
+  const worlds = useWorldStore((s) => s.worlds);
+  const createWorld = useWorldStore((s) => s.createWorld);
+  const openWorld = useWorldStore((s) => s.openWorld);
+  const currentWorld = useWorldStore((s) => s.currentWorld);
   const createModule = useModuleStore((s) => s.createModule);
-  const [showCreateProject, setShowCreateProject] = useState(false);
-  const [projectContextMenu, setProjectContextMenu] = useState<{
+  const [showCreateWorld, setShowCreateWorld] = useState(false);
+  const [worldContextMenu, setWorldContextMenu] = useState<{
     x: number;
     y: number;
-    project: Project;
+    world: World;
   } | null>(null);
   const universeIsActive = currentNetwork?.kind === 'universe';
 
-  const handleCreateProject = async (name: string, rootDir: string) => {
-    const project = await createProject(name, rootDir);
-    await createModule({ project_id: project.id, name, path: rootDir });
-    await openProject(project);
+  const handleCreateWorld = async (name: string, rootDir: string) => {
+    const world = await createWorld(name, rootDir);
+    await createModule({ root_network_id: world.id, name, path: rootDir });
+    await openWorld(world);
   };
 
-  const handleOpenProject = async (project: Project) => {
-    await openProject(project);
+  const handleOpenWorld = async (world: World) => {
+    await openWorld(world);
   };
 
-  const projectContextMenuItems: ContextMenuEntry[] = projectContextMenu
+  const worldContextMenuItems: ContextMenuEntry[] = worldContextMenu
     ? [
       {
         label: t('editor.openInEditor'),
         icon: <ExternalLink size={14} />,
         onClick: () => {
           void useEditorStore.getState().openTab({
-            type: 'project',
-            targetId: projectContextMenu.project.id,
-            title: projectContextMenu.project.name,
+            type: 'world',
+            targetId: worldContextMenu.world.id,
+            title: worldContextMenu.world.name,
           });
         },
       },
@@ -101,99 +101,99 @@ function AppWorkspaceSidebar(): JSX.Element {
 
       <div className="px-2">
         <div className="mb-2 flex items-center justify-between gap-2">
-          <div className="text-xs font-medium text-secondary">{t('project.title' as never) ?? 'Projects'}</div>
+          <div className="text-xs font-medium text-secondary">{t('world.title' as never) ?? 'Worlds'}</div>
           <button
             type="button"
             className="rounded p-1 text-muted transition-colors hover:bg-state-hover hover:text-default"
-            onClick={() => setShowCreateProject(true)}
-            title={t('project.create')}
+            onClick={() => setShowCreateWorld(true)}
+            title={t('world.create')}
           >
             <Plus size={12} />
           </button>
         </div>
-        {projects.length > 0 ? (
+        {worlds.length > 0 ? (
           <div className="flex flex-col gap-1">
-            {projects.map((project) => (
+            {worlds.map((world) => (
               <button
-                key={project.id}
+                key={world.id}
                 className={`flex w-full items-center rounded px-2 py-1 text-left text-xs transition-colors ${
-                  currentProject?.id === project.id && !universeIsActive
+                  currentWorld?.id === world.id && !universeIsActive
                     ? 'bg-state-selected text-accent'
                     : 'text-default hover:bg-state-hover'
                 }`}
                 onClick={() => {
-                  void handleOpenProject(project);
+                  void handleOpenWorld(world);
                 }}
                 onContextMenu={(event) => {
                   event.preventDefault();
                   event.stopPropagation();
-                  setProjectContextMenu({ x: event.clientX, y: event.clientY, project });
+                  setWorldContextMenu({ x: event.clientX, y: event.clientY, world });
                 }}
               >
-                <span className="truncate">{project.name}</span>
+                <span className="truncate">{world.name}</span>
               </button>
             ))}
           </div>
         ) : (
           <div className="rounded border border-subtle bg-surface-card px-2 py-3 text-xs text-muted">
-            {t('project.noProjectsYet')}
+            {t('world.noWorldsYet')}
           </div>
         )}
       </div>
 
-      <ProjectCreateDialog
-        open={showCreateProject}
-        onClose={() => setShowCreateProject(false)}
-        onCreate={handleCreateProject}
+      <WorldCreateDialog
+        open={showCreateWorld}
+        onClose={() => setShowCreateWorld(false)}
+        onCreate={handleCreateWorld}
       />
-      {projectContextMenu && (
+      {worldContextMenu && (
         <ContextMenu
-          x={projectContextMenu.x}
-          y={projectContextMenu.y}
-          items={projectContextMenuItems}
-          onClose={() => setProjectContextMenu(null)}
+          x={worldContextMenu.x}
+          y={worldContextMenu.y}
+          items={worldContextMenuItems}
+          onClose={() => setWorldContextMenu(null)}
         />
       )}
     </div>
   );
 }
 
-export function Sidebar({ project }: SidebarProps): JSX.Element {
+export function Sidebar({ world }: SidebarProps): JSX.Element {
   const { t } = useI18n();
   const { sidebarView, sidebarWidth, bookmarkedSidebarNetworkId } = useUIStore();
   const { loadFileTree, fileTree, refreshFileTree, loading: fileLoading } = useFileStore();
   const { loadNetworks, loadNetworkTree } = useNetworkStore();
   const { loadModules, directories } = useModuleStore();
-  const { loadByProject: loadInstances } = useInstanceStore();
-  const { loadByProject: loadMeanings } = useMeaningStore();
+  const { loadByWorld: loadInstances } = useInstanceStore();
+  const { loadByWorld: loadMeanings } = useMeaningStore();
 
   useEffect(() => {
-    if (!project) return;
-    loadNetworks(project.id);
-    loadNetworkTree(project.id);
-    loadModules(project.id);
-    loadInstances(project.id);
-    loadMeanings(project.id);
-  }, [project?.id, loadNetworks, loadNetworkTree, loadModules, loadInstances, loadMeanings]);
+    if (!world) return;
+    loadNetworks(world.id);
+    loadNetworkTree(world.id);
+    loadModules(world.id);
+    loadInstances(world.id);
+    loadMeanings(world.id);
+  }, [world?.id, loadNetworks, loadNetworkTree, loadModules, loadInstances, loadMeanings]);
 
   useEffect(() => {
-    if (!project) return undefined;
+    if (!world) return undefined;
     if (directories.length > 0) {
       const dirs = directories.map((d) => d.dir_path);
       loadFileTree(dirs);
       fsService.watchDirs(dirs);
     }
     return () => { fsService.unwatchDirs(); };
-  }, [directories, loadFileTree, project]);
+  }, [directories, loadFileTree, world]);
 
   // Auto-refresh on filesystem changes
   useEffect(() => {
-    if (!project) return undefined;
+    if (!world) return undefined;
     const unsubscribe = fsService.onDirChanged(() => {
       refreshFileTree();
     });
     return unsubscribe;
-  }, [refreshFileTree, project]);
+  }, [refreshFileTree, world]);
 
   const handleRefresh = useCallback(() => {
     refreshFileTree();
@@ -208,7 +208,7 @@ export function Sidebar({ project }: SidebarProps): JSX.Element {
       className="sidebar-surface flex h-full shrink-0 flex-col"
       style={{ width: sidebarWidth }}
     >
-      {!project || sidebarView === 'projects' ? (
+      {!world || sidebarView === 'worlds' ? (
         <ScrollArea className="flex-1">
           <AppWorkspaceSidebar />
         </ScrollArea>
@@ -217,20 +217,20 @@ export function Sidebar({ project }: SidebarProps): JSX.Element {
       ) : (
         <ScrollArea className="min-h-0 flex-1">
           <div className="flex min-h-full flex-col py-2">
-            {sidebarView === 'ontology' && (
+            {sidebarView === 'rootNetwork' && (
               <NetworkList
-                projectId={project.id}
-                kindFilter="ontology"
-                title={t('sidebar.ontology' as never)}
+                rootNetworkId={world.id}
+                kindFilter="root"
+                title={t('sidebar.rootNetwork' as never)}
                 canCreate={false}
               />
             )}
-            {sidebarView === 'networks' && <NetworkList projectId={project.id} kindFilter={['ontology', 'network']} />}
+            {sidebarView === 'networks' && <NetworkList rootNetworkId={world.id} kindFilter={['root', 'network']} />}
             {sidebarView === 'files' && (
               <>
                 <div className="flex items-center">
                   <div className="flex-1">
-                    <ModuleSelector projectId={project.id} projectRootDir={project.root_dir} />
+                    <ModuleSelector rootNetworkId={world.id} worldRootDir={world.root_dir} />
                   </div>
                   <Tooltip content={t('fileTree.refresh')} position="bottom">
                     <button
@@ -254,7 +254,7 @@ export function Sidebar({ project }: SidebarProps): JSX.Element {
             {sidebarView === 'meanings' && <ObjectPanel types={[...OBJECT_PANEL_TYPES.meanings]} />}
             {sidebarView === 'contexts' && <ObjectPanel types={[...OBJECT_PANEL_TYPES.contexts]} />}
             {sidebarView === 'objects' && <ObjectPanel />}
-            {sidebarView === 'sessions' && <AgentSessionPanel projectId={project.id} />}
+            {sidebarView === 'sessions' && <AgentSessionPanel rootNetworkId={world.id} />}
           </div>
         </ScrollArea>
       )}

@@ -10,16 +10,16 @@ const SAFE_AGENT_DIRECTORY_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 
 export interface UserAgentSkillRootOptions {
   agent: NarreUserAgentDefinition;
-  projectRootDir?: string | null;
+  worldRootDir?: string | null;
   sharedUserDataRootDir?: string | null;
 }
 
 export function resolveUserAgentSkillRoot(options: UserAgentSkillRootOptions): string {
-  if (options.agent.userAgentType === 'project') {
-    if (!options.projectRootDir) {
-      throw new Error(`Project directory is required for project user agent ${options.agent.id}`);
+  if (options.agent.userAgentType === 'world') {
+    if (!options.worldRootDir) {
+      throw new Error(`World directory is required for world user agent ${options.agent.id}`);
     }
-    return resolveProjectUserAgentSkillRoot(options.projectRootDir, options.agent.id);
+    return resolveWorldUserAgentSkillRoot(options.worldRootDir, options.agent.id);
   }
 
   if (!options.sharedUserDataRootDir) {
@@ -28,9 +28,9 @@ export function resolveUserAgentSkillRoot(options: UserAgentSkillRootOptions): s
   return resolveGlobalUserAgentSkillRoot(options.sharedUserDataRootDir, options.agent.id);
 }
 
-export function resolveProjectUserAgentSkillRoot(projectRootDir: string, agentId: string): string {
+export function resolveWorldUserAgentSkillRoot(worldRootDir: string, agentId: string): string {
   return path.join(
-    resolveProjectAgentsRoot(projectRootDir),
+    resolveWorldAgentsRoot(worldRootDir),
     normalizeAgentDirectoryId(agentId),
     AGENT_SKILL_STORAGE.SKILLS_DIR,
   );
@@ -44,10 +44,10 @@ export function resolveGlobalUserAgentSkillRoot(sharedUserDataRootDir: string, a
   );
 }
 
-export function resolveProjectAgentsRoot(projectRootDir: string): string {
+export function resolveWorldAgentsRoot(worldRootDir: string): string {
   return path.join(
-    projectRootDir,
-    AGENT_SKILL_STORAGE.PROJECT_CONFIG_DIR,
+    worldRootDir,
+    AGENT_SKILL_STORAGE.WORLD_CONFIG_DIR,
     AGENT_SKILL_STORAGE.AGENTS_DIR,
   );
 }

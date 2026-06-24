@@ -5,7 +5,7 @@ import type { ObjectRecord, NetworkObjectType } from '@netior/shared/types';
 export function createObject(
   objectType: NetworkObjectType,
   scope: string,
-  projectId: string | null,
+  rootNetworkId: string | null,
   refId: string,
 ): ObjectRecord {
   const db = getDatabase();
@@ -13,10 +13,10 @@ export function createObject(
   const now = new Date().toISOString();
 
   db.prepare(
-    `INSERT INTO objects (id, object_type, scope, project_id, ref_id, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
-  ).run(id, objectType, scope, projectId, refId, now);
+    `INSERT INTO objects (id, object_type, scope, root_network_id, ref_id, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
+  ).run(id, objectType, scope, rootNetworkId, refId, now);
 
-  return { id, object_type: objectType, scope, project_id: projectId, ref_id: refId, created_at: now };
+  return { id, object_type: objectType, scope, root_network_id: rootNetworkId, ref_id: refId, created_at: now };
 }
 
 export function getObject(id: string): ObjectRecord | undefined {

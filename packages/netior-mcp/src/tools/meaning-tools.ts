@@ -17,7 +17,7 @@ import {
   updateMeaning,
 } from '../netior-service-client.js';
 import { emitChange } from '../events.js';
-import { projectIdSchema, registerNetiorTool, resolveProjectId } from './shared-tool-registry.js';
+import { rootNetworkIdSchema, registerNetiorTool, resolveRootNetworkId } from './shared-tool-registry.js';
 import { fromAgentFieldType, toAgentMeaning, type AgentFieldType } from './meaning-surface.js';
 
 const fieldTypeModel = z.enum([
@@ -134,10 +134,10 @@ export function registerModelTools(server: McpServer): void {
   registerNetiorTool(
     server,
     'list_meanings',
-    { project_id: projectIdSchema() },
-    async ({ project_id }) => {
+    { root_network_id: rootNetworkIdSchema() },
+    async ({ root_network_id }) => {
       try {
-        const result = (await listMeanings(resolveProjectId(project_id))).map(toAgentMeaning);
+        const result = (await listMeanings(resolveRootNetworkId(root_network_id))).map(toAgentMeaning);
         return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] };
       } catch (error) {
         return {
@@ -151,10 +151,10 @@ export function registerModelTools(server: McpServer): void {
   registerNetiorTool(
     server,
     'list_meaning_categories',
-    { project_id: projectIdSchema() },
-    async ({ project_id }) => {
+    { root_network_id: rootNetworkIdSchema() },
+    async ({ root_network_id }) => {
       try {
-        const result = await listMeaningCategories(resolveProjectId(project_id));
+        const result = await listMeaningCategories(resolveRootNetworkId(root_network_id));
         return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] };
       } catch (error) {
         return {
@@ -192,7 +192,7 @@ export function registerModelTools(server: McpServer): void {
     server,
     'create_meaning',
     {
-      project_id: projectIdSchema(),
+      root_network_id: rootNetworkIdSchema(),
       key: modelKeyModel.optional().describe('Optional stable meaning key. Omit to derive from name.'),
       name: z.string().describe('Meaning name'),
       description: z.string().nullable().optional().describe('What this meaning means and when to use it'),
@@ -205,10 +205,10 @@ export function registerModelTools(server: McpServer): void {
       line_style: lineStyleModel.nullable().optional().describe('Default edge line style when target_kind includes edge'),
       directed: z.boolean().nullable().optional().describe('Default edge direction when target_kind includes edge'),
     },
-    async ({ project_id, key, name, description, category_instance_id, target_kind, meaning_keys, recipe, color, icon, line_style, directed }) => {
+    async ({ root_network_id, key, name, description, category_instance_id, target_kind, meaning_keys, recipe, color, icon, line_style, directed }) => {
       try {
         const result = await createMeaning({
-          project_id: resolveProjectId(project_id),
+          root_network_id: resolveRootNetworkId(root_network_id),
           key: key as MeaningRefKey | undefined,
           name,
           description,

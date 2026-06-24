@@ -26,10 +26,10 @@ function formatPermissionActionLabel(
   t: ReturnType<typeof useI18n>['t'],
 ): string {
   switch (action.key.toLowerCase()) {
-    case 'accept_project':
-    case 'allow_project':
-    case 'always_allow_project':
-      return t('narre.card.permissionAllowProject' as never);
+    case 'accept_world':
+    case 'allow_world':
+    case 'always_allow_world':
+      return t('narre.card.permissionAllowWorld' as never);
     case 'approve':
     case 'allow':
     case 'confirm':
@@ -49,10 +49,10 @@ function formatPermissionDecisionLabel(
   t: ReturnType<typeof useI18n>['t'],
 ): string {
   switch (actionKey.toLowerCase()) {
-    case 'accept_project':
-    case 'allow_project':
-    case 'always_allow_project':
-      return t('narre.card.permissionAllowedProject' as never);
+    case 'accept_world':
+    case 'allow_world':
+    case 'always_allow_world':
+      return t('narre.card.permissionAllowedWorld' as never);
     case 'approve':
     case 'allow':
     case 'confirm':
@@ -73,9 +73,9 @@ function getPermissionDecisionVariant(actionKey: string | null): 'success' | 'er
   }
 
   switch (actionKey.toLowerCase()) {
-    case 'accept_project':
-    case 'allow_project':
-    case 'always_allow_project':
+    case 'accept_world':
+    case 'allow_world':
+    case 'always_allow_world':
     case 'approve':
     case 'allow':
     case 'confirm':
@@ -96,9 +96,9 @@ function getActionButtonVariant(actionKey: string, actionVariant?: 'danger' | 'd
   }
 
   switch (actionKey.toLowerCase()) {
-    case 'accept_project':
-    case 'allow_project':
-    case 'always_allow_project':
+    case 'accept_world':
+    case 'allow_world':
+    case 'always_allow_world':
       return 'secondary';
     default:
       return 'primary';
@@ -130,7 +130,7 @@ function getDisplayPreviewItems(
   const hasResolvedMeaningList = items.some((item) => item.kind === 'meaning_list' && item.meanings?.length);
   const visibleItems = items.filter((item) => {
     const key = toPreviewLabelKey(item.label);
-    if (key === 'schemaId' || key === 'groupId' || key === 'projectId') {
+    if (key === 'schemaId' || key === 'groupId' || key === 'rootNetworkId') {
       return false;
     }
     if (key === 'meanings' && hasResolvedMeaningList && !(item.kind === 'meaning_list' && item.meanings?.length)) {
@@ -338,7 +338,7 @@ function PreviewValue({
                 key: meaning.key as never,
                 name: meaning.name,
                 description: meaning.description ?? null,
-                source_kind: 'project',
+                source_kind: 'world',
                 source_ref: null,
               })}
             </span>
