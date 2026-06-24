@@ -63,6 +63,7 @@ import { migrate058 } from '../migrations/058-remove-field-behavior-meanings';
 import { migrate059 } from '../migrations/059-add-dependency-meaning';
 import { migrate060 } from '../migrations/060-network-owned-ontology-scope';
 import { migrate061 } from '../migrations/061-root-network-world-boundary';
+import { migrate062 } from '../migrations/062-repair-root-network-owners';
 
 let testDb: Database.Database | null = null;
 
@@ -131,6 +132,7 @@ export function setupTestDb(): Database.Database {
   migrate059(testDb);
   migrate060(testDb);
   migrate061(testDb);
+  migrate062(testDb);
   testDb.pragma('foreign_keys = ON');
   return testDb;
 }

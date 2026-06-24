@@ -51,7 +51,7 @@ export function ensureMeaningCategoryTaxonomyForWorldDb(
   `).run(schemaId, rootNetworkId, ownerNetworkId, SYSTEM_ONTOLOGY_SOURCE_ID, MEANING_CATEGORY_SCHEMA_SOURCE_REF, SYSTEM_ONTOLOGY_SOURCE_VERSION, now, now);
   db.prepare(`
     UPDATE schemas
-       SET owner_network_id = COALESCE(owner_network_id, ?),
+       SET owner_network_id = ?,
            source_kind = 'system',
            source_id = ?,
            source_ref = ?,
@@ -79,7 +79,7 @@ export function ensureMeaningCategoryTaxonomyForWorldDb(
   `);
   const updateInstance = db.prepare(`
     UPDATE instances
-       SET owner_network_id = COALESCE(owner_network_id, ?),
+       SET owner_network_id = ?,
            schema_id = ?,
            source_kind = 'system',
            source_id = ?,

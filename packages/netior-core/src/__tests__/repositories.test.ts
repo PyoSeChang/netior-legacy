@@ -36,6 +36,7 @@ import {
 import { getEditorPrefs, upsertEditorPrefs } from '../repositories/editor-prefs';
 import { createMeaning, deleteMeaning, getMeaning, listMeanings, updateMeaning } from '../repositories/meaning';
 import { listMeaningCategoriesForWorldDb } from '../repositories/meaning-category';
+import { migrate062 } from '../migrations/062-repair-root-network-owners';
 import { createObject, getObject, getObjectByRef, deleteObject, deleteObjectByRef } from '../repositories/objects';
 import { createContext, listContexts, getContext, updateContext, deleteContext, addContextMember, removeContextMember, getContextMembers } from '../repositories/context';
 import {
@@ -627,6 +628,36 @@ describe('Repositories', () => {
             AND binding_kind = 'visible'`,
       ).get(rootNetwork!.id) as { count: number };
       expect(bindingCount.count).toBeGreaterThan(0);
+    });
+
+    it('should repair stale ontology owner references after the world boundary migration', () => {
+      const world = createWorld({ name: 'Migrated', root_dir: '/tmp/migrated' });
+      const rootNetwork = getRootNetwork(world.id);
+      expect(rootNetwork).toBeDefined();
+
+      const db = getTestDb();
+      db.pragma('foreign_keys = OFF');
+      db.prepare(
+        "UPDATE schemas SET owner_network_id = 'network-deleted-ontology' WHERE root_network_id = ? AND source_ref = 'schema.meaning_category'",
+      ).run(world.id);
+      db.prepare("UPDATE instances SET owner_network_id = 'network-deleted-ontology' WHERE root_network_id = ?").run(world.id);
+      db.prepare("UPDATE meanings SET owner_network_id = 'network-deleted-ontology' WHERE root_network_id = ?").run(world.id);
+      db.prepare("UPDATE object_scope_bindings SET scope_network_id = 'network-deleted-ontology' WHERE scope_network_id = ?").run(rootNetwork!.id);
+      db.pragma('foreign_keys = ON');
+
+      migrate062(db);
+      const meanings = listMeanings(world.id);
+
+      const schema = db.prepare(
+        "SELECT owner_network_id FROM schemas WHERE root_network_id = ? AND source_ref = 'schema.meaning_category'",
+      ).get(world.id) as { owner_network_id: string | null } | undefined;
+      const categories = listMeaningCategoriesForWorldDb(db, world.id);
+      const violations = db.pragma('foreign_key_check') as unknown[];
+
+      expect(schema?.owner_network_id).toBe(rootNetwork!.id);
+      expect(categories.every((category) => category.owner_network_id === rootNetwork!.id)).toBe(true);
+      expect(meanings.every((meaning) => meaning.owner_network_id === rootNetwork!.id)).toBe(true);
+      expect(violations).toEqual([]);
     });
   });
 

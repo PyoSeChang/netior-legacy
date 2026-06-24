@@ -428,7 +428,7 @@ export function seedBuiltInMeaningsForWorldDb(db: Db, rootNetworkId: string): vo
       updateMissingIcon.run(icon, now, rootNetworkId, definition.key);
     }
     updateMissingRecipe.run(recipeJson, now, rootNetworkId, definition.key);
-    db.prepare('UPDATE meanings SET owner_network_id = COALESCE(owner_network_id, ?), updated_at = ? WHERE id = ?')
+    db.prepare('UPDATE meanings SET owner_network_id = ?, updated_at = ? WHERE id = ?')
       .run(ownerNetworkId, now, id);
     ensureObjectForMeaning(db, { id, root_network_id: rootNetworkId, owner_network_id: ownerNetworkId, created_at: now });
   }
