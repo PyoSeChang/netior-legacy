@@ -104,7 +104,7 @@ export function DraftCard({
     || (content.trim() === card.content.trim() && feedback.trim().length === 0);
 
   return (
-    <div className={embedded ? 'space-y-3' : 'mt-2 rounded-lg border border-subtle bg-surface-card p-3'}>
+    <div className={embedded ? 'min-h-0 space-y-3' : 'mt-2 rounded-lg border border-subtle bg-surface-card p-3'}>
       <div className="flex items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2">
           {card.title ? (
@@ -121,7 +121,7 @@ export function DraftCard({
 
       {isSubmitted ? (
         <div className="space-y-2">
-          <div className="whitespace-pre-wrap rounded-lg border border-subtle bg-surface-editor px-3 py-2 text-sm text-default">
+          <div className="max-h-[min(40vh,360px)] overflow-y-auto whitespace-pre-wrap rounded-lg border border-subtle bg-surface-editor px-3 py-2 text-sm text-default">
             {content.trim().length > 0 ? content : card.content}
           </div>
           {feedback.trim().length > 0 && (
@@ -133,12 +133,12 @@ export function DraftCard({
         </div>
       ) : (
         <>
-          <div className="relative">
+          <div className="relative min-h-0">
             <div
               ref={editorRef}
               contentEditable
               role="textbox"
-              className="min-h-[140px] whitespace-pre-wrap rounded-lg border border-input bg-surface-input px-3 py-2 text-sm text-default outline-none transition-all hover:border-strong focus:border-accent"
+              className="max-h-[min(40vh,360px)] min-h-[140px] overflow-y-auto whitespace-pre-wrap rounded-lg border border-input bg-surface-input px-3 py-2 text-sm text-default outline-none transition-all hover:border-strong focus:border-accent"
               onInput={handleEditorInput}
               suppressContentEditableWarning
             />
@@ -155,6 +155,7 @@ export function DraftCard({
               onChange={(event) => setFeedback(event.target.value)}
               placeholder={card.feedbackPlaceholder ?? t('narre.card.draftFeedbackPlaceholder')}
               rows={3}
+              className="max-h-40 resize-none"
             />
           </div>
 
