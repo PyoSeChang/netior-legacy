@@ -21,9 +21,8 @@ interface RootNetworkEditorProps {
   tab: EditorTab;
 }
 
-function getNetworkKindLabel(kind: string): string {
-  if (kind === 'root') return 'Root Network';
-  if (kind === 'universe') return 'Universe';
+function getNetworkKindLabel(kind: string, rootNetworkLabel: string): string {
+  if (kind === 'root' || kind === 'universe') return rootNetworkLabel;
   return 'Network';
 }
 
@@ -259,7 +258,7 @@ export function RootNetworkEditor({ tab }: RootNetworkEditorProps): JSX.Element 
             id: item.id,
             objectType: 'network' as const,
             title: item.name,
-            subtitle: getNetworkKindLabel(item.kind),
+            subtitle: getNetworkKindLabel(item.kind, t('sidebar.rootNetwork')),
             isActive: item.id === currentNetwork?.id,
             networkKind: item.kind,
           })),

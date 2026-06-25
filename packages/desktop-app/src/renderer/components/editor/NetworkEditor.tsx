@@ -41,9 +41,8 @@ function parseLayoutConfig(configJson: string | null | undefined): Record<string
   }
 }
 
-function getKindLabel(kind: string | undefined): string {
-  if (kind === 'root') return 'Root Network';
-  if (kind === 'universe') return 'Universe';
+function getKindLabel(kind: string | undefined, rootNetworkLabel: string): string {
+  if (kind === 'root' || kind === 'universe') return rootNetworkLabel;
   return 'Network';
 }
 
@@ -198,7 +197,7 @@ export function NetworkEditor({ tab }: NetworkEditorProps): JSX.Element {
         <NetworkObjectEditorShell
           badge={t('sidebar.networks')}
           title={title}
-          subtitle={getKindLabel(network.kind)}
+          subtitle={getKindLabel(network.kind, t('sidebar.rootNetwork'))}
           description={t('network.layoutSettings') === 'network.layoutSettings' ? 'Layout settings' : t('network.layoutSettings')}
           showHeader={false}
           fillHeight={false}

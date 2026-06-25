@@ -51,8 +51,8 @@ export function createModule(data: ModuleCreate): Module {
   const now = new Date().toISOString();
 
   db.prepare(
-    `INSERT INTO modules (id, root_network_id, name, path, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`,
-  ).run(id, data.root_network_id, data.name, data.path, now, now);
+    `INSERT INTO modules (id, root_network_id, name, description, path, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+  ).run(id, data.root_network_id, data.name, data.description ?? null, data.path, now, now);
 
   syncPrimaryModuleDirectory(id, data.path, now);
 
@@ -74,10 +74,11 @@ export function updateModule(id: string, data: ModuleUpdate): Module | undefined
   const now = new Date().toISOString();
   db.prepare(
     `UPDATE modules
-        SET name = ?, path = ?, updated_at = ?
+        SET name = ?, description = ?, path = ?, updated_at = ?
       WHERE id = ?`,
   ).run(
     data.name !== undefined ? data.name : existing.name,
+    data.description !== undefined ? data.description : existing.description,
     data.path !== undefined ? data.path : existing.path,
     now,
     id,

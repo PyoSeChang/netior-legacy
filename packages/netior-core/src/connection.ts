@@ -62,6 +62,7 @@ import { migrate059 } from './migrations/059-add-dependency-meaning';
 import { migrate060 } from './migrations/060-network-owned-ontology-scope';
 import { migrate061 } from './migrations/061-root-network-world-boundary';
 import { migrate062 } from './migrations/062-repair-root-network-owners';
+import { migrate063 } from './migrations/063-module-description';
 import {
   ensureRootNetworkNodeInUniverseForDb,
   syncRootNetworkOntologyForDb,
@@ -137,6 +138,7 @@ const migrations: Migration[] = [
   { version: 60, migrate: migrate060 },
   { version: 61, migrate: migrate061 },
   { version: 62, migrate: migrate062 },
+  { version: 63, migrate: migrate063 },
 ];
 
 export function hasColumn(db: Database.Database, table: string, column: string): boolean {

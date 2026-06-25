@@ -761,6 +761,7 @@ function toRenderNodes(
   contextNames: Map<string, string>,
   getInstanceDisplayName: (instance: NonNullable<NetworkNodeWithObject['instance']>) => string,
   portalChipsBySource: Map<string, EntryPortalChipSpec[]>,
+  rootNetworkLabel: string,
 ): RenderNode[] {
   const archMap = new Map(meanings.map((a) => [a.id, a]));
   return nodes.map((n) => {
@@ -855,7 +856,7 @@ function toRenderNodes(
       const networkKind = refId ? networkKinds.get(refId) : undefined;
       const label = networkName ?? 'Network';
       const icon = networkKind === 'root' ? 'boxes' : 'globe';
-      const semanticBaseLabel = networkKind === 'root' ? 'Root Network' : networkKind === 'universe' ? 'Universe' : 'Network';
+      const semanticBaseLabel = networkKind === 'root' || networkKind === 'universe' ? rootNetworkLabel : 'Network';
       const baseWidth = isPortal ? 180 : isHierarchy ? 340 : isGroup ? 320 : 160;
       return {
         id: n.id,
@@ -1789,6 +1790,7 @@ export function NetworkWorkspace({
         source_ref: instance.source_ref,
       }),
         entryPortalData.portalChipsBySource,
+        t('sidebar.rootNetwork'),
       ).map((node) => (
         node.isContainer
           ? {
@@ -1825,6 +1827,7 @@ export function NetworkWorkspace({
     meaningIcons,
     contextNames,
     display,
+    t,
     entryPortalData,
     containsParentByChild,
     directChildCountByParent,
@@ -2434,6 +2437,7 @@ export function NetworkWorkspace({
         type: 'file',
         targetId: node.file.path,
         title: node.file.path.replace(/\\/g, '/').split('/').pop() || 'File',
+        rootNetworkId: currentNetwork?.root_network_id ?? undefined,
       });
       return;
     }

@@ -102,6 +102,7 @@ export function NodeContextMenu({
         type: 'file',
         targetId: filePath,
         title: objectTitle ?? filePath.replace(/\\/g, '/').split('/').pop() ?? 'File',
+        rootNetworkId: currentNetwork?.root_network_id ?? undefined,
       });
     }
     onClose();

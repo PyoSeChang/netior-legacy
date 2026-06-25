@@ -23,17 +23,6 @@ function isPathInsideRoot(filePath: string, rootDir: string): boolean {
   return file === root || file.startsWith(`${root}/`);
 }
 
-function TitleBar(): JSX.Element {
-  return (
-    <div
-      className="tab-strip workspace-title-strip relative z-[1000] flex h-[35px] shrink-0 items-center justify-end text-default"
-      style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
-    >
-      <WindowControls />
-    </div>
-  );
-}
-
 export default function App(): JSX.Element {
   useGlobalShortcuts();
   const { t } = useI18n();
@@ -84,6 +73,7 @@ export default function App(): JSX.Element {
           await openFileTab({
             filePath,
             placement: 'smart',
+            rootNetworkId: matchingWorld?.id,
           });
         }
       })();
@@ -94,7 +84,7 @@ export default function App(): JSX.Element {
 
   return (
     <div className="relative h-full bg-surface-chrome text-default">
-      <WorkspaceShell world={currentWorld} rightChrome={<TitleBar />} />
+      <WorkspaceShell world={currentWorld} windowControls={<WindowControls />} />
       <ConfirmDialog
         open={!!missingPathWorld}
         onClose={dismissMissingPath}

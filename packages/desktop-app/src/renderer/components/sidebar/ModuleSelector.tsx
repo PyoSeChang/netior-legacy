@@ -4,13 +4,15 @@ import { useModuleStore } from '../../stores/module-store';
 import { useI18n } from '../../hooks/useI18n';
 import { fsService } from '../../services';
 import { Tooltip } from '../ui/Tooltip';
+import { formatCompactPath } from '../../utils/path-utils';
+import { ModuleCreateDialog } from './ModuleCreateDialog';
 
 interface ModuleSelectorProps {
-  rootNetworkId: string;
+  networkId: string;
   worldRootDir: string;
 }
 
-export function ModuleSelector({ rootNetworkId, worldRootDir }: ModuleSelectorProps): JSX.Element {
+export function ModuleSelector({ networkId, worldRootDir }: ModuleSelectorProps): JSX.Element {
   const { t } = useI18n();
   const { modules, activeModuleId, setActiveModule, createModule, deleteModule, updateModule } =
     useModuleStore();
@@ -18,13 +20,14 @@ export function ModuleSelector({ rootNetworkId, worldRootDir }: ModuleSelectorPr
   const [open, setOpen] = useState(false);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
-  const [creating, setCreating] = useState(false);
-  const [newName, setNewName] = useState('');
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
   const dropdownRef = useRef<HTMLDivElement>(null);
   const renameInputRef = useRef<HTMLInputElement>(null);
 
   const activeModule = modules.find((m) => m.id === activeModuleId);
+  const SelectorIcon = activeModule ? Package : FolderOpen;
+  const activePath = activeModule?.path ?? worldRootDir;
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -32,8 +35,6 @@ export function ModuleSelector({ rootNetworkId, worldRootDir }: ModuleSelectorPr
     const handleClick = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
         setOpen(false);
-        setCreating(false);
-        setNewName('');
         setRenamingId(null);
       }
     };
@@ -57,12 +58,14 @@ export function ModuleSelector({ rootNetworkId, worldRootDir }: ModuleSelectorPr
     [setActiveModule],
   );
 
-  const handleCreate = async () => {
-    if (!newName.trim()) return;
-    const mod = await createModule({ root_network_id: rootNetworkId, name: newName.trim(), path: worldRootDir });
+  const handleCreate = async (data: { name: string; description: string | null; path: string }) => {
+    const mod = await createModule({
+      root_network_id: networkId,
+      name: data.name,
+      description: data.description,
+      path: data.path,
+    });
     await setActiveModule(mod.id);
-    setNewName('');
-    setCreating(false);
   };
 
   const handleDelete = async (e: React.MouseEvent, id: string) => {
@@ -104,10 +107,12 @@ export function ModuleSelector({ rootNetworkId, worldRootDir }: ModuleSelectorPr
         className="flex flex-1 items-center gap-1.5 rounded px-2 py-1 text-xs font-medium text-default transition-colors hover:bg-state-hover"
         onClick={() => setOpen((v) => !v)}
       >
-        <Package size={12} className="shrink-0 text-secondary" />
-        <span className="flex-1 truncate text-left">
-          {activeModule ? activeModule.name : t('sidebar.noModule')}
-        </span>
+        <SelectorIcon size={12} className="shrink-0 text-secondary" />
+        <Tooltip content={activePath} position="bottom" className="min-w-0 flex-1">
+          <span className="flex-1 truncate text-left">
+            {activeModule ? activeModule.name : formatCompactPath(activePath)}
+          </span>
+        </Tooltip>
         <ChevronDown
           size={12}
           className={`shrink-0 text-muted transition-transform ${open ? 'rotate-180' : ''}`}
@@ -183,6 +188,11 @@ export function ModuleSelector({ rootNetworkId, worldRootDir }: ModuleSelectorPr
                         </Tooltip>
                       </div>
                     </div>
+                    {m.description && (
+                      <div className="truncate text-[11px] text-secondary">
+                        {m.description}
+                      </div>
+                    )}
                     <div className="truncate text-[11px] text-muted">
                       {m.path || t('sidebar.selectModulePath')}
                     </div>
@@ -191,40 +201,29 @@ export function ModuleSelector({ rootNetworkId, worldRootDir }: ModuleSelectorPr
               </div>
             ))}
 
-            {modules.length === 0 && !creating && (
+            {modules.length === 0 && (
               <div className="px-2 py-2 text-center text-xs text-muted">{t('sidebar.noModules')}</div>
             )}
           </div>
 
-          {/* Create inline */}
-          {creating ? (
-            <div className="border-t border-subtle px-2 py-1.5">
-              <input
-                className="w-full rounded border border-subtle bg-surface-input px-2 py-1 text-xs text-default outline-none focus:border-accent"
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleCreate();
-                  if (e.key === 'Escape') {
-                    setCreating(false);
-                    setNewName('');
-                  }
-                }}
-                placeholder={t('sidebar.moduleName')}
-                autoFocus
-              />
-            </div>
-          ) : (
-            <button
-              className="flex w-full items-center gap-1.5 border-t border-subtle px-2 py-1.5 text-xs text-muted transition-colors hover:bg-state-hover hover:text-default"
-              onClick={() => setCreating(true)}
-            >
-              <Plus size={12} />
-              <span>{t('sidebar.addModule')}</span>
-            </button>
-          )}
+          <button
+            className="flex w-full items-center gap-1.5 border-t border-subtle px-2 py-1.5 text-xs text-muted transition-colors hover:bg-state-hover hover:text-default"
+            onClick={() => {
+              setOpen(false);
+              setCreateDialogOpen(true);
+            }}
+          >
+            <Plus size={12} />
+            <span>{t('sidebar.addModule')}</span>
+          </button>
         </div>
       )}
+      <ModuleCreateDialog
+        open={createDialogOpen}
+        defaultPath={worldRootDir}
+        onClose={() => setCreateDialogOpen(false)}
+        onCreate={handleCreate}
+      />
     </div>
   );
 }

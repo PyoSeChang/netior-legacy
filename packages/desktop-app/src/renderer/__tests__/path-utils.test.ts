@@ -1,5 +1,5 @@
 ﻿import { describe, expect, it } from 'vitest';
-import { toAbsolutePath, toRelativePath } from '../utils/path-utils';
+import { formatCompactPath, toAbsolutePath, toRelativePath } from '../utils/path-utils';
 
 describe('path-utils', () => {
   it('converts world-relative paths to absolute paths', () => {
@@ -17,6 +17,12 @@ describe('path-utils', () => {
   it('converts absolute paths inside the world directory back to relative paths', () => {
     expect(toRelativePath('C:/workspace/world', 'C:/workspace/world/docs/file.pdf')).toBe(
       'docs/file.pdf',
+    );
+  });
+
+  it('compacts long paths while preserving the identifying tail', () => {
+    expect(formatCompactPath('C:\\PyoSeChang\\projects\\netior')).toBe(
+      'C:\\...\\projects\\netior',
     );
   });
 });

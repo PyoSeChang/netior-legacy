@@ -1,5 +1,5 @@
 import React, { useEffect, useCallback, useState } from 'react';
-import { ExternalLink, Plus, RefreshCw } from 'lucide-react';
+import { ExternalLink, Orbit, Plus, RefreshCw } from 'lucide-react';
 import type { World } from '@netior/shared/types';
 import { useNetworkStore } from '../../stores/network-store';
 import { useFileStore } from '../../stores/file-store';
@@ -23,6 +23,7 @@ import { WorldCreateDialog } from '../home/WorldCreateDialog';
 import { AgentSessionPanel } from './AgentSessionPanel';
 import { ContextMenu, type ContextMenuEntry } from '../ui/ContextMenu';
 import { useEditorStore } from '../../stores/editor-store';
+import { formatCompactPath } from '../../utils/path-utils';
 
 interface SidebarProps {
   world: World | null;
@@ -36,7 +37,6 @@ const OBJECT_PANEL_TYPES = {
 
 function AppWorkspaceSidebar(): JSX.Element {
   const { t } = useI18n();
-  const currentNetwork = useNetworkStore((s) => s.currentNetwork);
   const worlds = useWorldStore((s) => s.worlds);
   const createWorld = useWorldStore((s) => s.createWorld);
   const openWorld = useWorldStore((s) => s.openWorld);
@@ -48,16 +48,23 @@ function AppWorkspaceSidebar(): JSX.Element {
     y: number;
     world: World;
   } | null>(null);
-  const universeIsActive = currentNetwork?.kind === 'universe';
 
   const handleCreateWorld = async (name: string, rootDir: string) => {
     const world = await createWorld(name, rootDir);
     await createModule({ root_network_id: world.id, name, path: rootDir });
-    await openWorld(world);
+    await handleOpenWorld(world);
   };
 
   const handleOpenWorld = async (world: World) => {
     await openWorld(world);
+    if (useWorldStore.getState().currentWorld?.id !== world.id) return;
+
+    const networkStore = useNetworkStore.getState();
+    await Promise.all([
+      networkStore.loadNetworks(world.id),
+      networkStore.loadNetworkTree(world.id),
+    ]);
+    await networkStore.openNetwork(world.id);
   };
 
   const worldContextMenuItems: ContextMenuEntry[] = worldContextMenu
@@ -79,27 +86,6 @@ function AppWorkspaceSidebar(): JSX.Element {
   return (
     <div className="flex min-h-full flex-col gap-4 py-2">
       <div className="px-2">
-        <button
-          className={`flex w-full items-center rounded px-2 py-1 text-left text-xs transition-colors ${
-            universeIsActive
-              ? 'bg-state-selected text-accent'
-              : 'text-default hover:bg-state-hover'
-          }`}
-          onClick={() => {
-            if (currentNetwork?.kind === 'universe') return;
-            const loadUniverseWorkspace = useNetworkStore.getState().loadUniverseWorkspace;
-            loadUniverseWorkspace().then((universe) => {
-              if (universe) {
-                void useNetworkStore.getState().openNetwork(universe.id);
-              }
-            });
-          }}
-        >
-          Universe
-        </button>
-      </div>
-
-      <div className="px-2">
         <div className="mb-2 flex items-center justify-between gap-2">
           <div className="text-xs font-medium text-secondary">{t('world.title' as never) ?? 'Worlds'}</div>
           <button
@@ -116,8 +102,8 @@ function AppWorkspaceSidebar(): JSX.Element {
             {worlds.map((world) => (
               <button
                 key={world.id}
-                className={`flex w-full items-center rounded px-2 py-1 text-left text-xs transition-colors ${
-                  currentWorld?.id === world.id && !universeIsActive
+                className={`group flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs transition-colors ${
+                  currentWorld?.id === world.id
                     ? 'bg-state-selected text-accent'
                     : 'text-default hover:bg-state-hover'
                 }`}
@@ -130,7 +116,22 @@ function AppWorkspaceSidebar(): JSX.Element {
                   setWorldContextMenu({ x: event.clientX, y: event.clientY, world });
                 }}
               >
-                <span className="truncate">{world.name}</span>
+                <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md ${
+                  currentWorld?.id === world.id
+                    ? 'bg-accent-muted text-accent'
+                    : 'bg-surface-hover text-secondary group-hover:text-default'
+                }`}
+                >
+                  <Orbit size={14} />
+                </span>
+                <Tooltip content={world.root_dir} position="bottom" className="min-w-0 flex-1">
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-medium">{world.name}</span>
+                    <span className="block truncate text-[11px] text-muted">
+                      {formatCompactPath(world.root_dir)}
+                    </span>
+                  </span>
+                </Tooltip>
               </button>
             ))}
           </div>
@@ -163,26 +164,34 @@ export function Sidebar({ world }: SidebarProps): JSX.Element {
   const { sidebarView, sidebarWidth, bookmarkedSidebarNetworkId } = useUIStore();
   const { loadFileTree, fileTree, refreshFileTree, loading: fileLoading } = useFileStore();
   const { loadNetworks, loadNetworkTree } = useNetworkStore();
+  const currentNetwork = useNetworkStore((state) => state.currentNetwork);
   const { loadModules, directories } = useModuleStore();
   const { loadByWorld: loadInstances } = useInstanceStore();
   const { loadByWorld: loadMeanings } = useMeaningStore();
+
+  const moduleOwnerNetworkId = world && currentNetwork?.root_network_id === world.id
+    ? currentNetwork.id
+    : world?.id ?? null;
 
   useEffect(() => {
     if (!world) return;
     loadNetworks(world.id);
     loadNetworkTree(world.id);
-    loadModules(world.id);
+    if (moduleOwnerNetworkId) {
+      loadModules(moduleOwnerNetworkId);
+    }
     loadInstances(world.id);
     loadMeanings(world.id);
-  }, [world?.id, loadNetworks, loadNetworkTree, loadModules, loadInstances, loadMeanings]);
+  }, [moduleOwnerNetworkId, world?.id, loadNetworks, loadNetworkTree, loadModules, loadInstances, loadMeanings]);
 
   useEffect(() => {
     if (!world) return undefined;
-    if (directories.length > 0) {
-      const dirs = directories.map((d) => d.dir_path);
-      loadFileTree(dirs);
-      fsService.watchDirs(dirs);
-    }
+    const dirs = (directories.length > 0 ? directories.map((d) => d.dir_path) : [world.root_dir])
+      .filter((dir): dir is string => Boolean(dir));
+    if (dirs.length === 0) return undefined;
+
+    loadFileTree(dirs);
+    fsService.watchDirs(dirs);
     return () => { fsService.unwatchDirs(); };
   }, [directories, loadFileTree, world]);
 
@@ -200,7 +209,8 @@ export function Sidebar({ world }: SidebarProps): JSX.Element {
   }, [refreshFileTree]);
 
   const handleFileClick = (absolutePath: string) => {
-    void openFileTab({ filePath: absolutePath });
+    if (!world) return;
+    void openFileTab({ filePath: absolutePath, rootNetworkId: world.id });
   };
 
   return (
@@ -230,7 +240,7 @@ export function Sidebar({ world }: SidebarProps): JSX.Element {
               <>
                 <div className="flex items-center">
                   <div className="flex-1">
-                    <ModuleSelector rootNetworkId={world.id} worldRootDir={world.root_dir} />
+                    <ModuleSelector networkId={moduleOwnerNetworkId ?? world.id} worldRootDir={world.root_dir} />
                   </div>
                   <Tooltip content={t('fileTree.refresh')} position="bottom">
                     <button

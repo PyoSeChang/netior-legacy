@@ -3,9 +3,9 @@ import {
   Activity,
   Bot,
   Boxes,
-  FolderKanban,
   FolderTree,
   Globe2,
+  Orbit,
   Settings,
   Sparkles,
   Terminal,
@@ -24,7 +24,7 @@ export const ACTIVITY_BAR_TOP_ITEM_DEFINITIONS: Record<
   ActivityBarTopItemKey,
   ActivityBarItemDefinition<ActivityBarTopItemKey>
 > = {
-  worlds: { key: 'worlds', icon: FolderKanban, labelKey: 'world.title' },
+  worlds: { key: 'worlds', icon: Orbit, labelKey: 'world.title' },
   networks: { key: 'networks', icon: Waypoints, labelKey: 'sidebar.networks' },
   files: { key: 'files', icon: FolderTree, labelKey: 'sidebar.files' },
   sessions: { key: 'sessions', icon: Activity, labelKey: 'sidebar.sessions' },

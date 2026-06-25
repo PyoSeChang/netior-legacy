@@ -743,20 +743,28 @@ describe('Repositories', () => {
     });
 
     it('should create and list modules', () => {
-      const m = createModule({ root_network_id: rootNetworkId, name: 'frontend', path: '/tmp/mod/frontend' });
+      const m = createModule({
+        root_network_id: rootNetworkId,
+        name: 'frontend',
+        description: 'Frontend workspace',
+        path: '/tmp/mod/frontend',
+      });
       expect(m.id).toBeDefined();
       expect(m.name).toBe('frontend');
+      expect(m.description).toBe('Frontend workspace');
       expect(m.path).toBe('/tmp/mod/frontend');
 
       const list = listModules(rootNetworkId);
       expect(list).toHaveLength(1);
       expect(list[0].id).toBe(m.id);
+      expect(list[0].description).toBe('Frontend workspace');
     });
 
-    it('should update module name and path', () => {
+    it('should update module name, description, and path', () => {
       const m = createModule({ root_network_id: rootNetworkId, name: 'old', path: '/tmp/mod/old' });
-      const updated = updateModule(m.id, { name: 'new', path: '/tmp/mod/new' });
+      const updated = updateModule(m.id, { name: 'new', description: 'Updated module', path: '/tmp/mod/new' });
       expect(updated?.name).toBe('new');
+      expect(updated?.description).toBe('Updated module');
       expect(updated?.path).toBe('/tmp/mod/new');
       expect(listModuleDirectories(m.id)).toHaveLength(1);
       expect(listModuleDirectories(m.id)[0].dir_path).toBe('/tmp/mod/new');

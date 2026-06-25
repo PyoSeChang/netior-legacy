@@ -42,3 +42,20 @@ export function toAbsolutePath(rootDir: string, relativePath: string): string {
   const rel = normalizedPath.replace(/^\//, '');
   return root ? `${root}/${rel}` : rel;
 }
+
+/** Compact a long path for narrow UI slots while keeping the identifying tail visible. */
+export function formatCompactPath(p: string, tailSegments = 2): string {
+  const trimmed = p.trim();
+  if (!trimmed) return '';
+
+  const separator = trimmed.includes('\\') ? '\\' : '/';
+  const normalized = normalizePath(trimmed);
+  const parts = normalized.split('/').filter(Boolean);
+  if (parts.length <= tailSegments + 1) return trimmed;
+
+  const tail = parts.slice(-tailSegments).join(separator);
+  const drive = parts[0]?.match(/^[A-Za-z]:$/) ? parts[0] : null;
+  if (drive) return `${drive}${separator}...${separator}${tail}`;
+  if (normalized.startsWith('/')) return `${separator}...${separator}${tail}`;
+  return `...${separator}${tail}`;
+}

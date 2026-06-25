@@ -556,6 +556,7 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
       const contextPatch: Partial<EditorTab> = {};
       if (networkId !== undefined) contextPatch.networkId = networkId;
       if (nodeId !== undefined) contextPatch.nodeId = nodeId;
+      if (rootNetworkId !== undefined) contextPatch.rootNetworkId = rootNetworkId;
       if (draftData !== undefined) contextPatch.draftData = draftData;
       if (browserFaviconUrl !== undefined) contextPatch.browserFaviconUrl = browserFaviconUrl;
       if (browserUrl !== undefined) contextPatch.browserUrl = browserUrl;

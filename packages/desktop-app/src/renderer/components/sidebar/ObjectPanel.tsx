@@ -288,12 +288,12 @@ export function ObjectPanel({ types }: ObjectPanelProps = {}): JSX.Element {
         kind: 'object',
         objectType: 'network',
         title: network.name,
-        subtitle: network.kind === 'root' ? 'Root Network' : network.kind === 'universe' ? 'Universe' : 'Network',
+        subtitle: network.kind === 'root' || network.kind === 'universe' ? t('sidebar.rootNetwork') : 'Network',
         isActive: currentNetwork?.id === network.id,
         networkKind: network.kind,
       },
     }))
-  ), [networks, currentNetwork?.id]);
+  ), [networks, currentNetwork?.id, t]);
 
   const modelRows = useMemo<PanelRow[]>(() => (
     buildObjectRows(

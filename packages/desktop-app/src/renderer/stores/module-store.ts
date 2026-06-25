@@ -32,9 +32,14 @@ export const useModuleStore = create<ModuleStore>((set, get) => ({
     try {
       const modules = await moduleService.list(rootNetworkId);
       set({ modules });
-      // Auto-activate first module if none active
-      if (modules.length > 0 && !get().activeModuleId) {
+      const activeModuleId = get().activeModuleId;
+      const activeModuleExists = activeModuleId
+        ? modules.some((module) => module.id === activeModuleId)
+        : false;
+      if (modules.length > 0 && !activeModuleExists) {
         await get().setActiveModule(modules[0].id);
+      } else if (modules.length === 0) {
+        set({ activeModuleId: null, directories: [] });
       }
     } finally {
       set({ loading: false });

@@ -937,6 +937,7 @@ export interface Module {
   id: string;
   root_network_id: string;
   name: string;
+  description: string | null;
   path: string;
   created_at: string;
   updated_at: string;
@@ -945,11 +946,13 @@ export interface Module {
 export interface ModuleCreate {
   root_network_id: string;
   name: string;
+  description?: string | null;
   path: string;
 }
 
 export interface ModuleUpdate {
   name?: string;
+  description?: string | null;
   path?: string;
 }
 

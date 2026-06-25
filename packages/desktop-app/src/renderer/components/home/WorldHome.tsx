@@ -2,6 +2,7 @@
 import { Plus } from 'lucide-react';
 import { useWorldStore } from '../../stores/world-store';
 import { useModuleStore } from '../../stores/module-store';
+import { useNetworkStore } from '../../stores/network-store';
 import { useI18n } from '../../hooks/useI18n';
 import { WorldCard } from './WorldCard';
 import { WorldCreateDialog } from './WorldCreateDialog';
@@ -25,7 +26,19 @@ export function WorldHome(): JSX.Element {
     const { createModule, setActiveModule } = useModuleStore.getState();
     const mod = await createModule({ root_network_id: world.id, name, path: rootDir });
     await setActiveModule(mod.id);
-    openWorld(world);
+    await handleOpenWorld(world);
+  };
+
+  const handleOpenWorld = async (world: Parameters<typeof openWorld>[0]) => {
+    await openWorld(world);
+    if (useWorldStore.getState().currentWorld?.id !== world.id) return;
+
+    const networkStore = useNetworkStore.getState();
+    await Promise.all([
+      networkStore.loadNetworks(world.id),
+      networkStore.loadNetworkTree(world.id),
+    ]);
+    await networkStore.openNetwork(world.id);
   };
 
   const handleDelete = async () => {
@@ -65,7 +78,7 @@ export function WorldHome(): JSX.Element {
               <WorldCard
                 key={p.id}
                 world={p}
-                onOpen={openWorld}
+                onOpen={(world) => { void handleOpenWorld(world); }}
                 onDelete={setDeleteTarget}
               />
             ))}

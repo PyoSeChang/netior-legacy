@@ -1,5 +1,6 @@
 ﻿import type { EditorTab, EditorTabType, SplitDirection, SplitLeaf, SplitNode } from '@netior/shared/types';
 import { useEditorStore, collectLeaves, containsTab, getRememberedActiveTabFromLayout } from '../stores/editor-store';
+import { useWorldStore } from '../stores/world-store';
 
 export type FileOpenPlacement = 'smart' | 'current' | 'right' | 'below' | 'float';
 
@@ -15,10 +16,12 @@ interface OpenFileTabParams {
   title?: string;
   sourceTabId?: string;
   placement?: FileOpenPlacement;
+  rootNetworkId?: string;
 }
 
 interface OpenFileInPaneOptions {
   preserveActiveInSourcePaneForTabId?: string;
+  rootNetworkId?: string;
 }
 
 const WORK_SOURCE_TYPES = new Set<EditorTabType>(['terminal', 'narre']);
@@ -30,6 +33,10 @@ function tabIdForFile(filePath: string): string {
 
 function fileTitle(filePath: string): string {
   return filePath.replace(/\\/g, '/').split('/').pop() ?? filePath;
+}
+
+function resolveRootNetworkId(rootNetworkId?: string): string | undefined {
+  return rootNetworkId ?? useWorldStore.getState().currentWorld?.id ?? undefined;
 }
 
 function getLeaves(layout: SplitNode | null): SplitLeaf[] {
@@ -95,7 +102,12 @@ function getSourceTab(sourceTabId?: string): EditorTab | null {
   return state.activeTabId ? (state.tabs.find((tab) => tab.id === state.activeTabId) ?? null) : null;
 }
 
-async function openFileTabRaw(filePath: string, title: string, viewMode?: 'side' | 'full' | 'float'): Promise<void> {
+async function openFileTabRaw(
+  filePath: string,
+  title: string,
+  viewMode?: 'side' | 'full' | 'float',
+  rootNetworkId?: string,
+): Promise<void> {
   const state = useEditorStore.getState();
   const sideActiveTabId = state.sideLayout ? getRememberedActiveTabFromLayout(state.sideLayout, state.sideLastActiveTabId) : null;
   const sideActiveTab = sideActiveTabId ? state.tabs.find((tab) => tab.id === sideActiveTabId) : null;
@@ -104,6 +116,7 @@ async function openFileTabRaw(filePath: string, title: string, viewMode?: 'side'
     type: 'file',
     targetId: filePath,
     title,
+    rootNetworkId: resolveRootNetworkId(rootNetworkId),
     viewMode,
     sideSplitRatio: viewMode === 'side' ? sideActiveTab?.sideSplitRatio : undefined,
   });
@@ -114,25 +127,27 @@ export async function openFileTab({
   title = fileTitle(filePath),
   sourceTabId,
   placement = 'smart',
+  rootNetworkId,
 }: OpenFileTabParams): Promise<void> {
   const sourceTab = getSourceTab(sourceTabId);
+  const tabRootNetworkId = rootNetworkId ?? sourceTab?.rootNetworkId;
   const sourceMode = sourceTab ? getLeafMode(sourceTab.id) : null;
   const targetTabId = tabIdForFile(filePath);
 
   if (placement === 'float') {
-    await openFileTabRaw(filePath, title, 'float');
+    await openFileTabRaw(filePath, title, 'float', tabRootNetworkId);
     return;
   }
 
   const splitDirection = placement === 'below' ? 'vertical' : 'horizontal';
   if ((placement === 'right' || placement === 'below') && sourceTab && sourceMode) {
-    await openFileTabRaw(filePath, title, sourceMode);
+    await openFileTabRaw(filePath, title, sourceMode, tabRootNetworkId);
     useEditorStore.getState().splitTab(sourceTab.id, targetTabId, splitDirection, 'after');
     return;
   }
 
   if (placement === 'current') {
-    await openFileTabRaw(filePath, title);
+    await openFileTabRaw(filePath, title, undefined, tabRootNetworkId);
     return;
   }
 
@@ -143,13 +158,13 @@ export async function openFileTab({
       sourceTab.id,
     )?.activeTabId ?? null;
     if (documentLeaf) {
-      await openFileTabRaw(filePath, title, sourceMode);
+      await openFileTabRaw(filePath, title, sourceMode, tabRootNetworkId);
       useEditorStore.getState().moveTabToPane(targetTabId, documentLeaf.activeTabId, sourceMode);
       restorePaneActiveTab(sourceMode, sourceLeafActiveTabId);
       return;
     }
 
-    await openFileTabRaw(filePath, title, sourceMode);
+    await openFileTabRaw(filePath, title, sourceMode, tabRootNetworkId);
     const currentState = useEditorStore.getState();
     const stillHasSource = findLeafWithTabId(sourceMode === 'side' ? currentState.sideLayout : currentState.fullLayout, sourceTab.id);
     if (stillHasSource) {
@@ -158,7 +173,7 @@ export async function openFileTab({
     return;
   }
 
-  await openFileTabRaw(filePath, title);
+  await openFileTabRaw(filePath, title, undefined, tabRootNetworkId);
 }
 
 export async function openFileInPane(
@@ -170,6 +185,8 @@ export async function openFileInPane(
 ): Promise<void> {
   const state = useEditorStore.getState();
   const sourceTabId = options?.preserveActiveInSourcePaneForTabId ?? state.activeTabId ?? undefined;
+  const sourceTab = sourceTabId ? state.tabs.find((tab) => tab.id === sourceTabId) : null;
+  const paneRootNetworkId = options?.rootNetworkId ?? sourceTab?.rootNetworkId;
   const sourceMode = sourceTabId ? getLeafMode(sourceTabId) : null;
   const sourceLayout = sourceMode === 'side'
     ? state.sideLayout
@@ -185,7 +202,7 @@ export async function openFileInPane(
     ? sourceLeaf.activeTabId
     : null;
 
-  await openFileTabRaw(filePath, title, mode);
+  await openFileTabRaw(filePath, title, mode, paneRootNetworkId);
   useEditorStore.getState().moveTabToPane(tabIdForFile(filePath), targetPaneTabId, mode);
 
   restorePaneActiveTab(sourceMode, sourceLeafActiveTabId);
@@ -198,9 +215,10 @@ export async function openFileBesideTab(
   direction: SplitDirection,
   position: 'before' | 'after',
   title = fileTitle(filePath),
+  rootNetworkId?: string,
 ): Promise<string> {
   const openedTabId = tabIdForFile(filePath);
-  await openFileTabRaw(filePath, title, mode);
+  await openFileTabRaw(filePath, title, mode, rootNetworkId);
   useEditorStore.getState().splitTab(targetTabId, openedTabId, direction, position);
   return openedTabId;
 }

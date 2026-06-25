@@ -37,26 +37,36 @@ export function FileEditor({ tab }: FileEditorProps): JSX.Element {
   const editorType = (tab.editorType as EditorType) ?? getEditorType(filePath);
   const isTextEditor = editorType === 'code' || editorType === 'markdown';
   const currentWorld = useWorldStore((s) => s.currentWorld);
+  const worlds = useWorldStore((s) => s.worlds);
+  const loadWorlds = useWorldStore((s) => s.loadWorlds);
+  const fileWorld = tab.rootNetworkId
+    ? worlds.find((world) => world.id === tab.rootNetworkId) ?? (currentWorld?.id === tab.rootNetworkId ? currentWorld : null)
+    : currentWorld;
   const [fileId, setFileId] = useState<string | null>(null);
   const [viewerRevision, setViewerRevision] = useState(0);
   const [reloadConfirmOpen, setReloadConfirmOpen] = useState(false);
 
   useEffect(() => {
-    if (editorType !== 'pdf' || !currentWorld) {
+    if (!tab.rootNetworkId || worlds.length > 0) return;
+    void loadWorlds().catch(() => {});
+  }, [loadWorlds, tab.rootNetworkId, worlds.length]);
+
+  useEffect(() => {
+    if (editorType !== 'pdf' || !fileWorld) {
       setFileId(null);
       return;
     }
 
     let cancelled = false;
     const normalizedFilePath = filePath.replace(/\\/g, '/');
-    const relativePath = toRelativePath(currentWorld.root_dir, filePath);
+    const relativePath = toRelativePath(fileWorld.root_dir, filePath);
 
-    fileService.getByPath(currentWorld.id, relativePath).then(async (entity) => {
+    fileService.getByPath(fileWorld.id, relativePath).then(async (entity) => {
       if (cancelled) return;
       if (entity) { setFileId(entity.id); return; }
 
       // Exact match failed ??try matching against all world files
-      const allFiles = await fileService.getByRootNetwork(currentWorld.id);
+      const allFiles = await fileService.getByRootNetwork(fileWorld.id);
       const match = allFiles.find((f) => {
         const dbPath = f.path.replace(/\\/g, '/');
         return dbPath === normalizedFilePath || normalizedFilePath.endsWith('/' + dbPath);
@@ -65,7 +75,7 @@ export function FileEditor({ tab }: FileEditorProps): JSX.Element {
     }).catch(() => {});
 
     return () => { cancelled = true; };
-  }, [filePath, editorType, currentWorld]);
+  }, [filePath, editorType, fileWorld]);
 
   const session = useEditorSession<string>({
     tabId: tab.id,

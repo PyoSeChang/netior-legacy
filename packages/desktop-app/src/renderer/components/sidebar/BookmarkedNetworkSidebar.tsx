@@ -51,9 +51,8 @@ function isSupportedSidebarObjectType(type: NetworkObjectType): type is Supporte
   );
 }
 
-function getNetworkKindLabel(kind: string): string {
-  if (kind === 'root') return 'Root Network';
-  if (kind === 'universe') return 'Universe';
+function getNetworkKindLabel(kind: string, rootNetworkLabel: string): string {
+  if (kind === 'root' || kind === 'universe') return rootNetworkLabel;
   return 'Network';
 }
 
@@ -174,7 +173,7 @@ export function BookmarkedNetworkSidebar({ networkId }: BookmarkedNetworkSidebar
             id: object.ref_id,
             objectType: 'network',
             title: network?.name ?? object.ref_id,
-            subtitle: getNetworkKindLabel(network?.kind ?? 'network'),
+            subtitle: getNetworkKindLabel(network?.kind ?? 'network', t('sidebar.rootNetwork')),
             networkKind: network?.kind ?? 'network',
           });
           break;
@@ -282,7 +281,7 @@ export function BookmarkedNetworkSidebar({ networkId }: BookmarkedNetworkSidebar
         return;
       case 'file':
         if (item.filePath) {
-          await openFileTab({ filePath: item.filePath });
+          await openFileTab({ filePath: item.filePath, rootNetworkId: fullData?.network.root_network_id ?? undefined });
         }
         return;
       case 'meaning':
@@ -294,7 +293,7 @@ export function BookmarkedNetworkSidebar({ networkId }: BookmarkedNetworkSidebar
         await useEditorStore.getState().openTab({ type: 'context', targetId: item.id, title: item.title });
         return;
     }
-  }, [networkId, openNetwork]);
+  }, [fullData?.network.root_network_id, networkId, openNetwork]);
 
   if (loading) {
     return (
