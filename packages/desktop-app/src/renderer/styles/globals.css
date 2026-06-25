@@ -133,12 +133,12 @@ body,
 
 .rail-surface--closed {
   overflow: hidden;
-  border-width: 1px 0 1px 1px;
-  border-radius: var(--workspace-pane-radius, 14px) 0 0 var(--workspace-pane-radius, 14px);
+  border-width: 1px 1px 1px 0;
+  border-radius: 0 var(--workspace-pane-radius, 14px) var(--workspace-pane-radius, 14px) 0;
 }
 
 .rail-surface--open {
-  border-width: 1px 0 1px 1px;
+  border-width: 1px 1px 1px 0;
 }
 
 .sidebar-surface {
@@ -146,8 +146,8 @@ body,
   background: var(--surface-rail);
   background-clip: padding-box;
   border-color: var(--workspace-pane-border, var(--border-default));
-  border-width: 1px 0 1px 1px;
-  border-radius: var(--workspace-pane-radius, 14px) 0 0 var(--workspace-pane-radius, 14px);
+  border-width: 1px 1px 1px 0;
+  border-radius: 0 var(--workspace-pane-radius, 14px) var(--workspace-pane-radius, 14px) 0;
 }
 
 .pane-shell {

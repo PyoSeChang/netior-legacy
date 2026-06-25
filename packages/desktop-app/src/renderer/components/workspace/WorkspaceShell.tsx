@@ -10,7 +10,7 @@ import { EditorViewModeMenu } from '../editor/EditorViewModeSwitch';
 import { EditorContent } from '../editor/EditorContent';
 import { EditorTabStrip } from '../editor/EditorTabStrip';
 import { MinimizedEditorTabs } from '../editor/MinimizedEditorTabs';
-import { SplitPaneRenderer, type PaneAdjacency } from '../editor/SplitPaneRenderer';
+import { isTopRightPane, SplitPaneRenderer, type PaneAdjacency } from '../editor/SplitPaneRenderer';
 import { DropZoneOverlay } from '../editor/DropZoneOverlay';
 import { CloseConfirmDialog } from '../editor/CloseConfirmDialog';
 import { ResizeHandle } from '../ui/ResizeHandle';
@@ -34,16 +34,31 @@ import { getAllowedViewModes } from '../../lib/editor-view-mode-rules';
 import type { DropResult } from '../editor/DropZoneOverlay';
 import { useFileTabStaleWatcher } from '../../hooks/useFileTabStaleWatcher';
 
+const ACTIVITY_BAR_WIDTH = 40;
+const TITLE_BAR_HEIGHT = 40;
+
 interface WorkspaceShellProps {
   world: World | null;
-  rightChrome?: React.ReactNode;
+  windowControls?: React.ReactNode;
 }
 
-function NetworkTabStrip({ controls }: { controls: LayoutControlsRendererProps | null }): JSX.Element {
+function NetworkTabStrip({
+  controls,
+  rightSlot,
+}: {
+  controls: LayoutControlsRendererProps | null;
+  rightSlot?: React.ReactNode;
+}): JSX.Element {
   return (
     <div
-      className="tab-strip network-tab-strip workspace-title-strip grid shrink-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center px-2"
-      style={{ height: 35, WebkitAppRegion: 'drag' } as React.CSSProperties}
+      className="tab-strip network-tab-strip workspace-title-strip grid shrink-0 items-center pl-2"
+      style={{
+        height: TITLE_BAR_HEIGHT,
+        gridTemplateColumns: rightSlot
+          ? 'minmax(0,1fr) auto minmax(0,1fr) auto'
+          : 'minmax(0,1fr) auto minmax(0,1fr)',
+        WebkitAppRegion: 'drag',
+      } as React.CSSProperties}
     >
       <div
         className="flex min-w-0 items-center justify-start"
@@ -65,6 +80,11 @@ function NetworkTabStrip({ controls }: { controls: LayoutControlsRendererProps |
           </div>
         )}
       </div>
+      {rightSlot && (
+        <div className="flex h-full shrink-0 items-stretch" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
+          {rightSlot}
+        </div>
+      )}
     </div>
   );
 }
@@ -149,7 +169,7 @@ async function openDroppedFilesInSideLeaf(
   }
 }
 
-export function WorkspaceShell({ world, rightChrome = null }: WorkspaceShellProps): JSX.Element {
+export function WorkspaceShell({ world, windowControls = null }: WorkspaceShellProps): JSX.Element {
   useFileTabStaleWatcher();
 
   const activeTabId = useEditorStore((s) => s.activeTabId);
@@ -188,11 +208,6 @@ export function WorkspaceShell({ world, rightChrome = null }: WorkspaceShellProp
 
     return () => { cleanupClosed(); cleanupReattach(); };
   }, []);
-
-  const activeTab = tabs.find((t) => t.id === activeTabId);
-  const fullFocusedTabId = useEditorStore((s) => (
-    s.activeTabId && s.fullLayout && containsTab(s.fullLayout, s.activeTabId) ? s.activeTabId : null
-  ));
 
   const isFullMode = tabs.some((t) => t.viewMode === 'full' && !t.isMinimized);
   const hasSideEditor = !isFullMode && sideLayout !== null
@@ -304,7 +319,6 @@ export function WorkspaceShell({ world, rightChrome = null }: WorkspaceShellProp
 
   // Sidebar resize drag
   const sidebarDraggingRef = useRef(false);
-  const activityBarWidth = 40;
 
   const handleSidebarResizeStart = useCallback(
     (e: React.MouseEvent) => {
@@ -313,7 +327,7 @@ export function WorkspaceShell({ world, rightChrome = null }: WorkspaceShellProp
 
       const handleMove = (ev: MouseEvent) => {
         if (!sidebarDraggingRef.current) return;
-        setSidebarWidth(window.innerWidth - ev.clientX - activityBarWidth);
+        setSidebarWidth(ev.clientX - ACTIVITY_BAR_WIDTH);
       };
 
       const handleUp = () => {
@@ -329,8 +343,8 @@ export function WorkspaceShell({ world, rightChrome = null }: WorkspaceShellProp
   );
 
   const splitRatio = sideActiveTab?.sideSplitRatio ?? 0.5;
-  const rightRailWidth = sidebarOpen ? sidebarWidth + activityBarWidth : activityBarWidth;
-  const rightChromeWidth = Math.max(rightRailWidth, 180);
+  const leftRailWidth = sidebarOpen ? sidebarWidth + ACTIVITY_BAR_WIDTH : ACTIVITY_BAR_WIDTH;
+  const showWindowControlsOnNetworkStrip = Boolean(windowControls && (!hasSideEditor || !isNetworkPaneLeft));
   const workspacePaneWidth = hasSideEditor
     ? `${splitRatio * 100}%`
     : '100%';
@@ -345,6 +359,7 @@ export function WorkspaceShell({ world, rightChrome = null }: WorkspaceShellProp
       const activeLeafTab = leafTabs.find((t) => t.id === leaf.activeTabId) ?? leafTabs[0];
 
       const isActivePane = sideFocusedTabId ? leaf.tabIds.includes(sideFocusedTabId) : false;
+      const showWindowControls = Boolean(windowControls && isNetworkPaneLeft && isTopRightPane(adjacency));
 
       return (
         <div
@@ -364,6 +379,7 @@ export function WorkspaceShell({ world, rightChrome = null }: WorkspaceShellProp
             onTabDrop={(droppedId) => moveTabToPane(droppedId, leaf.activeTabId, 'side')}
             onTabReorder={moveTabWithinStrip}
             onFileDrop={(filePaths) => { void openDroppedFilesInSideLeaf(filePaths, leaf); }}
+            rightSlot={showWindowControls ? windowControls : undefined}
             leftSlot={
               <EditorViewModeMenu
                 currentMode="side"
@@ -402,7 +418,7 @@ export function WorkspaceShell({ world, rightChrome = null }: WorkspaceShellProp
         </div>
       );
     },
-    [tabs, isTabDragging, activeTabId, sideFocusedTabId, sideLayout, setActiveTab, requestCloseTab, setViewMode, toggleMinimize, moveTabToPane, moveTabWithinStrip, splitTab, clearShellDropState],
+    [tabs, isTabDragging, activeTabId, sideFocusedTabId, sideLayout, windowControls, isNetworkPaneLeft, setActiveTab, requestCloseTab, setViewMode, toggleMinimize, moveTabToPane, moveTabWithinStrip, splitTab, clearShellDropState],
   );
 
   // Global drag tracking for drop zone activation
@@ -484,7 +500,10 @@ export function WorkspaceShell({ world, rightChrome = null }: WorkspaceShellProp
       onDragOver={handleWorkspaceDragOver}
       onDrop={handleWorkspaceDrop}
     >
-      <NetworkTabStrip controls={networkControls} />
+      <NetworkTabStrip
+        controls={networkControls}
+        rightSlot={showWindowControlsOnNetworkStrip ? windowControls : undefined}
+      />
       <div className="pane-surface pane-surface--network relative min-h-0 flex-1 overflow-hidden">
         <NetworkWorkspace
           rootNetworkId={world?.id ?? null}
@@ -511,6 +530,18 @@ export function WorkspaceShell({ world, rightChrome = null }: WorkspaceShellProp
 
   return (
     <div className="relative flex h-full bg-surface-chrome">
+      <div
+        className="relative flex h-full min-w-0 shrink-0 flex-col bg-surface-chrome"
+        style={{ width: leftRailWidth, flexBasis: leftRailWidth }}
+      >
+        {windowControls && <div className="shrink-0" style={{ height: TITLE_BAR_HEIGHT }} aria-hidden="true" />}
+        <div className="flex min-h-0 flex-1 pb-2">
+          <ActivityBar />
+          {sidebarOpen && <Sidebar world={world} />}
+          {sidebarOpen && <ResizeHandle onMouseDown={handleSidebarResizeStart} />}
+        </div>
+      </div>
+
       <div className="flex min-w-0 flex-1 flex-col px-2 pb-2">
         <div
           ref={editorContainerRef}
@@ -521,7 +552,7 @@ export function WorkspaceShell({ world, rightChrome = null }: WorkspaceShellProp
           onDrop={handleShellDrop}
         >
           {isFullMode ? (
-            <FullModeEditor />
+            <FullModeEditor windowControls={windowControls} />
           ) : (
             <>
               {hasSideEditor && editorPane ? (
@@ -569,26 +600,6 @@ export function WorkspaceShell({ world, rightChrome = null }: WorkspaceShellProp
           )}
         </div>
         <MinimizedEditorTabs />
-      </div>
-
-      <div
-        className="relative flex h-full min-w-0 shrink-0 flex-col bg-surface-chrome"
-        style={{ width: rightRailWidth, flexBasis: rightRailWidth }}
-      >
-        {rightChrome && (
-          <div
-            className="absolute right-0 top-0 z-[1000]"
-            style={{ width: rightChromeWidth }}
-          >
-            {rightChrome}
-          </div>
-        )}
-        {rightChrome && <div className="h-[35px] shrink-0" aria-hidden="true" />}
-        <div className="flex min-h-0 flex-1 justify-end pb-2">
-          {sidebarOpen && <ResizeHandle onMouseDown={handleSidebarResizeStart} />}
-          {sidebarOpen && <Sidebar world={world} />}
-          <ActivityBar />
-        </div>
       </div>
 
       <FloatWindowLayer />

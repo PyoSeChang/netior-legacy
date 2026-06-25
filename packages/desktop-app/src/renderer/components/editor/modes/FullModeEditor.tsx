@@ -5,7 +5,7 @@ import { useEditorStore, containsTab } from '../../../stores/editor-store';
 import { EditorViewModeMenu } from '../EditorViewModeSwitch';
 import { EditorContent } from '../EditorContent';
 import { EditorTabStrip } from '../EditorTabStrip';
-import { SplitPaneRenderer, type PaneAdjacency } from '../SplitPaneRenderer';
+import { isTopRightPane, SplitPaneRenderer, type PaneAdjacency } from '../SplitPaneRenderer';
 import { DropZoneOverlay } from '../DropZoneOverlay';
 import { isTabDrag } from '../../../hooks/useTabDrag';
 import { isFileOpenDrag } from '../../../hooks/useFileOpenDrag';
@@ -13,6 +13,10 @@ import { isEditableMentionDropTarget } from '../../../hooks/useNarreMentionDrag'
 import { openFileBesideTab, openFileInPane } from '../../../lib/open-file-tab';
 import { getAllowedViewModes } from '../../../lib/editor-view-mode-rules';
 import type { DropResult } from '../DropZoneOverlay';
+
+interface FullModeEditorProps {
+  windowControls?: React.ReactNode;
+}
 
 async function openDroppedFilesInFullLeaf(
   filePaths: string[],
@@ -34,7 +38,7 @@ async function openDroppedFilesInFullLeaf(
   }
 }
 
-export function FullModeEditor(): JSX.Element | null {
+export function FullModeEditor({ windowControls = null }: FullModeEditorProps): JSX.Element | null {
   const {
     tabs, activeTabId, fullLayout,
     setActiveTab, requestCloseTab, setViewMode, toggleMinimize,
@@ -59,6 +63,7 @@ export function FullModeEditor(): JSX.Element | null {
         .filter((t): t is EditorTab => t != null);
       const activeTab = leafTabs.find((t) => t.id === leaf.activeTabId) ?? leafTabs[0];
       const isActivePane = layoutActiveTabId ? leaf.tabIds.includes(layoutActiveTabId) : false;
+      const showWindowControls = Boolean(windowControls && isTopRightPane(adjacency));
 
       return (
         <div
@@ -78,6 +83,7 @@ export function FullModeEditor(): JSX.Element | null {
             onTabDrop={(droppedId) => moveTabToPane(droppedId, leaf.activeTabId, 'full')}
             onTabReorder={moveTabWithinStrip}
             onFileDrop={(filePaths) => { void openDroppedFilesInFullLeaf(filePaths, leaf); }}
+            rightSlot={showWindowControls ? windowControls : undefined}
             leftSlot={
               <EditorViewModeMenu
                 currentMode="full"
@@ -113,7 +119,7 @@ export function FullModeEditor(): JSX.Element | null {
         </div>
       );
     },
-    [tabs, isDragging, activeTabId, layoutActiveTabId, fullLayout, setActiveTab, requestCloseTab, setViewMode, toggleMinimize, moveTabToPane, moveTabWithinStrip, splitTab],
+    [tabs, isDragging, activeTabId, layoutActiveTabId, fullLayout, windowControls, setActiveTab, requestCloseTab, setViewMode, toggleMinimize, moveTabToPane, moveTabWithinStrip, splitTab],
   );
 
   if (!fullLayout) return null;

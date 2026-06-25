@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useEffect, useSyncExternalStore } from 'react';
+import React, { useState, useCallback, useRef, useEffect, useLayoutEffect, useSyncExternalStore } from 'react';
 import { X, Terminal, Shapes, Boxes, Link, Layout, Sparkles, FileText, FolderOpen, RefreshCw, Bot, Waypoints, Globe } from 'lucide-react';
 import type { EditorTab } from '@netior/shared/types';
 import { setTabDragData, isTabDrag, getTabDragDataAsync, clearTabDragData, flushTabDragData } from '../../hooks/useTabDrag';
@@ -354,32 +354,28 @@ export function EditorTabStrip({
   const [renamingTabId, setRenamingTabId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const activeRef = useRef<HTMLDivElement>(null);
-  const activeTab = tabs.find((tab) => tab.id === activeTabId) ?? null;
 
-  // Keep the active tab fully visible inside the horizontal scroll viewport.
-  useEffect(() => {
+  useLayoutEffect(() => {
     const scrollEl = scrollRef.current;
     const activeEl = activeRef.current;
     if (!scrollEl || !activeEl) return;
 
-    const frame = requestAnimationFrame(() => {
-      const containerRect = scrollEl.getBoundingClientRect();
-      const activeRect = activeEl.getBoundingClientRect();
-      const padding = 8;
+    const containerRect = scrollEl.getBoundingClientRect();
+    const activeRect = activeEl.getBoundingClientRect();
+    const padding = 10;
 
-      if (activeRect.left < containerRect.left) {
-        const nextScrollLeft = Math.max(0, scrollEl.scrollLeft - (containerRect.left - activeRect.left) - padding);
-        scrollEl.scrollTo({ left: nextScrollLeft, behavior: 'smooth' });
-        return;
-      }
+    let nextScrollLeft = scrollEl.scrollLeft;
+    if (activeRect.left - padding < containerRect.left) {
+      nextScrollLeft -= containerRect.left - activeRect.left + padding;
+    } else if (activeRect.right + padding > containerRect.right) {
+      nextScrollLeft += activeRect.right - containerRect.right + padding;
+    }
 
-      if (activeRect.right > containerRect.right) {
-        const nextScrollLeft = scrollEl.scrollLeft + (activeRect.right - containerRect.right) + padding;
-        scrollEl.scrollTo({ left: nextScrollLeft, behavior: 'smooth' });
-      }
-    });
-    return () => cancelAnimationFrame(frame);
-  }, [activeTabId, activeTab?.isDirty]);
+    nextScrollLeft = Math.max(0, nextScrollLeft);
+    if (Math.abs(nextScrollLeft - scrollEl.scrollLeft) > 0.5) {
+      scrollEl.scrollTo({ left: nextScrollLeft, behavior: 'auto' });
+    }
+  }, [activeTabId]);
 
   // Wheel ??horizontal scroll
   useEffect(() => {
@@ -545,7 +541,7 @@ export function EditorTabStrip({
       )}
       <div
         ref={scrollRef}
-        className={`tab-scroll flex min-w-0 flex-1 items-end pr-2 ${leftSlot ? 'pl-[var(--tab-curve-size)]' : 'pl-6'}`}
+        className={`tab-scroll flex min-w-0 flex-1 items-end ${rightSlot ? 'pr-0' : 'pr-2'} ${leftSlot ? 'pl-[var(--tab-curve-size)]' : 'pl-6'}`}
         style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
       >
         {tabs.map((tab) => (
@@ -568,14 +564,14 @@ export function EditorTabStrip({
           />
         ))}
         <div
-          className="h-full min-w-4 flex-1"
+          className={`h-full ${rightSlot ? 'w-[var(--tab-curve-size)] shrink-0' : 'min-w-0 flex-1'}`}
           style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
           onContextMenu={handleStripContextMenu}
         />
       </div>
       {rightSlot && (
         <div
-          className="flex h-full shrink-0 items-center px-2"
+          className="flex h-full shrink-0 items-stretch"
           style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
         >
           {rightSlot}

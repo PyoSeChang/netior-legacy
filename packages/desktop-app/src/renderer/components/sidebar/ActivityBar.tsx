@@ -136,7 +136,7 @@ export function ActivityBar(): JSX.Element {
           const isActive = sidebarOpen && sidebarView === key;
 
           return (
-            <Tooltip key={key} content={t(labelKey)} position="left">
+            <Tooltip key={key} content={t(labelKey)} position="right">
               <button
                 className={`flex h-8 w-8 items-center justify-center rounded transition-colors ${
                   isActive
@@ -157,7 +157,7 @@ export function ActivityBar(): JSX.Element {
           <div className="my-2 h-px w-5 bg-border-subtle opacity-50" />
           <div className="flex flex-col items-center gap-1">
             {bookmarkNetworks.map((network) => (
-              <Tooltip key={network.id} content={network.name} position="left">
+              <Tooltip key={network.id} content={network.name} position="right">
                 <button
                   className="flex h-8 w-8 items-center justify-center rounded text-secondary transition-colors hover:bg-state-hover hover:text-default"
                   onClick={() => handleBookmarkedNetworkClick(network.id)}
@@ -178,7 +178,7 @@ export function ActivityBar(): JSX.Element {
           const { icon: Icon, labelKey } = ACTIVITY_BAR_BOTTOM_ITEM_DEFINITIONS[key];
 
           return (
-            <Tooltip key={key} content={t(labelKey)} position="left">
+            <Tooltip key={key} content={t(labelKey)} position="right">
               <button
                 className="flex h-8 w-8 items-center justify-center rounded text-secondary transition-colors hover:bg-state-hover hover:text-default"
                 onClick={() => handleBottomAction(key)}

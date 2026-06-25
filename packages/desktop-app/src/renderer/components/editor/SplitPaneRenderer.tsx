@@ -18,6 +18,10 @@ export interface PaneAdjacency {
   bottom?: boolean;
 }
 
+export function isTopRightPane(adjacency?: PaneAdjacency): boolean {
+  return !adjacency?.top && !adjacency?.right;
+}
+
 export function SplitPaneRenderer({
   node,
   mode,
