@@ -1,31 +1,14 @@
-﻿import React, { useEffect, useMemo } from 'react';
-import {
-  Boxes,
-  ChevronDown,
-  ChevronUp,
-  Pin,
-  PinOff,
-  Waypoints,
-  type LucideIcon,
-} from 'lucide-react';
-import type { Network } from '@netior/shared/types';
+import React, { useEffect } from 'react';
+import { ChevronDown, ChevronUp, type LucideIcon } from 'lucide-react';
 import { useI18n } from '../../hooks/useI18n';
 import {
   ACTIVITY_BAR_BOTTOM_ITEM_DEFINITIONS,
   ACTIVITY_BAR_TOP_ITEM_DEFINITIONS,
 } from '../../lib/activity-bar-items';
-import { getWorldNetworkBookmarkIds } from '../../lib/activity-bar-layout';
-import { useNetworkStore } from '../../stores/network-store';
-import { useWorldStore } from '../../stores/world-store';
 import { useActivityBarStore } from '../../stores/activity-bar-store';
-import { Button } from '../ui/Button';
 
 function getSectionId(label: string): string {
   return label.toLowerCase().replace(/\s+/g, '-');
-}
-
-function getNetworkIcon(network: Network): LucideIcon {
-  return network.kind === 'root' ? Boxes : Waypoints;
 }
 
 function MoveButtons({
@@ -72,25 +55,21 @@ function MoveButtons({
 function ReorderableRow({
   icon: Icon,
   label,
-  subtitle,
   canMoveUp,
   canMoveDown,
   onMoveUp,
   onMoveDown,
   moveUpLabel,
   moveDownLabel,
-  action,
 }: {
   icon: LucideIcon;
   label: string;
-  subtitle?: string;
   canMoveUp: boolean;
   canMoveDown: boolean;
   onMoveUp: () => void;
   onMoveDown: () => void;
   moveUpLabel: string;
   moveDownLabel: string;
-  action?: React.ReactNode;
 }): JSX.Element {
   return (
     <div className="flex items-center gap-3 px-3 py-2.5">
@@ -99,9 +78,7 @@ function ReorderableRow({
       </div>
       <div className="min-w-0 flex-1">
         <div className="truncate text-sm text-default">{label}</div>
-        {subtitle ? <div className="truncate text-xs text-muted">{subtitle}</div> : null}
       </div>
-      {action}
       <MoveButtons
         canMoveUp={canMoveUp}
         canMoveDown={canMoveDown}
@@ -116,58 +93,19 @@ function ReorderableRow({
 
 export function SidebarSettingsPanel(): JSX.Element {
   const { t } = useI18n();
-  const currentWorld = useWorldStore((state) => state.currentWorld);
-  const networks = useNetworkStore((state) => state.networks);
-  const loadNetworks = useNetworkStore((state) => state.loadNetworks);
   const config = useActivityBarStore((state) => state.config);
   const ensureLoaded = useActivityBarStore((state) => state.ensureLoaded);
   const moveTopItem = useActivityBarStore((state) => state.moveTopItem);
   const moveBottomItem = useActivityBarStore((state) => state.moveBottomItem);
-  const addBookmark = useActivityBarStore((state) => state.addBookmark);
-  const removeBookmark = useActivityBarStore((state) => state.removeBookmark);
-  const moveBookmark = useActivityBarStore((state) => state.moveBookmark);
 
   useEffect(() => {
     void ensureLoaded();
   }, [ensureLoaded]);
 
-  useEffect(() => {
-    if (!currentWorld) {
-      return;
-    }
-
-    void loadNetworks(currentWorld.id);
-  }, [currentWorld?.id, currentWorld, loadNetworks]);
-
   const moveUpLabel = t('settings.sidebarMoveUp' as never);
   const moveDownLabel = t('settings.sidebarMoveDown' as never);
   const topItemsTitle = t('settings.sidebarTopItems' as never);
-  const bookmarkedNetworksTitle = t('settings.sidebarBookmarkedNetworks' as never);
   const bottomItemsTitle = t('settings.sidebarBottomItems' as never);
-
-  const worldNetworks = useMemo(
-    () => currentWorld
-      ? networks.filter((network) => network.root_network_id === currentWorld.id)
-        .filter((network) => network.kind === 'network')
-      : [],
-    [currentWorld, networks],
-  );
-
-  const bookmarkIds = currentWorld
-    ? getWorldNetworkBookmarkIds(config, currentWorld.id)
-    : [];
-
-  const bookmarkNetworks = useMemo(
-    () => bookmarkIds
-      .map((bookmarkId) => worldNetworks.find((network) => network.id === bookmarkId))
-      .filter((network): network is Network => Boolean(network)),
-    [bookmarkIds, worldNetworks],
-  );
-
-  const availableNetworks = useMemo(() => {
-    const bookmarkIdSet = new Set(bookmarkIds);
-    return worldNetworks.filter((network) => !bookmarkIdSet.has(network.id));
-  }, [bookmarkIds, worldNetworks]);
 
   return (
     <div data-section="sidebar">
@@ -192,99 +130,6 @@ export function SidebarSettingsPanel(): JSX.Element {
             );
           })}
         </div>
-      </section>
-
-      <section data-section={getSectionId(bookmarkedNetworksTitle)} className="mb-8">
-        <h3 className="text-base font-semibold text-default">{bookmarkedNetworksTitle}</h3>
-        <p className="mb-4 mt-1 text-sm text-secondary">{t('settings.sidebarBookmarkedNetworksDesc' as never)}</p>
-
-        {!currentWorld ? (
-          <div className="rounded-lg border border-subtle bg-surface-card px-3 py-3 text-sm text-muted">
-            {t('settings.sidebarNoWorld' as never)}
-          </div>
-        ) : (
-          <div className="space-y-5">
-            <div>
-              <div className="mb-2 text-xs font-medium uppercase tracking-wide text-muted">
-                {t('settings.sidebarBookmarkedNetworks' as never)}
-              </div>
-              {bookmarkNetworks.length > 0 ? (
-                <div className="divide-y divide-subtle overflow-hidden rounded-lg border border-subtle">
-                  {bookmarkNetworks.map((network, index) => {
-                    const NetworkIcon = getNetworkIcon(network);
-                    return (
-                      <ReorderableRow
-                        key={network.id}
-                        icon={NetworkIcon}
-                        label={network.name}
-                        canMoveUp={index > 0}
-                        canMoveDown={index < bookmarkNetworks.length - 1}
-                        onMoveUp={() => { void moveBookmark(currentWorld.id, index, -1); }}
-                        onMoveDown={() => { void moveBookmark(currentWorld.id, index, 1); }}
-                        moveUpLabel={moveUpLabel}
-                        moveDownLabel={moveDownLabel}
-                        action={(
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="shrink-0"
-                            onClick={() => { void removeBookmark(currentWorld.id, network.id); }}
-                          >
-                            <PinOff size={14} />
-                            {t('common.remove')}
-                          </Button>
-                        )}
-                      />
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="rounded-lg border border-dashed border-subtle px-3 py-3 text-sm text-muted">
-                  {t('settings.sidebarNoBookmarks' as never)}
-                </div>
-              )}
-            </div>
-
-            <div>
-              <div className="mb-1 text-xs font-medium uppercase tracking-wide text-muted">
-                {t('settings.sidebarAvailableNetworks' as never)}
-              </div>
-              <p className="mb-2 text-xs text-muted">{t('settings.sidebarAvailableNetworksDesc' as never)}</p>
-              {availableNetworks.length > 0 ? (
-                <div className="divide-y divide-subtle overflow-hidden rounded-lg border border-subtle">
-                  {availableNetworks.map((network) => {
-                    const NetworkIcon = getNetworkIcon(network);
-                    return (
-                      <div key={network.id} className="flex items-center gap-3 px-3 py-2.5">
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-surface-editor text-secondary">
-                          <NetworkIcon size={16} />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="truncate text-sm text-default">{network.name}</div>
-                        </div>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="shrink-0"
-                          onClick={() => { void addBookmark(currentWorld.id, network.id); }}
-                        >
-                          <Pin size={14} />
-                          {t('common.add')}
-                        </Button>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="rounded-lg border border-dashed border-subtle px-3 py-3 text-sm text-muted">
-                  {t('settings.sidebarNoAvailableNetworks' as never)}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
       </section>
 
       <section data-section={getSectionId(bottomItemsTitle)} className="mb-8">
@@ -312,3 +157,4 @@ export function SidebarSettingsPanel(): JSX.Element {
     </div>
   );
 }
+

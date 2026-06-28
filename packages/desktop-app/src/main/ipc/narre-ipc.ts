@@ -3,10 +3,12 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync, unlinkSync } from '
 import http from 'http';
 import { join } from 'path';
 import { randomUUID } from 'crypto';
+import { homedir } from 'os';
 import type {
   AgentDefinition,
   IpcResult,
   NarreMessage,
+  NarreRuntimeModelOption,
   NarreSessionDetail,
   NarreSessionFileV1,
   NarreSessionFileV2,
@@ -20,16 +22,9 @@ import type {
 } from '@netior/shared/types';
 import { BUILT_IN_SKILLS, IPC_CHANNELS } from '@netior/shared/constants';
 import {
-  listRemoteInstancesByWorld,
-  listRemoteFilesByWorld,
-  listRemoteSchemas,
-  listRemoteNetworks,
-  listRemoteModels,
-  searchRemoteInstances,
-} from '../netior-service/netior-service-client';
-import {
   getNarreServerBaseUrl,
   isNarreServerRunning,
+  type NarreProviderName,
 } from '../process/narre-server-manager';
 import {
   getApiKeySettingKey,
@@ -52,6 +47,130 @@ interface ActiveNarreChatRequest {
 
 const activeNarreChatRequests = new Map<string, ActiveNarreChatRequest>();
 const cancelledNarreChatRequests = new WeakSet<http.ClientRequest>();
+
+const FALLBACK_RUNTIME_MODEL_OPTIONS: Record<NarreProviderName, NarreRuntimeModelOption[]> = {
+  claude: [
+    { id: 'sonnet', label: 'Sonnet' },
+  ],
+  openai: [
+    { id: 'gpt-5.5', label: 'GPT-5.5' },
+    { id: 'gpt-5.4', label: 'GPT-5.4' },
+    { id: 'gpt-5.4-mini', label: 'GPT-5.4 Mini' },
+  ],
+  codex: [
+    { id: 'gpt-5.5', label: 'GPT-5.5' },
+    { id: 'gpt-5.4', label: 'GPT-5.4' },
+    { id: 'gpt-5.4-mini', label: 'GPT-5.4 Mini' },
+    { id: 'gpt-5.3-codex-spark', label: 'GPT-5.3 Codex Spark' },
+    { id: 'codex-auto-review', label: 'Codex Auto Review' },
+  ],
+};
+
+function normalizeRuntimeModelProvider(value: unknown): NarreProviderName | null {
+  if (value === 'claude' || value === 'openai' || value === 'codex') {
+    return value;
+  }
+  return null;
+}
+
+function dedupeRuntimeModelOptions(options: NarreRuntimeModelOption[]): NarreRuntimeModelOption[] {
+  const seen = new Set<string>();
+  const deduped: NarreRuntimeModelOption[] = [];
+  for (const option of options) {
+    const id = option.id.trim();
+    if (!id || seen.has(id)) {
+      continue;
+    }
+    seen.add(id);
+    deduped.push({
+      id,
+      label: option.label.trim() || id,
+    });
+  }
+  return deduped;
+}
+
+function shouldIncludeOpenAIRuntimeModel(id: string): boolean {
+  const lower = id.toLowerCase();
+  return lower.startsWith('gpt-') || lower.startsWith('chatgpt-') || /^o\d/.test(lower);
+}
+
+async function fetchOpenAIRuntimeModels(): Promise<NarreRuntimeModelOption[]> {
+  const apiKey = await getConfiguredNarreApiKey('openai');
+  if (!apiKey) {
+    return [];
+  }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
+  try {
+    const response = await fetch('https://api.openai.com/v1/models', {
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+      },
+      signal: controller.signal,
+    });
+    if (!response.ok) {
+      throw new Error(`OpenAI model list failed: ${response.status}`);
+    }
+
+    const payload = await response.json() as { data?: Array<{ id?: unknown }> };
+    return (payload.data ?? [])
+      .map((model) => typeof model.id === 'string' ? model.id.trim() : '')
+      .filter((id) => id.length > 0 && shouldIncludeOpenAIRuntimeModel(id))
+      .sort((a, b) => a.localeCompare(b))
+      .map((id) => ({ id, label: id }));
+  } catch (error) {
+    console.warn(`[narre:bridge] failed to fetch OpenAI models: ${(error as Error).message}`);
+    return [];
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function readCodexRuntimeModels(): NarreRuntimeModelOption[] {
+  const codexHome = process.env.CODEX_HOME && process.env.CODEX_HOME.length > 0
+    ? process.env.CODEX_HOME
+    : join(homedir(), '.codex');
+  const cachePath = join(codexHome, 'models_cache.json');
+  if (!existsSync(cachePath)) {
+    return [];
+  }
+
+  try {
+    const payload = JSON.parse(readFileSync(cachePath, 'utf-8')) as {
+      models?: Array<{
+        slug?: unknown;
+        display_name?: unknown;
+        visibility?: unknown;
+      }>;
+    };
+    return (payload.models ?? [])
+      .filter((model) => model.visibility !== 'hidden')
+      .map((model) => {
+        const id = typeof model.slug === 'string' ? model.slug.trim() : '';
+        const label = typeof model.display_name === 'string' && model.display_name.trim().length > 0
+          ? model.display_name.trim()
+          : id;
+        return { id, label };
+      });
+  } catch (error) {
+    console.warn(`[narre:bridge] failed to read Codex model cache: ${(error as Error).message}`);
+    return [];
+  }
+}
+
+async function listRuntimeModelOptions(provider: NarreProviderName): Promise<NarreRuntimeModelOption[]> {
+  const dynamicOptions = provider === 'openai'
+    ? await fetchOpenAIRuntimeModels()
+    : provider === 'codex'
+      ? readCodexRuntimeModels()
+      : [];
+  return dedupeRuntimeModelOptions([
+    ...FALLBACK_RUNTIME_MODEL_OPTIONS[provider],
+    ...dynamicOptions,
+  ]);
+}
 
 function getNarreDir(rootNetworkId: string): string {
   const dir = getRuntimeNarreDir(rootNetworkId);
@@ -145,7 +264,10 @@ function normalizeSessionFile(value: unknown): NarreSessionFileV2 {
   }
 
   const legacy = value as Partial<NarreSessionFileV1> | null;
-  const messages = Array.isArray(legacy?.messages) ? legacy.messages : [];
+  const messages = (Array.isArray(legacy?.messages) ? legacy.messages : [])
+    .filter((message): message is NarreMessage & { role: 'user' | 'assistant' } =>
+      message.role === 'user' || message.role === 'assistant',
+    );
 
   return {
     version: 2,
@@ -153,7 +275,7 @@ function normalizeSessionFile(value: unknown): NarreSessionFileV2 {
       turns: messages.map((message) => ({
         id: `turn-${randomUUID()}`,
         role: message.role,
-        createdAt: message.timestamp,
+        createdAt: message.createdAt ?? message.timestamp ?? new Date().toISOString(),
         blocks: [
           ...(message.content ? [{
             id: `block-${randomUUID()}`,
@@ -164,7 +286,7 @@ function normalizeSessionFile(value: unknown): NarreSessionFileV2 {
           ...((message.tool_calls ?? []).map((toolCall) => ({
             id: `block-${randomUUID()}`,
             type: 'tool' as const,
-            toolKey: toolCall.tool,
+            toolKey: toolCall.tool ?? toolCall.name ?? 'tool',
             ...(toolCall.metadata ? { metadata: toolCall.metadata } : {}),
             input: toolCall.input,
             ...(toolCall.result ? { output: toolCall.result } : {}),
@@ -410,7 +532,8 @@ export function registerNarreIpc(): void {
 
       const index = getSessionsIndex(rootNetworkId);
       index.sessions.sort((a, b) =>
-        new Date(b.last_message_at).getTime() - new Date(a.last_message_at).getTime(),
+        new Date(b.last_message_at ?? b.updatedAt ?? b.createdAt ?? 0).getTime()
+          - new Date(a.last_message_at ?? a.updatedAt ?? a.createdAt ?? 0).getTime(),
       );
       return { success: true, data: index.sessions };
     } catch (err) {
@@ -733,98 +856,23 @@ export function registerNarreIpc(): void {
     }
   });
 
+  ipcMain.handle(IPC_CHANNELS.NARRE_LIST_RUNTIME_MODELS, async (_e, providerValue: unknown): Promise<IpcResult<NarreRuntimeModelOption[]>> => {
+    try {
+      const provider = normalizeRuntimeModelProvider(providerValue);
+      if (!provider) {
+        return { success: false, error: 'Unsupported Narre runtime provider' };
+      }
+      return { success: true, data: await listRuntimeModelOptions(provider) };
+    } catch (err) {
+      return { success: false, error: (err as Error).message };
+    }
+  });
+
   ipcMain.handle(IPC_CHANNELS.NARRE_SEARCH_MENTIONS, async (_e, rootNetworkId: string, query: string): Promise<IpcResult<unknown>> => {
     try {
-      const results: Array<{
-        type: string; id: string; display: string;
-        color?: string | null; icon?: string | null;
-        description?: string | null; meta?: Record<string, unknown>;
-      }> = [];
-      const maxResults = 80;
-      const categoryLimit = 16;
-      const lowerQuery = query.toLowerCase();
-      const matches = (parts: Array<string | null | undefined>): boolean => (
-        lowerQuery.length === 0
-        || parts.some((part) => part?.toLowerCase().includes(lowerQuery))
-      );
-      const take = <T>(items: T[]): T[] => items.slice(0, categoryLimit);
-
-      const meanings = await listRemoteModels(rootNetworkId);
-      const meaningMap = new Map(meanings.map((a) => [a.id, a]));
-      const schemas = await listRemoteSchemas(rootNetworkId);
-      const schemaMap = new Map(schemas.map((schema) => [schema.id, schema]));
-      const instances = lowerQuery.length === 0
-        ? await listRemoteInstancesByWorld(rootNetworkId)
-        : await searchRemoteInstances(rootNetworkId, query);
-
-      for (const c of take(instances)) {
-        const schema = c.schema_id ? schemaMap.get(c.schema_id) : null;
-        results.push({
-          type: 'instance', id: c.id, display: c.title, color: c.color, icon: c.icon,
-          meta: schema
-            ? {
-              schema: schema.name,
-              schemaId: schema.id,
-              meaningRefs: schema.meanings,
-              meaningDescription: schema.description,
-            }
-            : { schema: null },
-        });
-      }
-
-      // Search networks
-      const networks = await listRemoteNetworks(rootNetworkId);
-      for (const nw of take(networks.filter((nw) => matches([nw.name, nw.kind, nw.scope])))) {
-        results.push({
-          type: 'network', id: nw.id, display: nw.name,
-          description: nw.kind,
-          meta: { kind: nw.kind, scope: nw.scope },
-        });
-      }
-
-      // Search schemas
-      for (const schema of take(schemas.filter((schema) => matches([schema.name, schema.description])))) {
-        results.push({
-          type: 'schema',
-          id: schema.id,
-          display: schema.name,
-          color: schema.color,
-          icon: schema.icon,
-          description: schema.description,
-          meta: { meaningRefs: schema.meanings },
-        });
-      }
-
-      // Search meanings
-      for (const a of take(Array.from(meaningMap.values()).filter((a) => matches([a.name, a.description, a.key])))) {
-        results.push({
-          type: 'meaning', id: a.id, display: a.name, color: a.color, icon: a.icon,
-          description: a.description,
-          meta: {
-            key: a.key,
-            name: a.name,
-            sourceKind: a.source_kind,
-            sourceRef: a.source_ref,
-            lineStyle: a.line_style,
-            directed: a.directed,
-          },
-        });
-      }
-
-      // Search file entities
-      const files = await listRemoteFilesByWorld(rootNetworkId);
-      for (const fe of files) {
-        const fileName = fe.path.split('/').pop() ?? fe.path;
-        if (results.filter((result) => result.type === 'file').length >= categoryLimit) break;
-        if (fileName.toLowerCase().includes(lowerQuery) || fe.path.toLowerCase().includes(lowerQuery)) {
-          results.push({
-            type: 'file', id: fe.id, display: fileName,
-            meta: { path: fe.path, fileType: fe.type },
-          });
-        }
-      }
-
-      return { success: true, data: results.slice(0, maxResults) };
+      void rootNetworkId;
+      void query;
+      return { success: true, data: [] };
     } catch (err) {
       return { success: false, error: (err as Error).message };
     }
@@ -862,7 +910,14 @@ export function registerNarreIpc(): void {
       const skillIds = Array.isArray(data.skillIds)
         ? data.skillIds.filter((value): value is string => typeof value === 'string')
         : undefined;
-      const body = JSON.stringify({ sessionId, rootNetworkId, message, mentions, skillIds });
+      const body = JSON.stringify({
+        sessionId,
+        rootNetworkId,
+        message,
+        mentions,
+        skillIds,
+        runtimeOverride: data.runtimeOverride,
+      });
       const chatUrl = new URL('/chat', await ensureNarreServerBaseUrl());
 
       const req = http.request(
@@ -1133,6 +1188,15 @@ export function registerNarreIpc(): void {
             let responseBody = '';
             res.on('data', (chunk: Buffer) => { responseBody += chunk.toString(); });
             res.on('end', () => {
+              if ((res.statusCode ?? 500) >= 400) {
+                try {
+                  const parsed = JSON.parse(responseBody) as { error?: string };
+                  resolve({ success: false, error: parsed.error ?? 'Failed to respond to Narre card' });
+                } catch {
+                  resolve({ success: false, error: responseBody || 'Failed to respond to Narre card' });
+                }
+                return;
+              }
               resolve({ success: true, data: null });
             });
           },

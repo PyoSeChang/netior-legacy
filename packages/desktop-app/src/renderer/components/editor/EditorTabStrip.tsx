@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useRef, useEffect, useLayoutEffect, useSyncExternalStore } from 'react';
-import { X, Terminal, Shapes, Boxes, Link, Layout, Sparkles, FileText, FolderOpen, RefreshCw, Bot, Waypoints, Globe } from 'lucide-react';
-import type { EditorTab } from '@netior/shared/types';
+import { X, Terminal, Shapes, Boxes, Link, Layout, Sparkles, FileText, FolderOpen, RefreshCw, Bot, Globe } from 'lucide-react';
+import type { EditorTab } from '../../types/editor';
 import { setTabDragData, isTabDrag, getTabDragDataAsync, clearTabDragData, flushTabDragData } from '../../hooks/useTabDrag';
 import { getFileOpenDragData, isFileOpenDrag } from '../../hooks/useFileOpenDrag';
 import { ContextMenu } from '../ui/ContextMenu';
@@ -21,10 +21,6 @@ import { fsService } from '../../services';
 import { replaceDraftCache } from '../../hooks/useEditorSession';
 import { setKnownFileTabSignature } from '../../lib/file-tab-stale-registry';
 import { useI18n } from '../../hooks/useI18n';
-import { useInstanceStore } from '../../stores/instance-store';
-import { useMeaningStore } from '../../stores/meaning-store';
-import { useSchemaStore } from '../../stores/schema-store';
-import { NodeVisual } from '../workspace/node-components/NodeVisual';
 
 interface EditorTabStripProps {
   tabs: EditorTab[];
@@ -83,21 +79,6 @@ function BrowserTabIcon({ faviconUrl }: { faviconUrl?: string }): JSX.Element {
 
 function TabIcon({ tab }: { tab: EditorTab }): JSX.Element {
   const agentState = useAgentState(tab.targetId);
-  const instanceIcon = useInstanceStore((s) => (
-    tab.type === 'instance' && !(tab.targetId.startsWith('draft-') && tab.draftData !== undefined)
-      ? s.instances.find((instance) => instance.id === tab.targetId)?.icon ?? null
-      : null
-  ));
-  const modelIcon = useMeaningStore((s) => (
-    tab.type === 'meaning'
-      ? s.meanings.find((meaning) => meaning.id === tab.targetId)?.icon ?? null
-      : null
-  ));
-  const schemaIcon = useSchemaStore((s) => (
-    tab.type === 'schema'
-      ? s.schemas.find((schema) => schema.id === tab.targetId)?.icon ?? null
-      : null
-  ));
 
   switch (tab.type) {
     case 'file': {
@@ -113,29 +94,27 @@ function TabIcon({ tab }: { tab: EditorTab }): JSX.Element {
       }
       return <Terminal size={ICON_SIZE} style={{ flexShrink: 0 }} />;
     case 'instance':
-      return <NodeVisual icon={instanceIcon ?? 'box'} size={ICON_SIZE} imageSize={16} className="shrink-0" />;
-    case 'meaning':
-      return <NodeVisual icon={modelIcon ?? 'boxes'} size={ICON_SIZE} imageSize={16} className="shrink-0" />;
-    case 'schema':
-      return <NodeVisual icon={schemaIcon ?? 'diamond'} size={ICON_SIZE} imageSize={16} className="shrink-0" />;
-    case 'edge':
-      return <Link size={ICON_SIZE} style={{ flexShrink: 0 }} />;
-    case 'network':
-      return <Layout size={ICON_SIZE} style={{ flexShrink: 0 }} />;
-    case 'networkViewer':
-      return <Waypoints size={ICON_SIZE} style={{ flexShrink: 0 }} />;
-    case 'rootNetwork':
+      return <Boxes size={ICON_SIZE} style={{ flexShrink: 0 }} />;
+    case 'model':
       return <Boxes size={ICON_SIZE} style={{ flexShrink: 0 }} />;
     case 'world':
       return <FolderOpen size={ICON_SIZE} style={{ flexShrink: 0 }} />;
+    case 'kind':
+      return <Shapes size={ICON_SIZE} style={{ flexShrink: 0 }} />;
+    case 'property':
+      return <FileText size={ICON_SIZE} style={{ flexShrink: 0 }} />;
+    case 'relationKind':
+      return <Link size={ICON_SIZE} style={{ flexShrink: 0 }} />;
+    case 'resource':
+      return <FolderOpen size={ICON_SIZE} style={{ flexShrink: 0 }} />;
+    case 'view':
+      return <Layout size={ICON_SIZE} style={{ flexShrink: 0 }} />;
     case 'narre':
       return <Sparkles size={ICON_SIZE} style={{ flexShrink: 0 }} />;
     case 'agent':
       return <Bot size={ICON_SIZE} style={{ flexShrink: 0 }} />;
-    case 'fileMetadata':
-      return <FileText size={ICON_SIZE} style={{ flexShrink: 0 }} />;
     case 'browser':
-      return <BrowserTabIcon faviconUrl={tab.browserFaviconUrl} />;
+      return <BrowserTabIcon faviconUrl={tab.browserFaviconUrl ?? undefined} />;
     default:
       return <span style={{ width: ICON_SIZE, height: ICON_SIZE, flexShrink: 0 }} />;
   }
@@ -390,8 +369,6 @@ export function EditorTabStrip({
     return () => el.removeEventListener('wheel', onWheel);
   }, []);
 
-  if (tabs.length === 0 && !rightSlot) return <></>;
-
   const menuCallbacks = {
     onRequestRename: (tabId: string) => setRenamingTabId(tabId),
   };
@@ -517,6 +494,8 @@ export function EditorTabStrip({
 
     setRenamingTabId(null);
   }, [tabs]);
+
+  if (tabs.length === 0 && !rightSlot) return <></>;
 
   return (
     <div

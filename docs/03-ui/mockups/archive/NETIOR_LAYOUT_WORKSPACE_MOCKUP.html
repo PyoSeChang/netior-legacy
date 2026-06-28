@@ -1,0 +1,902 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Netior Workspace Layout Mockup</title>
+    <style>
+      :root {
+        --bg: #101214;
+        --chrome: #15181b;
+        --chrome-2: #191d21;
+        --panel: #1d2126;
+        --panel-2: #22272d;
+        --surface: #171a1e;
+        --surface-soft: #20242a;
+        --line: #2f353c;
+        --line-soft: #282e34;
+        --text: #e8eaed;
+        --muted: #9aa2ad;
+        --faint: #6f7782;
+        --accent: #4f8cff;
+        --accent-soft: rgba(79, 140, 255, 0.18);
+        --good: #54c28a;
+        --warn: #d8a94a;
+        --danger: #d66b5d;
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          sans-serif;
+        color-scheme: dark;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        height: 100vh;
+        overflow: hidden;
+        background: var(--bg);
+        color: var(--text);
+      }
+
+      button {
+        font: inherit;
+      }
+
+      .app {
+        height: 100vh;
+        display: grid;
+        grid-template-rows: 34px minmax(0, 1fr);
+        background: var(--bg);
+      }
+
+      .titlebar {
+        display: grid;
+        grid-template-columns: 240px minmax(0, 1fr) 280px;
+        align-items: center;
+        border-bottom: 1px solid var(--line-soft);
+        background: var(--chrome);
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .window-menu,
+      .window-actions {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 0 12px;
+        min-width: 0;
+      }
+
+      .window-actions {
+        justify-content: flex-end;
+      }
+
+      .window-title {
+        min-width: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        color: var(--text);
+        font-weight: 650;
+      }
+
+      .workspace {
+        min-height: 0;
+        display: grid;
+        grid-template-columns: 48px 248px minmax(0, 1fr);
+        background: var(--chrome);
+      }
+
+      .rail {
+        min-height: 0;
+        display: grid;
+        grid-template-rows: auto 1fr auto;
+        padding: 10px 6px;
+        border-right: 1px solid var(--line-soft);
+        background: var(--chrome);
+      }
+
+      .rail-group {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .rail-button {
+        width: 34px;
+        height: 34px;
+        border: 1px solid transparent;
+        border-radius: 8px;
+        background: transparent;
+        color: var(--muted);
+        display: grid;
+        place-items: center;
+        cursor: default;
+        font-size: 12px;
+        font-weight: 760;
+      }
+
+      .rail-button.active {
+        background: var(--accent-soft);
+        border-color: rgba(79, 140, 255, 0.32);
+        color: #dce9ff;
+      }
+
+      .rail-button.utility {
+        color: var(--faint);
+      }
+
+      .sidebar {
+        min-height: 0;
+        display: grid;
+        grid-template-rows: auto auto minmax(0, 1fr) auto;
+        border-right: 1px solid var(--line-soft);
+        background: linear-gradient(180deg, var(--chrome-2), var(--chrome));
+      }
+
+      .sidebar-header {
+        min-height: 58px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 12px 14px;
+      }
+
+      .world-title {
+        min-width: 0;
+      }
+
+      .world-title strong {
+        display: block;
+        font-size: 13px;
+        line-height: 1.2;
+      }
+
+      .world-title span {
+        display: block;
+        margin-top: 4px;
+        color: var(--faint);
+        font-size: 11px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .tiny-button {
+        width: 28px;
+        height: 28px;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        background: var(--surface);
+        color: var(--muted);
+      }
+
+      .primary-nav {
+        display: grid;
+        gap: 4px;
+        padding: 0 8px 12px;
+        border-bottom: 1px solid var(--line-soft);
+      }
+
+      .nav-item {
+        min-height: 34px;
+        display: grid;
+        grid-template-columns: 24px minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 8px;
+        padding: 0 8px;
+        border-radius: 8px;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 620;
+      }
+
+      .nav-item.active {
+        background: var(--surface-soft);
+        color: var(--text);
+      }
+
+      .nav-item .key {
+        width: 20px;
+        height: 20px;
+        border-radius: 6px;
+        display: grid;
+        place-items: center;
+        background: rgba(255, 255, 255, 0.06);
+        color: var(--muted);
+        font-size: 10px;
+        font-weight: 760;
+      }
+
+      .nav-item.active .key {
+        background: var(--accent-soft);
+        color: #dce9ff;
+      }
+
+      .badge {
+        min-width: 20px;
+        height: 18px;
+        display: inline-grid;
+        place-items: center;
+        padding: 0 6px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.06);
+        color: var(--faint);
+        font-size: 10px;
+      }
+
+      .sidebar-scroll {
+        min-height: 0;
+        overflow: auto;
+        padding: 12px 8px;
+      }
+
+      .section-title {
+        margin: 10px 8px 6px;
+        color: var(--faint);
+        font-size: 10px;
+        font-weight: 780;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .tree-item,
+      .bookmark-item {
+        min-height: 30px;
+        display: grid;
+        grid-template-columns: 18px minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 8px;
+        padding: 0 8px;
+        border-radius: 7px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .tree-item.active,
+      .bookmark-item.active {
+        background: rgba(255, 255, 255, 0.06);
+        color: var(--text);
+      }
+
+      .tree-item.sub {
+        padding-left: 22px;
+      }
+
+      .label {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 999px;
+        background: var(--faint);
+      }
+
+      .dot.good {
+        background: var(--good);
+      }
+
+      .dot.warn {
+        background: var(--warn);
+      }
+
+      .sidebar-footer {
+        border-top: 1px solid var(--line-soft);
+        padding: 8px;
+        display: grid;
+        gap: 4px;
+      }
+
+      .status-line {
+        min-height: 34px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 0 8px;
+        border-radius: 8px;
+        color: var(--muted);
+        font-size: 11px;
+      }
+
+      .status-line.account {
+        background: var(--surface);
+      }
+
+      .main {
+        min-width: 0;
+        min-height: 0;
+        display: grid;
+        grid-template-rows: 42px minmax(0, 1fr);
+        background: var(--bg);
+      }
+
+      .view-remote {
+        min-width: 0;
+        display: grid;
+        grid-template-columns: minmax(280px, 1fr) auto auto;
+        align-items: center;
+        gap: 12px;
+        padding: 0 12px;
+        border-bottom: 1px solid var(--line-soft);
+        background: var(--chrome);
+      }
+
+      .view-name {
+        min-width: 0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .view-name strong {
+        color: var(--text);
+        font-size: 13px;
+      }
+
+      .segmented {
+        display: flex;
+        align-items: center;
+        gap: 3px;
+        padding: 3px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--surface);
+      }
+
+      .segment {
+        height: 26px;
+        border: 0;
+        border-radius: 6px;
+        padding: 0 10px;
+        background: transparent;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .segment.active {
+        background: var(--panel-2);
+        color: var(--text);
+      }
+
+      .remote-actions {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .tool-button {
+        height: 28px;
+        min-width: 28px;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        background: var(--surface);
+        color: var(--muted);
+        padding: 0 8px;
+        font-size: 12px;
+      }
+
+      .tool-button.active {
+        border-color: rgba(79, 140, 255, 0.35);
+        background: var(--accent-soft);
+        color: #dce9ff;
+      }
+
+      .workarea {
+        min-width: 0;
+        min-height: 0;
+        display: grid;
+        grid-template-columns: minmax(420px, 0.58fr) 6px minmax(420px, 0.42fr);
+        gap: 0;
+        padding: 8px;
+        background: #0f1114;
+      }
+
+      .pane {
+        min-width: 0;
+        min-height: 0;
+        border: 1px solid var(--line-soft);
+        background: var(--surface);
+        overflow: hidden;
+        display: grid;
+        grid-template-rows: 34px minmax(0, 1fr);
+      }
+
+      .pane.view {
+        border-radius: 9px 3px 3px 9px;
+      }
+
+      .pane.editor {
+        border-radius: 3px 9px 9px 3px;
+      }
+
+      .splitter {
+        min-height: 0;
+        display: grid;
+        place-items: center;
+      }
+
+      .splitter::before {
+        content: "";
+        width: 2px;
+        height: 56px;
+        border-radius: 999px;
+        background: var(--line);
+      }
+
+      .pane-tabs {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        padding: 0 8px;
+        border-bottom: 1px solid var(--line-soft);
+        background: var(--chrome-2);
+      }
+
+      .tab {
+        height: 25px;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        max-width: 180px;
+        padding: 0 9px;
+        border-radius: 7px;
+        color: var(--muted);
+        font-size: 11px;
+      }
+
+      .tab.active {
+        background: var(--surface-soft);
+        color: var(--text);
+      }
+
+      .canvas {
+        position: relative;
+        min-height: 0;
+        overflow: hidden;
+        background:
+          radial-gradient(circle, rgba(255, 255, 255, 0.08) 1px, transparent 1px) 0 0 / 18px 18px,
+          #101216;
+      }
+
+      .canvas-node {
+        position: absolute;
+        min-width: 148px;
+        min-height: 62px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: rgba(31, 36, 42, 0.95);
+        box-shadow: 0 16px 40px rgba(0, 0, 0, 0.22);
+        padding: 10px;
+      }
+
+      .canvas-node.large {
+        width: 210px;
+        min-height: 108px;
+      }
+
+      .canvas-node.group {
+        width: 290px;
+        min-height: 172px;
+        background: rgba(25, 29, 34, 0.72);
+        border-style: dashed;
+      }
+
+      .node-title {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        font-size: 12px;
+        font-weight: 720;
+      }
+
+      .node-meta {
+        margin-top: 7px;
+        color: var(--faint);
+        font-size: 11px;
+      }
+
+      .node-fields {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+        margin-top: 10px;
+      }
+
+      .pill {
+        height: 20px;
+        border-radius: 999px;
+        display: inline-flex;
+        align-items: center;
+        padding: 0 7px;
+        background: rgba(255, 255, 255, 0.07);
+        color: var(--muted);
+        font-size: 10px;
+      }
+
+      .pill.blue {
+        background: var(--accent-soft);
+        color: #cfe0ff;
+      }
+
+      .edge {
+        position: absolute;
+        height: 1px;
+        background: #56606b;
+        transform-origin: left center;
+      }
+
+      .editor-body {
+        min-height: 0;
+        overflow: auto;
+        padding: 30px 40px 80px;
+      }
+
+      .doc {
+        max-width: 760px;
+        margin: 0 auto;
+        color: #e7e9ed;
+        line-height: 1.72;
+      }
+
+      .doc h1 {
+        margin: 0 0 22px;
+        font-size: 27px;
+        line-height: 1.2;
+        letter-spacing: 0;
+      }
+
+      .doc h2 {
+        margin: 34px 0 12px;
+        font-size: 18px;
+      }
+
+      .doc p {
+        margin: 0 0 16px;
+        color: #cfd4db;
+        font-size: 14px;
+      }
+
+      .doc ul {
+        margin: 0;
+        padding-left: 20px;
+        color: #cfd4db;
+        font-size: 14px;
+      }
+
+      .home-preview {
+        position: absolute;
+        right: 18px;
+        bottom: 18px;
+        width: 280px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: rgba(21, 24, 27, 0.94);
+        padding: 12px;
+      }
+
+      .home-preview-title {
+        font-size: 12px;
+        font-weight: 720;
+      }
+
+      .home-preview-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+        margin-top: 10px;
+      }
+
+      .home-card {
+        min-height: 54px;
+        border: 1px solid var(--line-soft);
+        border-radius: 8px;
+        background: var(--surface-soft);
+        padding: 8px;
+        font-size: 11px;
+        color: var(--muted);
+      }
+
+      @media (max-width: 1100px) {
+        .workspace {
+          grid-template-columns: 48px 224px minmax(0, 1fr);
+        }
+
+        .workarea {
+          grid-template-columns: minmax(360px, 1fr);
+          grid-template-rows: minmax(360px, 0.54fr) 6px minmax(320px, 0.46fr);
+        }
+
+        .splitter::before {
+          width: 56px;
+          height: 2px;
+        }
+
+        .pane.view {
+          border-radius: 9px 9px 3px 3px;
+        }
+
+        .pane.editor {
+          border-radius: 3px 3px 9px 9px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <header class="titlebar">
+        <div class="window-menu">
+          <span>File</span>
+          <span>Edit</span>
+          <span>View</span>
+          <span>Help</span>
+        </div>
+        <div class="window-title">
+          <span>Netior</span>
+          <span style="color: var(--faint)">/</span>
+          <span style="color: var(--muted)">Novel Lab</span>
+        </div>
+        <div class="window-actions">
+          <span>Sync idle</span>
+          <span>Light/Dark</span>
+          <span>Fonts</span>
+        </div>
+      </header>
+
+      <div class="workspace">
+        <nav class="rail" aria-label="Activity rail">
+          <div class="rail-group">
+            <button class="rail-button">H</button>
+            <button class="rail-button active">E</button>
+            <button class="rail-button">C</button>
+            <button class="rail-button">N</button>
+          </div>
+          <div></div>
+          <div class="rail-group">
+            <button class="rail-button utility">T</button>
+            <button class="rail-button utility">B</button>
+            <button class="rail-button utility">S</button>
+          </div>
+        </nav>
+
+        <aside class="sidebar">
+          <div class="sidebar-header">
+            <div class="world-title">
+              <strong>Novel Lab</strong>
+              <span>C:/worlds/novel-lab</span>
+            </div>
+            <button class="tiny-button">+</button>
+          </div>
+
+          <section class="primary-nav">
+            <div class="nav-item">
+              <span class="key">H</span>
+              <span class="label">Home / Worlds</span>
+              <span></span>
+            </div>
+            <div class="nav-item active">
+              <span class="key">E</span>
+              <span class="label">Explorer</span>
+              <span class="badge">18</span>
+            </div>
+            <div class="nav-item">
+              <span class="key">C</span>
+              <span class="label">Canvas</span>
+              <span class="badge">4</span>
+            </div>
+            <div class="nav-item">
+              <span class="key">N</span>
+              <span class="label">Narre</span>
+              <span class="dot good"></span>
+            </div>
+          </section>
+
+          <div class="sidebar-scroll">
+            <div class="section-title">Models</div>
+            <div class="tree-item active">
+              <span class="dot good"></span>
+              <span class="label">Cast</span>
+              <span class="badge">18</span>
+            </div>
+            <div class="tree-item">
+              <span class="dot"></span>
+              <span class="label">Plot</span>
+              <span class="badge">12</span>
+            </div>
+            <div class="tree-item">
+              <span class="dot"></span>
+              <span class="label">Scenes</span>
+              <span class="badge">43</span>
+            </div>
+            <div class="tree-item">
+              <span class="dot warn"></span>
+              <span class="label">Research Notes</span>
+              <span class="badge">7</span>
+            </div>
+
+            <div class="section-title">Bookmarks</div>
+            <div class="bookmark-item active">
+              <span class="key">V</span>
+              <span class="label">Cast Canvas</span>
+              <span></span>
+            </div>
+            <div class="bookmark-item">
+              <span class="key">I</span>
+              <span class="label">Yuna Han</span>
+              <span></span>
+            </div>
+            <div class="bookmark-item">
+              <span class="key">R</span>
+              <span class="label">Unassigned Resources</span>
+              <span class="badge">3</span>
+            </div>
+
+            <div class="section-title">Recent</div>
+            <div class="bookmark-item">
+              <span class="key">MD</span>
+              <span class="label">yuna-han.md</span>
+              <span></span>
+            </div>
+            <div class="bookmark-item">
+              <span class="key">K</span>
+              <span class="label">Character</span>
+              <span></span>
+            </div>
+          </div>
+
+          <footer class="sidebar-footer">
+            <div class="status-line">
+              <span>Terminal</span>
+              <span>idle</span>
+            </div>
+            <div class="status-line">
+              <span>Browser</span>
+              <span>1 tab</span>
+            </div>
+            <div class="status-line account">
+              <span>memutator</span>
+              <span>Pro</span>
+            </div>
+          </footer>
+        </aside>
+
+        <main class="main">
+          <section class="view-remote" aria-label="View remote">
+            <div class="view-name">
+              <strong>Cast Canvas</strong>
+              <span>/</span>
+              <span>Model: Cast</span>
+              <span class="badge">same world refs allowed</span>
+            </div>
+            <div class="segmented">
+              <button class="segment">Explorer</button>
+              <button class="segment active">Canvas</button>
+            </div>
+            <div class="remote-actions">
+              <button class="tool-button active">Browse</button>
+              <button class="tool-button">Edit</button>
+              <button class="tool-button">-</button>
+              <button class="tool-button">91%</button>
+              <button class="tool-button">+</button>
+              <button class="tool-button">Fit</button>
+              <button class="tool-button">Grid</button>
+            </div>
+          </section>
+
+          <section class="workarea">
+            <section class="pane view">
+              <div class="pane-tabs">
+                <div class="tab active">Cast Canvas</div>
+                <div class="tab">Cast Explorer</div>
+              </div>
+              <div class="canvas">
+                <div class="edge" style="left: 288px; top: 229px; width: 180px; transform: rotate(-9deg)"></div>
+                <div class="edge" style="left: 346px; top: 331px; width: 190px; transform: rotate(17deg)"></div>
+
+                <div class="canvas-node group" style="left: 72px; top: 72px">
+                  <div class="node-title">
+                    <span>Cast Model</span>
+                    <span class="pill">group</span>
+                  </div>
+                  <div class="node-meta">local model / directory backed</div>
+                </div>
+
+                <div class="canvas-node large" style="left: 116px; top: 132px">
+                  <div class="node-title">
+                    <span>Yuna Han</span>
+                    <span class="pill blue">Instance</span>
+                  </div>
+                  <div class="node-meta">Character, POV / yuna-han.md</div>
+                  <div class="node-fields">
+                    <span class="pill">age 29</span>
+                    <span class="pill">North Harbor</span>
+                    <span class="pill">accepted</span>
+                  </div>
+                </div>
+
+                <div class="canvas-node" style="left: 482px; top: 96px">
+                  <div class="node-title">
+                    <span>Scene 12</span>
+                    <span class="pill">from Scenes</span>
+                  </div>
+                  <div class="node-meta">external subject reference</div>
+                </div>
+
+                <div class="canvas-node" style="left: 526px; top: 318px">
+                  <div class="node-title">
+                    <span>faction-map.png</span>
+                    <span class="pill">Resource</span>
+                  </div>
+                  <div class="node-meta">from Research Notes</div>
+                </div>
+
+                <div class="canvas-node" style="left: 184px; top: 404px">
+                  <div class="node-title">
+                    <span>Character</span>
+                    <span class="pill blue">Kind</span>
+                  </div>
+                  <div class="node-meta">icon: lucide/user</div>
+                </div>
+
+                <div class="home-preview">
+                  <div class="home-preview-title">Home screen sketch</div>
+                  <div class="home-preview-grid">
+                    <div class="home-card">Recent worlds</div>
+                    <div class="home-card">Create world</div>
+                    <div class="home-card">Open folder</div>
+                    <div class="home-card">Settings</div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <div class="splitter" aria-hidden="true"></div>
+
+            <section class="pane editor">
+              <div class="pane-tabs">
+                <div class="tab active">Yuna Han</div>
+                <div class="tab">yuna-han.md</div>
+                <div class="tab">NETIOR_VIEW_MODEL.md</div>
+              </div>
+              <div class="editor-body">
+                <article class="doc">
+                  <h1>Yuna Han</h1>
+                  <p>
+                    This is an editor tab, not a fixed inspector pane. Canvas actions open
+                    subject-specific editors with body, details, or interactive modes.
+                  </p>
+                  <h2>Details</h2>
+                  <ul>
+                    <li>Kind: Character, POV</li>
+                    <li>Primary resource: yuna-han.md</li>
+                    <li>Home model: Cast</li>
+                    <li>External references can appear on the canvas without ownership transfer.</li>
+                  </ul>
+                  <h2>Canvas Behavior</h2>
+                  <p>
+                    Browse mode opens editors and domain actions. Edit mode adjusts layout:
+                    area select, drag, resize, group, hide, and copy layout.
+                  </p>
+                </article>
+              </div>
+            </section>
+          </section>
+        </main>
+      </div>
+    </div>
+  </body>
+</html>

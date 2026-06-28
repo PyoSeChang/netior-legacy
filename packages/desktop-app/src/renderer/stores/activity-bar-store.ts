@@ -2,10 +2,8 @@
 import {
   DEFAULT_ACTIVITY_BAR_LAYOUT_CONFIG,
   ACTIVITY_BAR_LAYOUT_CONFIG_KEY,
-  getWorldNetworkBookmarkIds,
   moveOrderedItem,
   normalizeActivityBarLayoutConfig,
-  setWorldNetworkBookmarkIds,
   type ActivityBarBottomItemKey,
   type ActivityBarLayoutConfig,
   type ActivityBarTopItemKey,
@@ -56,10 +54,6 @@ interface ActivityBarStore {
   setBottomItemOrder: (order: ActivityBarBottomItemKey[]) => Promise<void>;
   moveTopItem: (index: number, direction: -1 | 1) => Promise<void>;
   moveBottomItem: (index: number, direction: -1 | 1) => Promise<void>;
-  setWorldBookmarks: (rootNetworkId: string, bookmarkIds: string[]) => Promise<void>;
-  addBookmark: (rootNetworkId: string, networkId: string) => Promise<void>;
-  removeBookmark: (rootNetworkId: string, networkId: string) => Promise<void>;
-  moveBookmark: (rootNetworkId: string, index: number, direction: -1 | 1) => Promise<void>;
 }
 
 export const useActivityBarStore = create<ActivityBarStore>((set, get) => ({
@@ -134,33 +128,5 @@ export const useActivityBarStore = create<ActivityBarStore>((set, get) => ({
 
   moveBottomItem: async (index, direction) => {
     await get().setBottomItemOrder(moveOrderedItem(get().config.bottomItemOrder, index, direction));
-  },
-
-  setWorldBookmarks: async (rootNetworkId, bookmarkIds) => {
-    await get().replaceConfig(setWorldNetworkBookmarkIds(get().config, rootNetworkId, bookmarkIds));
-  },
-
-  addBookmark: async (rootNetworkId, networkId) => {
-    const bookmarkIds = getWorldNetworkBookmarkIds(get().config, rootNetworkId);
-    if (bookmarkIds.includes(networkId)) {
-      return;
-    }
-
-    await get().setWorldBookmarks(rootNetworkId, [...bookmarkIds, networkId]);
-  },
-
-  removeBookmark: async (rootNetworkId, networkId) => {
-    const bookmarkIds = getWorldNetworkBookmarkIds(get().config, rootNetworkId);
-    const nextBookmarkIds = bookmarkIds.filter((bookmarkId) => bookmarkId !== networkId);
-    if (nextBookmarkIds.length === bookmarkIds.length) {
-      return;
-    }
-
-    await get().setWorldBookmarks(rootNetworkId, nextBookmarkIds);
-  },
-
-  moveBookmark: async (rootNetworkId, index, direction) => {
-    const bookmarkIds = getWorldNetworkBookmarkIds(get().config, rootNetworkId);
-    await get().setWorldBookmarks(rootNetworkId, moveOrderedItem(bookmarkIds, index, direction));
   },
 }));

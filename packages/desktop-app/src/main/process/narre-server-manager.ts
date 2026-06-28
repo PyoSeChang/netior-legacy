@@ -18,6 +18,8 @@ export type NarreProviderName = 'claude' | 'openai' | 'codex';
 export interface StartNarreServerConfig {
   provider: NarreProviderName;
   apiKey?: string;
+  anthropicApiKey?: string;
+  openaiApiKey?: string;
   openaiModel?: string;
   behaviorSettings?: NarreBehaviorSettings;
   codexSettings?: NarreCodexSettings;
@@ -106,6 +108,8 @@ function buildLaunchSignature(config: StartNarreServerConfig): string {
   return JSON.stringify({
     provider: config.provider,
     apiKey: config.apiKey ?? '',
+    anthropicApiKey: config.anthropicApiKey ?? '',
+    openaiApiKey: config.openaiApiKey ?? '',
     openaiModel: config.openaiModel ?? '',
     behaviorSettings: config.behaviorSettings ?? null,
     codexSettings: config.codexSettings ?? null,
@@ -117,7 +121,10 @@ function buildLaunchSignature(config: StartNarreServerConfig): string {
 }
 
 export async function startNarreServer(config: StartNarreServerConfig): Promise<boolean> {
-  if (config.provider === 'openai' && !config.apiKey) {
+  const anthropicApiKey = config.anthropicApiKey ?? (config.provider === 'claude' ? config.apiKey ?? '' : undefined);
+  const openaiApiKey = config.openaiApiKey ?? (config.provider === 'openai' ? config.apiKey ?? '' : undefined);
+
+  if (config.provider === 'openai' && !openaiApiKey) {
     console.warn('[narre-server] OpenAI provider selected but OPENAI_API_KEY is empty; skipping startup');
     return false;
   }
@@ -171,11 +178,8 @@ export async function startNarreServer(config: StartNarreServerConfig): Promise<
         ? { NETIOR_SERVICE_URL: getNetiorServiceBaseUrl() as string }
         : {}),
       NARRE_PROVIDER: config.provider,
-      ...(config.provider === 'claude'
-        ? { ANTHROPIC_API_KEY: config.apiKey ?? '' }
-        : config.provider === 'openai'
-          ? { OPENAI_API_KEY: config.apiKey ?? '' }
-          : {}),
+      ...(anthropicApiKey !== undefined ? { ANTHROPIC_API_KEY: anthropicApiKey } : {}),
+      ...(openaiApiKey !== undefined ? { OPENAI_API_KEY: openaiApiKey } : {}),
       ...(config.provider === 'openai' && config.openaiModel
         ? { NARRE_OPENAI_MODEL: config.openaiModel }
         : {}),

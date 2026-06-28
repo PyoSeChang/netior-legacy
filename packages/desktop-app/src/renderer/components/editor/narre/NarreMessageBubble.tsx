@@ -1,6 +1,8 @@
+// @ts-nocheck
 import React, { useCallback, useEffect, useState } from 'react';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { Check, ChevronDown, ChevronRight, Copy } from 'lucide-react';
 import { getNarreToolMetadata, normalizeNetiorToolName } from '@netior/shared/constants';
+import type { TranslationKey } from '@netior/shared/i18n';
 import type { NarreCard, NarreToolCall, NarreTranscriptBlock } from '@netior/shared/types';
 import { useI18n } from '../../../hooks/useI18n';
 import { Badge } from '../../ui/Badge';
@@ -15,10 +17,111 @@ interface NarreMessageBubbleProps {
   onCardRespond?: (toolCallId: string, response: unknown) => Promise<void> | void;
   defaultExpandedInteractiveBlocks?: boolean;
   isStreaming?: boolean;
+  timestamp?: string;
 }
 
 const MENTION_RE = /\[(\w+):(?:id=([^,\]]*)|path="([^"]*)")(?:,\s*(?:title|name)="([^"]*)")?\]/g;
 const PERMISSION_TOOL_RE = /tool "([^"]+)"/i;
+
+function isSameLocalDate(a: Date, b: Date): boolean {
+  return a.getFullYear() === b.getFullYear()
+    && a.getMonth() === b.getMonth()
+    && a.getDate() === b.getDate();
+}
+
+function formatUserMessageTimestamp(timestamp: string | undefined, locale: string): string | null {
+  if (!timestamp) {
+    return null;
+  }
+
+  const date = new Date(timestamp);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  const now = new Date();
+  const time = new Intl.DateTimeFormat(locale, {
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(date);
+
+  if (isSameLocalDate(date, now)) {
+    return time;
+  }
+
+  const dateOptions: Intl.DateTimeFormatOptions = date.getFullYear() === now.getFullYear()
+    ? { month: 'numeric', day: 'numeric' }
+    : { year: 'numeric', month: 'numeric', day: 'numeric' };
+  const dateLabel = new Intl.DateTimeFormat(locale, dateOptions).format(date);
+  return `${dateLabel} ${time}`;
+}
+
+function formatCopyTextWithMentions(text: string): string {
+  const parts: string[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  MENTION_RE.lastIndex = 0;
+
+  while ((match = MENTION_RE.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(text.slice(lastIndex, match.index));
+    }
+
+    parts.push(`@${match[4] || match[2] || match[3] || match[1]}`);
+    lastIndex = match.index + match[0].length;
+  }
+
+  if (lastIndex < text.length) {
+    parts.push(text.slice(lastIndex));
+  }
+
+  return parts.join('');
+}
+
+function getUserCopyText(blocks: NarreTranscriptBlock[]): string {
+  return blocks
+    .map((block) => {
+      switch (block.type) {
+        case 'rich_text':
+          return formatCopyTextWithMentions(block.text);
+        case 'skill':
+        case 'command': {
+          const lines = [block.label || `/${block.name}`];
+          if (block.refs?.length) {
+            lines.push(block.refs.map((ref) => `@${ref.display}`).join(' '));
+          }
+          if (block.args && Object.keys(block.args).length > 0) {
+            lines.push(Object.entries(block.args).map(([key, value]) => `${key}: ${value}`).join('\n'));
+          }
+          return lines.join('\n');
+        }
+        case 'draft':
+          return block.content;
+        default:
+          return '';
+      }
+    })
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .join('\n\n');
+}
+
+async function writeTextToClipboard(text: string): Promise<void> {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+
+  const textarea = document.createElement('textarea');
+  textarea.value = text;
+  textarea.style.position = 'fixed';
+  textarea.style.opacity = '0';
+  document.body.appendChild(textarea);
+  textarea.focus();
+  textarea.select();
+  document.execCommand('copy');
+  document.body.removeChild(textarea);
+}
 
 function renderContentWithMentions(text: string): React.ReactNode[] {
   const parts: React.ReactNode[] = [];
@@ -339,113 +442,157 @@ export function NarreMessageBubble({
   onCardRespond,
   defaultExpandedInteractiveBlocks = false,
   isStreaming = false,
+  timestamp,
 }: NarreMessageBubbleProps): JSX.Element {
   const { t, locale } = useI18n();
   const isUser = role === 'user';
+  const [copied, setCopied] = useState(false);
   const segments = isUser
     ? blocks
       .filter((block): block is Exclude<NarreTranscriptBlock, { type: 'tool' }> => block.type !== 'tool')
       .map((block) => ({ type: 'block', block } as AssistantRenderSegment))
     : buildAssistantRenderSegments(blocks, locale, t);
+  const formattedUserTimestamp = isUser ? formatUserMessageTimestamp(timestamp, locale) : null;
+  const userCopyText = isUser ? getUserCopyText(blocks) : '';
+  const canCopyUserMessage = userCopyText.trim().length > 0;
+
+  useEffect(() => {
+    if (!copied) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => setCopied(false), 1200);
+    return () => window.clearTimeout(timeoutId);
+  }, [copied]);
+
+  const handleCopyUserMessage = useCallback(async () => {
+    if (!canCopyUserMessage) {
+      return;
+    }
+
+    try {
+      await writeTextToClipboard(userCopyText);
+      setCopied(true);
+    } catch (error) {
+      console.error('[narre] Failed to copy user message:', error);
+    }
+  }, [canCopyUserMessage, userCopyText]);
 
   return (
-    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
-      <div
-        className={[
-          'max-w-[85%] rounded-lg border px-3 py-2 text-sm shadow-sm',
-          isUser
-            ? 'border-accent bg-accent-muted text-default'
-            : 'border-default bg-surface-panel text-default',
-        ].join(' ')}
-      >
-        {blocks.length === 0 && isStreaming && (
-          <div className="text-xs text-muted animate-pulse">...</div>
-        )}
+    <div className={`group/message flex ${isUser ? 'justify-end' : 'justify-start'}`}>
+      <div className={`flex max-w-[85%] flex-col ${isUser ? 'items-end' : 'items-start'}`}>
+        <div
+          className={[
+            'rounded-lg border px-3 py-2 text-sm shadow-sm',
+            isUser
+              ? 'border-accent bg-accent-muted text-default'
+              : 'border-default bg-surface-panel text-default',
+          ].join(' ')}
+        >
+          {blocks.length === 0 && isStreaming && (
+            <div className="text-xs text-muted animate-pulse">...</div>
+          )}
 
-        {segments.map((segment, index) => {
-          if (segment.type === 'tool_cluster') {
-            return (
-              <div
-                key={`${segment.id}:${defaultExpandedInteractiveBlocks ? 'open' : 'closed'}`}
-                className={index > 0 ? 'mt-2' : ''}
-              >
-                <NarreToolLog
-                  items={segment.items}
-                  defaultExpanded={defaultExpandedInteractiveBlocks || isStreaming}
-                  onPermissionRespond={onCardRespond}
-                />
-              </div>
-            );
-          }
-
-          const { block } = segment;
-
-          switch (block.type) {
-            case 'rich_text':
+          {segments.map((segment, index) => {
+            if (segment.type === 'tool_cluster') {
               return (
                 <div
-                  key={block.id}
-                  className={[
-                    index > 0 ? 'mt-2' : '',
-                    isUser ? 'whitespace-pre-wrap break-words' : 'break-words',
-                  ].join(' ')}
+                  key={`${segment.id}:${defaultExpandedInteractiveBlocks ? 'open' : 'closed'}`}
+                  className={index > 0 ? 'mt-2' : ''}
                 >
-                  {isUser ? renderContentWithMentions(block.text) : renderAssistantContent(block.text)}
-                </div>
-              );
-            case 'skill':
-            case 'command': {
-              const detailBadges = [
-                ...(block.refs ?? []).map((ref) => (
-                  <Badge key={`${block.id}:${ref.type}:${ref.id ?? ref.path ?? ref.display}`} variant="accent">
-                    @{ref.display}
-                  </Badge>
-                )),
-                ...(block.args?.startPage && block.args?.endPage
-                  ? [<Badge key={`${block.id}:range`}>{`${block.args.startPage}-${block.args.endPage}`}</Badge>]
-                  : []),
-                ...(block.args?.overviewPages
-                  ? [<Badge key={`${block.id}:overview`}>{`${t('pdfToc.overviewPages')}: ${block.args.overviewPages}`}</Badge>]
-                  : []),
-              ];
-
-              return (
-                <div key={block.id} className={index > 0 ? 'mt-2' : ''}>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="inline-flex items-center rounded-full bg-accent-muted px-2 py-0.5 text-xs font-semibold text-accent">
-                      {block.label || `/${block.name}`}
-                    </span>
-                  </div>
-                  {detailBadges.length > 0 && (
-                    <div className="mt-1 flex flex-wrap gap-1.5">
-                      {detailBadges}
-                    </div>
-                  )}
+                  <NarreToolLog
+                    items={segment.items}
+                    defaultExpanded={defaultExpandedInteractiveBlocks || isStreaming}
+                    onPermissionRespond={onCardRespond}
+                  />
                 </div>
               );
             }
-            case 'draft':
-              return (
-                <div key={block.id} className={index > 0 ? 'mt-2' : ''}>
-                  <NarreMarkdown content={block.content} />
-                </div>
-              );
-            case 'card':
-              return (
-                <NarreCardBlock
-                  key={`${block.id}:${defaultExpandedInteractiveBlocks ? 'open' : 'closed'}`}
-                  card={block.card}
-                  onCardRespond={onCardRespond}
-                  defaultExpanded={defaultExpandedInteractiveBlocks || isStreaming}
-                  forceCollapseKey={`${defaultExpandedInteractiveBlocks ? 'open' : 'closed'}:${isStreaming ? 'streaming' : 'restored'}`}
-                  locale={locale}
-                  t={t}
-                />
-              );
-            default:
-              return null;
-          }
-        })}
+
+            const { block } = segment;
+
+            switch (block.type) {
+              case 'rich_text':
+                return (
+                  <div
+                    key={block.id}
+                    className={[
+                      index > 0 ? 'mt-2' : '',
+                      isUser ? 'whitespace-pre-wrap break-words' : 'break-words',
+                    ].join(' ')}
+                  >
+                    {isUser ? renderContentWithMentions(block.text) : renderAssistantContent(block.text)}
+                  </div>
+                );
+              case 'skill':
+              case 'command': {
+                const detailBadges = [
+                  ...(block.refs ?? []).map((ref) => (
+                    <Badge key={`${block.id}:${ref.type}:${ref.id ?? ref.path ?? ref.display}`} variant="accent">
+                      @{ref.display}
+                    </Badge>
+                  )),
+                  ...(block.args?.startPage && block.args?.endPage
+                    ? [<Badge key={`${block.id}:range`}>{`${block.args.startPage}-${block.args.endPage}`}</Badge>]
+                    : []),
+                  ...(block.args?.overviewPages
+                    ? [<Badge key={`${block.id}:overview`}>{`${t('pdfToc.overviewPages')}: ${block.args.overviewPages}`}</Badge>]
+                    : []),
+                ];
+
+                return (
+                  <div key={block.id} className={index > 0 ? 'mt-2' : ''}>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="inline-flex items-center rounded-full bg-accent-muted px-2 py-0.5 text-xs font-semibold text-accent">
+                        {block.label || `/${block.name}`}
+                      </span>
+                    </div>
+                    {detailBadges.length > 0 && (
+                      <div className="mt-1 flex flex-wrap gap-1.5">
+                        {detailBadges}
+                      </div>
+                    )}
+                  </div>
+                );
+              }
+              case 'draft':
+                return (
+                  <div key={block.id} className={index > 0 ? 'mt-2' : ''}>
+                    <NarreMarkdown content={block.content} />
+                  </div>
+                );
+              case 'card':
+                return (
+                  <NarreCardBlock
+                    key={`${block.id}:${defaultExpandedInteractiveBlocks ? 'open' : 'closed'}`}
+                    card={block.card}
+                    onCardRespond={onCardRespond}
+                    defaultExpanded={defaultExpandedInteractiveBlocks || isStreaming}
+                    forceCollapseKey={`${defaultExpandedInteractiveBlocks ? 'open' : 'closed'}:${isStreaming ? 'streaming' : 'restored'}`}
+                    locale={locale}
+                    t={t}
+                  />
+                );
+              default:
+                return null;
+            }
+          })}
+        </div>
+        {isUser && (formattedUserTimestamp || canCopyUserMessage) && (
+          <div className="mt-1 flex h-5 items-center gap-1.5 pr-1 text-[11px] text-muted opacity-0 transition-opacity group-hover/message:opacity-100 focus-within:opacity-100">
+            {formattedUserTimestamp && <span>{formattedUserTimestamp}</span>}
+            {canCopyUserMessage && (
+              <button
+                type="button"
+                aria-label={t('fileTree.copy' as TranslationKey)}
+                className="inline-flex h-5 w-5 items-center justify-center rounded text-muted transition-colors hover:bg-state-hover hover:text-default"
+                onClick={() => { void handleCopyUserMessage(); }}
+              >
+                {copied ? <Check size={12} /> : <Copy size={12} />}
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

@@ -117,184 +117,36 @@ const electronAPI = {
       return () => { ipcRenderer.removeListener('agent:focusTab', handler); };
     },
   },
+  netior: {
+    rpc: {
+      call: (method: string, params?: unknown) =>
+        ipcRenderer.invoke('netior:rpc:call', method, params),
+    },
+    resources: {
+      getContent: (resourceId: string) =>
+        ipcRenderer.invoke('netior:resource:getContent', resourceId),
+      putContent: (
+        resourceId: string,
+        input: { base64?: string; text?: string; contentType?: string },
+      ) => ipcRenderer.invoke('netior:resource:putContent', resourceId, input),
+      deleteContent: (resourceId: string) =>
+        ipcRenderer.invoke('netior:resource:deleteContent', resourceId),
+    },
+    events: {
+      subscribe: (callback: (event: unknown) => void) => {
+        const handler = (_event: IpcRendererEvent, payload: unknown) => callback(payload);
+        ipcRenderer.on('netior:service-event', handler);
+        return () => { ipcRenderer.removeListener('netior:service-event', handler); };
+      },
+    },
+  },
   world: {
-    create: (data: { name: string; root_dir: string }) =>
+    create: (data: { name: string; root_uri: string }) =>
       ipcRenderer.invoke('world:create', data),
     list: () => ipcRenderer.invoke('world:list'),
     delete: (id: string) => ipcRenderer.invoke('world:delete', id),
     update: (id: string, data: Record<string, unknown>) => ipcRenderer.invoke('world:update', id, data),
     updateRootDir: (id: string, rootDir: string) => ipcRenderer.invoke('world:updateRootDir', id, rootDir),
-  },
-  instance: {
-    create: (data: Record<string, unknown>) => ipcRenderer.invoke('instance:create', data),
-    getByRootNetwork: (rootNetworkId: string) => ipcRenderer.invoke('instance:getByRootNetwork', rootNetworkId),
-    update: (id: string, data: Record<string, unknown>) =>
-      ipcRenderer.invoke('instance:update', id, data),
-    delete: (id: string) => ipcRenderer.invoke('instance:delete', id),
-  },
-  network: {
-    create: (data: Record<string, unknown>) => ipcRenderer.invoke('network:create', data),
-    list: (rootNetworkId: string, rootOnly?: boolean) =>
-      ipcRenderer.invoke('network:list', rootNetworkId, rootOnly),
-    update: (id: string, data: Record<string, unknown>) =>
-      ipcRenderer.invoke('network:update', id, data),
-    delete: (id: string) => ipcRenderer.invoke('network:delete', id),
-    getFull: (networkId: string) => ipcRenderer.invoke('network:getFull', networkId),
-    getUniverse: () => ipcRenderer.invoke('network:getUniverse'),
-    getRoot: (rootNetworkId: string) => ipcRenderer.invoke('network:getRoot', rootNetworkId),
-    getAncestors: (networkId: string) => ipcRenderer.invoke('network:getAncestors', networkId),
-    getTree: (rootNetworkId: string) => ipcRenderer.invoke('network:getTree', rootNetworkId),
-  },
-  networkNode: {
-    add: (data: Record<string, unknown>) => ipcRenderer.invoke('networkNode:add', data),
-    update: (id: string, data: Record<string, unknown>) => ipcRenderer.invoke('networkNode:update', id, data),
-    remove: (id: string) => ipcRenderer.invoke('networkNode:remove', id),
-  },
-  layout: {
-    getByNetwork: (networkId: string) => ipcRenderer.invoke('layout:getByNetwork', networkId),
-    update: (id: string, data: Record<string, unknown>) =>
-      ipcRenderer.invoke('layout:update', id, data),
-  },
-  layoutNode: {
-    setPosition: (layoutId: string, nodeId: string, positionJson: string) =>
-      ipcRenderer.invoke('layoutNode:setPosition', layoutId, nodeId, positionJson),
-    getPositions: (layoutId: string) => ipcRenderer.invoke('layoutNode:getPositions', layoutId),
-    remove: (layoutId: string, nodeId: string) =>
-      ipcRenderer.invoke('layoutNode:remove', layoutId, nodeId),
-  },
-  layoutEdge: {
-    setVisual: (layoutId: string, edgeId: string, visualJson: string) =>
-      ipcRenderer.invoke('layoutEdge:setVisual', layoutId, edgeId, visualJson),
-    getVisuals: (layoutId: string) => ipcRenderer.invoke('layoutEdge:getVisuals', layoutId),
-    remove: (layoutId: string, edgeId: string) =>
-      ipcRenderer.invoke('layoutEdge:remove', layoutId, edgeId),
-  },
-  object: {
-    get: (id: string) => ipcRenderer.invoke('object:get', id),
-    getByRef: (objectType: string, refId: string) => ipcRenderer.invoke('object:getByRef', objectType, refId),
-  },
-  edge: {
-    create: (data: Record<string, unknown>) => ipcRenderer.invoke('edge:create', data),
-    get: (id: string) => ipcRenderer.invoke('edge:get', id),
-    update: (id: string, data: Record<string, unknown>) =>
-      ipcRenderer.invoke('edge:update', id, data),
-    delete: (id: string) => ipcRenderer.invoke('edge:delete', id),
-  },
-  relationship: {
-    list: (filters: Record<string, unknown>) => ipcRenderer.invoke('relationship:list', filters),
-    create: (data: Record<string, unknown>) => ipcRenderer.invoke('relationship:create', data),
-    get: (id: string) => ipcRenderer.invoke('relationship:get', id),
-    update: (id: string, data: Record<string, unknown>) =>
-      ipcRenderer.invoke('relationship:update', id, data),
-    delete: (id: string) => ipcRenderer.invoke('relationship:delete', id),
-    listOccurrences: (id: string) => ipcRenderer.invoke('relationship:listOccurrences', id),
-  },
-  context: {
-    create: (data: Record<string, unknown>) => ipcRenderer.invoke('context:create', data),
-    list: (networkId: string) => ipcRenderer.invoke('context:list', networkId),
-    get: (id: string) => ipcRenderer.invoke('context:get', id),
-    update: (id: string, data: Record<string, unknown>) =>
-      ipcRenderer.invoke('context:update', id, data),
-    delete: (id: string) => ipcRenderer.invoke('context:delete', id),
-    addMember: (contextId: string, memberType: string, memberId: string) =>
-      ipcRenderer.invoke('context:addMember', contextId, memberType, memberId),
-    removeMember: (id: string) => ipcRenderer.invoke('context:removeMember', id),
-    getMembers: (contextId: string) => ipcRenderer.invoke('context:getMembers', contextId),
-  },
-  fileEntity: {
-    create: (data: Record<string, unknown>) => ipcRenderer.invoke('file:create', data),
-    get: (id: string) => ipcRenderer.invoke('file:get', id),
-    getByPath: (rootNetworkId: string, path: string) => ipcRenderer.invoke('file:getByPath', rootNetworkId, path),
-    getByRootNetwork: (rootNetworkId: string) => ipcRenderer.invoke('file:getByRootNetwork', rootNetworkId),
-    update: (id: string, data: Record<string, unknown>) => ipcRenderer.invoke('file:update', id, data),
-    delete: (id: string) => ipcRenderer.invoke('file:delete', id),
-  },
-  module: {
-    create: (data: Record<string, unknown>) => ipcRenderer.invoke('module:create', data),
-    list: (rootNetworkId: string) => ipcRenderer.invoke('module:list', rootNetworkId),
-    update: (id: string, data: Record<string, unknown>) =>
-      ipcRenderer.invoke('module:update', id, data),
-    delete: (id: string) => ipcRenderer.invoke('module:delete', id),
-  },
-  moduleDir: {
-    add: (data: Record<string, unknown>) => ipcRenderer.invoke('moduleDir:add', data),
-    list: (moduleId: string) => ipcRenderer.invoke('moduleDir:list', moduleId),
-    remove: (id: string) => ipcRenderer.invoke('moduleDir:remove', id),
-    updatePath: (id: string, dirPath: string) => ipcRenderer.invoke('moduleDir:updatePath', id, dirPath),
-  },
-  schema: {
-    create: (data: Record<string, unknown>) => ipcRenderer.invoke('schema:create', data),
-    list: (rootNetworkId: string) => ipcRenderer.invoke('schema:list', rootNetworkId),
-    get: (id: string) => ipcRenderer.invoke('schema:get', id),
-    update: (id: string, data: Record<string, unknown>) =>
-      ipcRenderer.invoke('schema:update', id, data),
-    delete: (id: string) => ipcRenderer.invoke('schema:delete', id),
-    createField: (data: Record<string, unknown>) => ipcRenderer.invoke('schemaField:create', data),
-    listFields: (schemaId: string) => ipcRenderer.invoke('schemaField:list', schemaId),
-    updateField: (id: string, data: Record<string, unknown>) =>
-      ipcRenderer.invoke('schemaField:update', id, data),
-    deleteField: (id: string) => ipcRenderer.invoke('schemaField:delete', id),
-    reorderFields: (schemaId: string, orderedIds: string[]) =>
-      ipcRenderer.invoke('schemaField:reorder', schemaId, orderedIds),
-    listMeanings: (schemaId: string) => ipcRenderer.invoke('schemaMeaning:list', schemaId),
-    ensureMeaning: (data: Record<string, unknown>) => ipcRenderer.invoke('schemaMeaning:ensure', data),
-    updateMeaning: (id: string, data: Record<string, unknown>) =>
-      ipcRenderer.invoke('schemaMeaning:update', id, data),
-    deleteMeaning: (id: string) => ipcRenderer.invoke('schemaMeaning:delete', id),
-    updateMeaningSlot: (id: string, data: Record<string, unknown>) =>
-      ipcRenderer.invoke('schemaMeaningSlot:update', id, data),
-  },
-  meaning: {
-    create: (data: Record<string, unknown>) => ipcRenderer.invoke('meaning:create', data),
-    list: (rootNetworkId: string) => ipcRenderer.invoke('meaning:list', rootNetworkId),
-    get: (id: string) => ipcRenderer.invoke('meaning:get', id),
-    update: (id: string, data: Record<string, unknown>) =>
-      ipcRenderer.invoke('meaning:update', id, data),
-    delete: (id: string) => ipcRenderer.invoke('meaning:delete', id),
-  },
-  dsl: {
-    evaluate: (data: Record<string, unknown>) => ipcRenderer.invoke('dsl:evaluate', data),
-  },
-  instanceProp: {
-    upsert: (data: Record<string, unknown>) => ipcRenderer.invoke('instanceProp:upsert', data),
-    getByInstance: (instanceId: string) => ipcRenderer.invoke('instanceProp:getByInstance', instanceId),
-    delete: (id: string) => ipcRenderer.invoke('instanceProp:delete', id),
-  },
-  instanceContent: {
-    syncToAgent: (instanceId: string) => ipcRenderer.invoke('instance:syncToAgent', instanceId),
-    syncFromAgent: (instanceId: string, agentContent: string) =>
-      ipcRenderer.invoke('instance:syncFromAgent', instanceId, agentContent),
-  },
-  editorPrefs: {
-    get: (instanceId: string) => ipcRenderer.invoke('editorPrefs:get', instanceId),
-    upsert: (instanceId: string, data: Record<string, unknown>) =>
-      ipcRenderer.invoke('editorPrefs:upsert', instanceId, data),
-  },
-  interactiveViewState: {
-    get: (instanceId: string, viewTemplateId: string) =>
-      ipcRenderer.invoke('interactiveViewState:get', instanceId, viewTemplateId),
-    upsert: (data: Record<string, unknown>) =>
-      ipcRenderer.invoke('interactiveViewState:upsert', data),
-  },
-  interactiveViewTemplate: {
-    list: (query: Record<string, unknown>) =>
-      ipcRenderer.invoke('interactiveViewTemplate:list', query),
-    get: (id: string) => ipcRenderer.invoke('interactiveViewTemplate:get', id),
-    create: (data: Record<string, unknown>) =>
-      ipcRenderer.invoke('interactiveViewTemplate:create', data),
-    update: (id: string, data: Record<string, unknown>) =>
-      ipcRenderer.invoke('interactiveViewTemplate:update', id, data),
-    delete: (id: string) => ipcRenderer.invoke('interactiveViewTemplate:delete', id),
-  },
-  interactiveViewPreference: {
-    get: (instanceId: string) => ipcRenderer.invoke('interactiveViewPreference:get', instanceId),
-    upsert: (data: Record<string, unknown>) =>
-      ipcRenderer.invoke('interactiveViewPreference:upsert', data),
-  },
-  interactiveViewSchemaPreference: {
-    get: (schemaId: string) => ipcRenderer.invoke('interactiveViewSchemaPreference:get', schemaId),
-    upsert: (data: Record<string, unknown>) =>
-      ipcRenderer.invoke('interactiveViewSchemaPreference:upsert', data),
   },
   fs: {
     readDir: (dirPath: string) => ipcRenderer.invoke('fs:readDir', dirPath),
@@ -459,6 +311,7 @@ const electronAPI = {
     getApiKeyStatus: () => ipcRenderer.invoke('narre:getApiKeyStatus'),
     setApiKey: (key: string) => ipcRenderer.invoke('narre:setApiKey', key),
     searchMentions: (rootNetworkId: string, query: string) => ipcRenderer.invoke('narre:searchMentions', rootNetworkId, query),
+    listRuntimeModels: (provider: string) => ipcRenderer.invoke('narre:listRuntimeModels', provider),
     sendMessage: (data: Record<string, unknown>) => ipcRenderer.invoke('narre:sendMessage', data),
     respondToCard: (data: Record<string, unknown>) => ipcRenderer.invoke('narre:respondCard', data),
     interruptMessage: (data: Record<string, unknown>) => ipcRenderer.invoke('narre:interruptMessage', data),
@@ -472,8 +325,8 @@ const electronAPI = {
   mocSync: {
     onChangeEvent: (callback: (event: unknown) => void) => {
       const handler = (_event: IpcRendererEvent, data: unknown) => callback(data);
-      ipcRenderer.on('netior:change', handler);
-      return () => { ipcRenderer.removeListener('netior:change', handler); };
+      ipcRenderer.on('netior:service-event', handler);
+      return () => { ipcRenderer.removeListener('netior:service-event', handler); };
     },
   },
   editor: {

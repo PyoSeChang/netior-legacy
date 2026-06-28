@@ -1,7 +1,6 @@
 ﻿import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  Boxes,
   Calendar,
   CheckSquare,
   ChevronDown,
@@ -19,13 +18,26 @@ import {
   ToggleLeft,
   Type,
 } from 'lucide-react';
-import type { FieldType } from '@netior/shared/types';
 import type { TranslationKey } from '@netior/shared/i18n';
 import { useI18n } from '../../hooks/useI18n';
-import { isFieldTypeVisibleAtLevel } from '../../lib/field-complexity';
-import { useSettingsStore } from '../../stores/settings-store';
-import { useUIStore } from '../../stores/ui-store';
 import { useAnchoredDropdown } from '../../hooks/useAnchoredDropdown';
+
+type FieldType =
+  | 'text'
+  | 'textarea'
+  | 'number'
+  | 'boolean'
+  | 'date'
+  | 'datetime'
+  | 'select'
+  | 'multi-select'
+  | 'radio'
+  | 'object'
+  | 'file'
+  | 'url'
+  | 'color'
+  | 'rating'
+  | 'tags';
 
 interface TypeSelectorProps {
   value?: FieldType;
@@ -78,7 +90,6 @@ const CATEGORIES: TypeCategory[] = [
     types: [
       { value: 'object', i18nKey: 'object', icon: Shapes },
       { value: 'file', i18nKey: 'file', icon: FileText },
-      { value: 'meaning_ref', i18nKey: 'meaning_ref', icon: Boxes },
     ],
   },
   {
@@ -104,12 +115,9 @@ export const TypeSelector: React.FC<TypeSelectorProps> = ({
   allowedTypeLabels,
 }) => {
   const { t } = useI18n();
-  const fieldComplexityLevel = useSettingsStore((s) => s.fieldComplexityLevel);
-  const setShowSettings = useUIStore((s) => s.setShowSettings);
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState<string>('all');
-  const [showAllTypes, setShowAllTypes] = useState(false);
   const triggerRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
@@ -134,12 +142,7 @@ export const TypeSelector: React.FC<TypeSelectorProps> = ({
     allowedTypes ? ALL_TYPES.filter((typeOption) => allowedTypes.includes(typeOption.value)) : ALL_TYPES
   ), [allowedTypes]);
 
-  const visibleTypes = useMemo(() => {
-    if (showAllTypes) return availableTypes;
-    return availableTypes.filter((typeOption) => (
-      typeOption.value === value || isFieldTypeVisibleAtLevel(typeOption.value, fieldComplexityLevel)
-    ));
-  }, [availableTypes, fieldComplexityLevel, showAllTypes, value]);
+  const visibleTypes = availableTypes;
 
   const visibleCategories = useMemo(() => (
     CATEGORIES.map((category) => ({
@@ -167,14 +170,11 @@ export const TypeSelector: React.FC<TypeSelectorProps> = ({
   }, [filteredCategories, activeCategory]);
 
   const selected = ALL_TYPES.find((typeOption) => typeOption.value === value);
-  const hiddenTypeCount = Math.max(0, availableTypes.length - visibleTypes.length);
-
   const handleOpen = () => {
     if (disabled) return;
     setOpen(!open);
     setSearch('');
     setActiveCategory('all');
-    setShowAllTypes(false);
     setTimeout(() => searchRef.current?.focus(), 100);
   };
 
@@ -331,46 +331,6 @@ export const TypeSelector: React.FC<TypeSelectorProps> = ({
               )}
             </div>
 
-            {hiddenTypeCount > 0 && !showAllTypes && (
-              <div className="border-t border-subtle px-3 py-2">
-                <div className="mb-2 text-[11px] text-muted">
-                  {t(`typeSelector.level.${fieldComplexityLevel}` as TranslationKey)}
-                  {' 쨌 '}
-                  {t('typeSelector.hiddenCount' as TranslationKey).replace('{count}', String(hiddenTypeCount))}
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    className="rounded-md border border-subtle px-2.5 py-1 text-xs text-secondary transition-colors hover:border-default hover:text-default"
-                    onClick={() => setShowAllTypes(true)}
-                  >
-                    {t('typeSelector.showAllTypes' as TranslationKey)}
-                  </button>
-                  <button
-                    type="button"
-                    className="rounded-md border border-subtle px-2.5 py-1 text-xs text-secondary transition-colors hover:border-default hover:text-default"
-                    onClick={() => {
-                      setOpen(false);
-                      setShowSettings(true);
-                    }}
-                  >
-                    {t('typeSelector.openSettings' as TranslationKey)}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {showAllTypes && hiddenTypeCount > 0 && (
-              <div className="border-t border-subtle px-3 py-2">
-                <button
-                  type="button"
-                  className="rounded-md border border-subtle px-2.5 py-1 text-xs text-secondary transition-colors hover:border-default hover:text-default"
-                  onClick={() => setShowAllTypes(false)}
-                >
-                  {t('typeSelector.showRecommended' as TranslationKey)}
-                </button>
-              </div>
-            )}
           </div>
         </div>,
         document.body,

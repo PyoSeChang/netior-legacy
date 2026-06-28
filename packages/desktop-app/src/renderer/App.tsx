@@ -9,9 +9,11 @@ import { ToastContainer } from './components/ui/Toast';
 import { WindowControls } from './components/ui/WindowControls';
 import { MissingFilesDialog } from './components/home/MissingFilesDialog';
 import { ConfirmDialog } from './components/ui/ConfirmDialog';
+import { WorldHome } from './components/home/WorldHome';
 import { useGlobalShortcuts } from './shortcuts/useGlobalShortcuts';
 import { useNetiorSync } from './hooks/useNetiorSync';
 import { openFileTab } from './lib/open-file-tab';
+import { getWorldRootDir } from './utils/world-utils';
 
 function normalizePath(path: string): string {
   return path.replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase();
@@ -49,9 +51,9 @@ export default function App(): JSX.Element {
   useEffect(() => {
     window.electron.app.updateWorldContext({
       rootNetworkId: currentWorld?.id ?? null,
-      worldRoot: currentWorld?.root_dir ?? null,
+      worldRoot: currentWorld ? getWorldRootDir(currentWorld) : null,
     });
-  }, [currentWorld?.id, currentWorld?.root_dir]);
+  }, [currentWorld]);
 
   useEffect(() => {
     const cleanup = window.electron.app.onOpenFiles((filePaths) => {
@@ -63,8 +65,11 @@ export default function App(): JSX.Element {
 
         for (const filePath of filePaths) {
           const matchingWorld = worlds
-            .filter((world) => isPathInsideRoot(filePath, world.root_dir))
-            .sort((a, b) => normalizePath(b.root_dir).length - normalizePath(a.root_dir).length)[0];
+            .filter((world) => {
+              const rootDir = getWorldRootDir(world);
+              return rootDir ? isPathInsideRoot(filePath, rootDir) : false;
+            })
+            .sort((a, b) => normalizePath(getWorldRootDir(b)).length - normalizePath(getWorldRootDir(a)).length)[0];
 
           if (matchingWorld && useWorldStore.getState().currentWorld?.id !== matchingWorld.id) {
             await useWorldStore.getState().openWorld(matchingWorld);
@@ -84,14 +89,18 @@ export default function App(): JSX.Element {
 
   return (
     <div className="relative h-full bg-surface-chrome text-default">
-      <WorkspaceShell world={currentWorld} windowControls={<WindowControls />} />
+      {currentWorld ? (
+        <WorkspaceShell world={currentWorld} windowControls={<WindowControls />} />
+      ) : (
+        <WorldHome windowControls={<WindowControls />} />
+      )}
       <ConfirmDialog
         open={!!missingPathWorld}
         onClose={dismissMissingPath}
         onConfirm={resolveMissingPath}
         variant="primary"
         title={t('world.missingPathTitle')}
-        message={t('world.missingPathMessage', { path: missingPathWorld?.root_dir ?? '' })}
+        message={t('world.missingPathMessage', { path: getWorldRootDir(missingPathWorld) })}
         confirmLabel={t('world.selectNewPath')}
       />
       <SettingsModal open={showSettings} onClose={() => setShowSettings(false)} />

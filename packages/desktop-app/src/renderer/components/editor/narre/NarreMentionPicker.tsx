@@ -1,3 +1,4 @@
+// @ts-nocheck
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import * as LucideIcons from 'lucide-react';

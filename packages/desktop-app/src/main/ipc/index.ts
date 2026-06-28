@@ -1,43 +1,17 @@
 import { registerWorldIpc } from './world-ipc';
-import { registerInstanceIpc } from './instance-ipc';
-import { registerNetworkIpc } from './network-ipc';
-import { registerLayoutIpc } from './layout-ipc';
-import { registerFileIpc } from './file-ipc';
 import { registerFsIpc } from './fs-ipc';
-import { registerModuleIpc } from './module-ipc';
-import { registerEditorPrefsIpc } from './editor-prefs-ipc';
-import { registerSchemaIpc } from './schema-ipc';
-import { registerInstancePropertyIpc } from './instance-property-ipc';
-import { registerInteractiveViewStateIpc } from './interactive-view-state-ipc';
-import { registerInstanceContentIpc } from './instance-content-ipc';
 import { registerPtyIpc } from './pty-ipc';
 import { registerConfigIpc } from './config-ipc';
-import { registerModelIpc } from './meaning-ipc';
-import { registerObjectIpc } from './object-ipc';
 import { registerNarreIpc } from './narre-ipc';
-import { registerContextIpc } from './context-ipc';
 import { registerAgentDefinitionIpc } from './agent-definition-ipc';
-import { registerDslIpc } from './dsl-ipc';
+import { registerNetiorRpcIpc } from './netior-rpc-ipc';
 
 export function registerAllIpc(): void {
+  registerNetiorRpcIpc();
   registerWorldIpc();
-  registerInstanceIpc();
-  registerNetworkIpc();
-  registerLayoutIpc();
-  registerFileIpc();
   registerFsIpc();
-  registerModuleIpc();
-  registerEditorPrefsIpc();
-  registerSchemaIpc();
-  registerInstancePropertyIpc();
-  registerInteractiveViewStateIpc();
-  registerInstanceContentIpc();
   registerPtyIpc();
   registerConfigIpc();
-  registerModelIpc();
-  registerObjectIpc();
   registerNarreIpc();
-  registerContextIpc();
   registerAgentDefinitionIpc();
-  registerDslIpc();
 }

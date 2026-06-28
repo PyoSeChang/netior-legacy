@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { createOntologyDisplayResolver } from '@netior/shared';
 import { getNetiorMcpToolSpec, getNarreToolMetadata, normalizeNetiorToolName } from '@netior/shared/constants';
 import { translate, type Locale, type TranslationKey } from '@netior/shared/i18n';

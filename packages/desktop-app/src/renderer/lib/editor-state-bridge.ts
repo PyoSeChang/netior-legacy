@@ -19,12 +19,9 @@
 
 import { useEditorStore } from '../stores/editor-store';
 import { useWorldStore } from '../stores/world-store';
-import { useInstanceStore } from '../stores/instance-store';
-import { useSchemaStore } from '../stores/schema-store';
-import { useMeaningStore } from '../stores/meaning-store';
-import { useNetworkStore } from '../stores/network-store';
-import { useModuleStore } from '../stores/module-store';
-import type { EditorTab, World, SplitNode } from '@netior/shared/types';
+import { useDomainStore } from '../stores/domain-store';
+import type { World } from '@netior/shared/types';
+import type { EditorTab, SplitNode } from '../types/editor';
 
 interface SyncState {
   tabs: EditorTab[];
@@ -83,13 +80,7 @@ function applySyncState(state: SyncState): void {
 function bootstrapWorkspaceStores(world: World): void {
   // Set world directly (skip openWorld's filesystem checks / state cache logic)
   useWorldStore.setState({ currentWorld: world });
-
-  const pid = world.id;
-  useInstanceStore.getState().loadByWorld(pid);
-  useSchemaStore.getState().loadByWorld(pid);
-  useMeaningStore.getState().loadByWorld(pid);
-  useNetworkStore.getState().loadNetworks(pid);
-  useModuleStore.getState().loadModules(pid);
+  void useDomainStore.getState().loadWorldContext(world);
 }
 
 function schedulePush(): void {

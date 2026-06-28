@@ -1,5 +1,5 @@
-﻿import React, { useState, useEffect, useCallback } from 'react';
-import type { EditorTab } from '@netior/shared/types';
+import React, { useState, useEffect, useCallback } from 'react';
+import type { EditorTab } from '../../types/editor';
 import { fsService, fileService } from '../../services';
 import { useI18n } from '../../hooks/useI18n';
 import { useEditorSession } from '../../hooks/useEditorSession';
@@ -19,6 +19,7 @@ import { UnsupportedFallback } from './UnsupportedFallback';
 import { getEditorType, getMonacoLanguage, toLocalFileUrl, type EditorType } from './editor-utils';
 import { MarkdownEditor } from './markdown/MarkdownEditor';
 import { toRelativePath } from '../../utils/path-utils';
+import { getWorldRootDir } from '../../utils/world-utils';
 
 interface FileEditorProps {
   tab: EditorTab;
@@ -59,14 +60,14 @@ export function FileEditor({ tab }: FileEditorProps): JSX.Element {
 
     let cancelled = false;
     const normalizedFilePath = filePath.replace(/\\/g, '/');
-    const relativePath = toRelativePath(fileWorld.root_dir, filePath);
+    const relativePath = toRelativePath(getWorldRootDir(fileWorld), filePath);
 
     fileService.getByPath(fileWorld.id, relativePath).then(async (entity) => {
       if (cancelled) return;
       if (entity) { setFileId(entity.id); return; }
 
       // Exact match failed ??try matching against all world files
-      const allFiles = await fileService.getByRootNetwork(fileWorld.id);
+      const allFiles = await fileService.getByRoot(fileWorld.id);
       const match = allFiles.find((f) => {
         const dbPath = f.path.replace(/\\/g, '/');
         return dbPath === normalizedFilePath || normalizedFilePath.endsWith('/' + dbPath);

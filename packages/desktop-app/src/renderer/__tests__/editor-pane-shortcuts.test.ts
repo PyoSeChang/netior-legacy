@@ -1,5 +1,5 @@
-ï»¿import { describe, it, expect, beforeEach, vi } from 'vitest';
-import type { SplitLeaf, SplitBranch, SplitNode } from '@netior/shared/types';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import type { SplitLeaf, SplitBranch, SplitNode } from '../types/editor';
 
 // Minimal window.electron mock for editor-store import
 const mockElectron = {
@@ -21,7 +21,7 @@ const { collectLeaves, getActiveLeaf, useEditorStore, containsTab } = await impo
 const { cycleTab, activateTabByNumber, cyclePane } = await import('../shortcuts/useGlobalShortcuts');
 const { openFileInPane, openFileTab } = await import('../lib/open-file-tab');
 
-// ?Â€?Â€ Test fixtures ?Â€?Â€
+// ?€?€ Test fixtures ?€?€
 
 function makeLeaf(tabIds: string[], activeTabId?: string): SplitLeaf {
   return { type: 'leaf', tabIds, activeTabId: activeTabId ?? tabIds[0] };
@@ -43,7 +43,7 @@ function makeTabs(...ids: string[]) {
   return ids.map(makeTab);
 }
 
-// ?Â€?Â€ collectLeaves ?Â€?Â€
+// ?€?€ collectLeaves ?€?€
 
 describe('collectLeaves', () => {
   it('returns single leaf as array', () => {
@@ -68,7 +68,7 @@ describe('collectLeaves', () => {
   });
 });
 
-// ?Â€?Â€ getActiveLeaf ?Â€?Â€
+// ?€?€ getActiveLeaf ?€?€
 
 describe('getActiveLeaf', () => {
   beforeEach(() => {
@@ -107,7 +107,7 @@ describe('getActiveLeaf', () => {
   });
 });
 
-// ?Â€?Â€ closeTab fallback ?Â€?Â€
+// ?€?€ closeTab fallback ?€?€
 
 describe('closeTab fallback', () => {
   beforeEach(() => {
@@ -222,7 +222,7 @@ describe('setViewMode float fallback', () => {
   });
 });
 
-// ?Â€?Â€ cycleTab (actual function) ?Â€?Â€
+// ?€?€ cycleTab (actual function) ?€?€
 
 describe('cycleTab', () => {
   it('cycles forward within current pane only', () => {
@@ -276,7 +276,7 @@ describe('cycleTab', () => {
   });
 });
 
-// ?Â€?Â€ activateTabByNumber (actual function) ?Â€?Â€
+// ?€?€ activateTabByNumber (actual function) ?€?€
 
 describe('activateTabByNumber', () => {
   it('selects by pane-local index, not global index', () => {
@@ -327,7 +327,7 @@ describe('activateTabByNumber', () => {
   });
 });
 
-// ?Â€?Â€ cyclePane (actual function) ?Â€?Â€
+// ?€?€ cyclePane (actual function) ?€?€
 
 describe('cyclePane', () => {
   it('switches to next pane', () => {
@@ -525,7 +525,7 @@ describe('openTab active pane routing', () => {
     useEditorStore.getState().clear();
   });
 
-  it('opens network viewer tabs in the active side pane even when a full pane exists', async () => {
+  it('opens file tabs in the active side pane even when a full pane exists', async () => {
     useEditorStore.setState({
       tabs: [
         makeTab('side:active'),
@@ -537,17 +537,17 @@ describe('openTab active pane routing', () => {
     });
 
     await useEditorStore.getState().openTab({
-      type: 'networkViewer',
-      targetId: 'network-1',
-      title: 'Network 1',
+      type: 'file',
+      targetId: 'C:/tmp/view.md',
+      title: 'View',
     });
 
     const state = useEditorStore.getState();
-    const tab = state.tabs.find((item) => item.id === 'networkViewer:network-1');
+    const tab = state.tabs.find((item) => item.id === 'file:C:/tmp/view.md');
 
     expect(tab?.viewMode).toBe('side');
-    expect(state.sideLayout && containsTab(state.sideLayout, 'networkViewer:network-1')).toBe(true);
-    expect(state.fullLayout && containsTab(state.fullLayout, 'networkViewer:network-1')).toBe(false);
+    expect(state.sideLayout && containsTab(state.sideLayout, 'file:C:/tmp/view.md')).toBe(true);
+    expect(state.fullLayout && containsTab(state.fullLayout, 'file:C:/tmp/view.md')).toBe(false);
   });
 });
 

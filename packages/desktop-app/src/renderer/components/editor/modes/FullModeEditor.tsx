@@ -1,6 +1,6 @@
 ﻿import React, { useCallback, useEffect, useState } from 'react';
 import { flushSync } from 'react-dom';
-import type { SplitLeaf, EditorTab } from '@netior/shared/types';
+import type { SplitLeaf, EditorTab } from '../../../types/editor';
 import { useEditorStore, containsTab } from '../../../stores/editor-store';
 import { EditorViewModeMenu } from '../EditorViewModeSwitch';
 import { EditorContent } from '../EditorContent';

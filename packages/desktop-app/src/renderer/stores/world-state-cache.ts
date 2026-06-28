@@ -1,29 +1,7 @@
-import { useNetworkStore, type NetworkNodeWithObject, type NetworkEdgeWithMeaning } from './network-store';
+import { useDomainStore } from './domain-store';
 import { useEditorStore } from './editor-store';
-import { useModuleStore } from './module-store';
-import { useInstanceStore } from './instance-store';
-import { useSchemaStore } from './schema-store';
-import { useMeaningStore } from './meaning-store';
-import { useFileStore, type OpenFile, type ClipboardAction, type ClipboardState } from './file-store';
-import type {
-  Network, NetworkNode, Edge, Instance,
-  NetworkBreadcrumbItem, NetworkTreeNode,
-  EditorTab, SplitNode,
-  Module, ModuleDirectory,
-  InstanceProperty,
-  Meaning, Schema, SchemaField,
-  FileTreeNode,
-} from '@netior/shared/types';
-
-interface NetworkSnapshot {
-  networks: Network[];
-  currentNetwork: Network | null;
-  nodes: NetworkNodeWithObject[];
-  edges: NetworkEdgeWithMeaning[];
-  breadcrumbs: NetworkBreadcrumbItem[];
-  networkHistory: string[];
-  networkTree: NetworkTreeNode[];
-}
+import { useFileStore, type OpenFile, type ClipboardState, type FileTreeNode } from './file-store';
+import type { EditorTab, SplitNode } from '../types/editor';
 
 interface EditorSnapshot {
   tabs: EditorTab[];
@@ -36,27 +14,6 @@ interface EditorSnapshot {
   focusedHostId: string;
 }
 
-interface ModuleSnapshot {
-  modules: Module[];
-  activeModuleId: string | null;
-  directories: ModuleDirectory[];
-}
-
-interface InstanceSnapshot {
-  instances: Instance[];
-  properties: Record<string, InstanceProperty[]>;
-}
-
-interface SchemaStructureSnapshot {
-  schemas: Schema[];
-  fields: Record<string, SchemaField[]>;
-}
-
-interface MeaningSnapshot {
-  meanings: Meaning[];
-  loading: boolean;
-}
-
 interface FileSnapshot {
   fileTree: FileTreeNode[];
   openFiles: OpenFile[];
@@ -65,14 +22,15 @@ interface FileSnapshot {
   rootDirs: string[];
 }
 
+interface DomainSnapshotCache {
+  activeModelId: string | null;
+  activeViewType: 'explorer' | 'canvas';
+}
+
 interface WorkspaceSnapshot {
-  network: NetworkSnapshot;
   editor: EditorSnapshot;
-  module: ModuleSnapshot;
-  instance: InstanceSnapshot;
-  schemaStructure: SchemaStructureSnapshot;
-  meaning: MeaningSnapshot;
   file: FileSnapshot;
+  domain: DomainSnapshotCache;
 }
 
 const APP_WORKSPACE_CACHE_KEY = '__app__';
@@ -107,24 +65,11 @@ function normalizeEditorSnapshot(editor: EditorSnapshot): EditorSnapshot {
 }
 
 function capture(): WorkspaceSnapshot {
-  const network = useNetworkStore.getState();
   const editor = useEditorStore.getState();
-  const module = useModuleStore.getState();
-  const instance = useInstanceStore.getState();
-  const schemaStructure = useSchemaStore.getState();
-  const meaning = useMeaningStore.getState();
   const file = useFileStore.getState();
+  const domain = useDomainStore.getState();
 
   return {
-    network: {
-      networks: network.networks,
-      currentNetwork: network.currentNetwork,
-      nodes: network.nodes,
-      edges: network.edges,
-      breadcrumbs: network.breadcrumbs,
-      networkHistory: network.networkHistory,
-      networkTree: network.networkTree,
-    },
     editor: {
       tabs: editor.tabs,
       activeTabId: editor.activeTabId,
@@ -135,23 +80,6 @@ function capture(): WorkspaceSnapshot {
       hosts: editor.hosts,
       focusedHostId: editor.focusedHostId,
     },
-    module: {
-      modules: module.modules,
-      activeModuleId: module.activeModuleId,
-      directories: module.directories,
-    },
-    instance: {
-      instances: instance.instances,
-      properties: instance.properties,
-    },
-    schemaStructure: {
-      schemas: schemaStructure.schemas,
-      fields: schemaStructure.fields,
-    },
-    meaning: {
-      meanings: meaning.meanings,
-      loading: meaning.loading,
-    },
     file: {
       fileTree: file.fileTree,
       openFiles: file.openFiles,
@@ -159,34 +87,29 @@ function capture(): WorkspaceSnapshot {
       clipboard: file.clipboard,
       rootDirs: file.rootDirs,
     },
+    domain: {
+      activeModelId: domain.activeModelId,
+      activeViewType: domain.activeViewType,
+    },
   };
 }
 
 function restore(snapshot: WorkspaceSnapshot): void {
-  useNetworkStore.setState(snapshot.network);
   useEditorStore.setState({ ...normalizeEditorSnapshot(snapshot.editor), pendingCloseTabId: null });
-  useModuleStore.setState(snapshot.module);
-  useInstanceStore.setState(snapshot.instance);
-  useSchemaStore.setState(snapshot.schemaStructure);
-  useMeaningStore.setState(snapshot.meaning);
   useFileStore.setState(snapshot.file);
+  useDomainStore.setState(snapshot.domain);
 }
 
 export function clearAllWorldStores(): void {
-  useNetworkStore.getState().clear();
   useEditorStore.getState().clear();
-  useModuleStore.getState().clear();
-  useInstanceStore.getState().clear();
-  useSchemaStore.getState().clear();
-  useMeaningStore.getState().clear();
   useFileStore.getState().clear();
+  useDomainStore.getState().clear();
 }
 
 export function saveWorkspaceState(workspaceKey: string): void {
   cache.set(workspaceKey, capture());
 }
 
-/** Restore snapshot if available. Returns true if restored. */
 export function restoreWorkspaceState(workspaceKey: string): boolean {
   const snapshot = cache.get(workspaceKey);
   if (!snapshot) return false;
@@ -226,7 +149,7 @@ export function updateCachedWorldEditorTab(
   for (const [workspaceKey, snapshot] of cache.entries()) {
     if (workspaceKey === APP_WORKSPACE_CACHE_KEY) continue;
     const nextTabs = snapshot.editor.tabs.map((tab) => (tab.id === tabId ? updater(tab) : tab));
-    if (nextTabs === snapshot.editor.tabs || !nextTabs.some((tab, index) => tab !== snapshot.editor.tabs[index])) {
+    if (!nextTabs.some((tab, index) => tab !== snapshot.editor.tabs[index])) {
       continue;
     }
 

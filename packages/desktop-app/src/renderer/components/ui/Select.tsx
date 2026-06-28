@@ -2,7 +2,6 @@
 import { createPortal } from 'react-dom';
 import { ChevronDown, Search } from 'lucide-react';
 import { useAnchoredDropdown } from '../../hooks/useAnchoredDropdown';
-import { NodeVisual } from '../workspace/node-components/NodeVisual';
 
 export interface SelectOption {
   value: string;
@@ -21,6 +20,15 @@ export interface SelectProps {
   searchable?: boolean;
   searchPlaceholder?: string;
   emptyMessage?: string;
+}
+
+function SelectIconMarker({ className = '' }: { className?: string }): JSX.Element {
+  return (
+    <span
+      className={`inline-block h-3.5 w-3.5 rounded-sm border border-subtle bg-surface-hover ${className}`}
+      aria-hidden="true"
+    />
+  );
 }
 
 export const Select: React.FC<SelectProps> = ({
@@ -126,7 +134,7 @@ export const Select: React.FC<SelectProps> = ({
         aria-disabled={disabled}
       >
         {selectedOption?.icon && (
-          <NodeVisual icon={selectedOption.icon} size={14} imageSize={18} className="mr-2 shrink-0" />
+          <SelectIconMarker className="mr-2 shrink-0" />
         )}
         <span className={`block overflow-hidden text-ellipsis whitespace-nowrap flex-1 ${selectedOption ? '' : 'text-muted'}`}>
           {selectedOption?.label || placeholder || ''}
@@ -186,7 +194,7 @@ export const Select: React.FC<SelectProps> = ({
                     }`}
                   onClick={() => handleSelect(opt.value)}
                 >
-                  {opt.icon && <NodeVisual icon={opt.icon} size={14} imageSize={18} className="shrink-0" />}
+                  {opt.icon && <SelectIconMarker className="shrink-0" />}
                   <span className="min-w-0 flex-1 truncate">{opt.label}</span>
                 </button>
               )) : (

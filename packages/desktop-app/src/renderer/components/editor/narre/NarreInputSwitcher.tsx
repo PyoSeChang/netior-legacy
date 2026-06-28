@@ -1,5 +1,6 @@
 import React from 'react';
 import type {
+  AgentRuntimeProfile,
   NarreDraftCard,
   NarreInterviewCard,
   NarreMention,
@@ -32,6 +33,7 @@ interface NarreInputSwitcherProps {
   pendingSkillInvocation?: NarrePendingSkillInvocationState | null;
   queuedCount?: number;
   scheduledMessages?: readonly string[];
+  runtimeProfile?: AgentRuntimeProfile | null;
   onDraftChange?: (draftHtml: string) => void;
   onPendingSkillInvocationChange?: (pendingSkillInvocation: NarrePendingSkillInvocationState | null) => void;
   onRemoveScheduledMessage?: (index: number) => void;
@@ -73,6 +75,7 @@ export function NarreInputSwitcher({
   pendingSkillInvocation = null,
   queuedCount = 0,
   scheduledMessages = [],
+  runtimeProfile = null,
   onDraftChange,
   onPendingSkillInvocationChange,
   onRemoveScheduledMessage,
@@ -139,6 +142,7 @@ export function NarreInputSwitcher({
         pendingSkillInvocation={pendingSkillInvocation}
         queuedCount={queuedCount}
         scheduledMessages={scheduledMessages}
+        runtimeProfile={runtimeProfile}
         onDraftChange={onDraftChange}
         onPendingSkillInvocationChange={onPendingSkillInvocationChange}
         onRemoveScheduledMessage={onRemoveScheduledMessage}

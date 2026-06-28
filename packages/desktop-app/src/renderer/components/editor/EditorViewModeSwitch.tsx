@@ -1,6 +1,6 @@
 ﻿import React from 'react';
 import { Check, ExternalLink, Maximize2, Maximize, Minus, MoreVertical, PanelRight } from 'lucide-react';
-import type { EditorViewMode } from '@netior/shared/types';
+import type { EditorViewMode } from '../../types/editor';
 import type { TranslationKey } from '@netior/shared/i18n';
 import { useI18n } from '../../hooks/useI18n';
 import { Tooltip } from '../ui/Tooltip';

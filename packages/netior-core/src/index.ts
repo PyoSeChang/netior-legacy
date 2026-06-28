@@ -1,31 +1,11 @@
-// Connection
-export { initDatabase, getDatabase, closeDatabase, hasColumn, tableExists } from './connection';
+export {
+  closeDatabase,
+  getDatabase,
+  hasColumn,
+  initDatabase,
+  NETIOR_SCHEMA_EPOCH,
+  tableExists,
+} from './connection';
 export type { InitDatabaseOptions } from './connection';
 
-// Repositories
-export * from './repositories/world';
-export * from './repositories/instance';
-export * from './repositories/network';
-export * from './repositories/network-representation';
-export * from './repositories/relationship';
-export * from './repositories/layout';
-export * from './repositories/schema';
-export * from './repositories/meaning';
-export * from './repositories/meaning-category';
-export * from './repositories/file';
-export * from './repositories/instance-property';
-export * from './repositories/interactive-view-state';
-export * from './repositories/interactive-view-template';
-export * from './repositories/editor-prefs';
-export * from './repositories/module';
-export * from './repositories/objects';
-export * from './repositories/context';
-export * from './repositories/settings';
-
-// Services
-export { serializeToAgent, parseFromAgent, renderTemplate } from './services/instance-content-sync';
-export {
-  evaluateNetiorDsl,
-  evaluateNetiorDslFieldBehaviorConfig,
-  parseNetiorDslFieldBehaviorConfig,
-} from './services/netior-dsl-evaluator';
+export * from './domain-store';

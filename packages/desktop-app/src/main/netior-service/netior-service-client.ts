@@ -1,777 +1,161 @@
-import type {
-  Schema,
-  SchemaCreate,
-  SchemaField,
-  SchemaFieldCreate,
-  SchemaFieldUpdate,
-  SchemaMeaning,
-  SchemaMeaningCreate,
-  SchemaMeaningSlotBinding,
-  SchemaMeaningSlotBindingUpdate,
-  SchemaMeaningUpdate,
-  SchemaUpdate,
-  InstanceEditorPrefs,
-  InstanceEditorPrefsUpdate,
-  InteractiveViewPreference,
-  InteractiveViewPreferenceUpsert,
-  InteractiveViewSchemaPreference,
-  InteractiveViewSchemaPreferenceUpsert,
-  InteractiveViewState,
-  InteractiveViewStateUpsert,
-  InteractiveViewTemplate,
-  InteractiveViewTemplateCreate,
-  InteractiveViewTemplateListQuery,
-  InteractiveViewTemplateUpdate,
-  Instance,
-  InstanceCreate,
-  InstanceProperty,
-  InstancePropertyUpsert,
-  InstanceUpdate,
-  Context,
-  ContextCreate,
-  ContextMember,
-  ContextUpdate,
-  Edge,
-  EdgeCreate,
-  EdgeUpdate,
-  FileEntity,
-  FileEntityCreate,
-  FileEntityUpdate,
-  Module,
-  ModuleCreate,
-  ModuleDirectory,
-  ModuleDirectoryCreate,
-  ModuleUpdate,
-  Network,
-  NetworkObjectType,
-  NetworkBreadcrumbItem,
-  NetworkCreate,
-  NetworkNode,
-  NetworkNodeCreate,
-  NetworkNodeUpdate,
-  NetworkTreeNode,
-  NetworkUpdate,
-  NetworkFullData,
-  NodePosition,
-  Relationship,
-  RelationshipCreate,
-  RelationshipListFilters,
-  RelationshipUpdate,
-  EdgeVisual,
-  ObjectRecord,
-  World,
-  WorldCreate,
-  WorldUpdate,
-  Meaning,
-  MeaningCreate,
-  MeaningUpdate,
-  Layout,
-  NetiorServiceResponse,
-} from '@netior/shared/types';
-import type { NetiorDslEvaluateRequest, NetiorDslEvalResult } from '@netior/shared/dsl';
+import { NETIOR_SERVICE_ROUTES, type JsonRpcResponse, type NetiorServiceEvent } from '@netior/shared';
+import { request as httpRequest } from 'http';
 import { getNetiorServiceBaseUrl } from '../process/netior-service-manager';
 
-export async function getRemoteConfig(key: string): Promise<unknown> {
-  return requestJson<unknown>(`/config/${encodeURIComponent(key)}`);
+export interface ResourceContentPayload {
+  contentType: string | null;
+  base64: string;
+  byteLength: number;
 }
 
-export async function setRemoteConfig(key: string, value: unknown): Promise<boolean> {
-  return requestJson<boolean>(`/config/${encodeURIComponent(key)}`, {
-    method: 'PUT',
-    body: JSON.stringify({ value }),
-  });
+export interface ResourceContentWriteInput {
+  base64?: string;
+  text?: string;
+  contentType?: string;
 }
 
-export async function evaluateRemoteDsl(data: NetiorDslEvaluateRequest): Promise<NetiorDslEvalResult> {
-  return requestJson<NetiorDslEvalResult>('/dsl/evaluate', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
-}
-
-export async function listRemoteWorlds(): Promise<World[]> {
-  return requestJson<World[]>('/worlds');
-}
-
-export async function createRemoteWorld(data: WorldCreate): Promise<World> {
-  return requestJson<World>('/worlds', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
-}
-
-export async function updateRemoteWorld(id: string, data: WorldUpdate): Promise<World | null> {
-  return requestJson<World | null>(`/worlds/${encodeURIComponent(id)}`, {
-    method: 'PATCH',
-    body: JSON.stringify(data),
-  });
-}
-
-export async function getRemoteWorld(id: string): Promise<World | null> {
-  return requestJson<World | null>(`/worlds/${encodeURIComponent(id)}`);
-}
-
-export async function updateRemoteWorldRootDir(id: string, rootDir: string): Promise<World | null> {
-  return requestJson<World | null>(`/worlds/${encodeURIComponent(id)}/root-dir`, {
-    method: 'PATCH',
-    body: JSON.stringify({ rootDir }),
-  });
-}
-
-export async function deleteRemoteWorld(id: string): Promise<boolean> {
-  return requestJson<boolean>(`/worlds/${encodeURIComponent(id)}`, {
-    method: 'DELETE',
-  });
-}
-
-export async function listRemoteInstancesByWorld(rootNetworkId: string): Promise<Instance[]> {
-  return requestJson<Instance[]>(`/instances${toQueryString({ rootNetworkId })}`);
-}
-
-export async function createRemoteInstance(data: InstanceCreate): Promise<Instance> {
-  return requestJson<Instance>('/instances', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
-}
-
-export async function updateRemoteInstance(id: string, data: InstanceUpdate): Promise<Instance | null> {
-  return requestJson<Instance | null>(`/instances/${encodeURIComponent(id)}`, {
-    method: 'PATCH',
-    body: JSON.stringify(data),
-  });
-}
-
-export async function deleteRemoteInstance(id: string): Promise<boolean> {
-  return requestJson<boolean>(`/instances/${encodeURIComponent(id)}`, {
-    method: 'DELETE',
-  });
-}
-
-export async function searchRemoteInstances(rootNetworkId: string, query: string): Promise<Instance[]> {
-  return requestJson<Instance[]>(`/instances/search${toQueryString({ rootNetworkId, query })}`);
-}
-
-export async function syncRemoteInstanceToAgent(instanceId: string): Promise<Instance | null> {
-  return requestJson<Instance | null>(`/instances/${encodeURIComponent(instanceId)}/sync-to-agent`, {
-    method: 'POST',
-  });
-}
-
-export async function syncRemoteInstanceFromAgent(instanceId: string, agentContent: string): Promise<Instance | null> {
-  return requestJson<Instance | null>(`/instances/${encodeURIComponent(instanceId)}/sync-from-agent`, {
-    method: 'POST',
-    body: JSON.stringify({ agentContent }),
-  });
-}
-
-export async function listRemoteContexts(networkId: string): Promise<Context[]> {
-  return requestJson<Context[]>(`/contexts${toQueryString({ networkId })}`);
-}
-
-export async function createRemoteContext(data: ContextCreate): Promise<Context> {
-  return requestJson<Context>('/contexts', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
-}
-
-export async function getRemoteContext(id: string): Promise<Context | null> {
-  return requestJson<Context | null>(`/contexts/${encodeURIComponent(id)}`);
-}
-
-export async function updateRemoteContext(id: string, data: ContextUpdate): Promise<Context | null> {
-  return requestJson<Context | null>(`/contexts/${encodeURIComponent(id)}`, {
-    method: 'PATCH',
-    body: JSON.stringify(data),
-  });
-}
-
-export async function deleteRemoteContext(id: string): Promise<boolean> {
-  return requestJson<boolean>(`/contexts/${encodeURIComponent(id)}`, {
-    method: 'DELETE',
-  });
-}
-
-export async function getRemoteContextMembers(contextId: string): Promise<ContextMember[]> {
-  return requestJson<ContextMember[]>(`/contexts/${encodeURIComponent(contextId)}/members`);
-}
-
-export async function addRemoteContextMember(
-  contextId: string,
-  memberType: 'object' | 'edge',
-  memberId: string,
-): Promise<ContextMember> {
-  return requestJson<ContextMember>(`/contexts/${encodeURIComponent(contextId)}/members`, {
-    method: 'POST',
-    body: JSON.stringify({ memberType, memberId }),
-  });
-}
-
-export async function removeRemoteContextMember(id: string): Promise<boolean> {
-  return requestJson<boolean>(`/context-members/${encodeURIComponent(id)}`, {
-    method: 'DELETE',
-  });
-}
-
-export async function listRemoteFilesByWorld(rootNetworkId: string): Promise<FileEntity[]> {
-  return requestJson<FileEntity[]>(`/files${toQueryString({ rootNetworkId })}`);
-}
-
-export async function createRemoteFile(data: FileEntityCreate): Promise<FileEntity> {
-  return requestJson<FileEntity>('/files', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
-}
-
-export async function getRemoteFile(id: string): Promise<FileEntity | null> {
-  return requestJson<FileEntity | null>(`/files/${encodeURIComponent(id)}`);
-}
-
-export async function getRemoteFileByPath(rootNetworkId: string, path: string): Promise<FileEntity | null> {
-  return requestJson<FileEntity | null>(`/files/by-path${toQueryString({ rootNetworkId, path })}`);
-}
-
-export async function updateRemoteFile(id: string, data: FileEntityUpdate): Promise<FileEntity | null> {
-  return requestJson<FileEntity | null>(`/files/${encodeURIComponent(id)}`, {
-    method: 'PATCH',
-    body: JSON.stringify(data),
-  });
-}
-
-export async function deleteRemoteFile(id: string): Promise<boolean> {
-  return requestJson<boolean>(`/files/${encodeURIComponent(id)}`, {
-    method: 'DELETE',
-  });
-}
-
-export async function listRemoteModules(rootNetworkId: string): Promise<Module[]> {
-  return requestJson<Module[]>(`/modules${toQueryString({ rootNetworkId })}`);
-}
-
-export async function createRemoteModule(data: ModuleCreate): Promise<Module> {
-  return requestJson<Module>('/modules', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
-}
-
-export async function updateRemoteModule(id: string, data: ModuleUpdate): Promise<Module | null> {
-  return requestJson<Module | null>(`/modules/${encodeURIComponent(id)}`, {
-    method: 'PATCH',
-    body: JSON.stringify(data),
-  });
-}
-
-export async function deleteRemoteModule(id: string): Promise<boolean> {
-  return requestJson<boolean>(`/modules/${encodeURIComponent(id)}`, {
-    method: 'DELETE',
-  });
-}
-
-export async function listRemoteModuleDirectories(moduleId: string): Promise<ModuleDirectory[]> {
-  return requestJson<ModuleDirectory[]>(`/module-directories${toQueryString({ moduleId })}`);
-}
-
-export async function addRemoteModuleDirectory(data: ModuleDirectoryCreate): Promise<ModuleDirectory> {
-  return requestJson<ModuleDirectory>('/module-directories', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
-}
-
-export async function updateRemoteModuleDirectoryPath(id: string, dirPath: string): Promise<ModuleDirectory | null> {
-  return requestJson<ModuleDirectory | null>(`/module-directories/${encodeURIComponent(id)}`, {
-    method: 'PATCH',
-    body: JSON.stringify({ dirPath }),
-  });
-}
-
-export async function removeRemoteModuleDirectory(id: string): Promise<boolean> {
-  return requestJson<boolean>(`/module-directories/${encodeURIComponent(id)}`, {
-    method: 'DELETE',
-  });
-}
-
-export async function listRemoteSchemas(rootNetworkId: string): Promise<Schema[]> {
-  return requestJson<Schema[]>(`/schemas${toQueryString({ rootNetworkId })}`);
-}
-
-export async function createRemoteSchema(data: SchemaCreate): Promise<Schema> {
-  return requestJson<Schema>('/schemas', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
-}
-
-export async function getRemoteSchema(id: string): Promise<Schema | null> {
-  return requestJson<Schema | null>(`/schemas/${encodeURIComponent(id)}`);
-}
-
-export async function updateRemoteSchema(id: string, data: SchemaUpdate): Promise<Schema | null> {
-  return requestJson<Schema | null>(`/schemas/${encodeURIComponent(id)}`, {
-    method: 'PATCH',
-    body: JSON.stringify(data),
-  });
-}
-
-export async function deleteRemoteSchema(id: string): Promise<boolean> {
-  return requestJson<boolean>(`/schemas/${encodeURIComponent(id)}`, {
-    method: 'DELETE',
-  });
-}
-
-export async function listRemoteSchemaFields(schemaId: string): Promise<SchemaField[]> {
-  return requestJson<SchemaField[]>(`/schema-fields${toQueryString({ schemaId })}`);
-}
-
-export async function createRemoteSchemaField(data: SchemaFieldCreate): Promise<SchemaField> {
-  return requestJson<SchemaField>('/schema-fields', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
-}
-
-export async function updateRemoteSchemaField(id: string, data: SchemaFieldUpdate): Promise<SchemaField | null> {
-  return requestJson<SchemaField | null>(`/schema-fields/${encodeURIComponent(id)}`, {
-    method: 'PATCH',
-    body: JSON.stringify(data),
-  });
-}
-
-export async function deleteRemoteSchemaField(id: string): Promise<boolean> {
-  return requestJson<boolean>(`/schema-fields/${encodeURIComponent(id)}`, {
-    method: 'DELETE',
-  });
-}
-
-export async function reorderRemoteSchemaFields(schemaId: string, orderedIds: string[]): Promise<boolean> {
-  return requestJson<boolean>('/schema-fields/reorder', {
-    method: 'PATCH',
-    body: JSON.stringify({ schemaId, orderedIds }),
-  });
-}
-
-export async function listRemoteSchemaMeanings(schemaId: string): Promise<SchemaMeaning[]> {
-  return requestJson<SchemaMeaning[]>(`/schema-meanings${toQueryString({ schemaId })}`);
-}
-
-export async function ensureRemoteSchemaMeaning(data: SchemaMeaningCreate): Promise<SchemaMeaning | null> {
-  return requestJson<SchemaMeaning | null>('/schema-meanings', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
-}
-
-export async function updateRemoteSchemaMeaning(id: string, data: SchemaMeaningUpdate): Promise<SchemaMeaning | null> {
-  return requestJson<SchemaMeaning | null>(`/schema-meanings/${encodeURIComponent(id)}`, {
-    method: 'PATCH',
-    body: JSON.stringify(data),
-  });
-}
-
-export async function deleteRemoteSchemaMeaning(id: string): Promise<boolean> {
-  return requestJson<boolean>(`/schema-meanings/${encodeURIComponent(id)}`, {
-    method: 'DELETE',
-  });
-}
-
-export async function updateRemoteSchemaMeaningSlotBinding(
-  id: string,
-  data: SchemaMeaningSlotBindingUpdate,
-): Promise<SchemaMeaningSlotBinding | null> {
-  return requestJson<SchemaMeaningSlotBinding | null>(`/schema-meaning-slots/${encodeURIComponent(id)}`, {
-    method: 'PATCH',
-    body: JSON.stringify(data),
-  });
-}
-
-export async function listRemoteModels(rootNetworkId: string): Promise<Meaning[]> {
-  return requestJson<Meaning[]>(`/meanings${toQueryString({ rootNetworkId })}`);
-}
-
-export async function createRemoteModel(data: MeaningCreate): Promise<Meaning> {
-  return requestJson<Meaning>('/meanings', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
-}
-
-export async function getRemoteModel(id: string): Promise<Meaning | null> {
-  return requestJson<Meaning | null>(`/meanings/${encodeURIComponent(id)}`);
-}
-
-export async function updateRemoteModel(id: string, data: MeaningUpdate): Promise<Meaning | null> {
-  return requestJson<Meaning | null>(`/meanings/${encodeURIComponent(id)}`, {
-    method: 'PATCH',
-    body: JSON.stringify(data),
-  });
-}
-
-export async function deleteRemoteModel(id: string): Promise<boolean> {
-  return requestJson<boolean>(`/meanings/${encodeURIComponent(id)}`, {
-    method: 'DELETE',
-  });
-}
-
-export async function getRemoteInstanceProperties(instanceId: string): Promise<InstanceProperty[]> {
-  return requestJson<InstanceProperty[]>(`/instance-properties${toQueryString({ instanceId })}`);
-}
-
-export async function upsertRemoteInstanceProperty(data: InstancePropertyUpsert): Promise<InstanceProperty> {
-  return requestJson<InstanceProperty>('/instance-properties', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
-}
-
-export async function deleteRemoteInstanceProperty(id: string): Promise<boolean> {
-  return requestJson<boolean>(`/instance-properties/${encodeURIComponent(id)}`, {
-    method: 'DELETE',
-  });
-}
-
-export async function getRemoteEditorPrefs(instanceId: string): Promise<InstanceEditorPrefs | null> {
-  return requestJson<InstanceEditorPrefs | null>(`/editor-prefs/${encodeURIComponent(instanceId)}`);
-}
-
-export async function upsertRemoteEditorPrefs(
-  instanceId: string,
-  data: InstanceEditorPrefsUpdate,
-): Promise<InstanceEditorPrefs> {
-  return requestJson<InstanceEditorPrefs>(`/editor-prefs/${encodeURIComponent(instanceId)}`, {
-    method: 'PUT',
-    body: JSON.stringify(data),
-  });
-}
-
-export async function getRemoteInteractiveViewState(
-  instanceId: string,
-  viewTemplateId: string,
-): Promise<InteractiveViewState | null> {
-  return requestJson<InteractiveViewState | null>(
-    `/interactive-view-states${toQueryString({ instanceId, viewTemplateId })}`,
-  );
-}
-
-export async function upsertRemoteInteractiveViewState(
-  data: InteractiveViewStateUpsert,
-): Promise<InteractiveViewState> {
-  return requestJson<InteractiveViewState>('/interactive-view-states', {
-    method: 'PUT',
-    body: JSON.stringify(data),
-  });
-}
-
-export async function listRemoteInteractiveViewTemplates(
-  query: InteractiveViewTemplateListQuery,
-): Promise<InteractiveViewTemplate[]> {
-  return requestJson<InteractiveViewTemplate[]>(`/interactive-view-templates${toQueryString({
-    rootNetworkId: query.rootNetworkId,
-    schemaId: query.schemaId ?? undefined,
-    instanceId: query.instanceId ?? undefined,
-  })}`);
-}
-
-export async function getRemoteInteractiveViewTemplate(id: string): Promise<InteractiveViewTemplate | null> {
-  return requestJson<InteractiveViewTemplate | null>(`/interactive-view-templates/${encodeURIComponent(id)}`);
-}
-
-export async function createRemoteInteractiveViewTemplate(
-  data: InteractiveViewTemplateCreate,
-): Promise<InteractiveViewTemplate> {
-  return requestJson<InteractiveViewTemplate>('/interactive-view-templates', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
-}
-
-export async function updateRemoteInteractiveViewTemplate(
-  id: string,
-  data: InteractiveViewTemplateUpdate,
-): Promise<InteractiveViewTemplate | null> {
-  return requestJson<InteractiveViewTemplate | null>(`/interactive-view-templates/${encodeURIComponent(id)}`, {
-    method: 'PATCH',
-    body: JSON.stringify(data),
-  });
-}
-
-export async function deleteRemoteInteractiveViewTemplate(id: string): Promise<boolean> {
-  return requestJson<boolean>(`/interactive-view-templates/${encodeURIComponent(id)}`, {
-    method: 'DELETE',
-  });
-}
-
-export async function getRemoteInteractiveViewPreference(instanceId: string): Promise<InteractiveViewPreference | null> {
-  return requestJson<InteractiveViewPreference | null>(
-    `/interactive-view-preferences${toQueryString({ instanceId })}`,
-  );
-}
-
-export async function upsertRemoteInteractiveViewPreference(
-  data: InteractiveViewPreferenceUpsert,
-): Promise<InteractiveViewPreference> {
-  return requestJson<InteractiveViewPreference>('/interactive-view-preferences', {
-    method: 'PUT',
-    body: JSON.stringify(data),
-  });
-}
-
-export async function getRemoteInteractiveViewSchemaPreference(
-  schemaId: string,
-): Promise<InteractiveViewSchemaPreference | null> {
-  return requestJson<InteractiveViewSchemaPreference | null>(
-    `/interactive-view-schema-preferences${toQueryString({ schemaId })}`,
-  );
-}
-
-export async function upsertRemoteInteractiveViewSchemaPreference(
-  data: InteractiveViewSchemaPreferenceUpsert,
-): Promise<InteractiveViewSchemaPreference> {
-  return requestJson<InteractiveViewSchemaPreference>('/interactive-view-schema-preferences', {
-    method: 'PUT',
-    body: JSON.stringify(data),
-  });
-}
-
-export async function getRemoteObject(id: string): Promise<ObjectRecord | null> {
-  return requestJson<ObjectRecord | null>(`/objects/${encodeURIComponent(id)}`);
-}
-
-export async function getRemoteObjectByRef(objectType: NetworkObjectType, refId: string): Promise<ObjectRecord | null> {
-  return requestJson<ObjectRecord | null>(`/objects/by-ref${toQueryString({ objectType, refId })}`);
-}
-
-export async function listRemoteNetworks(rootNetworkId: string, rootOnly?: boolean): Promise<Network[]> {
-  return requestJson<Network[]>(`/networks${toQueryString({
-    rootNetworkId,
-    rootOnly: rootOnly == null ? undefined : String(rootOnly),
-  })}`);
-}
-
-export async function createRemoteNetwork(data: NetworkCreate): Promise<Network> {
-  return requestJson<Network>('/networks', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
-}
-
-export async function updateRemoteNetwork(id: string, data: NetworkUpdate): Promise<Network | null> {
-  return requestJson<Network | null>(`/networks/${encodeURIComponent(id)}`, {
-    method: 'PATCH',
-    body: JSON.stringify(data),
-  });
-}
-
-export async function deleteRemoteNetwork(id: string): Promise<boolean> {
-  return requestJson<boolean>(`/networks/${encodeURIComponent(id)}`, {
-    method: 'DELETE',
-  });
-}
-
-export async function getRemoteNetworkFull(networkId: string): Promise<NetworkFullData | null> {
-  return requestJson<NetworkFullData | null>(`/networks/${encodeURIComponent(networkId)}/full`);
-}
-
-export async function getRemoteUniverseNetwork(): Promise<Network | null> {
-  return requestJson<Network | null>('/networks/universe');
-}
-
-export async function getRemoteRootNetwork(rootNetworkId: string): Promise<Network | null> {
-  return requestJson<Network | null>(`/networks/root${toQueryString({ rootNetworkId })}`);
-}
-
-export async function getRemoteNetworkAncestors(networkId: string): Promise<NetworkBreadcrumbItem[]> {
-  return requestJson<NetworkBreadcrumbItem[]>(`/networks/${encodeURIComponent(networkId)}/ancestors`);
-}
-
-export async function getRemoteNetworkTree(rootNetworkId: string): Promise<NetworkTreeNode[]> {
-  return requestJson<NetworkTreeNode[]>(`/networks/tree${toQueryString({ rootNetworkId })}`);
-}
-
-export async function addRemoteNetworkNode(data: NetworkNodeCreate): Promise<NetworkNode> {
-  return requestJson<NetworkNode>('/network-nodes', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
-}
-
-export async function updateRemoteNetworkNode(id: string, data: NetworkNodeUpdate): Promise<NetworkNode> {
-  return requestJson<NetworkNode>(`/network-nodes/${encodeURIComponent(id)}`, {
-    method: 'PATCH',
-    body: JSON.stringify(data),
-  });
-}
-
-export async function removeRemoteNetworkNode(id: string): Promise<boolean> {
-  return requestJson<boolean>(`/network-nodes/${encodeURIComponent(id)}`, {
-    method: 'DELETE',
-  });
-}
-
-export async function createRemoteEdge(data: EdgeCreate): Promise<Edge> {
-  return requestJson<Edge>('/edges', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
-}
-
-export async function getRemoteEdge(id: string): Promise<Edge | null> {
-  return requestJson<Edge | null>(`/edges/${encodeURIComponent(id)}`);
-}
-
-export async function updateRemoteEdge(id: string, data: EdgeUpdate): Promise<Edge | null> {
-  return requestJson<Edge | null>(`/edges/${encodeURIComponent(id)}`, {
-    method: 'PATCH',
-    body: JSON.stringify(data),
-  });
-}
-
-export async function deleteRemoteEdge(id: string): Promise<boolean> {
-  return requestJson<boolean>(`/edges/${encodeURIComponent(id)}`, {
-    method: 'DELETE',
-  });
-}
-
-export async function listRemoteRelationships(filters: RelationshipListFilters): Promise<Relationship[]> {
-  return requestJson<Relationship[]>(`/relationships${toQueryString({
-    rootNetworkId: filters.root_network_id,
-    sourceObjectId: filters.source_object_id,
-    targetObjectId: filters.target_object_id,
-    meaningId: filters.meaning_id,
-  })}`);
-}
-
-export async function createRemoteRelationship(data: RelationshipCreate): Promise<Relationship> {
-  return requestJson<Relationship>('/relationships', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
-}
-
-export async function getRemoteRelationship(id: string): Promise<Relationship | null> {
-  return requestJson<Relationship | null>(`/relationships/${encodeURIComponent(id)}`);
-}
-
-export async function updateRemoteRelationship(id: string, data: RelationshipUpdate): Promise<Relationship | null> {
-  return requestJson<Relationship | null>(`/relationships/${encodeURIComponent(id)}`, {
-    method: 'PATCH',
-    body: JSON.stringify(data),
-  });
-}
-
-export async function deleteRemoteRelationship(id: string): Promise<boolean> {
-  return requestJson<boolean>(`/relationships/${encodeURIComponent(id)}`, {
-    method: 'DELETE',
-  });
-}
-
-export async function listRemoteRelationshipOccurrences(id: string): Promise<Edge[]> {
-  return requestJson<Edge[]>(`/relationships/${encodeURIComponent(id)}/occurrences`);
-}
-
-export async function getRemoteLayoutByNetwork(networkId: string): Promise<Layout | null> {
-  return requestJson<Layout | null>(`/layouts/by-network${toQueryString({ networkId })}`);
-}
-
-export async function updateRemoteLayout(id: string, data: {
-  layout_type?: string;
-  layout_config_json?: string | null;
-  viewport_json?: string | null;
-}): Promise<Layout | null> {
-  return requestJson<Layout | null>(`/layouts/${encodeURIComponent(id)}`, {
-    method: 'PATCH',
-    body: JSON.stringify(data),
-  });
-}
-
-export async function getRemoteLayoutNodePositions(layoutId: string): Promise<NodePosition[]> {
-  return requestJson<NodePosition[]>(`/layouts/${encodeURIComponent(layoutId)}/nodes`);
-}
-
-export async function setRemoteLayoutNodePosition(
-  layoutId: string,
-  nodeId: string,
-  positionJson: string,
-): Promise<boolean> {
-  return requestJson<boolean>(`/layouts/${encodeURIComponent(layoutId)}/nodes/${encodeURIComponent(nodeId)}`, {
-    method: 'PUT',
-    body: JSON.stringify({ positionJson }),
-  });
-}
-
-export async function removeRemoteLayoutNodePosition(layoutId: string, nodeId: string): Promise<boolean> {
-  return requestJson<boolean>(`/layouts/${encodeURIComponent(layoutId)}/nodes/${encodeURIComponent(nodeId)}`, {
-    method: 'DELETE',
-  });
-}
-
-export async function getRemoteLayoutEdgeVisuals(layoutId: string): Promise<EdgeVisual[]> {
-  return requestJson<EdgeVisual[]>(`/layouts/${encodeURIComponent(layoutId)}/edges`);
-}
-
-export async function setRemoteLayoutEdgeVisual(
-  layoutId: string,
-  edgeId: string,
-  visualJson: string,
-): Promise<boolean> {
-  return requestJson<boolean>(`/layouts/${encodeURIComponent(layoutId)}/edges/${encodeURIComponent(edgeId)}`, {
-    method: 'PUT',
-    body: JSON.stringify({ visualJson }),
-  });
-}
-
-export async function removeRemoteLayoutEdgeVisual(layoutId: string, edgeId: string): Promise<boolean> {
-  return requestJson<boolean>(`/layouts/${encodeURIComponent(layoutId)}/edges/${encodeURIComponent(edgeId)}`, {
-    method: 'DELETE',
-  });
-}
-
-async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
+export async function callNetiorRpc<T = unknown>(method: string, params?: unknown): Promise<T> {
   const baseUrl = getNetiorServiceBaseUrl();
   if (!baseUrl) {
     throw new Error('Netior service is not running');
   }
 
-  const response = await fetch(`${baseUrl}${path}`, {
-    ...init,
+  const response = await fetch(`${baseUrl}${NETIOR_SERVICE_ROUTES.rpc}`, {
+    method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      ...(init?.headers ?? {}),
     },
+    body: JSON.stringify({
+      jsonrpc: '2.0',
+      id: `${Date.now()}:${Math.random().toString(16).slice(2)}`,
+      method,
+      params: params ?? {},
+    }),
   });
 
-  let payload: NetiorServiceResponse<T>;
+  let payload: JsonRpcResponse<T>;
   try {
-    payload = await response.json() as NetiorServiceResponse<T>;
+    payload = await response.json() as JsonRpcResponse<T>;
   } catch (error) {
-    throw new Error(`Invalid JSON from Netior service: ${(error as Error).message}`);
+    throw new Error(`Invalid JSON-RPC response from Netior service: ${(error as Error).message}`);
   }
 
   if (!response.ok) {
-    if (!payload.ok) {
-      throw new Error(payload.error);
-    }
-    throw new Error(`Netior service request failed: ${response.status}`);
+    throw new Error(`Netior service RPC failed: ${response.status}`);
   }
 
-  if (!payload.ok) {
-    throw new Error(payload.error);
+  if ('error' in payload && payload.error) {
+    throw new Error(payload.error.message);
+  }
+
+  if ('result' in payload) {
+    return payload.result;
+  }
+
+  throw new Error('Invalid JSON-RPC response from Netior service: missing result');
+}
+
+export async function readRemoteResourceContent(resourceId: string): Promise<ResourceContentPayload> {
+  const baseUrl = getNetiorServiceBaseUrl();
+  if (!baseUrl) {
+    throw new Error('Netior service is not running');
+  }
+
+  const response = await fetch(`${baseUrl}/resources/${encodeURIComponent(resourceId)}/content`);
+  if (!response.ok) {
+    throw new Error(`Resource content read failed: ${response.status}`);
+  }
+
+  const bytes = Buffer.from(await response.arrayBuffer());
+  return {
+    contentType: response.headers.get('content-type'),
+    base64: bytes.toString('base64'),
+    byteLength: bytes.byteLength,
+  };
+}
+
+export async function writeRemoteResourceContent(resourceId: string, input: ResourceContentWriteInput): Promise<unknown> {
+  const baseUrl = getNetiorServiceBaseUrl();
+  if (!baseUrl) {
+    throw new Error('Netior service is not running');
+  }
+
+  const body = input.base64 !== undefined
+    ? Buffer.from(input.base64, 'base64')
+    : Buffer.from(input.text ?? '', 'utf8');
+
+  const response = await fetch(`${baseUrl}/resources/${encodeURIComponent(resourceId)}/content`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': input.contentType ?? 'application/octet-stream',
+    },
+    body,
+  });
+
+  const payload = await response.json().catch(() => null) as { ok?: boolean; data?: unknown; error?: string } | null;
+  if (!response.ok || !payload?.ok) {
+    throw new Error(payload?.error ?? `Resource content write failed: ${response.status}`);
   }
 
   return payload.data;
 }
 
-function toQueryString(params: Record<string, string | undefined>): string {
-  const searchParams = new URLSearchParams();
-
-  for (const [key, value] of Object.entries(params)) {
-    if (value != null) {
-      searchParams.set(key, value);
-    }
+export async function deleteRemoteResourceContent(resourceId: string): Promise<unknown> {
+  const baseUrl = getNetiorServiceBaseUrl();
+  if (!baseUrl) {
+    throw new Error('Netior service is not running');
   }
 
-  const query = searchParams.toString();
-  return query ? `?${query}` : '';
+  const response = await fetch(`${baseUrl}/resources/${encodeURIComponent(resourceId)}/content`, {
+    method: 'DELETE',
+  });
+  const payload = await response.json().catch(() => null) as { ok?: boolean; data?: unknown; error?: string } | null;
+  if (!response.ok || !payload?.ok) {
+    throw new Error(payload?.error ?? `Resource content delete failed: ${response.status}`);
+  }
+
+  return payload.data;
+}
+
+export function subscribeRemoteEvents(
+  onEvent: (event: NetiorServiceEvent) => void,
+  onError?: (error: Error) => void,
+): () => void {
+  const baseUrl = getNetiorServiceBaseUrl();
+  if (!baseUrl) {
+    onError?.(new Error('Netior service is not running'));
+    return () => {};
+  }
+
+  const eventsUrl = new URL(NETIOR_SERVICE_ROUTES.events, baseUrl);
+  const req = httpRequest(eventsUrl, { method: 'GET' }, (res) => {
+    res.setEncoding('utf8');
+    let buffer = '';
+
+    res.on('data', (chunk: string) => {
+      buffer += chunk;
+      const parts = buffer.split('\n\n');
+      buffer = parts.pop() ?? '';
+
+      for (const part of parts) {
+        const dataLines = part
+          .split('\n')
+          .filter((line) => line.startsWith('data:'))
+          .map((line) => line.slice(5).trimStart());
+        if (dataLines.length === 0) continue;
+        try {
+          onEvent(JSON.parse(dataLines.join('\n')) as NetiorServiceEvent);
+        } catch (error) {
+          onError?.(error as Error);
+        }
+      }
+    });
+  });
+
+  req.on('error', (error) => onError?.(error));
+  req.end();
+
+  return () => {
+    req.destroy();
+  };
 }

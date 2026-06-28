@@ -1,15 +1,41 @@
-﻿import type { InstanceEditorPrefs, InstanceEditorPrefsUpdate } from '@netior/shared/types';
-import { unwrapIpc } from './ipc';
+export interface RendererEditorPrefs {
+  view_mode?: string;
+  float_x?: number;
+  float_y?: number;
+  float_width?: number;
+  float_height?: number;
+  side_split_ratio?: number;
+}
 
-export async function getEditorPrefs(instanceId: string): Promise<InstanceEditorPrefs | undefined> {
-  return unwrapIpc(await window.electron.editorPrefs.get(instanceId));
+const PREFS_KEY = 'netior:renderer-editor-prefs:v1';
+
+function readPrefs(): Record<string, RendererEditorPrefs> {
+  if (typeof window === 'undefined') return {};
+  try {
+    const raw = window.localStorage.getItem(PREFS_KEY);
+    return raw ? JSON.parse(raw) as Record<string, RendererEditorPrefs> : {};
+  } catch {
+    return {};
+  }
+}
+
+function writePrefs(prefs: Record<string, RendererEditorPrefs>): void {
+  if (typeof window === 'undefined') return;
+  window.localStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
+}
+
+export async function getEditorPrefs(targetId: string): Promise<RendererEditorPrefs | undefined> {
+  return readPrefs()[targetId];
 }
 
 export async function upsertEditorPrefs(
-  instanceId: string,
-  data: InstanceEditorPrefsUpdate,
-): Promise<InstanceEditorPrefs> {
-  return unwrapIpc(await window.electron.editorPrefs.upsert(instanceId, data as Record<string, unknown>));
+  targetId: string,
+  data: RendererEditorPrefs,
+): Promise<RendererEditorPrefs> {
+  const prefs = readPrefs();
+  const next = { ...(prefs[targetId] ?? {}), ...data };
+  writePrefs({ ...prefs, [targetId]: next });
+  return next;
 }
 
 export const editorPrefsService = {

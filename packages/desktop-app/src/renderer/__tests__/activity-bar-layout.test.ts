@@ -1,11 +1,9 @@
 ﻿import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_ACTIVITY_BAR_LAYOUT_CONFIG,
-  getWorldNetworkBookmarkIds,
   getVisibleOrderedItems,
   moveOrderedItem,
   normalizeActivityBarLayoutConfig,
-  setWorldNetworkBookmarkIds,
 } from '../lib/activity-bar-layout';
 
 describe('normalizeActivityBarLayoutConfig', () => {
@@ -13,23 +11,15 @@ describe('normalizeActivityBarLayoutConfig', () => {
     const normalized = normalizeActivityBarLayoutConfig({
       topItemOrder: ['files', 'networks', 'objects', 'sessions', 'files', 'unknown'],
       bottomItemOrder: ['sessions', 'settings'],
-      networkBookmarksByWorld: {
-        worldA: ['network-2', '', 'network-2', 'network-1'],
-        '   ': ['ignored'],
-        worldB: 'invalid',
-      },
     });
 
     expect(normalized.topItemOrder).toEqual([
-      'worlds',
-      'networks',
       'files',
       'sessions',
+      'worlds',
+      'models',
     ]);
-    expect(normalized.bottomItemOrder).toEqual(['rootNetwork', 'narre', 'terminal', 'agents', 'browser', 'settings']);
-    expect(normalized.networkBookmarksByWorld).toEqual({
-      worldA: ['network-2', 'network-1'],
-    });
+    expect(normalized.bottomItemOrder).toEqual(['settings', 'narre', 'terminal', 'agents', 'browser']);
   });
 
   it('falls back to defaults for invalid input', () => {
@@ -40,8 +30,8 @@ describe('normalizeActivityBarLayoutConfig', () => {
 describe('getVisibleOrderedItems', () => {
   it('keeps the stored order for currently available items only', () => {
     expect(
-      getVisibleOrderedItems(['files', 'sessions', 'networks'], ['networks', 'files']),
-    ).toEqual(['files', 'networks']);
+      getVisibleOrderedItems(['files', 'sessions', 'worlds', 'models'], ['worlds', 'files']),
+    ).toEqual(['files', 'worlds']);
   });
 });
 
@@ -56,17 +46,3 @@ describe('moveOrderedItem', () => {
   });
 });
 
-describe('world bookmark helpers', () => {
-  it('sets and clears world bookmark ids', () => {
-    const withBookmarks = setWorldNetworkBookmarkIds(
-      DEFAULT_ACTIVITY_BAR_LAYOUT_CONFIG,
-      'world-1',
-      ['network-1', 'network-2', 'network-1'],
-    );
-
-    expect(getWorldNetworkBookmarkIds(withBookmarks, 'world-1')).toEqual(['network-1', 'network-2']);
-
-    const cleared = setWorldNetworkBookmarkIds(withBookmarks, 'world-1', []);
-    expect(getWorldNetworkBookmarkIds(cleared, 'world-1')).toEqual([]);
-  });
-});

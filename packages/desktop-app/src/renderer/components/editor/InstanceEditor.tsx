@@ -1,1322 +1,1062 @@
-import React, { useCallback, useEffect, useState, useMemo } from 'react';
-import type {
-  EditorTab,
-  FieldMeaningBindingKey,
-  NodeConfig,
-  NodeSortConfig,
-  NodeType,
-} from '@netior/shared/types';
-import { MEANING_SLOT_DEFINITIONS, getMeaningSlotLabelKey, fieldMeaningToMeaningBindings } from '@netior/shared/constants';
-import { instancePropertyService, networkService, objectService } from '../../services';
-import type { NetworkFullData } from '../../services/network-service';
-import { useInstanceStore } from '../../stores/instance-store';
-import { useSchemaStore } from '../../stores/schema-store';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { ChevronDown, ChevronRight, Pencil, RefreshCw, Trash2, X } from 'lucide-react';
+import {
+  NETIOR_RPC_METHODS,
+  type InstanceRecord,
+  type InstanceResourceLinkRecord,
+  type KindAssignmentRecord,
+  type PropertyRecord,
+  type PropertyValueRecord,
+  type RelationAssertionRecord,
+} from '@netior/shared';
+import type { EditorTab } from '../../types/editor';
+import { useDomainStore } from '../../stores/domain-store';
 import { useEditorStore } from '../../stores/editor-store';
+import { useFileStore, type FileTreeNode } from '../../stores/file-store';
 import { useWorldStore } from '../../stores/world-store';
-import { useNetworkStore } from '../../stores/network-store';
-import { useEditorSession } from '../../hooks/useEditorSession';
-import { ScrollArea } from '../ui/ScrollArea';
-import { Select } from '../ui/Select';
-import { RadioGroup } from '../ui/RadioGroup';
+import { domainService } from '../../services/domain-service';
+import { useI18n } from '../../hooks/useI18n';
+import { useAnchoredDropdown } from '../../hooks/useAnchoredDropdown';
+import { getWorldRootDir } from '../../utils/world-utils';
+import { Checkbox } from '../ui/Checkbox';
+import { Button } from '../ui/Button';
+import { IconButton } from '../ui/IconButton';
 import { Input } from '../ui/Input';
 import { NumberInput } from '../ui/NumberInput';
+import { Select } from '../ui/Select';
 import { TextArea } from '../ui/TextArea';
-import { Button } from '../ui/Button';
-import { FilePicker } from '../ui/FilePicker';
-import { IconSelector } from '../ui/IconSelector';
-import { InstancePropertiesPanel, InstancePropertyInputs } from './InstancePropertiesPanel';
-import { InstanceBodyEditor } from './InstanceBodyEditor';
-import { InstanceAgentView } from './InstanceAgentView';
-import { InteractiveViewPanel } from './interactive/InteractiveViewPanel';
-import { useI18n } from '../../hooks/useI18n';
+import { FileIcon } from '../sidebar/FileIcon';
 import {
-  CONTAINS_MEANING_KEY,
-  HIERARCHY_PARENT_MEANING_KEY,
-  isContainsEdge,
-  systemEdgeMeaningId,
-} from '../../lib/edge-meanings';
-import { isImageSourceValue } from '../workspace/node-components/node-visual-utils';
-import { NodeVisual } from '../workspace/node-components/NodeVisual';
-import {
-  createDefaultNodeConfig,
-  extractNodeConfig,
-  parseNodeMetadataObject,
-  stringifyNodeMetadataObject,
-  upsertNodeConfigMetadata,
-} from '../../lib/node-config';
-import {
-  NetworkObjectEditorShell,
-  NetworkObjectEditorSection,
-  NetworkObjectMetadataList,
-} from './NetworkObjectEditorShell';
-import { getFieldMeaningSlot } from '../../lib/field-meaning-bindings';
-import { useRenderPerfTrace } from '../../lib/perf-diagnostics';
+  EditorHeader,
+  EditorScroll,
+  ErrorBanner,
+  Field,
+} from './domain-editor-shared';
 
 interface InstanceEditorProps {
   tab: EditorTab;
 }
 
-interface InstanceEditorState {
-  title: string;
-  meaningId: string | null;
-  icon: string | null;
-  color: string | null;
-  content: string | null;
-  properties: Record<string, string | null>;
-  nodeOccurrences: InstanceNodeOccurrenceDraft[];
+interface InstanceDraftData {
+  mode: 'create';
+  modelId: string;
+  rootId: string;
 }
 
-interface InstanceNodeOccurrenceDraft {
-  nodeId: string;
-  networkId: string;
-  networkName: string;
-  nodeType: NodeType;
-  metadata: string;
+function getInstanceDraftData(value: unknown): InstanceDraftData | null {
+  if (!value || typeof value !== 'object') return null;
+  const data = value as Partial<InstanceDraftData>;
+  return data.mode === 'create' && typeof data.modelId === 'string' && typeof data.rootId === 'string'
+    ? { mode: 'create', modelId: data.modelId, rootId: data.rootId }
+    : null;
 }
 
-type OccurrenceNetworkData = Pick<NetworkFullData, 'nodes' | 'edges'>;
+function labelOfResource(resource: { relative_path: string | null; source_uri: string | null; locator: string | null; id: string }): string {
+  return resource.relative_path ?? resource.source_uri ?? resource.locator ?? resource.id;
+}
 
-const DEPRECATED_NODE_IMAGE_METADATA_KEYS = [
-  'imageUrl',
-  'image_url',
-  'avatarUrl',
-  'avatar_url',
-  'profileImageUrl',
-  'profile_image_url',
-] as const;
+function fileNameOf(value: string): string {
+  return value.split(/[\\/]/).filter(Boolean).pop() ?? value;
+}
 
-const IMAGE_FILE_FILTERS = [
-  { name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp'] },
-] as const;
+function normalizeRelativePath(value: string): string {
+  return value.trim().replace(/\\/g, '/').replace(/^\/+|\/+$/g, '');
+}
 
-const isDraftTab = (tab: EditorTab) => tab.targetId.startsWith('draft-') && tab.draftData !== undefined;
+function normalizeAbsolutePath(value: string): string {
+  return value.replace(/\\/g, '/').replace(/\/+$/g, '');
+}
 
-type VisualMode = 'icon' | 'image';
+function getRelativePath(node: FileTreeNode, rootDir: string): string {
+  const normalizedRoot = normalizeAbsolutePath(rootDir);
+  const normalizedPath = normalizeAbsolutePath(node.path);
+  return normalizeRelativePath(
+    normalizedPath.startsWith(`${normalizedRoot}/`)
+      ? normalizedPath.slice(normalizedRoot.length + 1)
+      : normalizedPath,
+  );
+}
 
-function stripLegacyNodeImageMetadata(metadata: Record<string, unknown>): Record<string, unknown> {
-  const next = { ...metadata };
+interface ResourceTreeItem {
+  node: FileTreeNode;
+  depth: number;
+  relativePath: string;
+}
 
-  for (const key of DEPRECATED_NODE_IMAGE_METADATA_KEYS) {
-    delete next[key];
+function buildVisibleResourceItems(nodes: FileTreeNode[], rootDir: string, expandedPaths: Set<string>, depth = 0): ResourceTreeItem[] {
+  const items: ResourceTreeItem[] = [];
+  for (const node of nodes) {
+    const relativePath = getRelativePath(node, rootDir);
+    if (relativePath) items.push({ node, depth, relativePath });
+    if (node.type === 'directory' && expandedPaths.has(node.path) && node.children) {
+      items.push(...buildVisibleResourceItems(node.children, rootDir, expandedPaths, depth + 1));
+    }
   }
-
-  return next;
+  return items;
 }
 
-function createNodeConfigDraft(kind: NodeConfig['kind'], previousSort?: NodeSortConfig | null): NodeConfig {
-  const base = createDefaultNodeConfig(kind);
-  if (base.kind === 'freeform') return base;
-  return { ...base, sort: previousSort ?? null };
-}
+function ResourceTreeSelect({
+  value,
+  items,
+  expandedPaths,
+  placeholder,
+  emptyMessage,
+  onSelect,
+  onToggle,
+}: {
+  value: string;
+  items: ResourceTreeItem[];
+  expandedPaths: Set<string>;
+  placeholder: string;
+  emptyMessage: string;
+  onSelect: (value: string) => void;
+  onToggle: (node: FileTreeNode) => void;
+}): JSX.Element {
+  const [open, setOpen] = useState(false);
+  const anchorRef = useRef<HTMLDivElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const dropdownPos = useAnchoredDropdown(open, anchorRef, { estimatedHeight: 340 }, dropdownRef);
 
-function createSortConfigDraft(kind: NodeSortConfig['kind'], fallbackFieldId?: string): NodeSortConfig | null {
-  if (kind === 'meaning_binding') {
-    return {
-      kind: 'meaning_binding',
-      meaning: 'structure.order',
-      direction: 'asc',
-      emptyPlacement: 'last',
+  useEffect(() => {
+    if (!open) return;
+    const handleMouseDown = (event: MouseEvent): void => {
+      const target = event.target as Node;
+      if (anchorRef.current?.contains(target) || dropdownRef.current?.contains(target)) return;
+      setOpen(false);
     };
+    document.addEventListener('mousedown', handleMouseDown);
+    return () => document.removeEventListener('mousedown', handleMouseDown);
+  }, [open]);
+
+  return (
+    <div className="relative block w-full">
+      <div
+        ref={anchorRef}
+        role="combobox"
+        aria-expanded={open}
+        tabIndex={0}
+        className={`flex w-full cursor-pointer items-center rounded-lg border px-3 py-2 text-left text-sm outline-none transition-all duration-fast ${
+          open ? 'border-accent' : 'border-input hover:border-strong'
+        } bg-surface-input text-default`}
+        onClick={() => setOpen((current) => !current)}
+      >
+        <span className={`min-w-0 flex-1 truncate ${value ? '' : 'text-muted'}`}>{value || placeholder}</span>
+        <ChevronDown size={14} className={`ml-2 shrink-0 text-muted transition-transform duration-fast ${open ? 'rotate-180' : ''}`} />
+      </div>
+      {open && createPortal(
+        <div
+          ref={dropdownRef}
+          className="fixed overflow-hidden rounded-lg border border-default bg-surface-panel"
+          style={{
+            top: dropdownPos.top,
+            left: dropdownPos.left,
+            width: dropdownPos.width,
+            maxHeight: dropdownPos.maxHeight,
+            visibility: dropdownPos.ready ? 'visible' : 'hidden',
+            zIndex: 10001,
+            boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+          }}
+          onMouseDown={(event) => event.stopPropagation()}
+        >
+          <div className="max-h-[340px] overflow-auto py-1">
+            {items.length > 0 ? items.map(({ node, depth, relativePath }) => {
+              const expanded = expandedPaths.has(node.path);
+              const selected = value === relativePath;
+              return (
+                <div
+                  key={node.path}
+                  className={`group flex items-center gap-1 px-2 py-1.5 text-xs ${selected ? 'bg-accent-muted text-accent' : 'text-default hover:bg-state-hover'}`}
+                  style={{ paddingLeft: 8 + depth * 14 }}
+                >
+                  {node.type === 'directory' ? (
+                    <button
+                      type="button"
+                      className="rounded p-0.5 text-muted hover:bg-state-hover hover:text-default"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onToggle(node);
+                      }}
+                    >
+                      {expanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                    </button>
+                  ) : (
+                    <span className="w-4" />
+                  )}
+                  <FileIcon name={node.name} isFolder={node.type === 'directory'} isOpen={expanded} size={14} className="shrink-0" />
+                  <button
+                    type="button"
+                    className="min-w-0 flex-1 truncate text-left"
+                    onClick={() => {
+                      onSelect(relativePath);
+                      setOpen(false);
+                    }}
+                  >
+                    {relativePath}
+                  </button>
+                </div>
+              );
+            }) : (
+              <div className="px-3 py-6 text-center text-xs text-muted">{emptyMessage}</div>
+            )}
+          </div>
+        </div>,
+        document.body,
+      )}
+    </div>
+  );
+}
+
+function parseStoredValue(value: string | null): unknown {
+  if (value === null) return '';
+  try {
+    return JSON.parse(value);
+  } catch {
+    return value;
   }
-
-  if (kind === 'property' && fallbackFieldId) {
-    return {
-      kind: 'property',
-      fieldId: fallbackFieldId,
-      direction: 'asc',
-      emptyPlacement: 'last',
-    };
-  }
-
-  return null;
 }
 
-function isSortableNodeConfig(nodeConfig: NodeConfig | null | undefined): nodeConfig is Extract<NodeConfig, { kind: 'grid' | 'list' }> {
-  return !!nodeConfig && nodeConfig.kind !== 'freeform';
+function stringifyValue(property: PropertyRecord, value: unknown): unknown {
+  if (property.value_type === 'number') return typeof value === 'number' ? value : Number(value || 0);
+  if (property.value_type === 'boolean') return Boolean(value);
+  return String(value ?? '');
 }
 
-function resolvePreferredNodeId(
-  occurrences: InstanceNodeOccurrenceDraft[],
-  preferredNodeId?: string,
-  preferredNetworkId?: string,
-): string {
-  if (preferredNodeId && occurrences.some((item) => item.nodeId === preferredNodeId)) {
-    return preferredNodeId;
-  }
-
-  if (preferredNetworkId) {
-    const nodeInNetwork = occurrences.find((item) => item.networkId === preferredNetworkId);
-    if (nodeInNetwork) return nodeInNetwork.nodeId;
-  }
-
-  return occurrences[0]?.nodeId ?? '';
+function valuesEqual(left: unknown, right: unknown): boolean {
+  return JSON.stringify(left ?? '') === JSON.stringify(right ?? '');
 }
 
-async function loadInstanceNodeOccurrences(
-  rootNetworkId: string,
-  instanceId: string,
-): Promise<Pick<InstanceEditorState, 'nodeOccurrences'>> {
-  const networks = await networkService.list(rootNetworkId);
-  const items = await Promise.all(networks.map(async (network) => ({
-    network,
-    full: await networkService.getFull(network.id),
-  })));
-
-  const nodeOccurrences = items.flatMap(({ network, full }) => (
-    full?.nodes
-      .filter((node) => node.object?.object_type === 'instance' && node.object.ref_id === instanceId)
-      .map((node) => {
-        const parsedMetadata = parseNodeMetadataObject(node.metadata);
-        const sanitizedMetadata = parsedMetadata ? stripLegacyNodeImageMetadata(parsedMetadata) : null;
-        return {
-          nodeId: node.id,
-          networkId: network.id,
-          networkName: network.name,
-          nodeType: node.node_type,
-          metadata: sanitizedMetadata ? stringifyNodeMetadataObject(sanitizedMetadata) : (node.metadata ?? ''),
-        } satisfies InstanceNodeOccurrenceDraft;
-      }) ?? []
-  ));
-
-  return {
-    nodeOccurrences,
-  };
+function isRequiredProperty(property: PropertyRecord): boolean {
+  return property.required_policy === 'required';
 }
 
-function resolveVisualMode(value: string | null | undefined): VisualMode {
-  return isImageSourceValue(value) ? 'image' : 'icon';
+function isEmptyPropertyValue(property: PropertyRecord, value: unknown): boolean {
+  if (property.value_type === 'boolean') return value === '' || value === null || value === undefined;
+  if (property.value_type === 'number') return value === '' || value === null || value === undefined || Number.isNaN(Number(value));
+  return String(value ?? '').trim().length === 0;
 }
 
-function isDateOnlyValue(value: string): boolean {
-  return /^\d{4}-\d{2}-\d{2}$/.test(value);
+function ReadonlySelectValue({ value }: { value: string }): JSX.Element {
+  return (
+    <div className="flex w-full items-center rounded-lg border border-input bg-surface-input px-3 py-2 text-sm text-muted">
+      <span className="min-w-0 flex-1 truncate">{value}</span>
+    </div>
+  );
 }
 
-function formatDateOnly(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+function nextAssignmentStatus(status: string): 'accepted' | 'rejected' | 'superseded' {
+  if (status === 'accepted') return 'rejected';
+  if (status === 'rejected') return 'superseded';
+  return 'accepted';
 }
 
-function formatLocalDateTime(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  const hours = String(date.getHours()).padStart(2, '0');
-  const minutes = String(date.getMinutes()).padStart(2, '0');
-  return `${year}-${month}-${day}T${hours}:${minutes}`;
-}
-
-function subtractOccurrenceBoundary(value: string, isAllDay: boolean): string | null {
-  if (isAllDay || isDateOnlyValue(value)) {
-    const parsed = new Date(`${value}T00:00:00`);
-    if (Number.isNaN(parsed.getTime())) return null;
-    parsed.setDate(parsed.getDate() - 1);
-    return formatDateOnly(parsed);
-  }
-
-  const normalized = value.includes('T') ? value : value.replace(' ', 'T');
-  const parsed = new Date(normalized);
-  if (Number.isNaN(parsed.getTime())) return null;
-  parsed.setMinutes(parsed.getMinutes() - 1);
-
-  if (/[zZ]|[+-]\d{2}:\d{2}$/.test(normalized)) {
-    return parsed.toISOString().slice(0, 16) + 'Z';
-  }
-
-  return formatLocalDateTime(parsed);
-}
-
-function areInstancePropertiesEqual(
-  a: Record<string, string | null>,
-  b: Record<string, string | null>,
-): boolean {
-  const aKeys = Object.keys(a);
-  const bKeys = Object.keys(b);
-  if (aKeys.length !== bKeys.length) return false;
-  for (const key of aKeys) {
-    if (a[key] !== b[key]) return false;
-  }
-  return true;
-}
-
-function areNodeOccurrencesEqual(
-  a: InstanceNodeOccurrenceDraft[],
-  b: InstanceNodeOccurrenceDraft[],
-): boolean {
-  if (a.length !== b.length) return false;
-  return a.every((item, index) => {
-    const other = b[index];
-    return other
-      && item.nodeId === other.nodeId
-      && item.networkId === other.networkId
-      && item.networkName === other.networkName
-      && item.nodeType === other.nodeType
-      && item.metadata === other.metadata;
-  });
-}
-
-function areInstanceEditorStatesEqual(a: InstanceEditorState, b: InstanceEditorState): boolean {
-  return a.title === b.title
-    && a.meaningId === b.meaningId
-    && a.icon === b.icon
-    && a.color === b.color
-    && a.content === b.content
-    && areInstancePropertiesEqual(a.properties, b.properties)
-    && areNodeOccurrencesEqual(a.nodeOccurrences, b.nodeOccurrences);
+function nextObservedStatus(status: string): 'observed' | 'missing' | 'ignored' {
+  if (status === 'observed') return 'missing';
+  if (status === 'missing') return 'ignored';
+  return 'observed';
 }
 
 export function InstanceEditor({ tab }: InstanceEditorProps): JSX.Element {
   const { t } = useI18n();
-  const isDraft = isDraftTab(tab);
+  const snapshot = useDomainStore((s) => s.snapshot);
+  const refreshCurrentWorld = useDomainStore((s) => s.refreshCurrentWorld);
+  const fileTree = useFileStore((s) => s.fileTree);
+  const fileTreeRootDirs = useFileStore((s) => s.rootDirs);
+  const loadFileTree = useFileStore((s) => s.loadFileTree);
+  const loadChildren = useFileStore((s) => s.loadChildren);
   const currentWorld = useWorldStore((s) => s.currentWorld);
-  const instances = useInstanceStore((s) => s.instances);
-  const {
-    createInstance,
-    updateInstance,
-    deleteInstance,
-    loadByWorld: loadInstancesByWorld,
-    upsertProperty,
-    deleteProperty: deleteInstanceProperty,
-  } = useInstanceStore();
-  const meanings = useSchemaStore((s) => Array.isArray(s.schemas) ? s.schemas : []);
-  const fields = useSchemaStore((s) => s.fields);
-  const loadSchemasByWorld = useSchemaStore((s) => s.loadByWorld);
-  const loadFields = useSchemaStore((s) => s.loadFields);
-  const createField = useSchemaStore((s) => s.createField);
-  const currentNetwork = useNetworkStore((s) => s.currentNetwork);
-  const currentNetworkNodes = useNetworkStore((s) => s.nodes);
-  const currentNetworkEdges = useNetworkStore((s) => s.edges);
-  const { addNode, openNetwork, setNodePosition } = useNetworkStore();
-  const [selectedNodeId, setSelectedNodeId] = useState('');
-  const [selectedOccurrenceNetworkData, setSelectedOccurrenceNetworkData] = useState<OccurrenceNetworkData | null>(null);
-  const [instanceVisualMode, setInstanceVisualMode] = useState<VisualMode>('icon');
+  const draft = getInstanceDraftData(tab.draftData);
+  const instance = snapshot?.instances.find((item) => item.id === tab.targetId && item.status !== 'archived') ?? null;
+  const modelId = instance?.home_model_id ?? draft?.modelId ?? null;
+  const model = modelId ? snapshot?.worldNodes.find((node) => node.id === modelId) ?? null : null;
+  const worldRootDir = getWorldRootDir(currentWorld);
+  const kinds = useMemo(
+    () => (snapshot?.kinds ?? []).filter((item) => item.model_id === modelId && item.status !== 'archived'),
+    [modelId, snapshot?.kinds],
+  );
+  const assignments = useMemo(
+    () => (snapshot?.kindAssignments ?? []).filter((item) => item.instance_id === tab.targetId && item.status !== 'archived'),
+    [snapshot?.kindAssignments, tab.targetId],
+  );
+  const resources = useMemo(
+    () => (snapshot?.resources ?? []).filter((item) => item.root_id === model?.root_id && item.observed_status !== 'archived'),
+    [model?.root_id, snapshot?.resources],
+  );
+  const resourceLinks = useMemo(
+    () => (snapshot?.instanceResourceLinks ?? []).filter((item) => item.instance_id === tab.targetId),
+    [snapshot?.instanceResourceLinks, tab.targetId],
+  );
+  const propertyValues = useMemo(
+    () => (snapshot?.propertyValues ?? []).filter((item) => item.instance_id === tab.targetId && item.status !== 'archived'),
+    [snapshot?.propertyValues, tab.targetId],
+  );
+  const relations = useMemo(
+    () => (snapshot?.relations ?? []).filter((item) => item.subject_instance_id === tab.targetId || item.object_instance_id === tab.targetId),
+    [snapshot?.relations, tab.targetId],
+  );
+  const relationKinds = useMemo(
+    () => (snapshot?.relationKinds ?? []).filter((item) => item.model_id === modelId && item.status !== 'archived'),
+    [modelId, snapshot?.relationKinds],
+  );
+  const relationEndpointPairs = snapshot?.relationKindEndpointPairs ?? [];
+  const otherInstances = useMemo(
+    () => (snapshot?.instances ?? []).filter((item) => item.id !== tab.targetId && item.status !== 'archived'),
+    [snapshot?.instances, tab.targetId],
+  );
+  const assignedKindIds = useMemo(() => new Set(assignments.map((item) => item.kind_id)), [assignments]);
+  const linkedResourceIds = useMemo(() => new Set(resourceLinks.map((item) => item.resource_id)), [resourceLinks]);
 
-  const instance = isDraft ? undefined : instances.find((c) => c.id === tab.targetId);
-  useRenderPerfTrace('InstanceEditor', {
-    tabId: tab.id,
-    targetId: tab.targetId,
-    isDraft,
-    instanceFound: Boolean(instance),
-    instancesCount: instances.length,
-    schemasCount: meanings.length,
-    currentNetworkId: currentNetwork?.id ?? null,
-    currentNetworkNodeCount: currentNetworkNodes.length,
-    currentNetworkEdgeCount: currentNetworkEdges.length,
-  });
-  const nodeTypeOptions = useMemo<Array<{ value: NodeType; label: string }>>(() => ([
-    { value: 'basic', label: t('instance.nodeRoleOptions.basic' as never) },
-    { value: 'portal', label: t('instance.nodeRoleOptions.portal' as never) },
-    { value: 'group', label: t('instance.nodeRoleOptions.group' as never) },
-    { value: 'hierarchy', label: t('instance.nodeRoleOptions.hierarchy' as never) },
-  ]), [t]);
-  const instanceVisualModeOptions = useMemo(() => ([
-    { value: 'icon', label: t('instance.visualModeOptions.icon' as never) },
-    { value: 'image', label: t('instance.visualModeOptions.image' as never) },
-  ]), [t]);
+  const [displayName, setDisplayName] = useState('');
+  const [kindId, setKindId] = useState('');
+  const [propertyKindId, setPropertyKindId] = useState('');
+  const [propertyDrafts, setPropertyDrafts] = useState<Record<string, unknown>>({});
+  const [resourceId, setResourceId] = useState('');
+  const [resourcePath, setResourcePath] = useState('');
+  const [expandedResourcePaths, setExpandedResourcePaths] = useState<Set<string>>(() => new Set());
+  const [relationKindId, setRelationKindId] = useState('');
+  const [objectInstanceId, setObjectInstanceId] = useState('');
+  const [subjectKindId, setSubjectKindId] = useState('');
+  const [objectKindId, setObjectKindId] = useState('');
+  const [propertyErrors, setPropertyErrors] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const syncInstanceProperties = useCallback(async (
-    instanceId: string,
-    schemaId: string | null,
-    nextProperties: Record<string, string | null>,
-  ) => {
-    const existingProperties = await instancePropertyService.getByInstance(instanceId);
-    let validFieldIds = new Set<string>();
-    if (schemaId) {
-      let schemaFields = useSchemaStore.getState().fields[schemaId] ?? [];
-      if (schemaFields.length === 0) {
-        await useSchemaStore.getState().loadFields(schemaId);
-        schemaFields = useSchemaStore.getState().fields[schemaId] ?? [];
+  useEffect(() => {
+    if (instance) setDisplayName(instance.display_name);
+  }, [instance]);
+
+  useEffect(() => {
+    if (!worldRootDir) return;
+    const normalizedRoot = normalizeAbsolutePath(worldRootDir);
+    const hasRoot = fileTreeRootDirs.some((dir) => normalizeAbsolutePath(dir) === normalizedRoot);
+    if (!hasRoot) void loadFileTree(worldRootDir);
+  }, [fileTreeRootDirs, loadFileTree, worldRootDir]);
+
+  useEffect(() => {
+    const firstAssignedKind = assignments.find((assignment) => assignment.status !== 'archived');
+    if (!propertyKindId && firstAssignedKind) setPropertyKindId(firstAssignedKind.kind_id);
+  }, [assignments, propertyKindId]);
+
+  const kindOptions = kinds
+    .filter((kind) => !assignedKindIds.has(kind.id))
+    .map((kind) => ({ value: kind.id, label: kind.name }));
+  const assignedKindOptions = assignments
+    .map((assignment) => kinds.find((kind) => kind.id === assignment.kind_id))
+    .filter((kind): kind is NonNullable<typeof kind> => Boolean(kind))
+    .map((kind) => ({ value: kind.id, label: kind.name }));
+  const resourceOptions = resources
+    .filter((resource) => !linkedResourceIds.has(resource.id))
+    .map((resource) => ({ value: resource.id, label: labelOfResource(resource) }));
+  const selectedKindProperties = useMemo(
+    () => (snapshot?.properties ?? []).filter((property) => property.kind_id === propertyKindId && property.status !== 'archived'),
+    [propertyKindId, snapshot?.properties],
+  );
+  const assignedProperties = useMemo(
+    () => (snapshot?.properties ?? []).filter((property) => assignedKindIds.has(property.kind_id) && property.status !== 'archived'),
+    [assignedKindIds, snapshot?.properties],
+  );
+  const visibleResourceItems = useMemo(
+    () => buildVisibleResourceItems(fileTree, worldRootDir, expandedResourcePaths),
+    [expandedResourcePaths, fileTree, worldRootDir],
+  );
+  const relationKindOptions = relationKinds.map((relationKind) => ({ value: relationKind.id, label: relationKind.name }));
+  const currentAssignedKinds = useMemo(
+    () => assignments.map((assignment) => kinds.find((kind) => kind.id === assignment.kind_id)).filter((kind): kind is NonNullable<typeof kind> => Boolean(kind)),
+    [assignments, kinds],
+  );
+  const selectedRelationKind = useMemo(
+    () => relationKinds.find((relationKind) => relationKind.id === relationKindId) ?? null,
+    [relationKindId, relationKinds],
+  );
+  const selectedRelationPairs = useMemo(
+    () => relationEndpointPairs.filter((pair) => pair.relation_kind_id === relationKindId),
+    [relationEndpointPairs, relationKindId],
+  );
+  const allowedObjectKindIds = useMemo(() => {
+    if (!selectedRelationKind || selectedRelationPairs.length === 0) return null;
+    const subjectIds = subjectKindId ? [subjectKindId] : currentAssignedKinds.map((kind) => kind.id);
+    const allowed = new Set<string>();
+    for (const subjectId of subjectIds) {
+      for (const pair of selectedRelationPairs) {
+        if (pair.subject_kind_id === subjectId) allowed.add(pair.object_kind_id);
+        if (!selectedRelationKind.directed && pair.object_kind_id === subjectId) allowed.add(pair.subject_kind_id);
       }
-      validFieldIds = new Set(schemaFields.map((field) => field.id));
     }
-    const nextPropertyMap = new Map(Object.entries(nextProperties));
-
-    await Promise.all(
-      existingProperties
-        .filter((property) => (
-          !validFieldIds.has(property.field_id)
-          || !nextPropertyMap.has(property.field_id)
-          || nextPropertyMap.get(property.field_id) == null
-        ))
-        .map((property) => deleteInstanceProperty(property.id, instanceId)),
-    );
-
-    await Promise.all(
-      Object.entries(nextProperties)
-        .filter(([fieldId, value]) => value != null && validFieldIds.has(fieldId))
-        .map(([fieldId, value]) => upsertProperty({ instance_id: instanceId, field_id: fieldId, value })),
-    );
-  }, [deleteInstanceProperty, upsertProperty]);
-
-  const maybePromoteOccurrenceToSeries = useCallback(async (
-    instanceId: string,
-    state: InstanceEditorState,
-  ) => {
-    const liveInstance = useInstanceStore.getState().instances.find((item) => item.id === instanceId);
-    if (!liveInstance?.recurrence_source_instance_id || !state.meaningId) return;
-
-    const activeFields = useSchemaStore.getState().fields[state.meaningId] ?? [];
-    const recurrenceFrequencyField = activeFields.find((field) => getFieldMeaningSlot(field) === 'recurrence_frequency');
-    const fallbackRecurrenceRuleField = activeFields.find((field) => getFieldMeaningSlot(field) === 'recurrence_rule');
-    const startAtField = activeFields.find((field) => getFieldMeaningSlot(field) === 'start_at');
-    const allDayField = activeFields.find((field) => getFieldMeaningSlot(field) === 'all_day');
-
-    const recurrenceFrequency = recurrenceFrequencyField ? state.properties[recurrenceFrequencyField.id]?.trim() : '';
-    const fallbackRecurrenceRule = fallbackRecurrenceRuleField ? state.properties[fallbackRecurrenceRuleField.id]?.trim() : '';
-    const startAtValue = startAtField ? state.properties[startAtField.id] : null;
-    const isAllDay = allDayField ? state.properties[allDayField.id] === 'true' : false;
-
-    if ((!recurrenceFrequency && !fallbackRecurrenceRule) || !startAtValue) return;
-
-    let recurrenceUntilField = activeFields.find((field) => getFieldMeaningSlot(field) === 'recurrence_until');
-    if (!recurrenceUntilField) {
-      recurrenceUntilField = await createField({
-        schema_id: state.meaningId,
-        name: t(getMeaningSlotLabelKey('recurrence_until') as never),
-        field_type: startAtField?.field_type === 'datetime' && !isAllDay ? 'datetime' : 'date',
-        sort_order: activeFields.length,
-        required: false,
-        meaning_slot: 'recurrence_until',
-        meaning_key: 'time.recurrence_until',
-        meaning_bindings: fieldMeaningToMeaningBindings('time.recurrence_until'),
-        slot_binding_locked: true,
-        generated_by_meaning: true,
-      });
-    }
-
-    const previousBoundary = subtractOccurrenceBoundary(startAtValue, isAllDay);
-    if (!previousBoundary) return;
-
-    await upsertProperty({
-      instance_id: liveInstance.recurrence_source_instance_id,
-      field_id: recurrenceUntilField.id,
-      value: previousBoundary,
-    });
-
-    await updateInstance(instanceId, {
-      recurrence_source_instance_id: null,
-      recurrence_occurrence_key: null,
-    });
-  }, [createField, t, updateInstance, upsertProperty]);
-
-  useEffect(() => {
-    if (!isDraft && !instance && currentWorld) {
-      loadInstancesByWorld(currentWorld.id);
-    }
-  }, [isDraft, instance, currentWorld, loadInstancesByWorld]);
-
-  useEffect(() => {
-    if (currentWorld) {
-      void loadSchemasByWorld(currentWorld.id);
-    }
-  }, [currentWorld, loadSchemasByWorld]);
-
-  const session = useEditorSession<InstanceEditorState>({
-    tabId: tab.id,
-    load: isDraft
-      ? () => ({
-          title: tab.title,
-          meaningId: null,
-          icon: null,
-          color: null,
-          content: null,
-          properties: {},
-          nodeOccurrences: [],
-        })
-      : async () => {
-          const c = useInstanceStore.getState().instances.find((cc) => cc.id === tab.targetId);
-          const props = await instancePropertyService.getByInstance(tab.targetId);
-          const propsMap: Record<string, string | null> = {};
-          for (const p of props) {
-            propsMap[p.field_id] = p.value;
-          }
-          const occurrenceState = currentWorld
-            ? await loadInstanceNodeOccurrences(currentWorld.id, tab.targetId)
-            : { nodeOccurrences: [] };
-          return {
-            title: c?.title ?? '',
-            meaningId: c?.schema_id ?? null,
-            icon: c?.icon ?? null,
-            color: c?.color ?? null,
-            content: c?.content ?? null,
-            properties: propsMap,
-            nodeOccurrences: occurrenceState.nodeOccurrences,
-          };
-        },
-    save: isDraft
-      ? async (state) => {
-          if (!currentWorld || !state.title.trim()) return;
-          const draft = tab.draftData;
-          const newInstance = await createInstance({
-            root_network_id: currentWorld.id,
-            title: state.title.trim(),
-            schema_id: state.meaningId || undefined,
-            icon: state.icon || undefined,
-            color: state.color || undefined,
-            content: state.content || undefined,
-          });
-          await syncInstanceProperties(newInstance.id, state.meaningId, state.properties);
-          if (draft?.networkId) {
-            const instanceObj = await objectService.getByRef('instance', newInstance.id);
-            if (instanceObj) {
-              const node = await addNode({
-                network_id: draft.networkId,
-                object_id: instanceObj.id,
-              });
-              const parentGroupNode = draft.parentGroupNodeId
-                ? useNetworkStore.getState().nodes.find((item) => item.id === draft.parentGroupNodeId)
-                : undefined;
-              if (draft.parentGroupNodeId) {
-                await networkService.edge.create({
-                  network_id: draft.networkId,
-                  source_node_id: draft.parentGroupNodeId,
-                  target_node_id: node.id,
-                  meaning_id: systemEdgeMeaningId(currentWorld.id, CONTAINS_MEANING_KEY),
-                });
-                if (parentGroupNode?.node_type === 'hierarchy') {
-                  await networkService.edge.create({
-                    network_id: draft.networkId,
-                    source_node_id: draft.parentGroupNodeId,
-                    target_node_id: node.id,
-                    meaning_id: systemEdgeMeaningId(currentWorld.id, HIERARCHY_PARENT_MEANING_KEY),
-                  });
-                }
-              }
-              const positionX = typeof draft.positionX === 'number' ? draft.positionX : 0;
-              const positionY = typeof draft.positionY === 'number' ? draft.positionY : 0;
-              const positionPayload: Record<string, number> = { x: positionX, y: positionY };
-              if (typeof draft.slotIndex === 'number') {
-                positionPayload.slotIndex = draft.slotIndex;
-              }
-              await setNodePosition(node.id, JSON.stringify(positionPayload));
-            }
-            await openNetwork(draft.networkId);
-            const networkStore = useNetworkStore.getState();
-            if (networkStore.currentNetwork?.root_network_id) {
-              await networkStore.loadNetworkTree(networkStore.currentNetwork.root_network_id);
-            }
-          }
-          const editorStore = useEditorStore.getState();
-          editorStore.closeTab(tab.id);
-          editorStore.openTab({
-            type: 'instance',
-            targetId: newInstance.id,
-            title: newInstance.title,
-          });
-        }
-      : async (state) => {
-          const instanceId = tab.targetId;
-          await updateInstance(instanceId, {
-            title: state.title,
-            schema_id: state.meaningId,
-            icon: state.icon,
-            color: state.color,
-            content: state.content,
-          });
-          await syncInstanceProperties(instanceId, state.meaningId, state.properties);
-          await maybePromoteOccurrenceToSeries(instanceId, state);
-          await Promise.all(state.nodeOccurrences.map(async (occurrence) => {
-            const nextMetadata = occurrence.metadata.trim() ? occurrence.metadata : null;
-            if (currentNetwork?.id === occurrence.networkId) {
-              await useNetworkStore.getState().updateNode(occurrence.nodeId, {
-                node_type: occurrence.nodeType,
-                metadata: nextMetadata,
-              });
-              return;
-            }
-
-            await networkService.node.update(occurrence.nodeId, {
-              node_type: occurrence.nodeType,
-              metadata: nextMetadata,
-            });
-          }));
-          useEditorStore.getState().updateTitle(tab.id, state.title);
-        },
-    isEqual: areInstanceEditorStatesEqual,
-    deps: isDraft ? [] : [tab.targetId, instance?.schema_id, currentWorld?.id],
-  });
-
-  useEffect(() => {
-    if (session.isLoading) return;
-    setInstanceVisualMode(resolveVisualMode(session.state?.icon));
-  }, [session.isLoading, session.state?.icon]);
-
-  const currentMeaningId = session.state?.meaningId;
-  useEffect(() => {
-    if (currentMeaningId && !fields[currentMeaningId]) {
-      loadFields(currentMeaningId);
-    }
-  }, [currentMeaningId, fields, loadFields]);
-
-  useEffect(() => {
-    if (!isDraft || !currentMeaningId) return;
-    const arch = meanings.find((a) => a.id === currentMeaningId);
-    if (arch) {
-      session.setState((prev) => ({
-        ...prev,
-        icon: prev.icon || arch.icon || null,
-        color: prev.color || arch.color || null,
-      }));
-    }
-  }, [isDraft, currentMeaningId]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const allowedIds = tab.draftData?.allowedMeaningIds;
-  const filteredMeanings = allowedIds
-    ? meanings.filter((a) => allowedIds.includes(a.id))
-    : meanings;
-
-  useEffect(() => {
-    if (isDraft && allowedIds && !currentMeaningId && filteredMeanings.length > 0) {
-      session.setState((prev) => ({ ...prev, meaningId: filteredMeanings[0].id }));
-    }
-  }, [isDraft, allowedIds, currentMeaningId, filteredMeanings]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const meaningOptions = useMemo(() => [
-    ...(allowedIds ? [] : [{ value: '', label: t('common.none') ?? 'None' }]),
-    ...filteredMeanings.map((a) => ({ value: a.id, label: a.name })),
-  ], [filteredMeanings, allowedIds, t]);
-
-  const meaningFields = currentMeaningId
-      ? (fields[currentMeaningId] ?? []).filter((field) => getFieldMeaningSlot(field) !== 'recurrence_rule')
-    : [];
-
-  const nodeOccurrences = session.state?.nodeOccurrences ?? [];
-  const selectedNodeOccurrence = useMemo(
-    () => nodeOccurrences.find((item) => item.nodeId === selectedNodeId),
-    [nodeOccurrences, selectedNodeId],
+    return allowed;
+  }, [currentAssignedKinds, selectedRelationKind, selectedRelationPairs, subjectKindId]);
+  const targetInstanceOptions = useMemo(() => {
+    if (!allowedObjectKindIds) return otherInstances.map((item) => ({ value: item.id, label: item.display_name }));
+    return otherInstances
+      .filter((item) => (snapshot?.kindAssignments ?? []).some((assignment) =>
+        assignment.instance_id === item.id
+        && assignment.status !== 'archived'
+        && allowedObjectKindIds.has(assignment.kind_id),
+      ))
+      .map((item) => ({ value: item.id, label: item.display_name }));
+  }, [allowedObjectKindIds, otherInstances, snapshot?.kindAssignments]);
+  const selectedObjectAssignments = useMemo(
+    () => (snapshot?.kindAssignments ?? []).filter((assignment) => assignment.instance_id === objectInstanceId && assignment.status !== 'archived'),
+    [objectInstanceId, snapshot?.kindAssignments],
+  );
+  const selectedObjectKinds = useMemo(
+    () => selectedObjectAssignments
+      .map((assignment) => (snapshot?.kinds ?? []).find((kind) => kind.id === assignment.kind_id))
+      .filter((kind): kind is NonNullable<typeof kind> => Boolean(kind))
+      .filter((kind) => !allowedObjectKindIds || allowedObjectKindIds.has(kind.id)),
+    [allowedObjectKindIds, selectedObjectAssignments, snapshot?.kinds],
+  );
+  const subjectKindOptions = currentAssignedKinds.map((kind) => ({ value: kind.id, label: kind.name }));
+  const objectKindOptions = selectedObjectKinds.map((kind) => ({ value: kind.id, label: kind.name }));
+  const hasPropertyDraftChanges = useMemo(
+    () => Object.entries(propertyDrafts).some(([propertyId, value]) => {
+      const property = snapshot?.properties.find((item) => item.id === propertyId);
+      if (!property) return false;
+      const current = parseStoredValue(getPropertyValue(propertyId)?.value_json ?? null);
+      return !valuesEqual(stringifyValue(property, value), current);
+    }),
+    [propertyDrafts, propertyValues, snapshot?.properties],
   );
 
   useEffect(() => {
-    setSelectedNodeId((current) => {
-      if (current && nodeOccurrences.some((item) => item.nodeId === current)) return current;
-      return resolvePreferredNodeId(nodeOccurrences, tab.nodeId, tab.networkId);
-    });
-  }, [nodeOccurrences, tab.networkId, tab.nodeId]);
+    if (subjectKindId && !currentAssignedKinds.some((kind) => kind.id === subjectKindId)) {
+      setSubjectKindId('');
+    }
+  }, [currentAssignedKinds, subjectKindId]);
 
   useEffect(() => {
-    if (!selectedNodeOccurrence) {
-      setSelectedOccurrenceNetworkData(null);
-      return;
+    if (objectInstanceId && !targetInstanceOptions.some((option) => option.value === objectInstanceId)) {
+      setObjectInstanceId('');
+      setObjectKindId('');
     }
-
-    if (currentNetwork?.id === selectedNodeOccurrence.networkId) {
-      setSelectedOccurrenceNetworkData({
-        nodes: currentNetworkNodes,
-        edges: currentNetworkEdges,
-      });
-      return;
-    }
-
-    let ignore = false;
-    networkService.getFull(selectedNodeOccurrence.networkId).then((full) => {
-      if (ignore) return;
-      setSelectedOccurrenceNetworkData(full ? { nodes: full.nodes, edges: full.edges } : null);
-    });
-    return () => { ignore = true; };
-  }, [currentNetwork?.id, currentNetworkEdges, currentNetworkNodes, selectedNodeOccurrence]);
-
-  const selectedNodeMetadataDraft = selectedNodeOccurrence?.metadata ?? '';
-  const parsedNodeMetadataDraft = useMemo(
-    () => parseNodeMetadataObject(selectedNodeMetadataDraft),
-    [selectedNodeMetadataDraft],
-  );
-
-  const selectedNodeConfig = useMemo(
-    () => extractNodeConfig(parsedNodeMetadataDraft),
-    [parsedNodeMetadataDraft],
-  );
-
-  const isGroupNodeOccurrence = selectedNodeOccurrence?.nodeType === 'group';
-
-  const directChildIds = useMemo(() => {
-    if (!selectedOccurrenceNetworkData || !selectedNodeOccurrence) return new Set<string>();
-    return new Set(
-      selectedOccurrenceNetworkData.edges
-        .filter((edge) => isContainsEdge(edge) && edge.source_node_id === selectedNodeOccurrence.nodeId)
-        .map((edge) => edge.target_node_id),
-    );
-  }, [selectedOccurrenceNetworkData, selectedNodeOccurrence]);
-
-  const sortableInstanceNodes = useMemo(() => {
-    if (!selectedOccurrenceNetworkData) return [];
-
-    const directInstanceNodes = selectedOccurrenceNetworkData.nodes.filter((node) => (
-      directChildIds.has(node.id)
-      && node.object?.object_type === 'instance'
-      && !!node.instance?.schema_id
-    ));
-
-    if (directInstanceNodes.length > 0) {
-      return directInstanceNodes;
-    }
-
-    return selectedOccurrenceNetworkData.nodes.filter((node) => (
-      node.object?.object_type === 'instance'
-      && !!node.instance?.schema_id
-    ));
-  }, [directChildIds, selectedOccurrenceNetworkData]);
-
-  const sortableMeaningIds = useMemo(() => (
-    Array.from(new Set(
-      sortableInstanceNodes
-        .map((node) => node.instance?.schema_id)
-        .filter((value): value is string => !!value),
-    ))
-  ), [sortableInstanceNodes]);
+  }, [objectInstanceId, targetInstanceOptions]);
 
   useEffect(() => {
-    for (const meaningId of sortableMeaningIds) {
-      if (!fields[meaningId]) {
-        void loadFields(meaningId);
-      }
+    if (objectKindId && !selectedObjectKinds.some((kind) => kind.id === objectKindId)) {
+      setObjectKindId('');
     }
-  }, [fields, loadFields, sortableMeaningIds]);
+  }, [objectKindId, selectedObjectKinds]);
 
-  const meaningSortOptions = useMemo(() => (
-    MEANING_SLOT_DEFINITIONS.map((definition) => ({
-      value: definition.fieldMeaning,
-      label: t(getMeaningSlotLabelKey(definition.key) as never),
-    }))
-  ), [t]);
+  const displayTitle = displayName.trim() || (draft ? t('domainEditor.newInstance' as never) : instance?.display_name || t('domainEditor.instance' as never));
+  const isDirty = draft
+    ? displayName.trim().length > 0 || kindId.length > 0 || resourceId.length > 0
+    : Boolean(instance && (displayName !== instance.display_name || hasPropertyDraftChanges));
 
-  const propertySortOptions = useMemo(() => {
-    const deduped = new Map<string, { value: string; label: string }>();
+  useEffect(() => {
+    useEditorStore.getState().setDirty(tab.id, isDirty);
+  }, [isDirty, tab.id]);
 
-    for (const meaningId of sortableMeaningIds) {
-      const meaning = meanings.find((item) => item.id === meaningId);
-      for (const field of fields[meaningId] ?? []) {
-        deduped.set(field.id, {
-          value: field.id,
-          label: meaning ? `${field.name} - ${meaning.name}` : field.name,
-        });
-      }
-    }
-
-    return Array.from(deduped.values()).sort((left, right) => left.label.localeCompare(right.label));
-  }, [meanings, fields, sortableMeaningIds, t]);
-
-  const canEditNodeConfig = !!selectedNodeOccurrence && parsedNodeMetadataDraft !== null;
-
-  const updateSelectedOccurrenceDraft = useCallback((
-    updater: (occurrence: InstanceNodeOccurrenceDraft) => InstanceNodeOccurrenceDraft,
-  ) => {
-    if (!selectedNodeOccurrence) return;
-    session.setState((prev) => ({
-      ...prev,
-      nodeOccurrences: prev.nodeOccurrences.map((occurrence) => (
-        occurrence.nodeId === selectedNodeOccurrence.nodeId ? updater(occurrence) : occurrence
-      )),
-    }));
-  }, [selectedNodeOccurrence, session]);
-
-  const updateSelectedOccurrenceMetadata = useCallback((metadata: string) => {
-    updateSelectedOccurrenceDraft((occurrence) => ({ ...occurrence, metadata }));
-  }, [updateSelectedOccurrenceDraft]);
-
-  const updateSelectedOccurrenceNodeConfig = useCallback((nodeConfig: NodeConfig | null) => {
-    const parsed = parseNodeMetadataObject(selectedNodeMetadataDraft);
-    if (parsed === null) return;
-    updateSelectedOccurrenceMetadata(stringifyNodeMetadataObject(upsertNodeConfigMetadata(parsed, nodeConfig)));
-  }, [selectedNodeMetadataDraft, updateSelectedOccurrenceMetadata]);
-
-  const updateStructuredNodeConfigDraft = useCallback((updater: (config: NodeConfig) => NodeConfig) => {
-    if (!selectedNodeConfig) return;
-    updateSelectedOccurrenceNodeConfig(updater(selectedNodeConfig));
-  }, [selectedNodeConfig, updateSelectedOccurrenceNodeConfig]);
-
-  const nodeOccurrenceOptions = useMemo(() => nodeOccurrences.map((item) => {
-    const sameNetworkCount = nodeOccurrences.filter((candidate) => candidate.networkId === item.networkId).length;
-    const occurrenceIndex = nodeOccurrences
-      .filter((candidate) => candidate.networkId === item.networkId)
-      .findIndex((candidate) => candidate.nodeId === item.nodeId);
-    const suffix = sameNetworkCount > 1 ? ` / node ${occurrenceIndex + 1}` : '';
-    return {
-      value: item.nodeId,
-      label: `${item.networkName}${suffix}`,
-    };
-  }), [nodeOccurrences]);
-
-  const nodeLayoutOptions = useMemo(() => ([
-    { value: '', label: t('common.none') ?? 'None' },
-    { value: 'freeform', label: t('instance.nodeLayoutKindOptions.freeform' as never) },
-    { value: 'grid', label: t('instance.nodeLayoutKindOptions.grid' as never) },
-    { value: 'list', label: t('instance.nodeLayoutKindOptions.list' as never) },
-  ]), [t]);
-
-  const sortKindOptions = useMemo(() => ([
-    { value: '', label: t('common.none') ?? 'None' },
-    { value: 'meaning_binding', label: t('instance.nodeSortKindOptions.meaning_slot' as never) },
-    { value: 'property', label: t('instance.nodeSortKindOptions.property' as never) },
-  ]), [t]);
-
-  const sortDirectionOptions = useMemo(() => ([
-    { value: 'asc', label: t('instance.nodeSortDirectionOptions.asc' as never) },
-    { value: 'desc', label: t('instance.nodeSortDirectionOptions.desc' as never) },
-  ]), [t]);
-
-  const emptyPlacementOptions = useMemo(() => ([
-    { value: 'last', label: t('instance.nodeSortEmptyOptions.last' as never) },
-    { value: 'first', label: t('instance.nodeSortEmptyOptions.first' as never) },
-  ]), [t]);
-
-  const sortableNodeConfig = isSortableNodeConfig(selectedNodeConfig) ? selectedNodeConfig : null;
-  const sortableNodeSortConfig = sortableNodeConfig?.sort ?? null;
-
-  const handleInstanceVisualModeChange = useCallback((mode: VisualMode) => {
-    setInstanceVisualMode(mode);
-    session.setState((prev) => {
-      const currentIcon = prev.icon ?? '';
-      const currentMode = resolveVisualMode(currentIcon);
-      return currentMode === mode ? prev : { ...prev, icon: null };
-    });
-  }, [session]);
-
-  if (!isDraft && !instance) {
-    return (
-      <div className="flex h-full items-center justify-center text-xs text-muted">
-        Loading...
-      </div>
-    );
+  function handleDisplayNameChange(nextName: string): void {
+    setDisplayName(nextName);
+    useEditorStore.getState().updateTitle(tab.id, nextName.trim() || (draft ? t('domainEditor.newInstance' as never) : t('domainEditor.instance' as never)));
   }
 
-  if (session.isLoading) return <></>;
+  function toggleResourceNode(node: FileTreeNode): void {
+    if (node.type !== 'directory') return;
+    setExpandedResourcePaths((current) => {
+      const next = new Set(current);
+      if (next.has(node.path)) {
+        next.delete(node.path);
+      } else {
+        next.add(node.path);
+        if (!node.children && node.hasChildren !== false) void loadChildren(node.path);
+      }
+      return next;
+    });
+  }
 
-  const update = (patch: Partial<InstanceEditorState>) => {
-    session.setState((prev) => ({ ...prev, ...patch }));
-  };
+  function getPropertyValue(propertyId: string): PropertyValueRecord | null {
+    return propertyValues.find((value) => value.property_id === propertyId) ?? null;
+  }
 
-  const handleDelete = async () => {
-    if (isDraft) return;
-    await deleteInstance(tab.targetId);
-    useEditorStore.getState().closeTab(tab.id);
-  };
+  function getPropertyDraft(property: PropertyRecord): unknown {
+    if (property.id in propertyDrafts) return propertyDrafts[property.id];
+    return parseStoredValue(getPropertyValue(property.id)?.value_json ?? null);
+  }
 
-  const selectedMeaningName = session.state.meaningId ? (() => {
-    const meaning = meanings.find((a) => a.id === session.state.meaningId);
-    return meaning ? meaning.name : null;
-  })() : null;
+  function setPropertyDraft(propertyId: string, value: unknown): void {
+    setPropertyDrafts((current) => ({ ...current, [propertyId]: value }));
+    setPropertyErrors((current) => {
+      if (!current[propertyId]) return current;
+      const next = { ...current };
+      delete next[propertyId];
+      return next;
+    });
+  }
+
+  async function saveName(): Promise<void> {
+    if ((!instance && !draft) || !displayName.trim()) return;
+    const nextPropertyErrors: Record<string, string> = {};
+    if (!draft) {
+      for (const property of assignedProperties) {
+        if (!isRequiredProperty(property)) continue;
+        if (isEmptyPropertyValue(property, getPropertyDraft(property))) {
+          nextPropertyErrors[property.id] = t('domainEditor.requiredPropertyMissing' as never);
+        }
+      }
+    }
+    if (Object.keys(nextPropertyErrors).length > 0) {
+      setPropertyErrors(nextPropertyErrors);
+      setError(t('domainEditor.requiredPropertyMissing' as never));
+      return;
+    }
+    setSaving('name');
+    setError(null);
+    try {
+      if (draft) {
+        const created = await domainService.rpc<InstanceRecord>(NETIOR_RPC_METHODS.instanceCreate, {
+          modelId: draft.modelId,
+          displayName: displayName.trim(),
+        });
+        if (kindId) {
+          await domainService.rpc<KindAssignmentRecord>(NETIOR_RPC_METHODS.instanceAssignKind, {
+            instanceId: created.id,
+            kindId,
+            status: 'accepted',
+          });
+        }
+        if (resourceId) {
+          await domainService.rpc<InstanceResourceLinkRecord>(NETIOR_RPC_METHODS.instanceLinkResource, {
+            instanceId: created.id,
+            resourceId,
+          });
+        }
+        await refreshCurrentWorld();
+        useEditorStore.getState().updateTitle(tab.id, created.display_name);
+        useEditorStore.getState().setDirty(tab.id, false);
+        useEditorStore.getState().openTab({
+          type: 'instance',
+          targetId: created.id,
+          title: created.display_name,
+          rootNetworkId: draft.rootId,
+        });
+        return;
+      }
+      if (!instance) return;
+      let current = instance;
+      if (displayName.trim() !== instance.display_name) {
+        current = await domainService.rpc<InstanceRecord>(NETIOR_RPC_METHODS.instanceUpdateDisplayName, {
+          id: instance.id,
+          displayName: displayName.trim(),
+        });
+      }
+      for (const [propertyId, draftValue] of Object.entries(propertyDrafts)) {
+        const property = snapshot?.properties.find((item) => item.id === propertyId);
+        if (!property) continue;
+        const value = stringifyValue(property, draftValue);
+        const existing = getPropertyValue(propertyId);
+        const currentValue = parseStoredValue(existing?.value_json ?? null);
+        if (valuesEqual(value, currentValue)) continue;
+        if (existing) {
+          await domainService.rpc<PropertyValueRecord>(NETIOR_RPC_METHODS.propertyValueUpdate, {
+            id: existing.id,
+            value,
+            status: 'accepted',
+          });
+        } else {
+          await domainService.rpc<PropertyValueRecord>(NETIOR_RPC_METHODS.propertyValueCreate, {
+            instanceId: instance.id,
+            propertyId,
+            value,
+            status: 'accepted',
+          });
+        }
+      }
+      setPropertyDrafts({});
+      setPropertyErrors({});
+      await refreshCurrentWorld();
+      useEditorStore.getState().updateTitle(tab.id, current.display_name);
+      useEditorStore.getState().setDirty(tab.id, false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  async function assignKind(): Promise<void> {
+    if (!instance || !kindId) return;
+    setSaving('kind');
+    setError(null);
+    try {
+      await domainService.rpc<KindAssignmentRecord>(NETIOR_RPC_METHODS.instanceAssignKind, {
+        instanceId: instance.id,
+        kindId,
+        status: 'accepted',
+      });
+      setKindId('');
+      await refreshCurrentWorld();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  async function removeKindAssignment(assignment: KindAssignmentRecord): Promise<void> {
+    setSaving(`kind-remove:${assignment.id}`);
+    setError(null);
+    try {
+      await domainService.rpc<boolean>(NETIOR_RPC_METHODS.instanceUnassignKind, { assignmentId: assignment.id });
+      if (propertyKindId === assignment.kind_id) setPropertyKindId('');
+      await refreshCurrentWorld();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  async function cycleKindAssignmentStatus(assignment: KindAssignmentRecord): Promise<void> {
+    const next = nextAssignmentStatus(assignment.status);
+    const method = next === 'accepted'
+      ? NETIOR_RPC_METHODS.kindAssignmentAccept
+      : next === 'rejected'
+        ? NETIOR_RPC_METHODS.kindAssignmentReject
+        : NETIOR_RPC_METHODS.kindAssignmentSupersede;
+    setSaving(`kind-status:${assignment.id}`);
+    setError(null);
+    try {
+      await domainService.rpc<KindAssignmentRecord>(method, { assignmentId: assignment.id });
+      await refreshCurrentWorld();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  async function linkResource(): Promise<void> {
+    if (!instance || !resourceId) return;
+    setSaving('resource');
+    setError(null);
+    try {
+      await domainService.rpc<InstanceResourceLinkRecord>(NETIOR_RPC_METHODS.instanceLinkResource, {
+        instanceId: instance.id,
+        resourceId,
+      });
+      setResourceId('');
+      await refreshCurrentWorld();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  async function unlinkResource(link: InstanceResourceLinkRecord): Promise<void> {
+    setSaving(`resource-unlink:${link.id}`);
+    setError(null);
+    try {
+      await domainService.rpc<boolean>(NETIOR_RPC_METHODS.instanceUnlinkResource, { linkId: link.id });
+      await refreshCurrentWorld();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  async function cycleResourceStatus(resourceIdToUpdate: string, currentStatus: string): Promise<void> {
+    setSaving(`resource-status:${resourceIdToUpdate}`);
+    setError(null);
+    try {
+      await domainService.rpc(NETIOR_RPC_METHODS.resourceUpdateObservedStatus, {
+        resourceId: resourceIdToUpdate,
+        observedStatus: nextObservedStatus(currentStatus),
+      });
+      await refreshCurrentWorld();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  async function registerAndLinkResource(): Promise<void> {
+    if (!instance || !model?.root_id || !resourcePath) return;
+    setSaving('resource-path');
+    setError(null);
+    try {
+      const isFolder = visibleResourceItems.find((item) => item.relativePath === resourcePath)?.node.type === 'directory';
+      const resource = await domainService.rpc<{ id: string }>(NETIOR_RPC_METHODS.resourceRegister, {
+        rootId: model.root_id,
+        sourceKind: isFolder ? 'folder' : 'file',
+        relativePath: resourcePath,
+        observedStatus: 'observed',
+      });
+      await domainService.rpc<InstanceResourceLinkRecord>(NETIOR_RPC_METHODS.instanceLinkResource, {
+        instanceId: instance.id,
+        resourceId: resource.id,
+      });
+      setResourcePath('');
+      await refreshCurrentWorld();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  async function createRelation(): Promise<void> {
+    if (!instance || !relationKindId || !objectInstanceId) return;
+    const nextSubjectKindId = currentAssignedKinds.length === 1 ? currentAssignedKinds[0].id : subjectKindId;
+    const nextObjectKindId = selectedObjectKinds.length === 1 ? selectedObjectKinds[0].id : objectKindId;
+    if (!nextSubjectKindId || !nextObjectKindId) {
+      setError(t('domainEditor.relationKindIdentityRequired' as never));
+      return;
+    }
+    setSaving('relation');
+    setError(null);
+    try {
+      await domainService.rpc<RelationAssertionRecord>(NETIOR_RPC_METHODS.relationCreate, {
+        subjectInstanceId: instance.id,
+        subjectKindId: nextSubjectKindId,
+        relationKindId,
+        objectInstanceId,
+        objectKindId: nextObjectKindId,
+        status: 'accepted',
+      });
+      setRelationKindId('');
+      setObjectInstanceId('');
+      setSubjectKindId('');
+      setObjectKindId('');
+      await refreshCurrentWorld();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  async function cycleRelationStatus(relation: RelationAssertionRecord): Promise<void> {
+    const next = nextAssignmentStatus(relation.status);
+    const method = next === 'accepted'
+      ? NETIOR_RPC_METHODS.relationAccept
+      : next === 'rejected'
+        ? NETIOR_RPC_METHODS.relationReject
+        : NETIOR_RPC_METHODS.relationSupersede;
+    setSaving(`relation-status:${relation.id}`);
+    setError(null);
+    try {
+      await domainService.rpc<RelationAssertionRecord>(method, { relationId: relation.id });
+      await refreshCurrentWorld();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  function editRelation(relation: RelationAssertionRecord): void {
+    setRelationKindId(relation.relation_kind_id);
+    setObjectInstanceId(relation.subject_instance_id === tab.targetId ? relation.object_instance_id : relation.subject_instance_id);
+    setSubjectKindId(relation.subject_kind_id ?? '');
+    setObjectKindId(relation.object_kind_id ?? '');
+  }
+
+  async function deleteRelation(relation: RelationAssertionRecord): Promise<void> {
+    setSaving(`relation-delete:${relation.id}`);
+    setError(null);
+    try {
+      await domainService.rpc<boolean>(NETIOR_RPC_METHODS.relationDelete, { relationId: relation.id });
+      await refreshCurrentWorld();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  function renderPropertyInput(property: PropertyRecord): JSX.Element {
+    const value = getPropertyDraft(property);
+    if (property.value_type === 'number') {
+      return <NumberInput value={typeof value === 'number' ? value : Number(value || 0)} onChange={(next) => setPropertyDraft(property.id, next)} />;
+    }
+    if (property.value_type === 'boolean') {
+      return <Checkbox checked={Boolean(value)} onChange={(next) => setPropertyDraft(property.id, next)} />;
+    }
+    if (property.value_type === 'date') {
+      return <Input type="date" value={String(value ?? '')} onChange={(event) => setPropertyDraft(property.id, event.target.value)} />;
+    }
+    if (property.value_type === 'datetime') {
+      return <Input type="datetime-local" value={String(value ?? '')} onChange={(event) => setPropertyDraft(property.id, event.target.value)} />;
+    }
+    if (property.value_type === 'resource-ref') {
+      return <Select options={resources.map((resource) => ({ value: resource.id, label: labelOfResource(resource) }))} value={String(value ?? '')} onChange={(event) => setPropertyDraft(property.id, event.target.value)} />;
+    }
+    if (property.value_type === 'text') {
+      return <TextArea value={String(value ?? '')} onChange={(event) => setPropertyDraft(property.id, event.target.value)} />;
+    }
+    return <Input value={String(value ?? '')} onChange={(event) => setPropertyDraft(property.id, event.target.value)} />;
+  }
+
+  if (!draft && !instance) {
+    return <EditorScroll><div className="text-sm text-muted">{t('domainEditor.instanceNotFound' as never)}</div></EditorScroll>;
+  }
 
   return (
-    <div className="flex h-full flex-col overflow-hidden">
-      <ScrollArea className="min-h-0 flex-1">
-        <NetworkObjectEditorShell
-          badge={t('objectPanel.instance' as never)}
-          title={session.state.title || tab.title || t('instance.defaultTitle')}
-          subtitle={isDraft ? t('instance.create') : t('editorShell.networkObject' as never)}
-          description={selectedMeaningName}
-          leadingVisual={<NodeVisual icon={session.state.icon ?? 'box'} size={24} imageSize={56} className="shrink-0" />}
-          initialViewMode={tab.objectViewMode ?? 'body'}
-        >
-          <NetworkObjectEditorSection title={t('editorShell.overview' as never)} defaultOpen={isDraft} viewMode="body">
-              <Input
-                value={session.state.title}
-                onChange={(e) => {
-                  update({ title: e.target.value });
-                  useEditorStore.getState().updateTitle(tab.id, e.target.value);
-                }}
-                placeholder={t('instance.title') ?? 'Title'}
-                inputSize={isDraft ? undefined : 'sm'}
-                autoFocus={isDraft}
-              />
+    <EditorScroll>
+      <EditorHeader
+        eyebrow={draft ? t('domainEditor.newInstance' as never) : t('domainEditor.instance' as never)}
+        title={displayTitle}
+        subtitle={draft ? t('domainEditor.newInstanceDescription' as never) : t('domainEditor.instanceEditorDescription' as never)}
+      />
+      <ErrorBanner message={error} />
 
-              <div>
-                <label className="mb-1 block text-xs font-medium text-secondary">{t('instance.visual' as never)}</label>
-                <div className="flex flex-col gap-2">
-                  <RadioGroup
-                    options={instanceVisualModeOptions}
-                    value={instanceVisualMode}
-                    onChange={(value) => handleInstanceVisualModeChange(value as VisualMode)}
-                    orientation="horizontal"
-                  />
-                  {instanceVisualMode === 'icon' ? (
-                    <IconSelector
-                      value={!isImageSourceValue(session.state.icon) ? (session.state.icon ?? undefined) : undefined}
-                      onChange={(name) => update({ icon: name || null })}
-                      placeholder={t('iconSelector.selectIcon')}
-                    />
-                  ) : (
-                    <FilePicker
-                      value={isImageSourceValue(session.state.icon) ? session.state.icon ?? '' : ''}
-                      onChange={(path) => update({ icon: path || null })}
-                      placeholder={t('instance.selectProfileImage' as never)}
-                      filters={[...IMAGE_FILE_FILTERS]}
-                    />
-                  )}
-                </div>
-                <div className="mt-1 text-[11px] text-muted">{t('instance.visualHint' as never)}</div>
+      <div className="rounded-xl border border-subtle bg-surface-card p-4">
+        <div className="space-y-6">
+          <section className="space-y-3">
+            <h3 className="text-sm font-semibold text-default">{t('domainEditor.basicInfo' as never)}</h3>
+            <Field label={t('domainEditor.displayName' as never)}>
+              <Input value={displayName} onChange={(event) => handleDisplayNameChange(event.target.value)} />
+            </Field>
+          </section>
+
+          <section className="space-y-3 border-t border-subtle pt-5">
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="text-sm font-semibold text-default">{t('domainEditor.kinds' as never)}</h3>
+              <span className="text-xs text-muted">{assignments.length}</span>
+            </div>
+            <div className="flex gap-2">
+              <div className="min-w-0 flex-1">
+                <Field label={t('domainEditor.kind' as never)}>
+                  <Select options={kindOptions} value={kindId} placeholder={t('domainEditor.selectKind' as never)} onChange={(event) => setKindId(event.target.value)} />
+                </Field>
               </div>
-
-              {meanings.length > 0 && (
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-secondary">{t('instance.schema' as never)}</label>
-                  <Select
-                    options={meaningOptions}
-                    value={session.state.meaningId ?? ''}
-                    onChange={(e) => {
-                      update({ meaningId: e.target.value || null, properties: {} });
-                    }}
-                    selectSize="sm"
-                  />
-                </div>
-              )}
-            </NetworkObjectEditorSection>
-
-            {session.state.meaningId && (
-              <NetworkObjectEditorSection title={t('instance.properties')} viewMode="body">
-                {isDraft ? (
-                  meaningFields.length > 0 ? (
-                    <InstancePropertyInputs
-                      fields={meaningFields}
-                      properties={session.state.properties}
-                      onChange={(fieldId, value) => update({
-                        properties: { ...session.state.properties, [fieldId]: value },
-                      })}
-                    />
-                  ) : null
-                ) : (
-                  <InstancePropertiesPanel
-                    meaningId={session.state.meaningId}
-                    rootNetworkId={currentWorld?.id}
-                    instanceId={tab.targetId}
-                    properties={session.state.properties}
-                    onChange={(fieldId, value) => update({
-                      properties: { ...session.state.properties, [fieldId]: value },
-                    })}
-                  />
-                )}
-              </NetworkObjectEditorSection>
-            )}
-
-            {!isDraft && currentWorld && session.state.meaningId && (
-              <NetworkObjectEditorSection title={t('editorShell.interactiveView' as never)} viewMode="interactive">
-                <InteractiveViewPanel
-                  tabId={tab.id}
-                  rootNetworkId={currentWorld.id}
-                  schemaId={session.state.meaningId}
-                  instanceId={tab.targetId}
-                  fields={meaningFields}
-                  properties={session.state.properties}
-                  content={session.state.content}
-                  onFieldChange={(fieldId, value) => update({
-                    properties: { ...session.state.properties, [fieldId]: value },
-                  })}
-                  mode="view"
-                />
-              </NetworkObjectEditorSection>
-            )}
-
-            <NetworkObjectEditorSection title={t('editorShell.content' as never)} viewMode="body" fullBleed>
-              <InstanceBodyEditor
-                tabId={tab.id}
-                content={session.state.content ?? ''}
-                rootNetworkId={currentWorld?.id}
-                instanceId={isDraft ? null : tab.targetId}
-                onChange={(content) => update({ content: content || null })}
-              />
-            </NetworkObjectEditorSection>
-
-            {!isDraft && (
-              <NetworkObjectEditorSection title={t('instance.networkPlacement' as never)} viewMode="details">
-                {nodeOccurrences.length === 0 ? (
-                  <div className="rounded-lg border border-subtle bg-surface-editor px-3 py-2 text-xs text-muted">
-                    {t('instance.noNetworkPlacement' as never)}
-                  </div>
-                ) : (
-                  <div className="flex flex-col gap-3">
-                    <div className="flex flex-col gap-1">
-                      <label className="text-xs font-medium text-secondary">{t('instance.networkPlacement' as never)}</label>
-                      <Select
-                        options={nodeOccurrenceOptions}
-                        value={selectedNodeId}
-                        onChange={(e) => setSelectedNodeId(e.target.value)}
-                        selectSize="sm"
-                      />
-                    </div>
-
-                    {selectedNodeOccurrence && (
-                      <>
-                        <div className="grid grid-cols-2 gap-2">
-                          <Button
-                            type="button"
-                            variant="secondary"
-                            size="sm"
-                            onClick={() => openNetwork(selectedNodeOccurrence.networkId)}
-                          >
-                            {t('network.switchNetwork')}
-                          </Button>
-                          <div className="min-w-0 rounded-lg border border-subtle bg-surface-editor px-3 py-1.5 text-xs text-muted">
-                            <div className="truncate">{selectedNodeOccurrence.nodeId}</div>
-                          </div>
-                        </div>
-
-                        <div className="flex flex-col gap-1">
-                          <label className="text-xs font-medium text-secondary">{t('instance.nodeRole' as never)}</label>
-                          <Select
-                            options={nodeTypeOptions}
-                            value={selectedNodeOccurrence.nodeType}
-                            onChange={(e) => updateSelectedOccurrenceDraft((occurrence) => ({
-                              ...occurrence,
-                              nodeType: e.target.value as NodeType,
-                            }))}
-                            selectSize="sm"
-                          />
-                          <div className="text-[11px] text-muted">{t('instance.nodeRoleHint' as never)}</div>
-                        </div>
-
-                        {isGroupNodeOccurrence && (
-                          <div className="flex flex-col gap-2 rounded-lg border border-subtle bg-surface-editor px-3 py-3">
-                            <div className="flex flex-col gap-1">
-                              <label className="text-xs font-medium text-secondary">{t('instance.nodeLayoutKind' as never)}</label>
-                              <Select
-                                options={nodeLayoutOptions}
-                                value={selectedNodeConfig?.kind ?? ''}
-                                onChange={(e) => {
-                                  if (!e.target.value) {
-                                    updateSelectedOccurrenceNodeConfig(null);
-                                    return;
-                                  }
-
-                                  const previousSort = isSortableNodeConfig(selectedNodeConfig)
-                                    ? selectedNodeConfig.sort ?? null
-                                    : null;
-
-                                  updateSelectedOccurrenceNodeConfig(
-                                    createNodeConfigDraft(e.target.value as NodeConfig['kind'], previousSort),
-                                  );
-                                }}
-                                selectSize="sm"
-                                disabled={!canEditNodeConfig}
-                              />
-                              <div className="text-[11px] text-muted">{t('instance.nodeConfigHint' as never)}</div>
-                            </div>
-
-                            {selectedNodeConfig?.kind === 'grid' && (
-                              <>
-                                <div className="grid grid-cols-2 gap-2">
-                                  <div className="flex flex-col gap-1">
-                                    <label className="text-xs font-medium text-secondary">{t('instance.nodeConfigColumns' as never)}</label>
-                                    <NumberInput
-                                      value={selectedNodeConfig.columns ?? 2}
-                                      onChange={(value) => updateStructuredNodeConfigDraft((config) => (
-                                        config.kind === 'grid'
-                                          ? { ...config, columns: Math.max(1, Math.floor(value)) }
-                                          : config
-                                      ))}
-                                      min={1}
-                                      step={1}
-                                      inputSize="sm"
-                                    />
-                                  </div>
-
-                                  <div className="flex flex-col gap-1">
-                                    <label className="text-xs font-medium text-secondary">{t('instance.nodeConfigPadding' as never)}</label>
-                                    <NumberInput
-                                      value={selectedNodeConfig.padding ?? 24}
-                                      onChange={(value) => updateStructuredNodeConfigDraft((config) => (
-                                        config.kind === 'grid'
-                                          ? { ...config, padding: Math.max(0, value) }
-                                          : config
-                                      ))}
-                                      min={0}
-                                      step={4}
-                                      inputSize="sm"
-                                    />
-                                  </div>
-
-                                  <div className="flex flex-col gap-1">
-                                    <label className="text-xs font-medium text-secondary">{t('instance.nodeConfigGapX' as never)}</label>
-                                    <NumberInput
-                                      value={selectedNodeConfig.gapX ?? 16}
-                                      onChange={(value) => updateStructuredNodeConfigDraft((config) => (
-                                        config.kind === 'grid'
-                                          ? { ...config, gapX: Math.max(0, value) }
-                                          : config
-                                      ))}
-                                      min={0}
-                                      step={4}
-                                      inputSize="sm"
-                                    />
-                                  </div>
-
-                                  <div className="flex flex-col gap-1">
-                                    <label className="text-xs font-medium text-secondary">{t('instance.nodeConfigGapY' as never)}</label>
-                                    <NumberInput
-                                      value={selectedNodeConfig.gapY ?? 16}
-                                      onChange={(value) => updateStructuredNodeConfigDraft((config) => (
-                                        config.kind === 'grid'
-                                          ? { ...config, gapY: Math.max(0, value) }
-                                          : config
-                                      ))}
-                                      min={0}
-                                      step={4}
-                                      inputSize="sm"
-                                    />
-                                  </div>
-
-                                  <div className="flex flex-col gap-1">
-                                    <label className="text-xs font-medium text-secondary">{t('instance.nodeConfigItemWidth' as never)}</label>
-                                    <NumberInput
-                                      value={selectedNodeConfig.itemWidth ?? 160}
-                                      onChange={(value) => updateStructuredNodeConfigDraft((config) => (
-                                        config.kind === 'grid'
-                                          ? { ...config, itemWidth: Math.max(48, value) }
-                                          : config
-                                      ))}
-                                      min={48}
-                                      step={4}
-                                      inputSize="sm"
-                                    />
-                                  </div>
-
-                                  <div className="flex flex-col gap-1">
-                                    <label className="text-xs font-medium text-secondary">{t('instance.nodeConfigItemHeight' as never)}</label>
-                                    <NumberInput
-                                      value={selectedNodeConfig.itemHeight ?? 60}
-                                      onChange={(value) => updateStructuredNodeConfigDraft((config) => (
-                                        config.kind === 'grid'
-                                          ? { ...config, itemHeight: Math.max(40, value) }
-                                          : config
-                                      ))}
-                                      min={40}
-                                      step={4}
-                                      inputSize="sm"
-                                    />
-                                  </div>
-                                </div>
-                              </>
-                            )}
-
-                            {selectedNodeConfig?.kind === 'list' && (
-                              <>
-                                <div className="grid grid-cols-2 gap-2">
-                                  <div className="flex flex-col gap-1">
-                                    <label className="text-xs font-medium text-secondary">{t('instance.nodeConfigPadding' as never)}</label>
-                                    <NumberInput
-                                      value={selectedNodeConfig.padding ?? 24}
-                                      onChange={(value) => updateStructuredNodeConfigDraft((config) => (
-                                        config.kind === 'list'
-                                          ? { ...config, padding: Math.max(0, value) }
-                                          : config
-                                      ))}
-                                      min={0}
-                                      step={4}
-                                      inputSize="sm"
-                                    />
-                                  </div>
-
-                                  <div className="flex flex-col gap-1">
-                                    <label className="text-xs font-medium text-secondary">{t('instance.nodeConfigGap' as never)}</label>
-                                    <NumberInput
-                                      value={selectedNodeConfig.gap ?? 12}
-                                      onChange={(value) => updateStructuredNodeConfigDraft((config) => (
-                                        config.kind === 'list'
-                                          ? { ...config, gap: Math.max(0, value) }
-                                          : config
-                                      ))}
-                                      min={0}
-                                      step={4}
-                                      inputSize="sm"
-                                    />
-                                  </div>
-
-                                  <div className="flex flex-col gap-1">
-                                    <label className="text-xs font-medium text-secondary">{t('instance.nodeConfigItemHeight' as never)}</label>
-                                    <NumberInput
-                                      value={selectedNodeConfig.itemHeight ?? 60}
-                                      onChange={(value) => updateStructuredNodeConfigDraft((config) => (
-                                        config.kind === 'list'
-                                          ? { ...config, itemHeight: Math.max(40, value) }
-                                          : config
-                                      ))}
-                                      min={40}
-                                      step={4}
-                                      inputSize="sm"
-                                    />
-                                  </div>
-                                </div>
-                              </>
-                            )}
-
-                            {sortableNodeConfig && (
-                              <div className="grid grid-cols-2 gap-2">
-                                <div className="flex flex-col gap-1">
-                                  <label className="text-xs font-medium text-secondary">{t('instance.nodeSortKind' as never)}</label>
-                                  <Select
-                                    options={sortKindOptions}
-                                    value={sortableNodeSortConfig?.kind ?? ''}
-                                    onChange={(e) => {
-                                      if (!e.target.value) {
-                                        updateStructuredNodeConfigDraft((config) => (
-                                          isSortableNodeConfig(config) ? { ...config, sort: null } : config
-                                        ));
-                                        return;
-                                      }
-
-                                      updateStructuredNodeConfigDraft((config) => (
-                                        isSortableNodeConfig(config)
-                                          ? {
-                                              ...config,
-                                              sort: createSortConfigDraft(
-                                                e.target.value as NodeSortConfig['kind'],
-                                                propertySortOptions[0]?.value,
-                                              ),
-                                            }
-                                          : config
-                                      ));
-                                    }}
-                                    selectSize="sm"
-                                    disabled={!canEditNodeConfig}
-                                  />
-                                </div>
-
-                                <div className="flex flex-col gap-1">
-                                  <label className="text-xs font-medium text-secondary">{t('instance.nodeSortValue' as never)}</label>
-                                  {sortableNodeSortConfig?.kind === 'meaning_binding' ? (
-                                    <Select
-                                      options={meaningSortOptions}
-                                      value={sortableNodeSortConfig.meaning}
-                                      onChange={(e) => updateStructuredNodeConfigDraft((config) => (
-                                        isSortableNodeConfig(config) && config.sort?.kind === 'meaning_binding'
-                                          ? { ...config, sort: { ...config.sort, meaning: e.target.value as FieldMeaningBindingKey } }
-                                          : config
-                                      ))}
-                                      selectSize="sm"
-                                      searchable
-                                      disabled={!canEditNodeConfig}
-                                    />
-                                  ) : sortableNodeSortConfig?.kind === 'property' ? (
-                                    <Select
-                                      options={propertySortOptions}
-                                      value={sortableNodeSortConfig.fieldId}
-                                      onChange={(e) => updateStructuredNodeConfigDraft((config) => (
-                                        isSortableNodeConfig(config) && config.sort?.kind === 'property'
-                                          ? { ...config, sort: { ...config.sort, fieldId: e.target.value } }
-                                          : config
-                                      ))}
-                                      selectSize="sm"
-                                      searchable
-                                      emptyMessage={t('instance.nodeSortNoPropertyOptions' as never)}
-                                      disabled={!canEditNodeConfig || propertySortOptions.length === 0}
-                                    />
-                                  ) : (
-                                    <Input
-                                      value=""
-                                      readOnly
-                                      inputSize="sm"
-                                      placeholder={t('instance.nodeSortValueDisabled' as never)}
-                                    />
-                                  )}
-                                </div>
-
-                                <div className="flex flex-col gap-1">
-                                  <label className="text-xs font-medium text-secondary">{t('instance.nodeSortDirection' as never)}</label>
-                                  <Select
-                                    options={sortDirectionOptions}
-                                    value={sortableNodeSortConfig?.direction ?? 'asc'}
-                                    onChange={(e) => updateStructuredNodeConfigDraft((config) => (
-                                      isSortableNodeConfig(config) && config.sort
-                                        ? { ...config, sort: { ...config.sort, direction: e.target.value as 'asc' | 'desc' } }
-                                        : config
-                                    ))}
-                                    selectSize="sm"
-                                    disabled={!sortableNodeSortConfig || !canEditNodeConfig}
-                                  />
-                                </div>
-
-                                <div className="flex flex-col gap-1">
-                                  <label className="text-xs font-medium text-secondary">{t('instance.nodeSortEmptyPlacement' as never)}</label>
-                                  <Select
-                                    options={emptyPlacementOptions}
-                                    value={sortableNodeSortConfig?.emptyPlacement ?? 'last'}
-                                    onChange={(e) => updateStructuredNodeConfigDraft((config) => (
-                                      isSortableNodeConfig(config) && config.sort
-                                        ? { ...config, sort: { ...config.sort, emptyPlacement: e.target.value as 'first' | 'last' } }
-                                        : config
-                                    ))}
-                                    selectSize="sm"
-                                    disabled={!sortableNodeSortConfig || !canEditNodeConfig}
-                                  />
-                                </div>
-                              </div>
-                            )}
-
-                            {!canEditNodeConfig && (
-                              <div className="text-[11px] text-muted">
-                                {t('instance.nodeConfigInvalidMetadataHint' as never)}
-                              </div>
-                            )}
-                          </div>
-                        )}
-
-                        <div className="flex flex-col gap-1">
-                          <label className="text-xs font-medium text-secondary">{t('instance.nodeMetadata' as never)}</label>
-                          <TextArea
-                            value={selectedNodeMetadataDraft}
-                            onChange={(e) => updateSelectedOccurrenceMetadata(e.target.value)}
-                            rows={4}
-                            placeholder='{"label":"local note"}'
-                            className="font-mono text-xs"
-                          />
-                        </div>
-                      </>
-                    )}
-                  </div>
-                )}
-              </NetworkObjectEditorSection>
-            )}
-
-            {!isDraft && currentWorld && session.state.meaningId && (
-              <NetworkObjectEditorSection title={t('interactiveView.configure' as never)} viewMode="details">
-                <InteractiveViewPanel
-                  rootNetworkId={currentWorld.id}
-                  schemaId={session.state.meaningId}
-                  instanceId={tab.targetId}
-                  fields={meaningFields}
-                  properties={session.state.properties}
-                  content={session.state.content}
-                  onFieldChange={(fieldId, value) => update({
-                    properties: { ...session.state.properties, [fieldId]: value },
-                  })}
-                  mode="configure"
-                />
-              </NetworkObjectEditorSection>
-            )}
-
-            {!isDraft && (
-              <NetworkObjectEditorSection title="Agent" defaultOpen={false} viewMode="details">
-                <div className="h-[min(60vh,560px)] min-h-[320px] overflow-hidden rounded-lg border border-subtle bg-surface-editor">
-                  <InstanceAgentView instanceId={tab.targetId} agentContent={instance?.agent_content ?? null} />
-                </div>
-              </NetworkObjectEditorSection>
-            )}
-
-            {!isDraft && instance && (
-              <NetworkObjectEditorSection title={t('editorShell.metadata' as never)} defaultOpen={false} viewMode="details">
-                <NetworkObjectMetadataList
-                  items={[
-                    { label: t('editorShell.objectId' as never), value: <code className="font-mono text-xs">{instance.id}</code> },
-                    { label: t('instance.schema' as never), value: selectedMeaningName ?? t('common.none') },
-                  ]}
-                />
-              </NetworkObjectEditorSection>
-            )}
-
-            {!isDraft && (
-              <div className="mx-auto flex w-full max-w-[760px] justify-end px-6 pt-1" data-network-object-view-mode="details">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  className="bg-status-error/10 text-status-error hover:bg-status-error/15 hover:text-status-error"
-                  onClick={() => { void handleDelete(); }}
-                >
-                  {t('common.delete')}
+              <div className="flex items-end">
+                <Button size="sm" variant="secondary" isLoading={saving === 'kind'} disabled={Boolean(draft) || !kindId} onClick={() => void assignKind()}>
+                  {t('common.assign')}
                 </Button>
               </div>
+            </div>
+            {!draft && <div className="overflow-hidden rounded-lg border border-subtle bg-surface-input">
+              {assignments.length > 0 ? assignments.map((assignment) => {
+                const kind = kinds.find((item) => item.id === assignment.kind_id);
+                return (
+                  <div key={assignment.id} className="group flex items-center gap-3 border-b border-subtle px-3 py-2.5 last:border-b-0">
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-sm font-medium text-default">{kind?.name ?? assignment.kind_id}</div>
+                    </div>
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted hover:bg-state-hover hover:text-default"
+                      onClick={() => void cycleKindAssignmentStatus(assignment)}
+                    >
+                      <RefreshCw size={11} />
+                      {assignment.status}
+                    </button>
+                    <IconButton
+                      label={t('common.delete' as never)}
+                      className="h-7 w-7 opacity-0 group-hover:opacity-100"
+                      disabled={saving === `kind-remove:${assignment.id}`}
+                      onClick={() => void removeKindAssignment(assignment)}
+                    >
+                      <Trash2 size={14} />
+                    </IconButton>
+                  </div>
+                );
+              }) : (
+                <div className="px-3 py-6 text-center text-xs text-muted">{t('domainEditor.noKindAssignmentsYet' as never)}</div>
+              )}
+            </div>}
+          </section>
+
+          <section className="space-y-3 border-t border-subtle pt-5">
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="text-sm font-semibold text-default">{t('domainEditor.properties' as never)}</h3>
+              <span className="text-xs text-muted">{selectedKindProperties.length}</span>
+            </div>
+            <Field label={t('domainEditor.kind' as never)}>
+              <Select
+                options={assignedKindOptions}
+                value={propertyKindId}
+                placeholder={t('domainEditor.selectKind' as never)}
+                onChange={(event) => setPropertyKindId(event.target.value)}
+                disabled={Boolean(draft) || assignedKindOptions.length === 0}
+              />
+            </Field>
+            {!draft && (
+              <div className="space-y-3">
+                {selectedKindProperties.length > 0 ? selectedKindProperties.map((property) => (
+                  <div key={property.id} className="space-y-1.5">
+                    <div className="text-xs font-medium text-secondary">
+                      {property.name}
+                      {isRequiredProperty(property) && <span className="ml-0.5 text-status-error">*</span>}
+                    </div>
+                    {renderPropertyInput(property)}
+                    {propertyErrors[property.id] && (
+                      <div className="text-xs text-status-error">{propertyErrors[property.id]}</div>
+                    )}
+                  </div>
+                )) : (
+                  <div className="py-3 text-xs text-muted">{t('domainEditor.noPropertiesYet' as never)}</div>
+                )}
+              </div>
             )}
-          </NetworkObjectEditorShell>
-      </ScrollArea>
-    </div>
+          </section>
+
+          <section className="space-y-3 border-t border-subtle pt-5">
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="text-sm font-semibold text-default">{t('domainEditor.resources' as never)}</h3>
+              <span className="text-xs text-muted">{resourceLinks.length}</span>
+            </div>
+            <div className="flex gap-2">
+              <div className="min-w-0 flex-1">
+                <Field label={t('domainEditor.resources' as never)}>
+                  <Select options={resourceOptions} value={resourceId} onChange={(event) => setResourceId(event.target.value)} />
+                </Field>
+              </div>
+              <div className="flex items-end">
+                <Button size="sm" variant="secondary" isLoading={saving === 'resource'} disabled={Boolean(draft) || !resourceId} onClick={() => void linkResource()}>
+                  {t('domainEditor.linkResource' as never)}
+                </Button>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <div className="min-w-0 flex-1">
+                <Field label={t('domainEditor.selectResourceFromTree' as never)}>
+                  <ResourceTreeSelect
+                    value={resourcePath}
+                    items={visibleResourceItems}
+                    expandedPaths={expandedResourcePaths}
+                    placeholder={t('domainEditor.selectResourceFromTree' as never)}
+                    emptyMessage={t('domainEditor.noResourcesYet' as never)}
+                    onSelect={setResourcePath}
+                    onToggle={toggleResourceNode}
+                  />
+                </Field>
+              </div>
+              <div className="flex items-end">
+                <Button size="sm" variant="secondary" isLoading={saving === 'resource-path'} disabled={Boolean(draft) || !resourcePath} onClick={() => void registerAndLinkResource()}>
+                  {t('domainEditor.linkResource' as never)}
+                </Button>
+              </div>
+            </div>
+            {!draft && <div className="overflow-hidden rounded-lg border border-subtle bg-surface-input">
+              {resourceLinks.length > 0 ? resourceLinks.map((link) => {
+                const resource = resources.find((item) => item.id === link.resource_id);
+                const resourceLabel = resource ? labelOfResource(resource) : link.resource_id;
+                return (
+                  <div key={link.id} className="group flex items-center gap-3 border-b border-subtle px-3 py-2.5 last:border-b-0">
+                    <FileIcon name={fileNameOf(resourceLabel)} isFolder={resource?.source_kind === 'folder'} size={15} className="shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-sm font-medium text-default">{resourceLabel}</div>
+                      {link.is_primary ? <div className="truncate text-xs text-muted">primary</div> : null}
+                    </div>
+                    {resource && (
+                      <button
+                        type="button"
+                        className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted hover:bg-state-hover hover:text-default"
+                        onClick={() => void cycleResourceStatus(resource.id, resource.observed_status)}
+                      >
+                        <RefreshCw size={11} />
+                        {resource.observed_status}
+                      </button>
+                    )}
+                    <IconButton
+                      label={t('common.remove' as never)}
+                      className="h-7 w-7 opacity-0 group-hover:opacity-100"
+                      disabled={saving === `resource-unlink:${link.id}`}
+                      onClick={() => void unlinkResource(link)}
+                    >
+                      <X size={14} />
+                    </IconButton>
+                  </div>
+                );
+              }) : (
+                <div className="px-3 py-6 text-center text-xs text-muted">{t('domainEditor.noLinkedResourcesYet' as never)}</div>
+              )}
+            </div>}
+          </section>
+
+          <section className="space-y-3 border-t border-subtle pt-5">
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="text-sm font-semibold text-default">{t('domainEditor.relations' as never)}</h3>
+              <span className="text-xs text-muted">{relations.length}</span>
+            </div>
+            <div className="grid gap-3 md:grid-cols-2">
+              <Field label={t('domainEditor.relationKind' as never)}>
+                <Select options={relationKindOptions} value={relationKindId} onChange={(event) => setRelationKindId(event.target.value)} disabled={Boolean(draft)} />
+              </Field>
+              {currentAssignedKinds.length > 1 ? (
+                <Field label={t('domainEditor.subjectIdentityKind' as never)}>
+                  <Select options={subjectKindOptions} value={subjectKindId} onChange={(event) => setSubjectKindId(event.target.value)} disabled={Boolean(draft)} />
+                </Field>
+              ) : <div />}
+            </div>
+            <div className="grid gap-3 md:grid-cols-2">
+              <Field label={t('domainEditor.targetInstance' as never)}>
+                <Select options={targetInstanceOptions} value={objectInstanceId} onChange={(event) => setObjectInstanceId(event.target.value)} disabled={Boolean(draft)} />
+              </Field>
+              <Field label={t('domainEditor.objectIdentityKind' as never)}>
+                {selectedObjectKinds.length > 1 ? (
+                  <Select options={objectKindOptions} value={objectKindId} onChange={(event) => setObjectKindId(event.target.value)} disabled={Boolean(draft)} />
+                ) : (
+                  <ReadonlySelectValue value={selectedObjectKinds[0]?.name ?? ''} />
+                )}
+              </Field>
+            </div>
+            <div className="flex justify-end">
+              <Button
+                size="sm"
+                variant="secondary"
+                isLoading={saving === 'relation'}
+                disabled={Boolean(draft) || !relationKindId || !objectInstanceId}
+                onClick={() => void createRelation()}
+              >
+                {t('domainEditor.addRelation' as never)}
+              </Button>
+            </div>
+            {!draft && <div className="overflow-hidden rounded-lg border border-subtle bg-surface-input">
+              {relations.length > 0 ? relations.map((relation) => {
+                const relationKind = relationKinds.find((item) => item.id === relation.relation_kind_id) ?? snapshot?.relationKinds.find((item) => item.id === relation.relation_kind_id);
+                const subject = snapshot?.instances.find((item) => item.id === relation.subject_instance_id);
+                const object = snapshot?.instances.find((item) => item.id === relation.object_instance_id);
+                return (
+                  <div key={relation.id} className="group flex items-center gap-3 border-b border-subtle px-3 py-2.5 last:border-b-0">
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-sm font-medium text-default">
+                        {subject?.display_name ?? relation.subject_instance_id} -- {relationKind?.name ?? relation.relation_kind_id} -- {object?.display_name ?? relation.object_instance_id}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted hover:bg-state-hover hover:text-default"
+                      onClick={() => void cycleRelationStatus(relation)}
+                    >
+                      <RefreshCw size={11} />
+                      {relation.status}
+                    </button>
+                    <IconButton
+                      label={t('common.edit' as never)}
+                      className="h-7 w-7 opacity-0 group-hover:opacity-100"
+                      onClick={() => editRelation(relation)}
+                    >
+                      <Pencil size={14} />
+                    </IconButton>
+                    <IconButton
+                      label={t('common.delete' as never)}
+                      className="h-7 w-7 opacity-0 group-hover:opacity-100"
+                      disabled={saving === `relation-delete:${relation.id}`}
+                      onClick={() => void deleteRelation(relation)}
+                    >
+                      <Trash2 size={14} />
+                    </IconButton>
+                  </div>
+                );
+              }) : (
+                <div className="px-3 py-6 text-center text-xs text-muted">{t('domainEditor.noRelationsYet' as never)}</div>
+              )}
+            </div>}
+          </section>
+        </div>
+
+        <div className="mt-6 flex justify-end border-t border-subtle pt-4">
+          <Button size="sm" isLoading={saving === 'name'} disabled={!isDirty || !displayName.trim()} onClick={() => void saveName()}>
+            {t('domainEditor.save' as never)}
+          </Button>
+        </div>
+      </div>
+    </EditorScroll>
   );
 }

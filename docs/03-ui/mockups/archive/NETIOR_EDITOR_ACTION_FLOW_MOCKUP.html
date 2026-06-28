@@ -1,0 +1,1262 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Netior Editor Action Flow Mockup</title>
+    <style>
+      :root {
+        --app: #0f1011;
+        --chrome: #151719;
+        --chrome-2: #191b1e;
+        --panel: #1d2024;
+        --panel-2: #24282d;
+        --panel-3: #2b3036;
+        --surface: #17191c;
+        --line: #31363c;
+        --line-soft: #262a2f;
+        --text: #ecf0f3;
+        --muted: #a1a8b1;
+        --faint: #727b86;
+        --accent: #70a37f;
+        --accent-soft: rgba(112, 163, 127, 0.18);
+        --blue: #7ca7f7;
+        --blue-soft: rgba(124, 167, 247, 0.16);
+        --warn: #d8b45d;
+        --warn-soft: rgba(216, 180, 93, 0.16);
+        --danger: #d76f64;
+        --danger-soft: rgba(215, 111, 100, 0.15);
+        --radius-pane: 13px;
+        --topbar-h: 38px;
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          sans-serif;
+        color-scheme: dark;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        width: 100vw;
+        height: 100vh;
+        overflow: hidden;
+        background: var(--app);
+        color: var(--text);
+      }
+
+      button,
+      input,
+      select {
+        font: inherit;
+      }
+
+      .app {
+        height: 100vh;
+        display: grid;
+        grid-template-rows: 34px minmax(0, 1fr);
+        background: var(--app);
+      }
+
+      .titlebar {
+        display: grid;
+        grid-template-columns: 240px minmax(0, 1fr) 240px;
+        align-items: center;
+        padding: 0 10px;
+        background: var(--chrome);
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .title-left,
+      .title-right {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 0;
+      }
+
+      .title-right {
+        justify-content: flex-end;
+      }
+
+      .title-center {
+        min-width: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+      }
+
+      .brand {
+        color: var(--text);
+        font-weight: 720;
+      }
+
+      .workspace {
+        min-height: 0;
+        display: grid;
+        grid-template-columns: 40px 230px minmax(0, 1fr);
+        gap: 8px;
+        padding: 0 8px 8px 0;
+        background: var(--app);
+      }
+
+      .rail {
+        min-height: 0;
+        display: grid;
+        grid-template-rows: auto 1fr auto;
+        padding: 8px 4px 6px;
+        background: var(--chrome);
+      }
+
+      .rail-group {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 7px;
+      }
+
+      .rail-button {
+        width: 30px;
+        height: 30px;
+        border: 0;
+        border-radius: 8px;
+        background: transparent;
+        color: var(--muted);
+        display: grid;
+        place-items: center;
+        font-size: 11px;
+        font-weight: 760;
+      }
+
+      .rail-button.active {
+        background: var(--accent-soft);
+        color: #d7f0de;
+      }
+
+      .sidebar {
+        min-height: 0;
+        display: grid;
+        grid-template-rows: var(--topbar-h) minmax(0, 1fr) auto;
+        overflow: hidden;
+        border: 1px solid var(--line);
+        border-radius: var(--radius-pane);
+        background: var(--panel);
+      }
+
+      .sidebar-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 11px;
+        border-bottom: 1px solid var(--line-soft);
+        background: var(--chrome-2);
+      }
+
+      .sidebar-title {
+        font-size: 12px;
+        font-weight: 740;
+      }
+
+      .sidebar-scroll {
+        min-height: 0;
+        overflow: auto;
+        padding: 10px 8px;
+      }
+
+      .section-title {
+        margin: 12px 7px 6px;
+        color: var(--faint);
+        font-size: 10px;
+        font-weight: 780;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .nav-row {
+        min-height: 31px;
+        display: grid;
+        grid-template-columns: 22px minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 8px;
+        padding: 0 8px;
+        border-radius: 8px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .nav-row.active {
+        color: var(--text);
+        background: var(--panel-3);
+      }
+
+      .icon {
+        width: 19px;
+        height: 19px;
+        display: grid;
+        place-items: center;
+        border-radius: 6px;
+        background: rgba(255, 255, 255, 0.06);
+        color: var(--muted);
+        font-size: 10px;
+        font-weight: 760;
+      }
+
+      .nav-row.active .icon {
+        color: #d9f2e0;
+        background: var(--accent-soft);
+      }
+
+      .badge {
+        min-width: 18px;
+        height: 18px;
+        display: inline-grid;
+        place-items: center;
+        padding: 0 6px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.06);
+        color: var(--faint);
+        font-size: 10px;
+        white-space: nowrap;
+      }
+
+      .sidebar-foot {
+        padding: 8px;
+        border-top: 1px solid var(--line-soft);
+      }
+
+      .status-card {
+        border-radius: 10px;
+        background: var(--surface);
+        padding: 10px;
+        color: var(--muted);
+        font-size: 11px;
+        line-height: 1.45;
+      }
+
+      .main {
+        min-width: 0;
+        min-height: 0;
+        display: grid;
+        grid-template-rows: var(--topbar-h) minmax(0, 1fr);
+        overflow: hidden;
+        border: 1px solid var(--line-soft);
+        border-radius: var(--radius-pane);
+        background: var(--panel);
+      }
+
+      .tabbar {
+        min-width: 0;
+        display: flex;
+        align-items: end;
+        gap: 2px;
+        padding: 5px 10px 0;
+        background: var(--chrome);
+      }
+
+      .tab {
+        height: 33px;
+        min-width: 128px;
+        border: 1px solid transparent;
+        border-bottom: 0;
+        border-radius: 12px 12px 0 0;
+        background: transparent;
+        color: var(--muted);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 0 12px;
+        font-size: 12px;
+      }
+
+      .tab.active {
+        border-color: var(--line-soft);
+        background: var(--panel);
+        color: var(--text);
+      }
+
+      .tab-spacer {
+        flex: 1;
+      }
+
+      .tab-action {
+        height: 26px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--surface);
+        color: var(--muted);
+        padding: 0 9px;
+        font-size: 11px;
+        margin-bottom: 6px;
+      }
+
+      .content {
+        min-width: 0;
+        min-height: 0;
+        display: grid;
+        grid-template-columns: 300px minmax(420px, 1fr) 340px;
+        gap: 10px;
+        padding: 10px;
+        overflow: hidden;
+        background: var(--panel);
+      }
+
+      .pane {
+        min-width: 0;
+        min-height: 0;
+        overflow: hidden;
+        border: 1px solid var(--line-soft);
+        border-radius: 12px;
+        background: var(--surface);
+        display: grid;
+        grid-template-rows: 42px minmax(0, 1fr);
+      }
+
+      .pane-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 0 12px;
+        border-bottom: 1px solid var(--line-soft);
+        background: var(--chrome-2);
+      }
+
+      .pane-head strong {
+        font-size: 12px;
+      }
+
+      .pane-head span {
+        color: var(--faint);
+        font-size: 11px;
+      }
+
+      .pane-body {
+        min-height: 0;
+        overflow: auto;
+        padding: 12px;
+      }
+
+      .editor-hero {
+        border: 1px solid var(--line-soft);
+        border-radius: 12px;
+        background: var(--panel);
+        padding: 14px;
+        margin-bottom: 12px;
+      }
+
+      .hero-top {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 14px;
+      }
+
+      .hero-title {
+        min-width: 0;
+      }
+
+      .hero-title h1 {
+        margin: 0;
+        font-size: 22px;
+        line-height: 1.18;
+        letter-spacing: 0;
+      }
+
+      .hero-title p {
+        margin: 6px 0 0;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .hero-actions {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 6px;
+      }
+
+      .button {
+        height: 29px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel-2);
+        color: var(--text);
+        padding: 0 10px;
+        font-size: 12px;
+        font-weight: 620;
+      }
+
+      .button.primary {
+        border-color: rgba(112, 163, 127, 0.42);
+        background: var(--accent-soft);
+        color: #d8f0df;
+      }
+
+      .button.warn {
+        border-color: rgba(216, 180, 93, 0.38);
+        background: var(--warn-soft);
+        color: #f0db9d;
+      }
+
+      .action-list {
+        display: grid;
+        gap: 8px;
+      }
+
+      .action-card {
+        border: 1px solid var(--line-soft);
+        border-radius: 10px;
+        background: var(--panel);
+        padding: 10px;
+      }
+
+      .action-card.active {
+        border-color: rgba(112, 163, 127, 0.5);
+        background: linear-gradient(180deg, rgba(112, 163, 127, 0.13), var(--panel));
+      }
+
+      .action-title {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        font-size: 12px;
+        font-weight: 720;
+      }
+
+      .action-desc {
+        margin-top: 6px;
+        color: var(--muted);
+        font-size: 11px;
+        line-height: 1.42;
+      }
+
+      .flow {
+        display: grid;
+        gap: 10px;
+      }
+
+      .step {
+        position: relative;
+        border: 1px solid var(--line-soft);
+        border-radius: 12px;
+        background: var(--panel);
+        padding: 12px 12px 12px 42px;
+      }
+
+      .step::before {
+        content: attr(data-step);
+        position: absolute;
+        left: 12px;
+        top: 12px;
+        width: 20px;
+        height: 20px;
+        display: grid;
+        place-items: center;
+        border-radius: 999px;
+        background: var(--accent-soft);
+        color: #d7f0de;
+        font-size: 10px;
+        font-weight: 800;
+      }
+
+      .step h3 {
+        margin: 0;
+        font-size: 13px;
+      }
+
+      .step p {
+        margin: 6px 0 0;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.5;
+      }
+
+      .form-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+        margin-top: 10px;
+      }
+
+      .field {
+        min-width: 0;
+      }
+
+      .field label {
+        display: block;
+        margin-bottom: 5px;
+        color: var(--faint);
+        font-size: 10px;
+        font-weight: 740;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+
+      .input {
+        height: 30px;
+        width: 100%;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #111315;
+        color: var(--text);
+        padding: 0 9px;
+        font-size: 12px;
+      }
+
+      .queue {
+        display: grid;
+        gap: 8px;
+      }
+
+      .queue-card {
+        border: 1px solid var(--line-soft);
+        border-radius: 10px;
+        background: var(--panel);
+        padding: 10px;
+      }
+
+      .queue-card.review {
+        border-color: rgba(216, 180, 93, 0.38);
+      }
+
+      .queue-card.ok {
+        border-color: rgba(112, 163, 127, 0.42);
+      }
+
+      .queue-card.issue {
+        border-color: rgba(215, 111, 100, 0.38);
+      }
+
+      .queue-title {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        font-size: 12px;
+        font-weight: 720;
+      }
+
+      .queue-body {
+        margin-top: 6px;
+        color: var(--muted);
+        font-size: 11px;
+        line-height: 1.45;
+      }
+
+      .mini-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 10px;
+      }
+
+      .mini-button {
+        height: 24px;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        background: var(--surface);
+        color: var(--muted);
+        padding: 0 8px;
+        font-size: 11px;
+      }
+
+      .pill {
+        height: 20px;
+        display: inline-flex;
+        align-items: center;
+        border-radius: 999px;
+        padding: 0 7px;
+        background: rgba(255, 255, 255, 0.07);
+        color: var(--muted);
+        font-size: 10px;
+        white-space: nowrap;
+      }
+
+      .pill.green {
+        background: var(--accent-soft);
+        color: #d7f0de;
+      }
+
+      .pill.blue {
+        background: var(--blue-soft);
+        color: #dbe7ff;
+      }
+
+      .pill.warn {
+        background: var(--warn-soft);
+        color: #f0db9d;
+      }
+
+      .pill.danger {
+        background: var(--danger-soft);
+        color: #efb7b0;
+      }
+
+      .diagram {
+        margin-top: 10px;
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .box {
+        min-height: 30px;
+        display: inline-flex;
+        align-items: center;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel-2);
+        padding: 0 10px;
+        color: var(--text);
+        font-size: 12px;
+      }
+
+      .arrow {
+        color: var(--faint);
+        font-size: 12px;
+      }
+
+      [data-view] {
+        display: none;
+      }
+
+      [data-view].active {
+        display: contents;
+      }
+
+      @media (max-width: 1180px) {
+        .content {
+          grid-template-columns: 280px minmax(0, 1fr);
+        }
+
+        .pane.queue-pane {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <header class="titlebar">
+        <div class="title-left">
+          <span class="brand">Netior</span>
+          <span>Novel Lab</span>
+        </div>
+        <div class="title-center">
+          <span>Editor Action Flow Mockup</span>
+        </div>
+        <div class="title-right">
+          <span>Command</span>
+          <span>Sync idle</span>
+          <span>- [] x</span>
+        </div>
+      </header>
+
+      <div class="workspace">
+        <nav class="rail" aria-label="Activity rail">
+          <div class="rail-group">
+            <button class="rail-button">H</button>
+            <button class="rail-button active">E</button>
+            <button class="rail-button">C</button>
+            <button class="rail-button">N</button>
+          </div>
+          <div></div>
+          <div class="rail-group">
+            <button class="rail-button">T</button>
+            <button class="rail-button">B</button>
+            <button class="rail-button">S</button>
+          </div>
+        </nav>
+
+        <aside class="sidebar">
+          <header class="sidebar-head">
+            <div class="sidebar-title">Editors</div>
+            <span class="badge">MVP</span>
+          </header>
+
+          <div class="sidebar-scroll">
+            <div class="section-title">Definition</div>
+            <button class="nav-row active" data-tab-button="model">
+              <span class="icon">M</span>
+              <span>Model Editor</span>
+              <span class="badge">scope</span>
+            </button>
+            <button class="nav-row" data-tab-button="kind">
+              <span class="icon">K</span>
+              <span>Kind Editor</span>
+              <span class="badge">def</span>
+            </button>
+            <button class="nav-row" data-tab-button="relation">
+              <span class="icon">R</span>
+              <span>RelationKind Editor</span>
+              <span class="badge">def</span>
+            </button>
+
+            <div class="section-title">Application</div>
+            <button class="nav-row" data-tab-button="instance">
+              <span class="icon">I</span>
+              <span>Instance Editor</span>
+              <span class="badge">actual</span>
+            </button>
+
+            <div class="section-title">Shared Flow</div>
+            <div class="nav-row">
+              <span class="icon">AI</span>
+              <span>Propose</span>
+              <span></span>
+            </div>
+            <div class="nav-row">
+              <span class="icon">OK</span>
+              <span>Accept / Reject</span>
+              <span></span>
+            </div>
+            <div class="nav-row">
+              <span class="icon">V</span>
+              <span>Validate</span>
+              <span></span>
+            </div>
+          </div>
+
+          <footer class="sidebar-foot">
+            <div class="status-card">
+              Actions are editor commands that call view commands, domain operations, or
+              capabilities. Editors do not bypass service validation.
+            </div>
+          </footer>
+        </aside>
+
+        <main class="main">
+          <header class="tabbar">
+            <button class="tab active" data-tab-button="model">
+              <span class="icon">M</span>
+              <span>Model</span>
+            </button>
+            <button class="tab" data-tab-button="kind">
+              <span class="icon">K</span>
+              <span>Kind</span>
+            </button>
+            <button class="tab" data-tab-button="relation">
+              <span class="icon">R</span>
+              <span>RelationKind</span>
+            </button>
+            <button class="tab" data-tab-button="instance">
+              <span class="icon">I</span>
+              <span>Instance</span>
+            </button>
+            <div class="tab-spacer"></div>
+            <button class="tab-action">Open in Canvas</button>
+            <button class="tab-action">More</button>
+          </header>
+
+          <section class="content">
+            <div data-view="model" class="active">
+              <aside class="pane">
+                <header class="pane-head">
+                  <strong>Model Actions</strong>
+                  <span>scope and entry</span>
+                </header>
+                <div class="pane-body">
+                  <div class="action-list">
+                    <div class="action-card active">
+                      <div class="action-title">
+                        <span>Bind Directory</span>
+                        <span class="pill green">primary</span>
+                      </div>
+                      <div class="action-desc">Attach one or more directory subtrees to this Model.</div>
+                    </div>
+                    <div class="action-card">
+                      <div class="action-title"><span>Detect Changes</span><span class="pill warn">scan</span></div>
+                      <div class="action-desc">Measure resources under directory bindings and create change records.</div>
+                    </div>
+                    <div class="action-card">
+                      <div class="action-title"><span>Create Kind</span><span class="pill blue">define</span></div>
+                      <div class="action-desc">Add a visible Kind definition to this Model.</div>
+                    </div>
+                    <div class="action-card">
+                      <div class="action-title"><span>Create RelationKind</span><span class="pill blue">define</span></div>
+                      <div class="action-desc">Define possible relations between compatible Instance endpoints.</div>
+                    </div>
+                    <div class="action-card">
+                      <div class="action-title"><span>Open View</span><span class="pill">view</span></div>
+                      <div class="action-desc">Open Explorer or Canvas for this Model.</div>
+                    </div>
+                  </div>
+                </div>
+              </aside>
+
+              <section class="pane">
+                <header class="pane-head">
+                  <strong>Flow: Create usable Model</strong>
+                  <span>user driven</span>
+                </header>
+                <div class="pane-body">
+                  <div class="editor-hero">
+                    <div class="hero-top">
+                      <div class="hero-title">
+                        <h1>Cast Model</h1>
+                        <p>World: Novel Lab / directory-backed semantic working unit</p>
+                      </div>
+                      <div class="hero-actions">
+                        <button class="button primary">Bind Directory</button>
+                        <button class="button">Create Kind</button>
+                        <button class="button">Open Explorer</button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="flow">
+                    <div class="step" data-step="1">
+                      <h3>Choose parent and identity</h3>
+                      <p>The user creates a Model under a World or another Model. It is semantic, not just a folder.</p>
+                      <div class="form-grid">
+                        <div class="field">
+                          <label>Name</label>
+                          <input class="input" value="Cast" />
+                        </div>
+                        <div class="field">
+                          <label>Parent</label>
+                          <input class="input" value="Novel Lab" />
+                        </div>
+                      </div>
+                    </div>
+                    <div class="step" data-step="2">
+                      <h3>Bind directory</h3>
+                      <p>The directory becomes observable. It does not automatically create child Models.</p>
+                      <div class="diagram">
+                        <span class="box">/novel/characters</span>
+                        <span class="arrow">maps to</span>
+                        <span class="box">Model: Cast</span>
+                      </div>
+                    </div>
+                    <div class="step" data-step="3">
+                      <h3>Detect resources and propose structure</h3>
+                      <p>Netior measures changes. AI may propose Kinds, Instances, and mappings, but the user accepts.</p>
+                    </div>
+                    <div class="step" data-step="4">
+                      <h3>Open Explorer or Canvas</h3>
+                      <p>The Model becomes actionable through View projections, not through the directory tree alone.</p>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <aside class="pane queue-pane">
+                <header class="pane-head">
+                  <strong>Review Queue</strong>
+                  <span>model</span>
+                </header>
+                <div class="pane-body">
+                  <div class="queue">
+                    <div class="queue-card review">
+                      <div class="queue-title"><span>3 new resources</span><span class="pill warn">review</span></div>
+                      <div class="queue-body">Files detected under /novel/characters with no accepted Instance mapping.</div>
+                      <div class="mini-actions">
+                        <button class="mini-button">Open Explorer</button>
+                        <button class="mini-button">Ask AI</button>
+                      </div>
+                    </div>
+                    <div class="queue-card ok">
+                      <div class="queue-title"><span>Directory binding valid</span><span class="pill green">ok</span></div>
+                      <div class="queue-body">No overlap with sibling Model directory bindings.</div>
+                    </div>
+                    <div class="queue-card">
+                      <div class="queue-title"><span>Suggested Kind</span><span class="pill blue">candidate</span></div>
+                      <div class="queue-body">AI suggests Kind: Character from resource naming and content patterns.</div>
+                      <div class="mini-actions">
+                        <button class="mini-button">Accept</button>
+                        <button class="mini-button">Reject</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </aside>
+            </div>
+
+            <div data-view="kind">
+              <aside class="pane">
+                <header class="pane-head">
+                  <strong>Kind Actions</strong>
+                  <span>definition only</span>
+                </header>
+                <div class="pane-body">
+                  <div class="action-list">
+                    <div class="action-card active">
+                      <div class="action-title"><span>Add Property</span><span class="pill green">primary</span></div>
+                      <div class="action-desc">Add a property definition. This does not store an actual value.</div>
+                    </div>
+                    <div class="action-card">
+                      <div class="action-title"><span>Set Icon</span><span class="pill">display</span></div>
+                      <div class="action-desc">Choose Lucide icon or image Resource as default display icon.</div>
+                    </div>
+                    <div class="action-card">
+                      <div class="action-title"><span>Create Instance</span><span class="pill blue">apply</span></div>
+                      <div class="action-desc">Create an Instance and assign this Kind immediately.</div>
+                    </div>
+                    <div class="action-card">
+                      <div class="action-title"><span>Show Usage</span><span class="pill">query</span></div>
+                      <div class="action-desc">Find assigned Instances and RelationKinds that use this Kind as endpoint.</div>
+                    </div>
+                    <div class="action-card">
+                      <div class="action-title"><span>Suggest Properties</span><span class="pill warn">AI</span></div>
+                      <div class="action-desc">AI proposes property definitions from examples. User reviews before save.</div>
+                    </div>
+                  </div>
+                </div>
+              </aside>
+
+              <section class="pane">
+                <header class="pane-head">
+                  <strong>Flow: Define Kind grammar</strong>
+                  <span>no values here</span>
+                </header>
+                <div class="pane-body">
+                  <div class="editor-hero">
+                    <div class="hero-top">
+                      <div class="hero-title">
+                        <h1>Character</h1>
+                        <p>Model: Cast / describes a possible kind of Instance</p>
+                      </div>
+                      <div class="hero-actions">
+                        <button class="button primary">Add Property</button>
+                        <button class="button">Create Instance</button>
+                        <button class="button">Show Instances</button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="flow">
+                    <div class="step" data-step="1">
+                      <h3>Name the Kind</h3>
+                      <p>The user defines the semantic category. Key is stable; name is display.</p>
+                      <div class="form-grid">
+                        <div class="field">
+                          <label>Key</label>
+                          <input class="input" value="character" />
+                        </div>
+                        <div class="field">
+                          <label>Icon</label>
+                          <input class="input" value="lucide:user" />
+                        </div>
+                      </div>
+                    </div>
+                    <div class="step" data-step="2">
+                      <h3>Add property definitions</h3>
+                      <p>Property rows define value shape. They never store values inside Kind.</p>
+                      <div class="diagram">
+                        <span class="box">age:number</span>
+                        <span class="box">faction:text</span>
+                        <span class="box">arc_state:text</span>
+                      </div>
+                    </div>
+                    <div class="step" data-step="3">
+                      <h3>Apply to Instances</h3>
+                      <p>Once assigned, Instance Editor shows property value slots for this Kind.</p>
+                    </div>
+                    <div class="step" data-step="4">
+                      <h3>Validate usage</h3>
+                      <p>Find missing required values or invalid relation endpoint usage.</p>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <aside class="pane queue-pane">
+                <header class="pane-head">
+                  <strong>Review Queue</strong>
+                  <span>kind</span>
+                </header>
+                <div class="pane-body">
+                  <div class="queue">
+                    <div class="queue-card review">
+                      <div class="queue-title"><span>Property candidate</span><span class="pill warn">review</span></div>
+                      <div class="queue-body">AI suggests property "motivation" from 12 character files.</div>
+                      <div class="mini-actions">
+                        <button class="mini-button">Accept</button>
+                        <button class="mini-button">Edit</button>
+                        <button class="mini-button">Reject</button>
+                      </div>
+                    </div>
+                    <div class="queue-card issue">
+                      <div class="queue-title"><span>Required policy impact</span><span class="pill danger">risk</span></div>
+                      <div class="queue-body">Making "age" required would mark 8 existing Instances as incomplete.</div>
+                    </div>
+                    <div class="queue-card ok">
+                      <div class="queue-title"><span>15 assigned instances</span><span class="pill green">usage</span></div>
+                      <div class="queue-body">Open filtered Explorer to inspect all Character Instances.</div>
+                    </div>
+                  </div>
+                </div>
+              </aside>
+            </div>
+
+            <div data-view="relation">
+              <aside class="pane">
+                <header class="pane-head">
+                  <strong>RelationKind Actions</strong>
+                  <span>endpoint grammar</span>
+                </header>
+                <div class="pane-body">
+                  <div class="action-list">
+                    <div class="action-card active">
+                      <div class="action-title"><span>Edit Endpoints</span><span class="pill green">primary</span></div>
+                      <div class="action-desc">Choose allowed Kind sets for subject and object endpoints.</div>
+                    </div>
+                    <div class="action-card">
+                      <div class="action-title"><span>Set Direction</span><span class="pill">rule</span></div>
+                      <div class="action-desc">Directed relations have subject/object semantics. Undirected still validates endpoints.</div>
+                    </div>
+                    <div class="action-card">
+                      <div class="action-title"><span>Create Relation</span><span class="pill blue">apply</span></div>
+                      <div class="action-desc">Create a RelationAssertion between compatible Instances.</div>
+                    </div>
+                    <div class="action-card">
+                      <div class="action-title"><span>Validate Relations</span><span class="pill warn">check</span></div>
+                      <div class="action-desc">Check accepted RelationAssertions against endpoint constraints.</div>
+                    </div>
+                    <div class="action-card">
+                      <div class="action-title"><span>Suggest RelationKind</span><span class="pill warn">AI</span></div>
+                      <div class="action-desc">AI proposes relation grammar from repeated user-created relations.</div>
+                    </div>
+                  </div>
+                </div>
+              </aside>
+
+              <section class="pane">
+                <header class="pane-head">
+                  <strong>Flow: Define relation grammar</strong>
+                  <span>binary MVP</span>
+                </header>
+                <div class="pane-body">
+                  <div class="editor-hero">
+                    <div class="hero-top">
+                      <div class="hero-title">
+                        <h1>appearsIn</h1>
+                        <p>RelationKind / Character to Scene / directed</p>
+                      </div>
+                      <div class="hero-actions">
+                        <button class="button primary">Edit Endpoints</button>
+                        <button class="button">Create Relation</button>
+                        <button class="button">Validate</button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="flow">
+                    <div class="step" data-step="1">
+                      <h3>Choose direction</h3>
+                      <p>Directed relation stores canonical subject and object endpoints.</p>
+                      <div class="diagram">
+                        <span class="box">Character</span>
+                        <span class="arrow">appearsIn</span>
+                        <span class="box">Scene</span>
+                      </div>
+                    </div>
+                    <div class="step" data-step="2">
+                      <h3>Set endpoint Kind constraints</h3>
+                      <p>Only compatible Instances can be accepted as RelationAssertion endpoints.</p>
+                      <div class="form-grid">
+                        <div class="field">
+                          <label>Subject allowed Kinds</label>
+                          <input class="input" value="Character" />
+                        </div>
+                        <div class="field">
+                          <label>Object allowed Kinds</label>
+                          <input class="input" value="Scene" />
+                        </div>
+                      </div>
+                    </div>
+                    <div class="step" data-step="3">
+                      <h3>Create relation assertions</h3>
+                      <p>The editor can launch a create relation flow, but service validates endpoints.</p>
+                    </div>
+                    <div class="step" data-step="4">
+                      <h3>Review conflicts</h3>
+                      <p>If endpoint rules change, existing relations may become invalid or need review.</p>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <aside class="pane queue-pane">
+                <header class="pane-head">
+                  <strong>Review Queue</strong>
+                  <span>relation</span>
+                </header>
+                <div class="pane-body">
+                  <div class="queue">
+                    <div class="queue-card ok">
+                      <div class="queue-title"><span>31 valid relations</span><span class="pill green">ok</span></div>
+                      <div class="queue-body">Accepted RelationAssertions satisfy Character to Scene constraints.</div>
+                    </div>
+                    <div class="queue-card issue">
+                      <div class="queue-title"><span>1 invalid candidate</span><span class="pill danger">conflict</span></div>
+                      <div class="queue-body">Scene 1 appearsIn Yuna reverses the canonical direction.</div>
+                      <div class="mini-actions">
+                        <button class="mini-button">Flip</button>
+                        <button class="mini-button">Reject</button>
+                      </div>
+                    </div>
+                    <div class="queue-card review">
+                      <div class="queue-title"><span>Related proposal</span><span class="pill warn">AI</span></div>
+                      <div class="queue-body">AI suggests "mentionedIn" for weak references found in notes.</div>
+                    </div>
+                  </div>
+                </div>
+              </aside>
+            </div>
+
+            <div data-view="instance">
+              <aside class="pane">
+                <header class="pane-head">
+                  <strong>Instance Actions</strong>
+                  <span>actual world object</span>
+                </header>
+                <div class="pane-body">
+                  <div class="action-list">
+                    <div class="action-card active">
+                      <div class="action-title"><span>Assign Kind</span><span class="pill green">primary</span></div>
+                      <div class="action-desc">Apply visible Kind definitions to this Instance.</div>
+                    </div>
+                    <div class="action-card">
+                      <div class="action-title"><span>Edit Property Value</span><span class="pill blue">actual</span></div>
+                      <div class="action-desc">Set values created by user, AI, capability, or external source.</div>
+                    </div>
+                    <div class="action-card">
+                      <div class="action-title"><span>Map Resource</span><span class="pill">source</span></div>
+                      <div class="action-desc">Connect files, URLs, service objects, or sub-resources as sources.</div>
+                    </div>
+                    <div class="action-card">
+                      <div class="action-title"><span>Create Relation</span><span class="pill blue">link</span></div>
+                      <div class="action-desc">Create RelationAssertions to compatible target Instances.</div>
+                    </div>
+                    <div class="action-card">
+                      <div class="action-title"><span>Open Interactive</span><span class="pill">view</span></div>
+                      <div class="action-desc">Open the editor in interactive mode for this Instance.</div>
+                    </div>
+                    <div class="action-card">
+                      <div class="action-title"><span>Extract Values</span><span class="pill warn">AI</span></div>
+                      <div class="action-desc">AI proposes property values from mapped Resources. User reviews.</div>
+                    </div>
+                  </div>
+                </div>
+              </aside>
+
+              <section class="pane">
+                <header class="pane-head">
+                  <strong>Flow: Apply world grammar</strong>
+                  <span>instance-centric</span>
+                </header>
+                <div class="pane-body">
+                  <div class="editor-hero">
+                    <div class="hero-top">
+                      <div class="hero-title">
+                        <h1>Yuna Han</h1>
+                        <p>Instance / home Model: Cast / primary Resource: yuna-han.md</p>
+                      </div>
+                      <div class="hero-actions">
+                        <button class="button primary">Assign Kind</button>
+                        <button class="button">Edit Values</button>
+                        <button class="button">Open Interactive</button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="flow">
+                    <div class="step" data-step="1">
+                      <h3>Create or select Instance identity</h3>
+                      <p>The Instance is the ontological target. It may be backed by one or more Resources.</p>
+                    </div>
+                    <div class="step" data-step="2">
+                      <h3>Assign visible Kinds</h3>
+                      <p>Kind assignment makes property slots and relation compatibility available.</p>
+                      <div class="diagram">
+                        <span class="box">Yuna Han</span>
+                        <span class="arrow">is</span>
+                        <span class="box">Character</span>
+                        <span class="box">POV</span>
+                      </div>
+                    </div>
+                    <div class="step" data-step="3">
+                      <h3>Map Resources and edit values</h3>
+                      <p>Values can be manually entered or proposed from resources. Resource evidence is optional.</p>
+                      <div class="form-grid">
+                        <div class="field">
+                          <label>age</label>
+                          <input class="input" value="29" />
+                        </div>
+                        <div class="field">
+                          <label>faction</label>
+                          <input class="input" value="North Harbor" />
+                        </div>
+                      </div>
+                    </div>
+                    <div class="step" data-step="4">
+                      <h3>Create relations and validate</h3>
+                      <p>Relations are between Instances. RelationKind endpoint constraints are checked by service.</p>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <aside class="pane queue-pane">
+                <header class="pane-head">
+                  <strong>Review Queue</strong>
+                  <span>instance</span>
+                </header>
+                <div class="pane-body">
+                  <div class="queue">
+                    <div class="queue-card review">
+                      <div class="queue-title"><span>Value candidate</span><span class="pill warn">review</span></div>
+                      <div class="queue-body">AI extracted arc_state = "exile to reluctant leader" from yuna-han.md.</div>
+                      <div class="mini-actions">
+                        <button class="mini-button">Accept</button>
+                        <button class="mini-button">Edit</button>
+                        <button class="mini-button">Reject</button>
+                      </div>
+                    </div>
+                    <div class="queue-card ok">
+                      <div class="queue-title"><span>Primary resource mapped</span><span class="pill green">ok</span></div>
+                      <div class="queue-body">yuna-han.md is linked as the primary source Resource.</div>
+                    </div>
+                    <div class="queue-card review">
+                      <div class="queue-title"><span>Relation candidate</span><span class="pill warn">AI</span></div>
+                      <div class="queue-body">Potential relation: Yuna Han appearsIn Scene 12.</div>
+                      <div class="mini-actions">
+                        <button class="mini-button">Accept</button>
+                        <button class="mini-button">Open Canvas</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </aside>
+            </div>
+          </section>
+        </main>
+      </div>
+    </div>
+
+    <script>
+      const buttons = Array.from(document.querySelectorAll("[data-tab-button]"));
+      const views = Array.from(document.querySelectorAll("[data-view]"));
+
+      function activate(key) {
+        buttons.forEach((button) => {
+          button.classList.toggle("active", button.dataset.tabButton === key);
+        });
+        views.forEach((view) => {
+          view.classList.toggle("active", view.dataset.view === key);
+        });
+      }
+
+      buttons.forEach((button) => {
+        button.addEventListener("click", () => activate(button.dataset.tabButton));
+      });
+    </script>
+  </body>
+</html>

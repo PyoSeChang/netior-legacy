@@ -1,11 +1,11 @@
-﻿import { fsService } from '../services';
-import { useModuleStore } from '../stores/module-store';
+import { fsService } from '../services';
 import { useWorldStore } from '../stores/world-store';
+import { getWorldRootDir } from '../utils/world-utils';
 
 export interface ResolvedFilePath {
   input: string;
   path: string;
-  source: 'absolute' | 'terminal' | 'world' | 'module';
+  source: 'absolute' | 'terminal' | 'world';
 }
 
 function normalizeSeparators(path: string): string {
@@ -94,14 +94,9 @@ export async function resolveFilePathCandidates(inputPath: string, terminalCwd?:
     await pushIfExists(candidates, seen, input, joinPath(terminalCwd, input), 'terminal');
   }
 
-  const worldRoot = useWorldStore.getState().currentWorld?.root_dir;
+  const worldRoot = getWorldRootDir(useWorldStore.getState().currentWorld);
   if (worldRoot) {
     await pushIfExists(candidates, seen, input, joinPath(worldRoot, input), 'world');
-  }
-
-  const moduleDirs = useModuleStore.getState().directories.map((directory) => directory.dir_path);
-  for (const dirPath of moduleDirs) {
-    await pushIfExists(candidates, seen, input, joinPath(dirPath, input), 'module');
   }
 
   return candidates;

@@ -1,9 +1,7 @@
 ﻿import React, { useEffect, useMemo } from 'react';
-import { Waypoints } from 'lucide-react';
 import { useUIStore, type SidebarView } from '../../stores/ui-store';
 import { useEditorStore } from '../../stores/editor-store';
 import { useWorldStore } from '../../stores/world-store';
-import { useNetworkStore } from '../../stores/network-store';
 import { useActivityBarStore } from '../../stores/activity-bar-store';
 import { useSettingsStore } from '../../stores/settings-store';
 import { useI18n } from '../../hooks/useI18n';
@@ -14,7 +12,6 @@ import {
   ACTIVITY_BAR_TOP_ITEM_DEFINITIONS,
 } from '../../lib/activity-bar-items';
 import {
-  getWorldNetworkBookmarkIds,
   type ActivityBarBottomItemKey,
   type ActivityBarTopItemKey,
 } from '../../lib/activity-bar-layout';
@@ -29,9 +26,6 @@ export function ActivityBar(): JSX.Element {
     toggleSidebar,
   } = useUIStore();
   const currentWorld = useWorldStore((state) => state.currentWorld);
-  const networks = useNetworkStore((state) => state.networks);
-  const openNetwork = useNetworkStore((state) => state.openNetwork);
-  const config = useActivityBarStore((state) => state.config);
   const ensureLoaded = useActivityBarStore((state) => state.ensureLoaded);
   const browserHomeUrl = useSettingsStore((state) => state.browser.homeUrl);
   const shellClassName = sidebarOpen
@@ -57,46 +51,21 @@ export function ActivityBar(): JSX.Element {
     return currentWorld
       ? ([
           'worlds',
-          'networks',
+          'models',
           'files',
           'sessions',
         ] as const satisfies readonly ActivityBarTopItemKey[])
-      : (['worlds', 'networks'] as const satisfies readonly ActivityBarTopItemKey[]);
+      : (['worlds'] as const satisfies readonly ActivityBarTopItemKey[]);
   }, [currentWorld]);
 
   const bottomItemKeys = useMemo(() => {
     return currentWorld
-      ? (['rootNetwork', 'narre', 'terminal', 'agents', 'browser', 'settings'] as const satisfies readonly ActivityBarBottomItemKey[])
+      ? (['narre', 'terminal', 'agents', 'browser', 'settings'] as const satisfies readonly ActivityBarBottomItemKey[])
       : (['agents', 'browser', 'settings'] as const satisfies readonly ActivityBarBottomItemKey[]);
   }, [currentWorld]);
 
-  const bookmarkNetworks = useMemo(() => {
-    if (!currentWorld) {
-      return [];
-    }
-
-    const bookmarkIds = getWorldNetworkBookmarkIds(config, currentWorld.id);
-    return bookmarkIds
-      .map((bookmarkId) => networks.find((network) => network.id === bookmarkId))
-      .filter((network): network is NonNullable<typeof network> => Boolean(network))
-      .filter((network) => network.kind === 'network');
-  }, [config, currentWorld, networks]);
-
-  const handleBookmarkedNetworkClick = (networkId: string) => {
-    void openNetwork(networkId);
-  };
-
   const handleBottomAction = (key: ActivityBarBottomItemKey) => {
     switch (key) {
-      case 'rootNetwork':
-        if (!currentWorld) return;
-        void useEditorStore.getState().openTab({
-          type: 'rootNetwork',
-          targetId: currentWorld.id,
-          title: t('sidebar.rootNetwork' as never),
-          rootNetworkId: currentWorld.id,
-        });
-        return;
       case 'narre':
         if (!currentWorld) return;
         void useEditorStore.getState().openTab({
@@ -151,24 +120,6 @@ export function ActivityBar(): JSX.Element {
           );
         })}
       </div>
-
-      {bookmarkNetworks.length > 0 && (
-        <>
-          <div className="my-2 h-px w-5 bg-border-subtle opacity-50" />
-          <div className="flex flex-col items-center gap-1">
-            {bookmarkNetworks.map((network) => (
-              <Tooltip key={network.id} content={network.name} position="right">
-                <button
-                  className="flex h-8 w-8 items-center justify-center rounded text-secondary transition-colors hover:bg-state-hover hover:text-default"
-                  onClick={() => handleBookmarkedNetworkClick(network.id)}
-                >
-                  <Waypoints size={18} />
-                </button>
-              </Tooltip>
-            ))}
-          </div>
-        </>
-      )}
 
       <div className="flex-1" />
 

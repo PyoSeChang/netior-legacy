@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import type { EditorTab } from '@netior/shared/types';
+import type { EditorTab } from '../../types/editor';
 import { NarreHome } from './narre/NarreHome';
 import { NarreChat } from './narre/NarreChat';
 import { AgentTeam } from './narre/AgentTeam';

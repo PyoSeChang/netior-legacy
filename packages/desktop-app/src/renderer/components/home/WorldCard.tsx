@@ -1,6 +1,7 @@
 ﻿import React from 'react';
 import { Orbit, Trash2 } from 'lucide-react';
 import type { World } from '@netior/shared/types';
+import { getWorldRootDir } from '../../utils/world-utils';
 
 interface WorldCardProps {
   world: World;
@@ -19,7 +20,7 @@ export function WorldCard({ world, onOpen, onDelete }: WorldCardProps): JSX.Elem
       </div>
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium text-default">{world.name}</p>
-        <p className="truncate text-xs text-muted">{world.root_dir}</p>
+        <p className="truncate text-xs text-muted">{getWorldRootDir(world)}</p>
       </div>
       <button
         className="shrink-0 rounded p-1 text-muted opacity-0 transition-opacity duration-fast hover:bg-state-hover hover:text-status-error group-hover:opacity-100"

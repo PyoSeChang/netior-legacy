@@ -1,0 +1,882 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Netior Layout Mockup V2</title>
+    <style>
+      :root {
+        --app: #0f1011;
+        --rail: #121314;
+        --panel: #18191b;
+        --panel-2: #1d1f22;
+        --panel-3: #24272b;
+        --canvas: #111214;
+        --line: #303236;
+        --line-soft: #25272a;
+        --text: #eceff2;
+        --muted: #a0a6ae;
+        --faint: #6f767f;
+        --accent: #69a07a;
+        --accent-soft: rgba(105, 160, 122, 0.18);
+        --blue: #7aa2f7;
+        --warn: #d7b765;
+        --radius-pane: 13px;
+        --topbar-h: 38px;
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          sans-serif;
+        color-scheme: dark;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        width: 100vw;
+        height: 100vh;
+        overflow: hidden;
+        background: var(--app);
+        color: var(--text);
+      }
+
+      button {
+        font: inherit;
+      }
+
+      .app {
+        height: 100vh;
+        display: grid;
+        grid-template-columns: 36px 214px minmax(0, 1fr);
+        gap: 8px;
+        padding: 8px 8px 8px 0;
+        background: var(--app);
+      }
+
+      .rail {
+        min-height: 0;
+        display: grid;
+        grid-template-rows: auto 1fr auto;
+        padding: 4px 3px 6px;
+        background: var(--rail);
+      }
+
+      .rail-group {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 7px;
+      }
+
+      .rail-button {
+        width: 28px;
+        height: 28px;
+        border: 0;
+        border-radius: 8px;
+        display: grid;
+        place-items: center;
+        background: transparent;
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 760;
+      }
+
+      .rail-button.active {
+        background: var(--accent-soft);
+        color: #cfead7;
+      }
+
+      .rail-button.utility {
+        color: var(--faint);
+      }
+
+      .sidebar {
+        min-height: 0;
+        overflow: hidden;
+        display: grid;
+        grid-template-rows: var(--topbar-h) auto minmax(0, 1fr) auto;
+        border: 1px solid var(--line);
+        border-radius: var(--radius-pane);
+        background: var(--panel);
+      }
+
+      .sidebar-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 0 10px 0 12px;
+        border-bottom: 1px solid var(--line-soft);
+      }
+
+      .sidebar-title {
+        min-width: 0;
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        font-size: 12px;
+        font-weight: 720;
+      }
+
+      .sidebar-title span:last-child {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .icon-dot {
+        width: 15px;
+        height: 15px;
+        border-radius: 5px;
+        background:
+          radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.9) 0 1px, transparent 2px),
+          linear-gradient(135deg, var(--accent), #3a4b5f);
+      }
+
+      .mini {
+        width: 24px;
+        height: 24px;
+        border: 0;
+        border-radius: 7px;
+        background: transparent;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .primary {
+        padding: 8px 7px 9px;
+        display: grid;
+        gap: 4px;
+        border-bottom: 1px solid var(--line-soft);
+      }
+
+      .primary-item {
+        min-height: 30px;
+        display: grid;
+        grid-template-columns: 22px minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 7px;
+        padding: 0 7px;
+        border-radius: 8px;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 640;
+      }
+
+      .primary-item.active {
+        background: var(--panel-3);
+        color: var(--text);
+      }
+
+      .nav-icon {
+        width: 19px;
+        height: 19px;
+        border-radius: 6px;
+        display: grid;
+        place-items: center;
+        background: rgba(255, 255, 255, 0.055);
+        color: var(--muted);
+        font-size: 10px;
+        font-weight: 760;
+      }
+
+      .primary-item.active .nav-icon {
+        background: var(--accent-soft);
+        color: #d6f0df;
+      }
+
+      .count {
+        min-width: 18px;
+        height: 18px;
+        border-radius: 999px;
+        display: inline-grid;
+        place-items: center;
+        padding: 0 6px;
+        background: rgba(255, 255, 255, 0.06);
+        color: var(--faint);
+        font-size: 10px;
+      }
+
+      .scroll {
+        min-height: 0;
+        overflow: auto;
+        padding: 10px 7px 12px;
+      }
+
+      .section {
+        margin: 11px 7px 6px;
+        color: var(--faint);
+        font-size: 10px;
+        font-weight: 780;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .row {
+        min-height: 28px;
+        display: grid;
+        grid-template-columns: 16px minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 7px;
+        padding: 0 7px;
+        border-radius: 7px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .row.active {
+        background: rgba(255, 255, 255, 0.065);
+        color: var(--text);
+      }
+
+      .row.sub {
+        padding-left: 18px;
+      }
+
+      .label {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .status-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 999px;
+        background: var(--faint);
+      }
+
+      .status-dot.good {
+        background: var(--accent);
+      }
+
+      .status-dot.warn {
+        background: var(--warn);
+      }
+
+      .sidebar-foot {
+        padding: 7px;
+        border-top: 1px solid var(--line-soft);
+        display: grid;
+        gap: 4px;
+      }
+
+      .utility-row {
+        min-height: 28px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 7px;
+        color: var(--muted);
+        font-size: 11px;
+      }
+
+      .utility-row.account {
+        background: var(--panel-2);
+      }
+
+      .main {
+        min-width: 0;
+        min-height: 0;
+        display: grid;
+        grid-template-columns: minmax(420px, 0.55fr) 8px minmax(420px, 0.45fr);
+      }
+
+      .pane {
+        min-width: 0;
+        min-height: 0;
+        overflow: hidden;
+        display: grid;
+        grid-template-rows: var(--topbar-h) minmax(0, 1fr);
+        border: 1px solid var(--line-soft);
+        border-radius: var(--radius-pane);
+        background: var(--panel);
+      }
+
+      .pane-top {
+        height: var(--topbar-h);
+        min-width: 0;
+        display: flex;
+        align-items: end;
+        gap: 7px;
+        padding: 0 8px;
+        border-bottom: 1px solid var(--line-soft);
+        background: linear-gradient(180deg, #17191b, #151618);
+      }
+
+      .canvas-top {
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .view-title {
+        min-width: 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .view-title strong {
+        color: var(--text);
+        font-size: 13px;
+      }
+
+      .remote {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+      }
+
+      .remote-button {
+        height: 26px;
+        min-width: 28px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #191b1e;
+        color: var(--muted);
+        padding: 0 8px;
+        font-size: 11px;
+      }
+
+      .remote-button.active {
+        background: var(--accent-soft);
+        border-color: rgba(105, 160, 122, 0.36);
+        color: #d7f2df;
+      }
+
+      .segment {
+        display: flex;
+        align-items: center;
+        gap: 3px;
+        height: 27px;
+        padding: 3px;
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        background: #111315;
+      }
+
+      .segment button {
+        height: 21px;
+        border: 0;
+        border-radius: 7px;
+        background: transparent;
+        color: var(--muted);
+        padding: 0 8px;
+        font-size: 11px;
+      }
+
+      .segment button.active {
+        background: var(--panel-3);
+        color: var(--text);
+      }
+
+      .tabs {
+        min-width: 0;
+        display: flex;
+        align-items: end;
+        gap: 2px;
+        height: 100%;
+        padding-top: 5px;
+      }
+
+      .tab {
+        position: relative;
+        height: 31px;
+        min-width: 128px;
+        max-width: 210px;
+        border: 1px solid transparent;
+        border-bottom: 0;
+        border-radius: 11px 11px 0 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 0 10px;
+        color: var(--muted);
+        font-size: 12px;
+        background: transparent;
+      }
+
+      .tab.active {
+        border-color: var(--line-soft);
+        background: var(--panel-2);
+        color: var(--text);
+      }
+
+      .tab.active::before,
+      .tab.active::after {
+        content: "";
+        position: absolute;
+        bottom: 0;
+        width: 10px;
+        height: 10px;
+        pointer-events: none;
+      }
+
+      .tab.active::before {
+        left: -10px;
+        border-bottom-right-radius: 10px;
+        box-shadow: 4px 4px 0 3px var(--panel-2);
+      }
+
+      .tab.active::after {
+        right: -10px;
+        border-bottom-left-radius: 10px;
+        box-shadow: -4px 4px 0 3px var(--panel-2);
+      }
+
+      .tab-label {
+        min-width: 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .window-controls {
+        margin-left: auto;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding-bottom: 6px;
+      }
+
+      .window-control {
+        width: 22px;
+        height: 22px;
+        border: 0;
+        border-radius: 6px;
+        background: transparent;
+        color: var(--faint);
+      }
+
+      .splitter {
+        display: grid;
+        place-items: center;
+      }
+
+      .splitter::before {
+        content: "";
+        width: 3px;
+        height: 66px;
+        border-radius: 999px;
+        background: #2a2d31;
+      }
+
+      .canvas {
+        position: relative;
+        overflow: hidden;
+        background:
+          radial-gradient(circle, rgba(255, 255, 255, 0.07) 1px, transparent 1px) 0 0 / 18px 18px,
+          var(--canvas);
+      }
+
+      .node {
+        position: absolute;
+        min-width: 154px;
+        min-height: 64px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: rgba(29, 31, 34, 0.94);
+        padding: 10px;
+        box-shadow: 0 18px 42px rgba(0, 0, 0, 0.26);
+      }
+
+      .node.group {
+        width: 310px;
+        min-height: 190px;
+        border-style: dashed;
+        background: rgba(24, 25, 27, 0.68);
+      }
+
+      .node.card {
+        width: 216px;
+        min-height: 118px;
+      }
+
+      .node-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        font-size: 12px;
+        font-weight: 740;
+      }
+
+      .node-meta {
+        margin-top: 7px;
+        color: var(--faint);
+        font-size: 11px;
+      }
+
+      .pills {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+        margin-top: 11px;
+      }
+
+      .pill {
+        height: 20px;
+        display: inline-flex;
+        align-items: center;
+        border-radius: 999px;
+        padding: 0 7px;
+        background: rgba(255, 255, 255, 0.07);
+        color: var(--muted);
+        font-size: 10px;
+      }
+
+      .pill.blue {
+        background: rgba(122, 162, 247, 0.18);
+        color: #d4e0ff;
+      }
+
+      .edge {
+        position: absolute;
+        height: 1px;
+        background: #59616c;
+        transform-origin: left center;
+      }
+
+      .editor {
+        min-height: 0;
+        overflow: auto;
+        background: var(--panel-2);
+      }
+
+      .document {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 34px 54px 90px;
+      }
+
+      .document h1 {
+        margin: 0 0 20px;
+        font-size: 29px;
+        line-height: 1.18;
+        letter-spacing: 0;
+      }
+
+      .document h2 {
+        margin: 34px 0 12px;
+        font-size: 18px;
+      }
+
+      .document p,
+      .document li {
+        color: #cfd4db;
+        font-size: 14px;
+        line-height: 1.78;
+      }
+
+      .document p {
+        margin: 0 0 16px;
+      }
+
+      .home-note {
+        position: absolute;
+        right: 18px;
+        bottom: 18px;
+        width: 282px;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: rgba(24, 25, 27, 0.94);
+        padding: 12px;
+      }
+
+      .home-note strong {
+        display: block;
+        font-size: 12px;
+      }
+
+      .home-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+        margin-top: 10px;
+      }
+
+      .home-card {
+        min-height: 52px;
+        border: 1px solid var(--line-soft);
+        border-radius: 10px;
+        background: var(--panel-2);
+        padding: 8px;
+        color: var(--muted);
+        font-size: 11px;
+      }
+
+      @media (max-width: 1120px) {
+        .app {
+          grid-template-columns: 36px 204px minmax(0, 1fr);
+        }
+
+        .main {
+          grid-template-columns: minmax(0, 1fr);
+          grid-template-rows: minmax(360px, 0.55fr) 8px minmax(320px, 0.45fr);
+        }
+
+        .splitter::before {
+          width: 66px;
+          height: 3px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <nav class="rail" aria-label="Activity rail">
+        <div class="rail-group">
+          <button class="rail-button">H</button>
+          <button class="rail-button active">E</button>
+          <button class="rail-button">C</button>
+          <button class="rail-button">N</button>
+        </div>
+        <div></div>
+        <div class="rail-group">
+          <button class="rail-button utility">T</button>
+          <button class="rail-button utility">B</button>
+          <button class="rail-button utility">S</button>
+        </div>
+      </nav>
+
+      <aside class="sidebar">
+        <header class="sidebar-head">
+          <div class="sidebar-title">
+            <span class="icon-dot"></span>
+            <span>Netior</span>
+          </div>
+          <button class="mini">v</button>
+        </header>
+
+        <section class="primary">
+          <div class="primary-item">
+            <span class="nav-icon">H</span>
+            <span class="label">Home / Worlds</span>
+          </div>
+          <div class="primary-item active">
+            <span class="nav-icon">E</span>
+            <span class="label">Explorer</span>
+            <span class="count">18</span>
+          </div>
+          <div class="primary-item">
+            <span class="nav-icon">C</span>
+            <span class="label">Canvas</span>
+            <span class="count">4</span>
+          </div>
+          <div class="primary-item">
+            <span class="nav-icon">N</span>
+            <span class="label">Narre</span>
+            <span class="status-dot good"></span>
+          </div>
+        </section>
+
+        <div class="scroll">
+          <div class="section">World</div>
+          <div class="row active">
+            <span class="status-dot good"></span>
+            <span class="label">Novel Lab</span>
+            <span></span>
+          </div>
+          <div class="row sub">
+            <span class="status-dot good"></span>
+            <span class="label">Cast</span>
+            <span class="count">18</span>
+          </div>
+          <div class="row sub">
+            <span class="status-dot"></span>
+            <span class="label">Plot</span>
+            <span class="count">12</span>
+          </div>
+          <div class="row sub">
+            <span class="status-dot"></span>
+            <span class="label">Scenes</span>
+            <span class="count">43</span>
+          </div>
+          <div class="row sub">
+            <span class="status-dot warn"></span>
+            <span class="label">Research Notes</span>
+            <span class="count">7</span>
+          </div>
+
+          <div class="section">Bookmarks</div>
+          <div class="row active">
+            <span class="nav-icon">V</span>
+            <span class="label">Cast Canvas</span>
+            <span></span>
+          </div>
+          <div class="row">
+            <span class="nav-icon">I</span>
+            <span class="label">Yuna Han</span>
+            <span></span>
+          </div>
+          <div class="row">
+            <span class="nav-icon">R</span>
+            <span class="label">Unassigned Resources</span>
+            <span class="count">3</span>
+          </div>
+
+          <div class="section">Recent</div>
+          <div class="row">
+            <span class="nav-icon">MD</span>
+            <span class="label">yuna-han.md</span>
+          </div>
+          <div class="row">
+            <span class="nav-icon">K</span>
+            <span class="label">Character</span>
+          </div>
+        </div>
+
+        <footer class="sidebar-foot">
+          <div class="utility-row">
+            <span>Terminal</span>
+            <span>idle</span>
+          </div>
+          <div class="utility-row">
+            <span>Browser</span>
+            <span>1 tab</span>
+          </div>
+          <div class="utility-row account">
+            <span>memutator</span>
+            <span>Pro</span>
+          </div>
+        </footer>
+      </aside>
+
+      <main class="main">
+        <section class="pane">
+          <header class="pane-top canvas-top">
+            <div class="view-title">
+              <strong>Cast Canvas</strong>
+              <span>/</span>
+              <span>Model: Cast</span>
+            </div>
+            <div class="remote">
+              <div class="segment" aria-label="View switcher">
+                <button>Explorer</button>
+                <button class="active">Canvas</button>
+              </div>
+              <button class="remote-button active">Browse</button>
+              <button class="remote-button">Edit</button>
+              <button class="remote-button">-</button>
+              <button class="remote-button">91%</button>
+              <button class="remote-button">+</button>
+              <button class="remote-button">Fit</button>
+            </div>
+          </header>
+
+          <div class="canvas">
+            <div class="edge" style="left: 286px; top: 214px; width: 188px; transform: rotate(-9deg)"></div>
+            <div class="edge" style="left: 346px; top: 324px; width: 190px; transform: rotate(17deg)"></div>
+
+            <div class="node group" style="left: 70px; top: 66px">
+              <div class="node-head">
+                <span>Cast Model</span>
+                <span class="pill">group</span>
+              </div>
+              <div class="node-meta">local model / directory backed</div>
+            </div>
+
+            <div class="node card" style="left: 118px; top: 126px">
+              <div class="node-head">
+                <span>Yuna Han</span>
+                <span class="pill blue">Instance</span>
+              </div>
+              <div class="node-meta">Character, POV / yuna-han.md</div>
+              <div class="pills">
+                <span class="pill">age 29</span>
+                <span class="pill">North Harbor</span>
+                <span class="pill">accepted</span>
+              </div>
+            </div>
+
+            <div class="node" style="left: 478px; top: 94px">
+              <div class="node-head">
+                <span>Scene 12</span>
+                <span class="pill">from Scenes</span>
+              </div>
+              <div class="node-meta">external subject reference</div>
+            </div>
+
+            <div class="node" style="left: 525px; top: 310px">
+              <div class="node-head">
+                <span>faction-map.png</span>
+                <span class="pill">Resource</span>
+              </div>
+              <div class="node-meta">from Research Notes</div>
+            </div>
+
+            <div class="node" style="left: 190px; top: 402px">
+              <div class="node-head">
+                <span>Character</span>
+                <span class="pill blue">Kind</span>
+              </div>
+              <div class="node-meta">icon: lucide/user image</div>
+            </div>
+
+            <aside class="home-note">
+              <strong>Home screen is separate</strong>
+              <div class="home-grid">
+                <div class="home-card">Recent worlds</div>
+                <div class="home-card">Create world</div>
+                <div class="home-card">Open folder</div>
+                <div class="home-card">Settings</div>
+              </div>
+            </aside>
+          </div>
+        </section>
+
+        <div class="splitter" aria-hidden="true"></div>
+
+        <section class="pane">
+          <header class="pane-top">
+            <div class="tabs">
+              <div class="tab active">
+                <span class="nav-icon">I</span>
+                <span class="tab-label">Yuna Han</span>
+              </div>
+              <div class="tab">
+                <span class="nav-icon">MD</span>
+                <span class="tab-label">yuna-han.md</span>
+              </div>
+              <div class="tab">
+                <span class="nav-icon">MD</span>
+                <span class="tab-label">NETIOR_VIEW_MODEL.md</span>
+              </div>
+            </div>
+            <div class="window-controls">
+              <button class="window-control">-</button>
+              <button class="window-control">[]</button>
+              <button class="window-control">x</button>
+            </div>
+          </header>
+          <div class="editor">
+            <article class="document">
+              <h1>Yuna Han</h1>
+              <p>
+                The editor tabs occupy the same top rhythm as the canvas remote. There is no
+                separate application title bar above the workspace.
+              </p>
+              <h2>Details</h2>
+              <ul>
+                <li>Kind: Character, POV</li>
+                <li>Primary resource: yuna-han.md</li>
+                <li>Home model: Cast</li>
+                <li>Details and interactive modes live inside editor tabs.</li>
+              </ul>
+              <h2>Canvas Behavior</h2>
+              <p>
+                Browse mode opens editors and domain actions. Edit mode adjusts layout:
+                area select, drag, resize, group, hide, and copy layout.
+              </p>
+            </article>
+          </div>
+        </section>
+      </main>
+    </div>
+  </body>
+</html>

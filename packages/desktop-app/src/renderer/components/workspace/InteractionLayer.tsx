@@ -1,12 +1,19 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import type { RenderNode } from './types';
 import type { WorkspaceMode } from '../../stores/ui-store';
-import type { InteractionConstraints, LayoutViewportMode } from './layout-plugins/types';
 import type { MentionResult } from '../../services/narre-service';
 import {
   dispatchNarreMentionDrop,
   NARRE_MENTION_DROP_TARGET_SELECTOR,
 } from '../../hooks/useNarreMentionDrag';
+
+type LayoutViewportMode = 'world' | 'screen' | 'timeline';
+type InteractionAxis = 'x' | 'y' | 'both' | 'none';
+
+interface InteractionConstraints {
+  panAxis: InteractionAxis;
+  nodeDragAxis: InteractionAxis;
+}
 
 interface UseInteractionParams {
   containerRef: React.RefObject<HTMLDivElement>;

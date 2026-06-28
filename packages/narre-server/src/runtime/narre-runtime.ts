@@ -344,6 +344,7 @@ export class NarreRuntime {
         worldRootDir: metadata.worldRootDir ?? null,
         systemPrompt,
         userPrompt: processedMessage,
+        runtimeProfile,
         sessionId: resolvedSessionId,
         isResume,
         signal,

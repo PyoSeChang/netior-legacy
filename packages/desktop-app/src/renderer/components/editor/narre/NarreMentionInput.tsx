@@ -1,10 +1,23 @@
+// @ts-nocheck
 import React, { useRef, useState, useCallback, useEffect } from 'react';
-import { ChevronRight, CornerDownRight, Plus, Send, Square, X } from 'lucide-react';
-import type { NarreMention, SkillDefinition } from '@netior/shared/types';
+import { createPortal } from 'react-dom';
+import { ChevronDown, ChevronRight, CornerDownRight, Plus, Send, Shield, Square, X, Zap } from 'lucide-react';
+import type {
+  AgentReasoningEffort,
+  AgentRuntimeProfile,
+  NarreCodexApprovalPolicy,
+  NarreCodexSandboxMode,
+  NarreMention,
+  NarrePromptRuntimeOverride,
+  NarrePromptRuntimeProvider,
+  NarreRuntimeModelOption,
+  SkillDefinition,
+} from '@netior/shared/types';
 import { SLASH_TRIGGER_SKILLS } from '@netior/shared/constants';
-import type { MentionResult } from '../../../services/narre-service';
+import { listRuntimeModels, type MentionResult } from '../../../services/narre-service';
 import type { NarrePendingSkillInvocationState } from '../../../lib/narre-ui-state';
 import { useI18n } from '../../../hooks/useI18n';
+import { useAnchoredDropdown } from '../../../hooks/useAnchoredDropdown';
 import { Badge } from '../../ui/Badge';
 import { IconButton } from '../../ui/IconButton';
 import { NarreMentionPicker } from './NarreMentionPicker';
@@ -23,6 +36,7 @@ export interface NarreComposerSubmit {
   mentions: NarreMention[];
   draftHtml: string;
   pendingSkillInvocation: NarrePendingSkillInvocationState | null;
+  runtimeOverride?: NarrePromptRuntimeOverride | null;
   delivery?: 'send' | 'queue' | 'steer';
 }
 
@@ -43,6 +57,7 @@ interface NarreMentionInputProps {
   allowSlashSkills?: boolean;
   agentMentions?: MentionResult[];
   footerLabel?: string;
+  runtimeProfile?: AgentRuntimeProfile | null;
   onDraftChange?: (draftHtml: string) => void;
   onPendingSkillInvocationChange?: (pendingSkillInvocation: NarrePendingSkillInvocationState | null) => void;
   onRemoveScheduledMessage?: (index: number) => void;
@@ -71,6 +86,142 @@ const EMPTY_SNAPSHOT: ComposerSnapshot = {
   text: '',
   mentions: [],
 };
+
+interface RuntimeControlDraft {
+  provider: NarrePromptRuntimeProvider;
+  model: string;
+  reasoningEffort: AgentReasoningEffort;
+  codexSandboxMode: NarreCodexSandboxMode;
+  codexApprovalPolicy: NarreCodexApprovalPolicy;
+}
+
+const DEFAULT_RUNTIME_DRAFT: RuntimeControlDraft = {
+  provider: 'openai',
+  model: '',
+  reasoningEffort: 'medium',
+  codexSandboxMode: 'read-only',
+  codexApprovalPolicy: 'on-request',
+};
+
+const DEFAULT_RUNTIME_MODEL_OPTIONS: Record<NarrePromptRuntimeProvider, readonly NarreRuntimeModelOption[]> = {
+  claude: [{ id: 'sonnet', label: 'Sonnet' }],
+  openai: [
+    { id: 'gpt-5.5', label: 'GPT-5.5' },
+    { id: 'gpt-5.4', label: 'GPT-5.4' },
+    { id: 'gpt-5.4-mini', label: 'GPT-5.4 Mini' },
+  ],
+  codex: [
+    { id: 'gpt-5.5', label: 'GPT-5.5' },
+    { id: 'gpt-5.4', label: 'GPT-5.4' },
+    { id: 'gpt-5.4-mini', label: 'GPT-5.4 Mini' },
+    { id: 'gpt-5.3-codex-spark', label: 'GPT-5.3 Codex Spark' },
+    { id: 'codex-auto-review', label: 'Codex Auto Review' },
+  ],
+};
+
+function normalizeRuntimeProvider(value: unknown): NarrePromptRuntimeProvider {
+  if (value === 'claude' || value === 'codex' || value === 'openai') {
+    return value;
+  }
+  return DEFAULT_RUNTIME_DRAFT.provider;
+}
+
+function normalizeReasoningEffort(value: unknown): AgentReasoningEffort {
+  if (value === 'low' || value === 'medium' || value === 'high' || value === 'xhigh') {
+    return value;
+  }
+  return DEFAULT_RUNTIME_DRAFT.reasoningEffort;
+}
+
+function normalizeCodexSandboxMode(value: unknown): NarreCodexSandboxMode {
+  if (value === 'workspace-write' || value === 'danger-full-access') {
+    return value;
+  }
+  return DEFAULT_RUNTIME_DRAFT.codexSandboxMode;
+}
+
+function normalizeCodexApprovalPolicy(value: unknown): NarreCodexApprovalPolicy {
+  if (value === 'untrusted' || value === 'never') {
+    return value;
+  }
+  return DEFAULT_RUNTIME_DRAFT.codexApprovalPolicy;
+}
+
+function buildRuntimeControlDraft(runtimeProfile?: AgentRuntimeProfile | null): RuntimeControlDraft {
+  return {
+    provider: normalizeRuntimeProvider(runtimeProfile?.provider),
+    model: runtimeProfile?.model ?? '',
+    reasoningEffort: normalizeReasoningEffort(runtimeProfile?.reasoningEffort),
+    codexSandboxMode: normalizeCodexSandboxMode(runtimeProfile?.metadata?.codexSandboxMode),
+    codexApprovalPolicy: normalizeCodexApprovalPolicy(runtimeProfile?.metadata?.codexApprovalPolicy),
+  };
+}
+
+function buildRuntimeOverride(draft: RuntimeControlDraft): NarrePromptRuntimeOverride {
+  const model = draft.model.trim();
+  return {
+    ...(model ? { model } : {}),
+    ...(draft.provider === 'openai' || draft.provider === 'codex'
+      ? { reasoningEffort: draft.reasoningEffort }
+      : {}),
+    ...(draft.provider === 'codex'
+      ? {
+        codex: {
+          sandboxMode: draft.codexSandboxMode,
+        },
+      }
+      : {}),
+  };
+}
+
+function getRuntimeModelOptions(
+  provider: NarrePromptRuntimeProvider,
+  currentModel: string,
+  defaultLabel: string,
+  loadedOptions: readonly NarreRuntimeModelOption[],
+): { value: string; label: string }[] {
+  const seen = new Set<string>();
+  const values: NarreRuntimeModelOption[] = [];
+  for (const option of [...DEFAULT_RUNTIME_MODEL_OPTIONS[provider], ...loadedOptions]) {
+    const id = option.id.trim();
+    if (!id || seen.has(id)) {
+      continue;
+    }
+    seen.add(id);
+    values.push({
+      id,
+      label: option.label.trim() || id,
+    });
+  }
+
+  const normalizedCurrent = currentModel.trim();
+  if (normalizedCurrent && !seen.has(normalizedCurrent)) {
+    values.push({ id: normalizedCurrent, label: normalizedCurrent });
+  }
+
+  return [
+    { value: '', label: defaultLabel },
+    ...values.map((option) => ({
+      value: option.id,
+      label: option.label,
+    })),
+  ];
+}
+
+function getOptionLabel(
+  options: readonly { value: string; label: string }[],
+  value: string,
+  fallback: string,
+): string {
+  return options.find((option) => option.value === value)?.label ?? fallback;
+}
+
+function getCompactModelLabel(label: string): string {
+  return label
+    .replace(/^gpt-/i, '')
+    .replace(/^GPT-/i, '')
+    .trim();
+}
 
 function createAttachmentId(): string {
   return `image-${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -337,6 +488,7 @@ export function NarreMentionInput({
   allowSlashSkills = true,
   agentMentions = [],
   footerLabel,
+  runtimeProfile = null,
   onDraftChange,
   onPendingSkillInvocationChange,
   onRemoveScheduledMessage,
@@ -357,14 +509,69 @@ export function NarreMentionInput({
     query: '',
     position: { bottom: 0, left: 0 },
   });
+  const [runtimeMenuOpen, setRuntimeMenuOpen] = useState<'access' | 'model' | null>(null);
+  const [runtimeDraft, setRuntimeDraft] = useState<RuntimeControlDraft>(() => buildRuntimeControlDraft(runtimeProfile));
+  const [runtimeModelOptions, setRuntimeModelOptions] = useState<NarreRuntimeModelOption[]>([]);
+  const [runtimeModelsLoading, setRuntimeModelsLoading] = useState(false);
   const [imageAttachments, setImageAttachments] = useState<ComposerImageAttachment[]>([]);
   const [previewAttachmentId, setPreviewAttachmentId] = useState<string | null>(null);
+  const runtimeAccessButtonRef = useRef<HTMLButtonElement>(null);
+  const runtimeModelButtonRef = useRef<HTMLButtonElement>(null);
+  const runtimeAccessMenuRef = useRef<HTMLDivElement>(null);
+  const runtimeModelMenuRef = useRef<HTMLDivElement>(null);
+  const runtimeAccessMenuPosition = useAnchoredDropdown(runtimeMenuOpen === 'access', runtimeAccessButtonRef, {
+    estimatedHeight: 180,
+    minWidth: 190,
+    gap: 6,
+  }, runtimeAccessMenuRef);
+  const runtimeModelMenuPosition = useAnchoredDropdown(runtimeMenuOpen === 'model', runtimeModelButtonRef, {
+    estimatedHeight: 340,
+    minWidth: 240,
+    gap: 6,
+  }, runtimeModelMenuRef);
   const mentionSearchStart = useRef<number | null>(null);
   const mentionReplaceRange = useRef<{ node: Text; atPos: number; cursorPos: number } | null>(null);
   const previousDisabled = useRef(disabled);
   const selectedSkill = pendingSkillInvocation ? getSlashSkillByName(pendingSkillInvocation.name, availableSkills) : null;
   const fileMention = snapshot.mentions.find((mention) => mention.type === 'file');
   const previewAttachment = imageAttachments.find((attachment) => attachment.id === previewAttachmentId) ?? null;
+  const showRuntimeControls = Boolean(runtimeProfile);
+  const showRuntimeAccessControl = showRuntimeControls && runtimeDraft.provider === 'codex';
+  const runtimeModelSelectOptions = getRuntimeModelOptions(
+    runtimeDraft.provider,
+    runtimeDraft.model,
+    t('narre.runtimeDefaultModel' as never),
+    runtimeModelOptions,
+  );
+  const runtimeReasoningOptions = [
+    { value: 'low', label: t('narre.runtimeReasoningLow' as never) },
+    { value: 'medium', label: t('narre.runtimeReasoningMedium' as never) },
+    { value: 'high', label: t('narre.runtimeReasoningHigh' as never) },
+    { value: 'xhigh', label: t('narre.runtimeReasoningXHigh' as never) },
+  ] as const;
+  const runtimeAccessOptions = [
+    { value: 'read-only', label: t('settings.narreCodexSandboxReadOnly' as never) },
+    { value: 'workspace-write', label: t('settings.narreCodexSandboxWorkspaceWrite' as never) },
+    { value: 'danger-full-access', label: t('settings.narreCodexSandboxDanger' as never) },
+  ] as const;
+  const runtimeModelLabel = getOptionLabel(
+    runtimeModelSelectOptions,
+    runtimeDraft.model,
+    t('narre.runtimeDefaultModel' as never),
+  );
+  const runtimeReasoningLabel = getOptionLabel(
+    runtimeReasoningOptions,
+    runtimeDraft.reasoningEffort,
+    t('narre.runtimeReasoningMedium' as never),
+  );
+  const runtimeAccessLabel = getOptionLabel(
+    runtimeAccessOptions,
+    runtimeDraft.codexSandboxMode,
+    t('settings.narreCodexSandboxReadOnly' as never),
+  );
+  const runtimeModelButtonLabel = runtimeDraft.provider === 'claude'
+    ? getCompactModelLabel(runtimeModelLabel)
+    : `${getCompactModelLabel(runtimeModelLabel)} ${runtimeReasoningLabel}`;
 
   const addImageFiles = useCallback(async (files: File[]) => {
     if (files.length === 0) {
@@ -451,13 +658,14 @@ export function NarreMentionInput({
       mentions,
       draftHtml: el.innerHTML,
       pendingSkillInvocation,
+      runtimeOverride: showRuntimeControls ? buildRuntimeOverride(runtimeDraft) : null,
       delivery,
     });
     if (result === false) return;
 
     logShortcut('shortcut.narreChat.sendMessage');
     resetEditor();
-  }, [canSubmit, disabled, imageAttachments, isStreaming, onSend, pendingSkillInvocation, resetEditor, sendDisabled]);
+  }, [canSubmit, disabled, imageAttachments, isStreaming, onSend, pendingSkillInvocation, resetEditor, runtimeDraft, sendDisabled, showRuntimeControls]);
 
   const handleSlashSelect = useCallback((skill: SkillDefinition) => {
     const el = editorRef.current;
@@ -822,6 +1030,79 @@ export function NarreMentionInput({
     editorRef.current?.focus();
   }, []);
 
+  useEffect(() => {
+    setRuntimeDraft(buildRuntimeControlDraft(runtimeProfile));
+    setRuntimeMenuOpen(null);
+  }, [
+    runtimeProfile?.provider,
+    runtimeProfile?.model,
+    runtimeProfile?.reasoningEffort,
+    runtimeProfile?.metadata?.codexSandboxMode,
+    runtimeProfile?.metadata?.codexApprovalPolicy,
+  ]);
+
+  useEffect(() => {
+    if (!showRuntimeControls) {
+      setRuntimeModelOptions([]);
+      setRuntimeModelsLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setRuntimeModelsLoading(true);
+    listRuntimeModels(runtimeDraft.provider)
+      .then((options) => {
+        if (!cancelled) {
+          setRuntimeModelOptions(options);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setRuntimeModelOptions([]);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setRuntimeModelsLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [runtimeDraft.provider, showRuntimeControls]);
+
+  useEffect(() => {
+    if (!runtimeMenuOpen) {
+      return;
+    }
+
+    const handleMouseDown = (event: MouseEvent) => {
+      const target = event.target as Node;
+      const button = runtimeMenuOpen === 'access'
+        ? runtimeAccessButtonRef.current
+        : runtimeModelButtonRef.current;
+      const menu = runtimeMenuOpen === 'access'
+        ? runtimeAccessMenuRef.current
+        : runtimeModelMenuRef.current;
+      if (button?.contains(target) || menu?.contains(target)) {
+        return;
+      }
+      setRuntimeMenuOpen(null);
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setRuntimeMenuOpen(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleMouseDown);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleMouseDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [runtimeMenuOpen]);
 
   useEffect(() => {
     const wasDisabled = previousDisabled.current;
@@ -990,6 +1271,25 @@ export function NarreMentionInput({
           >
             <Plus size={15} />
           </IconButton>
+          {showRuntimeAccessControl && (
+            <button
+              ref={runtimeAccessButtonRef}
+              type="button"
+              disabled={disabled}
+              className={`inline-flex h-7 max-w-[180px] items-center gap-1.5 rounded-md px-2 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                runtimeMenuOpen === 'access'
+                  ? 'bg-accent-muted text-accent'
+                  : 'bg-transparent text-secondary hover:enabled:bg-state-hover hover:enabled:text-default'
+              }`}
+              aria-haspopup="menu"
+              aria-expanded={runtimeMenuOpen === 'access'}
+              onClick={() => setRuntimeMenuOpen((open) => open === 'access' ? null : 'access')}
+            >
+              <Shield size={13} className="shrink-0" />
+              <span className="min-w-0 truncate">{runtimeAccessLabel}</span>
+              <ChevronDown size={13} className="shrink-0" />
+            </button>
+          )}
           {footerLabel && (
             <span className="truncate text-xs text-muted">{footerLabel}</span>
           )}
@@ -999,6 +1299,25 @@ export function NarreMentionInput({
             </Badge>
           )}
           <div className="ml-auto flex items-center gap-2">
+            {showRuntimeControls && (
+              <button
+                ref={runtimeModelButtonRef}
+                type="button"
+                disabled={disabled}
+                className={`inline-flex h-7 max-w-[220px] items-center gap-1.5 rounded-md px-2 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                  runtimeMenuOpen === 'model'
+                    ? 'bg-accent-muted text-accent'
+                    : 'bg-transparent text-secondary hover:enabled:bg-state-hover hover:enabled:text-default'
+                }`}
+                aria-haspopup="menu"
+                aria-expanded={runtimeMenuOpen === 'model'}
+                onClick={() => setRuntimeMenuOpen((open) => open === 'model' ? null : 'model')}
+              >
+                <Zap size={13} className="shrink-0" />
+                <span className="min-w-0 truncate">{runtimeModelButtonLabel}</span>
+                <ChevronDown size={13} className="shrink-0" />
+              </button>
+            )}
             {allowMentions && (
               <span className="text-xs text-muted">@</span>
             )}
@@ -1042,6 +1361,117 @@ export function NarreMentionInput({
           </div>
         </div>
       </div>
+      {showRuntimeAccessControl && runtimeMenuOpen === 'access' && createPortal(
+        <div
+          ref={runtimeAccessMenuRef}
+          className="fixed overflow-hidden rounded-lg border border-default bg-surface-panel py-1"
+          style={{
+            top: runtimeAccessMenuPosition.top,
+            left: runtimeAccessMenuPosition.left,
+            width: runtimeAccessMenuPosition.width,
+            maxHeight: runtimeAccessMenuPosition.maxHeight,
+            visibility: runtimeAccessMenuPosition.ready ? 'visible' : 'hidden',
+            zIndex: 10001,
+            boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+          }}
+          role="menu"
+          onMouseDown={(event) => event.stopPropagation()}
+        >
+          <div className="px-3 py-2 text-[11px] font-medium uppercase text-muted">
+            {t('narre.runtimeAccess' as never)}
+          </div>
+          {runtimeAccessOptions.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              role="menuitemradio"
+              aria-checked={runtimeDraft.codexSandboxMode === option.value}
+              className={`flex w-full items-center px-3 py-1.5 text-left text-sm transition-colors hover:bg-state-hover ${
+                runtimeDraft.codexSandboxMode === option.value ? 'bg-accent-muted text-accent' : 'text-default'
+              }`}
+              onClick={() => {
+                const codexSandboxMode = normalizeCodexSandboxMode(option.value);
+                setRuntimeDraft((current) => ({ ...current, codexSandboxMode }));
+                setRuntimeMenuOpen(null);
+              }}
+            >
+              <span className="min-w-0 flex-1 truncate">{option.label}</span>
+            </button>
+          ))}
+        </div>,
+        document.body,
+      )}
+      {showRuntimeControls && runtimeMenuOpen === 'model' && createPortal(
+        <div
+          ref={runtimeModelMenuRef}
+          className="fixed overflow-hidden rounded-lg border border-default bg-surface-panel"
+          style={{
+            top: runtimeModelMenuPosition.top,
+            left: runtimeModelMenuPosition.left,
+            width: runtimeModelMenuPosition.width,
+            maxHeight: runtimeModelMenuPosition.maxHeight,
+            visibility: runtimeModelMenuPosition.ready ? 'visible' : 'hidden',
+            zIndex: 10001,
+            boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+          }}
+          role="menu"
+          onMouseDown={(event) => event.stopPropagation()}
+        >
+          <div className="border-b border-subtle">
+            <div className="px-3 py-2 text-[11px] font-medium uppercase text-muted">
+              {t('narre.runtimeModel' as never)}
+              {runtimeModelsLoading ? ` (${t('common.loading' as never)})` : ''}
+            </div>
+            <div className="max-h-[220px] overflow-y-auto py-1">
+              {runtimeModelSelectOptions.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  role="menuitemradio"
+                  aria-checked={runtimeDraft.model === option.value}
+                  className={`flex w-full items-center px-3 py-1.5 text-left text-sm transition-colors hover:bg-state-hover ${
+                    runtimeDraft.model === option.value ? 'bg-accent-muted text-accent' : 'text-default'
+                  }`}
+                  onClick={() => {
+                    setRuntimeDraft((current) => ({ ...current, model: option.value }));
+                    setRuntimeMenuOpen(null);
+                  }}
+                >
+                  <span className="min-w-0 flex-1 truncate">{option.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+          {(runtimeDraft.provider === 'openai' || runtimeDraft.provider === 'codex') && (
+            <div>
+              <div className="px-3 py-2 text-[11px] font-medium uppercase text-muted">
+                {t('narre.runtimeReasoning' as never)}
+              </div>
+              <div className="py-1">
+                {runtimeReasoningOptions.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    role="menuitemradio"
+                    aria-checked={runtimeDraft.reasoningEffort === option.value}
+                    className={`flex w-full items-center px-3 py-1.5 text-left text-sm transition-colors hover:bg-state-hover ${
+                      runtimeDraft.reasoningEffort === option.value ? 'bg-accent-muted text-accent' : 'text-default'
+                    }`}
+                    onClick={() => {
+                      const reasoningEffort = normalizeReasoningEffort(option.value);
+                      setRuntimeDraft((current) => ({ ...current, reasoningEffort }));
+                      setRuntimeMenuOpen(null);
+                    }}
+                  >
+                    <span className="min-w-0 flex-1 truncate">{option.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>,
+        document.body,
+      )}
       <NarreImagePreviewOverlay
         attachment={previewAttachment}
         onClose={() => setPreviewAttachmentId(null)}

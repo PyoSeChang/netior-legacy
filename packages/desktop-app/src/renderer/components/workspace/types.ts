@@ -1,8 +1,8 @@
-﻿export type WorkspaceNodeType = 'instance' | 'file' | 'dir' | 'network' | 'object';
+﻿export type WorkspaceNodeType = 'instance' | 'file' | 'dir' | 'canvas' | 'object';
 export interface PortalChip {
   id: string;
   label: string;
-  networkId: string;
+  canvasId: string;
 }
 
 /** Node data for rendering */
@@ -31,7 +31,7 @@ export interface RenderNode {
   metadata?: Record<string, unknown>;
   fileId?: string;
   filePath?: string;
-  networkId?: string;
+  canvasId?: string;
   dimmed?: boolean;
 }
 

@@ -6,6 +6,7 @@ import { existsSync } from 'fs';
 import { createRequire } from 'module';
 import { randomUUID } from 'crypto';
 import type {
+  AgentReasoningEffort,
   AgentRuntimeProfile,
   AgentExecutorCommandStatus,
   AgentExecutorStatus,
@@ -18,7 +19,10 @@ import type {
   OrchestrationTaskStatus,
   NarreBehaviorSettings,
   NarreCodexSettings,
+  NarreCodexApprovalPolicy,
+  NarreCodexSandboxMode,
   NarreMention,
+  NarrePromptRuntimeOverride,
   NarreStreamEvent,
   SupervisorSessionReport,
 } from '@netior/shared/types';
@@ -99,6 +103,7 @@ const executors = new ExecutorRegistry({
 const behaviorSettings = parseBehaviorSettings();
 const codexSettings = parseCodexSettings();
 const providerAdapterCache = new Map<string, Promise<NarreProviderAdapter>>();
+const activeChatRuntimes = new Map<string, NarreRuntime>();
 let provider!: NarreProviderAdapter;
 let runtime!: NarreRuntime;
 let dispatcher!: AgentRuntimeDispatcher;
@@ -611,17 +616,25 @@ app.post('/chat/respond', async (req, res) => {
     res.status(400).json({ error: 'toolCallId required' });
     return;
   }
-  const resolved = runtime.resolveUiCall(toolCallId, response);
-  if (!resolved) {
+
+  const targetRuntime = typeof sessionId === 'string'
+    ? activeChatRuntimes.get(sessionId) ?? runtime
+    : runtime;
+  let resolved = targetRuntime.resolveUiCall(toolCallId, response);
+  if (!resolved && targetRuntime !== runtime) {
+    resolved = runtime.resolveUiCall(toolCallId, response);
+  }
+
+  const persisted = typeof sessionId === 'string'
+    ? await sessionStore.updateCardResponseById(sessionId, toolCallId, response)
+    : false;
+
+  if (!resolved && !persisted) {
     res.status(404).json({ error: 'No pending UI call' });
     return;
   }
 
-  if (typeof sessionId === 'string') {
-    await sessionStore.updateCardResponseById(sessionId, toolCallId, response);
-  }
-
-  res.json({ ok: true });
+  res.json({ ok: true, resolved, persisted });
 });
 
 app.post('/chat/steer', async (req, res) => {
@@ -663,13 +676,14 @@ app.post('/chat/steer', async (req, res) => {
 });
 
 app.post('/chat', async (req, res) => {
-  const { sessionId, rootNetworkId, message, mentions, agentKey, skillIds } = req.body as {
+  const { sessionId, rootNetworkId, message, mentions, agentKey, skillIds, runtimeOverride } = req.body as {
     sessionId?: string;
     rootNetworkId: string;
     message: string;
     mentions?: NarreMention[];
     agentKey?: string | null;
     skillIds?: unknown[];
+    runtimeOverride?: unknown;
   };
   const traceId = req.get(NARRE_TRACE_HEADER) || randomUUID();
   const requestStartedAt = Date.now();
@@ -722,48 +736,70 @@ app.post('/chat', async (req, res) => {
     const activeAgent = effectiveAgentKey
       ? supervisor.listAgents(rootNetworkId).find((agent) => getSupervisorAgentKey(agent) === effectiveAgentKey)
       : undefined;
+    const promptRuntimeOverride = normalizePromptRuntimeOverride(runtimeOverride);
+    const effectiveRuntimeProfile = promptRuntimeOverride
+      ? mergePromptRuntimeProfile(activeAgent?.runtimeProfile, promptRuntimeOverride)
+      : undefined;
+    const chatRuntime = effectiveRuntimeProfile
+      ? await createRuntimeForProfile(effectiveRuntimeProfile)
+      : runtime;
 
-    const result = await runtime.runChat(
-      {
-        sessionId,
-        rootNetworkId,
-        message,
-        mentions,
-        traceId,
-        activeAgent,
-        skillIds: Array.isArray(skillIds)
-          ? skillIds.filter((value): value is string => typeof value === 'string')
-          : undefined,
-      },
-      {
-        onText: (content) => {
-          if (!abortController.signal.aborted) {
-            emitEvent({ type: 'text', content });
-          }
+    if (typeof sessionId === 'string' && sessionId.length > 0) {
+      activeChatRuntimes.set(sessionId, chatRuntime);
+    }
+
+    let result: Awaited<ReturnType<NarreRuntime['runChat']>>;
+    try {
+      result = await chatRuntime.runChat(
+        {
+          sessionId,
+          rootNetworkId,
+          message,
+          mentions,
+          traceId,
+          activeAgent,
+          runtimeProfile: effectiveRuntimeProfile,
+          skillIds: Array.isArray(skillIds)
+            ? skillIds.filter((value): value is string => typeof value === 'string')
+            : undefined,
         },
-        onToolStart: (tool, toolInput, toolMetadata) => {
-          if (!abortController.signal.aborted) {
-            emitEvent({ type: 'tool_start', tool, toolInput, toolMetadata });
-          }
+        {
+          onText: (content) => {
+            if (!abortController.signal.aborted) {
+              emitEvent({ type: 'text', content });
+            }
+          },
+          onToolStart: (tool, toolInput, toolMetadata) => {
+            if (!abortController.signal.aborted) {
+              emitEvent({ type: 'tool_start', tool, toolInput, toolMetadata });
+            }
+          },
+          onToolEnd: (tool, toolResult, toolMetadata) => {
+            if (!abortController.signal.aborted) {
+              emitEvent({ type: 'tool_end', tool, toolResult, toolMetadata });
+            }
+          },
+          onCard: (card) => {
+            if (!abortController.signal.aborted) {
+              emitEvent({ type: 'card', card });
+            }
+          },
+          onError: (error) => {
+            if (!abortController.signal.aborted) {
+              emitEvent({ type: 'error', error });
+            }
+          },
         },
-        onToolEnd: (tool, toolResult, toolMetadata) => {
-          if (!abortController.signal.aborted) {
-            emitEvent({ type: 'tool_end', tool, toolResult, toolMetadata });
-          }
-        },
-        onCard: (card) => {
-          if (!abortController.signal.aborted) {
-            emitEvent({ type: 'card', card });
-          }
-        },
-        onError: (error) => {
-          if (!abortController.signal.aborted) {
-            emitEvent({ type: 'error', error });
-          }
-        },
-      },
-      abortController.signal,
-    );
+        abortController.signal,
+      );
+    } finally {
+      if (
+        typeof sessionId === 'string'
+        && activeChatRuntimes.get(sessionId) === chatRuntime
+      ) {
+        activeChatRuntimes.delete(sessionId);
+      }
+    }
     if (abortController.signal.aborted || res.writableEnded) {
       return;
     }
@@ -820,6 +856,82 @@ function createRuntimeConfig(provider: NarreProviderAdapter): ConstructorParamet
 async function createRuntimeForProfile(runtimeProfile: AgentRuntimeProfile): Promise<NarreRuntime> {
   const provider = await getCachedProviderAdapter(runtimeProfile.provider, runtimeProfile.model);
   return new NarreRuntime(createRuntimeConfig(provider));
+}
+
+function normalizePromptRuntimeOverride(value: unknown): NarrePromptRuntimeOverride | undefined {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return undefined;
+  }
+
+  const source = value as Record<string, unknown>;
+  const model = typeof source.model === 'string' ? source.model.trim() : '';
+  const reasoningEffort = normalizePromptReasoningEffort(source.reasoningEffort);
+  const codexSource = source.codex && typeof source.codex === 'object' && !Array.isArray(source.codex)
+    ? source.codex as Record<string, unknown>
+    : null;
+
+  return {
+    ...(model ? { model } : {}),
+    ...(reasoningEffort ? { reasoningEffort } : {}),
+    ...(codexSource
+      ? {
+        codex: {
+          sandboxMode: normalizePromptCodexSandboxMode(codexSource.sandboxMode),
+          approvalPolicy: normalizePromptCodexApprovalPolicy(codexSource.approvalPolicy),
+        },
+      }
+      : {}),
+  };
+}
+
+function mergePromptRuntimeProfile(
+  base: AgentRuntimeProfile | undefined,
+  override: NarrePromptRuntimeOverride,
+): AgentRuntimeProfile | undefined {
+  if (!base) {
+    return undefined;
+  }
+
+  const metadata: Record<string, string> = {
+    ...(base.metadata ?? {}),
+  };
+  if (override.codex?.sandboxMode) {
+    metadata.codexSandboxMode = override.codex.sandboxMode;
+  }
+  if (override.codex?.approvalPolicy) {
+    metadata.codexApprovalPolicy = override.codex.approvalPolicy;
+  }
+
+  return {
+    ...base,
+    model: override.model ?? base.model,
+    reasoningEffort: override.reasoningEffort ?? base.reasoningEffort,
+    toolProfileIds: base.toolProfileIds ? [...base.toolProfileIds] : ['core'],
+    approvalPolicy: base.approvalPolicy ?? 'default',
+    contextScope: base.contextScope ?? 'run',
+    metadata,
+  };
+}
+
+function normalizePromptReasoningEffort(value: unknown): AgentReasoningEffort | undefined {
+  if (value === 'low' || value === 'medium' || value === 'high' || value === 'xhigh') {
+    return value;
+  }
+  return undefined;
+}
+
+function normalizePromptCodexSandboxMode(value: unknown): NarreCodexSandboxMode {
+  if (value === 'workspace-write' || value === 'danger-full-access') {
+    return value;
+  }
+  return 'read-only';
+}
+
+function normalizePromptCodexApprovalPolicy(value: unknown): NarreCodexApprovalPolicy {
+  if (value === 'untrusted' || value === 'never') {
+    return value;
+  }
+  return 'on-request';
 }
 
 function getProviderCacheKey(providerName: string, modelOverride?: string): string {

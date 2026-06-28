@@ -5,7 +5,7 @@
   SupervisorSessionReport,
   TerminalAgentDefinition,
 } from '@netior/shared/types';
-import { listRemoteWorlds } from '../netior-service/netior-service-client';
+import { callNetiorRpc } from '../netior-service/netior-service-client';
 import { syncNarreServerWithSettings } from './narre-config';
 import { getNarreServerBaseUrl } from '../process/narre-server-manager';
 
@@ -182,7 +182,7 @@ export class TerminalAgentSupervisorSync {
     }
 
     try {
-      const worlds = await listRemoteWorlds();
+      const worlds = await callNetiorRpc<World[]>('world.list');
       this.rootNetworkIdByRootDir.clear();
       for (const world of worlds) {
         this.addWorldRoot(world);
@@ -194,7 +194,7 @@ export class TerminalAgentSupervisorSync {
   }
 
   private addWorldRoot(world: World): void {
-    const normalizedRootDir = normalizePathKey(world.root_dir);
+    const normalizedRootDir = normalizePathKey(world.root_uri);
     if (!normalizedRootDir) {
       return;
     }

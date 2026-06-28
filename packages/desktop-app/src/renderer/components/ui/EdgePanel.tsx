@@ -1,4 +1,4 @@
-﻿import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useI18n } from '../../hooks/useI18n';
 import { PinToggleButton } from './PinToggleButton';
 
@@ -46,7 +46,7 @@ export function EdgePanel({
   const autoHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    if (!autoShowMs || autoShowMs <= 0) return;
+    if (!autoShowMs || autoShowMs <= 0) return undefined;
     setAutoShow(true);
     autoHideTimerRef.current = setTimeout(() => setAutoShow(false), autoShowMs);
     return () => {
@@ -114,14 +114,14 @@ export function EdgePanel({
 
       <div
         className={`absolute ${panelPos} z-30 flex flex-col overflow-hidden ${panelRounded} ${panelBorder} bg-surface-floating shadow-lg transition-all duration-200 ${
-          visible ? 'translate-x-0 opacity-100' : `${hiddenTransform} opacity-0 pointer-events-none`
+          visible ? 'translate-x-0 opacity-100' : `${hiddenTransform} pointer-events-none opacity-0`
         }`}
         style={{ width, top: topOffset, maxHeight: `calc(80% - ${topOffset}px)` }}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
       >
         {showHeader && (
-          <div className="flex shrink-0 items-center justify-between px-3 py-1.5 border-b border-subtle">
+          <div className="flex shrink-0 items-center justify-between border-b border-subtle px-3 py-1.5">
             {title && <span className="text-xs font-medium text-secondary">{title}</span>}
             <div className="ml-auto flex items-center gap-1">
               {headerActions}

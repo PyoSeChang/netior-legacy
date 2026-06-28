@@ -8,8 +8,8 @@ import type {
   SplitLeaf,
   SplitBranch,
   TerminalLaunchConfig,
-} from '@netior/shared/types';
-import { editorPrefsService } from '../services';
+} from '../types/editor';
+import { editorPrefsService } from '../services/editor-prefs-service';
 import { hasUnsavedChanges, getSession } from '../lib/editor-session-registry';
 import { clearDraftCache } from '../hooks/useEditorSession';
 import { clearViewState } from '../hooks/useViewState';
@@ -33,7 +33,6 @@ interface OpenTabParams {
   isDirty?: boolean;
   draftData?: EditorTab['draftData'];
   rootNetworkId?: string;
-  networkId?: string;
   nodeId?: string;
   terminalCwd?: string;
   terminalLaunchConfig?: Pick<TerminalLaunchConfig, 'shell' | 'args' | 'agent'>;
@@ -545,7 +544,7 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
   focusedHostId: MAIN_HOST_ID,
   pendingCloseTabId: null,
 
-  openTab: async ({ type, targetId, title, viewMode, isDirty, draftData, rootNetworkId, networkId, nodeId, terminalCwd, terminalLaunchConfig, browserFaviconUrl, browserUrl, objectViewMode, sideSplitRatio, hostId }) => {
+  openTab: async ({ type, targetId, title, viewMode, isDirty, draftData, rootNetworkId, nodeId, terminalCwd, terminalLaunchConfig, browserFaviconUrl, browserUrl, objectViewMode, sideSplitRatio, hostId }) => {
     const { tabs } = get();
     const tabId = makeTabId(type, targetId);
     const resolvedHostId = hostId ?? MAIN_HOST_ID;
@@ -554,7 +553,6 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
     const existing = tabs.find((t) => t.id === tabId);
     if (existing) {
       const contextPatch: Partial<EditorTab> = {};
-      if (networkId !== undefined) contextPatch.networkId = networkId;
       if (nodeId !== undefined) contextPatch.nodeId = nodeId;
       if (rootNetworkId !== undefined) contextPatch.rootNetworkId = rootNetworkId;
       if (draftData !== undefined) contextPatch.draftData = draftData;
@@ -670,7 +668,6 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
       isStale: false,
       activeFilePath: null,
       draftData,
-      networkId,
       nodeId,
       terminalCwd,
       terminalLaunchConfig,
@@ -777,7 +774,6 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
             isStale: false,
             activeFilePath: null,
             draftData: params.draftData,
-            networkId: params.networkId,
             nodeId: params.nodeId,
             terminalCwd: params.terminalCwd,
             terminalLaunchConfig: params.terminalLaunchConfig,

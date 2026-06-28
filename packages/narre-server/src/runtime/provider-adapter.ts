@@ -1,4 +1,4 @@
-﻿import type { NarreCard, NarreToolCall, NarreToolMetadata } from '@netior/shared/types';
+﻿import type { AgentRuntimeProfile, NarreCard, NarreToolCall, NarreToolMetadata } from '@netior/shared/types';
 
 type MaybePromise = void | Promise<void>;
 
@@ -17,6 +17,7 @@ export interface NarreProviderRunContext {
   worldRootDir?: string | null;
   systemPrompt: string;
   userPrompt: string;
+  runtimeProfile?: AgentRuntimeProfile;
   sessionId: string;
   isResume: boolean;
   signal?: AbortSignal;

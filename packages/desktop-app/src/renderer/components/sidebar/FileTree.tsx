@@ -1,10 +1,9 @@
 ﻿import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { ChevronRight, ChevronDown, Loader2 } from 'lucide-react';
-import type { FileTreeNode } from '@netior/shared/types';
 import type { TranslationKey } from '@netior/shared/i18n';
 import { FileIcon } from './FileIcon';
 import { ContextMenu, type ContextMenuEntry } from '../ui/ContextMenu';
-import { useFileStore, type ClipboardState } from '../../stores/file-store';
+import { useFileStore, type ClipboardState, type FileTreeNode } from '../../stores/file-store';
 import { useEditorStore } from '../../stores/editor-store';
 import { useI18n } from '../../hooks/useI18n';
 import { showToast } from '../ui/Toast';

@@ -60,13 +60,14 @@ export class ClaudeProviderAdapter implements NarreProviderAdapter {
     const prompt = context.isResume
       ? context.userPrompt
       : `${context.systemPrompt}\n\n${context.userPrompt}`;
+    const model = context.runtimeProfile?.model?.trim() || 'sonnet';
 
     const queryOptions: Record<string, unknown> = {
       permissionMode: 'bypassPermissions',
       allowDangerouslySkipPermissions: true,
       maxTurns: 30,
       tools: [],
-      model: 'sonnet',
+      model,
       mcpServers: this.buildMcpServers(context),
     };
     const claudeCodeExecutablePath = resolveClaudeCodeExecutablePath();

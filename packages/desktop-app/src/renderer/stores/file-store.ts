@@ -1,9 +1,17 @@
 ﻿import { create } from 'zustand';
-import type { FileTreeNode } from '@netior/shared/types';
 import { fsService } from '../services';
 import { getEditorType, type EditorType } from '../components/editor/editor-utils';
 
 export type { EditorType };
+
+export interface FileTreeNode {
+  name: string;
+  path: string;
+  type: 'file' | 'directory';
+  children?: FileTreeNode[];
+  hasChildren?: boolean;
+  extension?: string;
+}
 
 export interface OpenFile {
   filePath: string;

@@ -10,7 +10,7 @@ import type {
   UserAgentRecord,
   UserAgentSkillSummary,
 } from '@netior/shared/types';
-import { getRemoteWorld } from '../netior-service/netior-service-client';
+import { callNetiorRpc } from '../netior-service/netior-service-client';
 import { getSharedUserDataRoot } from '../runtime/runtime-paths';
 
 const AGENT_FILE_VERSION = 1;
@@ -376,11 +376,11 @@ async function resolveWorldRootDir(rootNetworkId?: string): Promise<string> {
     throw new Error('rootNetworkId is required for world agents');
   }
 
-  const world = await getRemoteWorld(rootNetworkId);
+  const world = await callNetiorRpc<{ root_uri: string } | null>('world.get', { id: rootNetworkId });
   if (!world) {
     throw new Error(`World not found: ${rootNetworkId}`);
   }
-  return world.root_dir;
+  return world.root_uri;
 }
 
 async function resolveAgentRoot(

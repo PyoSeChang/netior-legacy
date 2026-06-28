@@ -1,7 +1,7 @@
 ﻿import { spawn, type ChildProcess } from 'child_process';
 import { createServer } from 'net';
 import { getNarreToolMetadata, normalizeNetiorToolName } from '@netior/shared/constants';
-import type { NarreCodexSettings, NarreToolCall } from '@netior/shared/types';
+import type { AgentReasoningEffort, AgentRuntimeProfile, NarreCodexSettings, NarreToolCall } from '@netior/shared/types';
 import { ApprovalStore } from '../../approval-store.js';
 import { buildNarreOperationPreview } from '../../operation-preview.js';
 import type { NarreMcpServerConfig } from '../../runtime/provider-adapter.js';
@@ -85,6 +85,10 @@ export interface CodexTransportOptions {
   runtimeSettings?: NarreCodexSettings;
 }
 
+interface EffectiveCodexRuntimeSettings extends NarreCodexSettings {
+  reasoningEffort?: AgentReasoningEffort;
+}
+
 export const DEFAULT_CODEX_RUNTIME_SETTINGS: NarreCodexSettings = {
   model: '',
   useWorldRootAsWorkingDirectory: true,
@@ -124,6 +128,31 @@ export function normalizeCodexRuntimeSettings(value: unknown): NarreCodexSetting
   };
 }
 
+function resolveCodexRuntimeSettings(
+  value: unknown,
+  runtimeProfile?: AgentRuntimeProfile,
+): EffectiveCodexRuntimeSettings {
+  const settings: EffectiveCodexRuntimeSettings = normalizeCodexRuntimeSettings(value);
+  const model = runtimeProfile?.model?.trim();
+  if (model) {
+    settings.model = model;
+  }
+  if (runtimeProfile?.reasoningEffort) {
+    settings.reasoningEffort = runtimeProfile.reasoningEffort;
+  }
+  if (runtimeProfile?.metadata?.codexSandboxMode === 'read-only'
+    || runtimeProfile?.metadata?.codexSandboxMode === 'workspace-write'
+    || runtimeProfile?.metadata?.codexSandboxMode === 'danger-full-access') {
+    settings.sandboxMode = runtimeProfile.metadata.codexSandboxMode;
+  }
+  if (runtimeProfile?.metadata?.codexApprovalPolicy === 'untrusted'
+    || runtimeProfile?.metadata?.codexApprovalPolicy === 'on-request'
+    || runtimeProfile?.metadata?.codexApprovalPolicy === 'never') {
+    settings.approvalPolicy = runtimeProfile.metadata.codexApprovalPolicy;
+  }
+  return settings;
+}
+
 function isNetiorMcpServerName(serverName: string): boolean {
   return serverName === 'netior' || serverName.startsWith('netior-');
 }
@@ -154,7 +183,7 @@ export class CodexTransport implements OpenAIFamilyTransport {
   async run(context: OpenAIFamilyTransportRunContext) {
     const traceId = context.traceId ?? 'no-trace';
     const threadStore = new CodexThreadStore(this.options.dataDir, context.rootNetworkId, context.sessionId);
-    const runtimeSettings = normalizeCodexRuntimeSettings(this.options.runtimeSettings);
+    const runtimeSettings = resolveCodexRuntimeSettings(this.options.runtimeSettings, context.runtimeProfile);
     const client = new CodexAppServerClient(context, runtimeSettings, new ApprovalStore(this.options.dataDir));
     const trackedToolCalls = new Map<string, NarreToolCall>();
     let assistantText = '';
@@ -180,7 +209,8 @@ export class CodexTransport implements OpenAIFamilyTransport {
 
       console.log(
         `[narre:${this.name}] trace=${traceId} Starting run session=${context.sessionId} world=${context.rootNetworkId} ` +
-        `thread=${threadId} resume=${context.isResume ? 'yes' : 'no'} meaning=${this.resolveModel(runtimeSettings) ?? 'default'}`,
+        `thread=${threadId} resume=${context.isResume ? 'yes' : 'no'} model=${this.resolveModel(runtimeSettings) ?? 'default'} ` +
+        `reasoning=${runtimeSettings.reasoningEffort ?? 'default'}`,
       );
 
       client.onTextDelta = async (delta) => {
@@ -238,7 +268,7 @@ export class CodexTransport implements OpenAIFamilyTransport {
 
   private buildThreadConfig(
     context: OpenAIFamilyTransportRunContext,
-    runtimeSettings: NarreCodexSettings,
+    runtimeSettings: EffectiveCodexRuntimeSettings,
   ): Record<string, unknown> {
     const workingDirectory = this.resolveWorkingDirectory(context, runtimeSettings);
     const threadConfig: Record<string, unknown> = {
@@ -260,7 +290,7 @@ export class CodexTransport implements OpenAIFamilyTransport {
     return threadConfig;
   }
 
-  private resolveModel(runtimeSettings: NarreCodexSettings): string | undefined {
+  private resolveModel(runtimeSettings: EffectiveCodexRuntimeSettings): string | undefined {
     const runtimeModel = runtimeSettings.model?.trim();
     if (runtimeModel) {
       return runtimeModel;
@@ -270,7 +300,7 @@ export class CodexTransport implements OpenAIFamilyTransport {
 
   private resolveWorkingDirectory(
     context: OpenAIFamilyTransportRunContext,
-    runtimeSettings: NarreCodexSettings,
+    runtimeSettings: EffectiveCodexRuntimeSettings,
   ): string | undefined {
     if (runtimeSettings.useWorldRootAsWorkingDirectory === false) {
       return undefined;
@@ -298,7 +328,7 @@ class CodexAppServerClient {
 
   constructor(
     private readonly context: OpenAIFamilyTransportRunContext,
-    private readonly runtimeSettings: NarreCodexSettings,
+    private readonly runtimeSettings: EffectiveCodexRuntimeSettings,
     private readonly approvalStore: ApprovalStore,
   ) {}
 
@@ -1296,7 +1326,7 @@ function allocateLoopbackPort(): Promise<number> {
 function buildCodexLaunchCommand(
   args: string[],
   workingDirectory: string | undefined,
-  runtimeSettings: NarreCodexSettings,
+  runtimeSettings: EffectiveCodexRuntimeSettings,
 ): { command: string; args: string[] } {
   const prefixArgs = buildCodexInvocationArgs(workingDirectory, runtimeSettings);
 
@@ -1315,7 +1345,7 @@ function buildCodexLaunchCommand(
 
 function buildCodexInvocationArgs(
   workingDirectory: string | undefined,
-  runtimeSettings: NarreCodexSettings,
+  runtimeSettings: EffectiveCodexRuntimeSettings,
 ): string[] {
   const args: string[] = [];
 
@@ -1333,6 +1363,10 @@ function buildCodexInvocationArgs(
 
   if (runtimeSettings.model && runtimeSettings.model.length > 0) {
     args.push('-m', runtimeSettings.model);
+  }
+
+  if (runtimeSettings.reasoningEffort) {
+    args.push('-c', `model_reasoning_effort="${runtimeSettings.reasoningEffort}"`);
   }
 
   return args;

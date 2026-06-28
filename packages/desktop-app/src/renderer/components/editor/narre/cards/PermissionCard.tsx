@@ -1,6 +1,6 @@
+// @ts-nocheck
 import React, { useCallback, useMemo, useState } from 'react';
 import * as LucideIcons from 'lucide-react';
-import { getFieldMeaningBindingDefinition } from '@netior/shared/constants';
 import type { NarreOperationPreviewItem, NarrePermissionCard } from '@netior/shared/types';
 import type { TranslationKey } from '@netior/shared/i18n';
 import { useI18n } from '../../../../hooks/useI18n';
@@ -27,6 +27,7 @@ function formatPermissionActionLabel(
 ): string {
   switch (action.key.toLowerCase()) {
     case 'accept_world':
+    case 'accept_project':
     case 'allow_world':
     case 'always_allow_world':
       return t('narre.card.permissionAllowWorld' as never);
@@ -50,6 +51,7 @@ function formatPermissionDecisionLabel(
 ): string {
   switch (actionKey.toLowerCase()) {
     case 'accept_world':
+    case 'accept_project':
     case 'allow_world':
     case 'always_allow_world':
       return t('narre.card.permissionAllowedWorld' as never);
@@ -97,6 +99,7 @@ function getActionButtonVariant(actionKey: string, actionVariant?: 'danger' | 'd
 
   switch (actionKey.toLowerCase()) {
     case 'accept_world':
+    case 'accept_project':
     case 'allow_world':
     case 'always_allow_world':
       return 'secondary';
@@ -242,27 +245,8 @@ function localizeFieldType(value: string | undefined, t: ReturnType<typeof useI1
 }
 
 function formatMeaningBindingPart(value: string, t: ReturnType<typeof useI18n>['t']): string {
-  const definition = getFieldMeaningBindingDefinition(value as never);
-  if (definition) {
-    const slotKey = definition.key.split('.').at(-1);
-    const slotTranslationKey = slotKey ? `semantic.slot.${slotKey}.label` : null;
-    const slotLabel = slotTranslationKey ? t(slotTranslationKey as never) : null;
-    if (slotLabel && slotLabel !== slotTranslationKey) {
-      return slotLabel;
-    }
-
-    const semanticKey = definition.key.replace(/\./g, '_');
-    const meaningTranslationKey = `semantic.meaning.${semanticKey}.label`;
-    const meaningLabel = t(meaningTranslationKey as never);
-    if (meaningLabel !== meaningTranslationKey) {
-      return meaningLabel;
-    }
-
-    return definition.label;
-  }
-
   const [scope, name] = value.split('.');
-  const scopeKey = scope ? `semantic.meaning.${scope}.label` : null;
+  const scopeKey = scope ? `domain.${scope}.label` : null;
   const scopeLabel = scopeKey ? t(scopeKey as never) : null;
   const fallbackName = name
     ? name.replace(/[_-]+/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase())

@@ -1,9 +1,11 @@
 ﻿import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
-import type { World, EditorViewMode, SplitLeaf, EditorTab } from '@netior/shared/types';
+import type { World } from '@netior/shared/types';
+import type { EditorViewMode, SplitLeaf, EditorTab } from '../../types/editor';
 import { ActivityBar } from '../sidebar/ActivityBar';
 import { Sidebar } from '../sidebar/Sidebar';
-import { NetworkWorkspace } from './NetworkWorkspace';
+import { ViewPane } from '../view/ViewPane';
+import { ViewControl } from '../view/ViewControl';
 import { FloatWindowLayer } from '../editor/modes/FloatWindowLayer';
 import { FullModeEditor } from '../editor/modes/FullModeEditor';
 import { EditorViewModeMenu } from '../editor/EditorViewModeSwitch';
@@ -15,9 +17,6 @@ import { DropZoneOverlay } from '../editor/DropZoneOverlay';
 import { CloseConfirmDialog } from '../editor/CloseConfirmDialog';
 import { ResizeHandle } from '../ui/ResizeHandle';
 import { AppChromeMark } from '../ui/NetiorTitleMark';
-import { NetworkBreadcrumb } from './NetworkBreadcrumb';
-import { NetworkControls } from './NetworkControls';
-import type { LayoutControlsRendererProps } from './layout-plugins/types';
 import {
   useEditorStore,
   containsTab,
@@ -25,7 +24,6 @@ import {
   MAIN_HOST_ID,
 } from '../../stores/editor-store';
 import { useUIStore } from '../../stores/ui-store';
-import { useSettingsStore } from '../../stores/settings-store';
 import { isTabDrag, getTabDragDataAsync, flushTabDragData } from '../../hooks/useTabDrag';
 import { getFileOpenDragData, isFileOpenDrag } from '../../hooks/useFileOpenDrag';
 import { isEditableMentionDropTarget } from '../../hooks/useNarreMentionDrag';
@@ -42,16 +40,16 @@ interface WorkspaceShellProps {
   windowControls?: React.ReactNode;
 }
 
-function NetworkTabStrip({
-  controls,
+function ViewTitleStrip({
+  controlsSlot,
   rightSlot,
 }: {
-  controls: LayoutControlsRendererProps | null;
+  controlsSlot?: React.ReactNode;
   rightSlot?: React.ReactNode;
 }): JSX.Element {
   return (
     <div
-      className="tab-strip network-tab-strip workspace-title-strip grid shrink-0 items-center pl-2"
+      className="tab-strip workspace-title-strip grid shrink-0 items-center pl-2"
       style={{
         height: TITLE_BAR_HEIGHT,
         gridTemplateColumns: rightSlot
@@ -65,20 +63,9 @@ function NetworkTabStrip({
       >
         <AppChromeMark />
       </div>
-      <div
-        className="min-w-0 max-w-[520px] overflow-hidden px-3"
-        style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
-      >
-        <NetworkBreadcrumb />
-      </div>
-      <div
-        className="relative z-10 flex min-w-0 items-center justify-end"
-      >
-        {controls && (
-          <div style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
-            <NetworkControls {...controls} presentation="header-fixed" />
-          </div>
-        )}
+      <div className="min-w-0" />
+      <div className="relative z-10 flex min-w-0 items-center justify-end" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
+        {controlsSlot}
       </div>
       {rightSlot && (
         <div className="flex h-full shrink-0 items-stretch" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
@@ -97,55 +84,6 @@ function PaneSplitHandle({ onMouseDown }: { onMouseDown: (e: React.MouseEvent) =
       role="separator"
       aria-orientation="vertical"
     />
-  );
-}
-
-function areNetworkControlsEqual(
-  a: LayoutControlsRendererProps | null,
-  b: LayoutControlsRendererProps | null,
-): boolean {
-  if (a === b) return true;
-  if (!a || !b) return false;
-
-  const extraItemsEqual =
-    a.extraItems === b.extraItems
-    || (
-      (a.extraItems?.length ?? 0) === (b.extraItems?.length ?? 0)
-      && (a.extraItems ?? []).every((item, index) => {
-        const other = b.extraItems?.[index];
-        return !!other
-          && item.key === other.key
-          && item.label === other.label
-          && item.active === other.active;
-      })
-    );
-  const hiddenControlsEqual =
-    a.hiddenControls === b.hiddenControls
-    || (
-      (a.hiddenControls?.length ?? 0) === (b.hiddenControls?.length ?? 0)
-      && (a.hiddenControls ?? []).every((item, index) => item === b.hiddenControls?.[index])
-    );
-
-  return (
-    a.mode === b.mode
-    && a.zoom === b.zoom
-    && a.panX === b.panX
-    && a.panY === b.panY
-    && a.canGoBack === b.canGoBack
-    && a.canGoForward === b.canGoForward
-    && a.config === b.config
-    && hiddenControlsEqual
-    && extraItemsEqual
-    && a.setZoom === b.setZoom
-    && a.setPanX === b.setPanX
-    && a.setPanY === b.setPanY
-    && a.updateConfig === b.updateConfig
-    && a.onToggleMode === b.onToggleMode
-    && a.onZoomIn === b.onZoomIn
-    && a.onZoomOut === b.onZoomOut
-    && a.onFitToScreen === b.onFitToScreen
-    && a.onNavigateBack === b.onNavigateBack
-    && a.onNavigateForward === b.onNavigateForward
   );
 }
 
@@ -180,8 +118,7 @@ export function WorkspaceShell({ world, windowControls = null }: WorkspaceShellP
     updateSideSplitRatio, updateSplitRatio, splitTab, moveTabToPane, moveTabWithinStrip, moveTabToHost, updateFloatRect,
   } = useEditorStore();
   const { sidebarOpen, sidebarWidth, setSidebarWidth } = useUIStore();
-  const networkViewerPlacement = useSettingsStore((s) => s.networkViewerPlacement);
-  const isNetworkPaneLeft = networkViewerPlacement === 'network-left';
+  const isViewPaneLeft = true;
 
   // Listen for detached window close events (host-level).
   // Window close semantics: closing a detached window destroys its tabs,
@@ -241,14 +178,6 @@ export function WorkspaceShell({ world, windowControls = null }: WorkspaceShellP
   const [showSideDropHint, setShowSideDropHint] = useState(false);
   const [showFloatDropHint, setShowFloatDropHint] = useState(false);
   const [isTabDragging, setIsTabDragging] = useState(false);
-  const [networkControls, setNetworkControls] = useState<LayoutControlsRendererProps | null>(null);
-  const networkControlsRef = useRef<LayoutControlsRendererProps | null>(null);
-
-  const handleNetworkControlsChange = useCallback((controls: LayoutControlsRendererProps | null) => {
-    if (areNetworkControlsEqual(networkControlsRef.current, controls)) return;
-    networkControlsRef.current = controls;
-    setNetworkControls(controls);
-  }, []);
 
   useEffect(() => {
     const resetDragState = () => {
@@ -290,7 +219,7 @@ export function WorkspaceShell({ world, windowControls = null }: WorkspaceShellP
       const handleMove = (ev: MouseEvent) => {
         if (!editorDraggingRef.current || !container) return;
         const rect = container.getBoundingClientRect();
-        const rawRatio = isNetworkPaneLeft
+        const rawRatio = isViewPaneLeft
           ? (ev.clientX - rect.left) / rect.width
           : (rect.right - ev.clientX) / rect.width;
         const ratio = Math.max(0.2, Math.min(0.8, rawRatio));
@@ -314,7 +243,7 @@ export function WorkspaceShell({ world, windowControls = null }: WorkspaceShellP
       window.addEventListener('mousemove', handleMove);
       window.addEventListener('mouseup', handleUp);
     },
-    [isNetworkPaneLeft, sideActiveTab, updateSideSplitRatio],
+    [isViewPaneLeft, sideActiveTab, updateSideSplitRatio],
   );
 
   // Sidebar resize drag
@@ -344,7 +273,7 @@ export function WorkspaceShell({ world, windowControls = null }: WorkspaceShellP
 
   const splitRatio = sideActiveTab?.sideSplitRatio ?? 0.5;
   const leftRailWidth = sidebarOpen ? sidebarWidth + ACTIVITY_BAR_WIDTH : ACTIVITY_BAR_WIDTH;
-  const showWindowControlsOnNetworkStrip = Boolean(windowControls && (!hasSideEditor || !isNetworkPaneLeft));
+  const showWindowControlsOnViewStrip = Boolean(windowControls && (!hasSideEditor || !isViewPaneLeft));
   const workspacePaneWidth = hasSideEditor
     ? `${splitRatio * 100}%`
     : '100%';
@@ -359,7 +288,7 @@ export function WorkspaceShell({ world, windowControls = null }: WorkspaceShellP
       const activeLeafTab = leafTabs.find((t) => t.id === leaf.activeTabId) ?? leafTabs[0];
 
       const isActivePane = sideFocusedTabId ? leaf.tabIds.includes(sideFocusedTabId) : false;
-      const showWindowControls = Boolean(windowControls && isNetworkPaneLeft && isTopRightPane(adjacency));
+      const showWindowControls = Boolean(windowControls && isViewPaneLeft && isTopRightPane(adjacency));
 
       return (
         <div
@@ -418,7 +347,7 @@ export function WorkspaceShell({ world, windowControls = null }: WorkspaceShellP
         </div>
       );
     },
-    [tabs, isTabDragging, activeTabId, sideFocusedTabId, sideLayout, windowControls, isNetworkPaneLeft, setActiveTab, requestCloseTab, setViewMode, toggleMinimize, moveTabToPane, moveTabWithinStrip, splitTab, clearShellDropState],
+    [tabs, isTabDragging, activeTabId, sideFocusedTabId, sideLayout, windowControls, isViewPaneLeft, setActiveTab, requestCloseTab, setViewMode, toggleMinimize, moveTabToPane, moveTabWithinStrip, splitTab, clearShellDropState],
   );
 
   // Global drag tracking for drop zone activation
@@ -495,20 +424,17 @@ export function WorkspaceShell({ world, windowControls = null }: WorkspaceShellP
   const workspacePane = (
     <div
       data-pane="workspace"
-      className="pane-shell pane-shell--network"
+      className="pane-shell pane-shell--view"
       style={{ width: workspacePaneWidth }}
       onDragOver={handleWorkspaceDragOver}
       onDrop={handleWorkspaceDrop}
     >
-      <NetworkTabStrip
-        controls={networkControls}
-        rightSlot={showWindowControlsOnNetworkStrip ? windowControls : undefined}
+      <ViewTitleStrip
+        controlsSlot={<ViewControl />}
+        rightSlot={showWindowControlsOnViewStrip ? windowControls : undefined}
       />
-      <div className="pane-surface pane-surface--network relative min-h-0 flex-1 overflow-hidden">
-        <NetworkWorkspace
-          rootNetworkId={world?.id ?? null}
-          onControlsChange={handleNetworkControlsChange}
-        />
+      <div className="pane-surface pane-surface--canvas relative min-h-0 flex-1 overflow-hidden">
+        <ViewPane world={world} />
       </div>
     </div>
   );
@@ -556,7 +482,7 @@ export function WorkspaceShell({ world, windowControls = null }: WorkspaceShellP
           ) : (
             <>
               {hasSideEditor && editorPane ? (
-                isNetworkPaneLeft ? (
+                isViewPaneLeft ? (
                   <>
                     {workspacePane}
                     <PaneSplitHandle onMouseDown={handleEditorSplitDragStart} />
@@ -588,12 +514,12 @@ export function WorkspaceShell({ world, windowControls = null }: WorkspaceShellP
               {showSideDropHint && (
                 <div
                   className={`absolute top-0 bottom-0 z-20 flex w-20 items-center justify-center bg-state-selected border-accent ${
-                    isNetworkPaneLeft ? 'right-0 border-l-2' : 'left-0 border-r-2'
+                    isViewPaneLeft ? 'right-0 border-l-2' : 'left-0 border-r-2'
                   }`}
                   onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); e.dataTransfer.dropEffect = 'move'; }}
                   onDrop={handleSideHintDrop}
                 >
-                  <span className={`whitespace-nowrap text-xs font-medium text-accent ${isNetworkPaneLeft ? '-rotate-90' : 'rotate-90'}`}>Side</span>
+                  <span className={`whitespace-nowrap text-xs font-medium text-accent ${isViewPaneLeft ? '-rotate-90' : 'rotate-90'}`}>Side</span>
                 </div>
               )}
             </>

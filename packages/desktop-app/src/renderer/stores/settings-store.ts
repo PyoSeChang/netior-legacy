@@ -32,8 +32,6 @@ interface ThemeFamilyDefinition {
 export type AppearanceMode = 'system' | 'dark' | 'light';
 export type ThemePrimaryMode = 'preset' | 'custom';
 export type DetachedAgentToastMode = 'always' | 'inactive-only';
-export type FieldComplexityLevel = 'basic' | 'standard' | 'advanced';
-export type NetworkViewerPlacement = 'network-left' | 'network-right';
 export type ThemeFamily = ThemeFamilyDefinition['id'];
 export type ResolvedThemeMode = 'dark' | 'light';
 export type PrimaryPresetId = string;
@@ -143,8 +141,6 @@ interface SettingsSyncState {
   detachedAgentToastMode: DetachedAgentToastMode;
   nativeAgentNotificationsEnabled: boolean;
   agentNotificationSoundEnabled: boolean;
-  fieldComplexityLevel: FieldComplexityLevel;
-  networkViewerPlacement: NetworkViewerPlacement;
   typography: TypographyConfig;
   terminalPresetId: TerminalPresetId;
   terminalAppearance: TerminalAppearanceConfig;
@@ -435,11 +431,13 @@ const THEME_FAMILIES: readonly ThemeFamilyDefinition[] = [
           '--palette-neutral-950': 'hsl(8, 14%, 8%)',
           '--theme-background-image': 'radial-gradient(circle at top left, hsla(24, 12%, 58%, 0.10), transparent 24%), radial-gradient(circle at bottom right, hsla(16, 10%, 28%, 0.14), transparent 28%)',
           '--theme-dark-surface-chrome': 'hsl(18, 14%, 8%)',
-          '--theme-dark-surface-panel': 'hsl(18, 12%, 10%)',
-          '--theme-dark-surface-card': 'hsl(18, 11%, 13%)',
+          '--theme-dark-surface-canvas': 'hsl(18, 10%, 12%)',
+          '--theme-dark-surface-editor': 'hsl(18, 10%, 12%)',
+          '--theme-dark-surface-panel': 'hsl(18, 10%, 13%)',
+          '--theme-dark-surface-card': 'hsl(18, 9%, 16%)',
           '--theme-dark-state-hover-bg': 'hsl(18, 10%, 18%)',
-          '--theme-dark-surface-floating': 'hsl(18, 13%, 9%)',
-          '--theme-dark-surface-input': 'hsl(18, 10%, 12%)',
+          '--theme-dark-surface-floating': 'hsl(18, 10%, 17%)',
+          '--theme-dark-surface-input': 'hsl(18, 10%, 10%)',
           '--theme-light-surface-chrome': 'hsl(28, 24%, 94%)',
           '--theme-light-surface-panel': 'hsl(28, 18%, 97%)',
           '--theme-light-surface-card': 'hsl(28, 16%, 95%)',
@@ -468,11 +466,13 @@ const THEME_FAMILIES: readonly ThemeFamilyDefinition[] = [
           '--palette-neutral-950': 'hsl(216, 20%, 8%)',
           '--theme-background-image': 'radial-gradient(circle at top left, hsla(216, 18%, 58%, 0.09), transparent 24%), radial-gradient(circle at bottom right, hsla(216, 16%, 26%, 0.13), transparent 28%)',
           '--theme-dark-surface-chrome': 'hsl(216, 20%, 8%)',
-          '--theme-dark-surface-panel': 'hsl(216, 17%, 10%)',
-          '--theme-dark-surface-card': 'hsl(216, 15%, 13%)',
+          '--theme-dark-surface-canvas': 'hsl(216, 15%, 12%)',
+          '--theme-dark-surface-editor': 'hsl(216, 15%, 12%)',
+          '--theme-dark-surface-panel': 'hsl(216, 15%, 13%)',
+          '--theme-dark-surface-card': 'hsl(216, 13%, 16%)',
           '--theme-dark-state-hover-bg': 'hsl(216, 13%, 18%)',
-          '--theme-dark-surface-floating': 'hsl(216, 18%, 9%)',
-          '--theme-dark-surface-input': 'hsl(216, 15%, 12%)',
+          '--theme-dark-surface-floating': 'hsl(216, 14%, 17%)',
+          '--theme-dark-surface-input': 'hsl(216, 15%, 10%)',
           '--theme-light-surface-chrome': 'hsl(216, 24%, 95%)',
           '--theme-light-surface-panel': 'hsl(216, 18%, 98%)',
           '--theme-light-surface-card': 'hsl(216, 16%, 96%)',
@@ -507,10 +507,13 @@ const THEME_FAMILIES: readonly ThemeFamilyDefinition[] = [
         overrides: {
           '--theme-background-image': 'radial-gradient(circle at top left, hsla(28, 16%, 72%, 0.12), transparent 26%), radial-gradient(circle at bottom right, hsla(18, 10%, 38%, 0.12), transparent 30%)',
           '--theme-dark-surface-chrome': 'hsl(22, 12%, 10%)',
-          '--theme-dark-surface-panel': 'hsl(22, 10%, 12%)',
-          '--theme-dark-surface-card': 'hsl(22, 10%, 15%)',
+          '--theme-dark-surface-canvas': 'hsl(22, 10%, 12%)',
+          '--theme-dark-surface-editor': 'hsl(22, 10%, 12%)',
+          '--theme-dark-surface-panel': 'hsl(22, 10%, 13%)',
+          '--theme-dark-surface-card': 'hsl(22, 9%, 16%)',
           '--theme-dark-state-hover-bg': 'hsl(22, 9%, 20%)',
-          '--theme-dark-surface-floating': 'hsl(22, 11%, 11%)',
+          '--theme-dark-surface-floating': 'hsl(22, 10%, 17%)',
+          '--theme-dark-surface-input': 'hsl(22, 10%, 10%)',
           '--theme-light-surface-chrome': 'hsl(30, 30%, 95%)',
           '--theme-light-surface-panel': 'hsl(30, 22%, 98%)',
           '--theme-light-surface-card': 'hsl(30, 20%, 96%)',
@@ -527,10 +530,13 @@ const THEME_FAMILIES: readonly ThemeFamilyDefinition[] = [
         overrides: {
           '--theme-background-image': 'radial-gradient(circle at top left, hsla(20, 12%, 46%, 0.08), transparent 22%), radial-gradient(circle at bottom right, hsla(12, 12%, 18%, 0.16), transparent 30%)',
           '--theme-dark-surface-chrome': 'hsl(16, 12%, 7%)',
-          '--theme-dark-surface-panel': 'hsl(16, 10%, 9%)',
-          '--theme-dark-surface-card': 'hsl(16, 9%, 12%)',
+          '--theme-dark-surface-canvas': 'hsl(16, 10%, 11%)',
+          '--theme-dark-surface-editor': 'hsl(16, 10%, 11%)',
+          '--theme-dark-surface-panel': 'hsl(16, 10%, 12%)',
+          '--theme-dark-surface-card': 'hsl(16, 8%, 15%)',
           '--theme-dark-state-hover-bg': 'hsl(16, 8%, 17%)',
-          '--theme-dark-surface-floating': 'hsl(16, 11%, 8%)',
+          '--theme-dark-surface-floating': 'hsl(16, 9%, 16%)',
+          '--theme-dark-surface-input': 'hsl(16, 10%, 9%)',
           '--theme-light-surface-chrome': 'hsl(26, 20%, 94%)',
           '--theme-light-surface-panel': 'hsl(26, 14%, 97%)',
           '--theme-light-surface-card': 'hsl(26, 12%, 95%)',
@@ -575,11 +581,13 @@ const THEME_FAMILIES: readonly ThemeFamilyDefinition[] = [
           '--palette-neutral-950': 'hsl(186, 24%, 8%)',
           '--theme-background-image': 'radial-gradient(circle at top left, hsla(165, 58%, 74%, 0.17), transparent 28%), radial-gradient(circle at bottom right, hsla(186, 34%, 66%, 0.12), transparent 30%)',
           '--theme-dark-surface-chrome': 'hsl(178, 24%, 10%)',
-          '--theme-dark-surface-panel': 'hsl(176, 20%, 12%)',
-          '--theme-dark-surface-card': 'hsl(174, 18%, 15%)',
+          '--theme-dark-surface-canvas': 'hsl(174, 18%, 12%)',
+          '--theme-dark-surface-editor': 'hsl(174, 18%, 12%)',
+          '--theme-dark-surface-panel': 'hsl(174, 18%, 13%)',
+          '--theme-dark-surface-card': 'hsl(174, 16%, 17%)',
           '--theme-dark-state-hover-bg': 'hsl(172, 16%, 20%)',
-          '--theme-dark-surface-floating': 'hsl(176, 20%, 11%)',
-          '--theme-dark-surface-input': 'hsl(174, 18%, 14%)',
+          '--theme-dark-surface-floating': 'hsl(174, 17%, 18%)',
+          '--theme-dark-surface-input': 'hsl(174, 18%, 10%)',
           '--theme-light-surface-chrome': 'hsl(165, 58%, 97%)',
           '--theme-light-surface-panel': 'hsl(164, 28%, 99%)',
           '--theme-light-surface-card': 'hsl(166, 30%, 97%)',
@@ -607,11 +615,13 @@ const THEME_FAMILIES: readonly ThemeFamilyDefinition[] = [
           '--palette-neutral-950': 'hsl(18, 24%, 8%)',
           '--theme-background-image': 'radial-gradient(circle at top left, hsla(20, 70%, 78%, 0.16), transparent 28%), radial-gradient(circle at bottom right, hsla(8, 46%, 72%, 0.12), transparent 30%)',
           '--theme-dark-surface-chrome': 'hsl(18, 22%, 10%)',
-          '--theme-dark-surface-panel': 'hsl(18, 18%, 12%)',
-          '--theme-dark-surface-card': 'hsl(18, 16%, 15%)',
+          '--theme-dark-surface-canvas': 'hsl(18, 16%, 12%)',
+          '--theme-dark-surface-editor': 'hsl(18, 16%, 12%)',
+          '--theme-dark-surface-panel': 'hsl(18, 16%, 13%)',
+          '--theme-dark-surface-card': 'hsl(18, 14%, 17%)',
           '--theme-dark-state-hover-bg': 'hsl(18, 14%, 20%)',
-          '--theme-dark-surface-floating': 'hsl(18, 18%, 11%)',
-          '--theme-dark-surface-input': 'hsl(18, 16%, 14%)',
+          '--theme-dark-surface-floating': 'hsl(18, 15%, 18%)',
+          '--theme-dark-surface-input': 'hsl(18, 16%, 10%)',
           '--theme-light-surface-chrome': 'hsl(18, 62%, 97%)',
           '--theme-light-surface-panel': 'hsl(18, 30%, 99%)',
           '--theme-light-surface-card': 'hsl(18, 32%, 97%)',
@@ -730,9 +740,9 @@ const THEME_TOKEN_PRESETS: readonly ThemeTokenPresetDefinition[] = [
       '--surface-canvas': '#1e1e1e',
       '--surface-editor': '#1e1e1e',
       '--surface-panel': '#202020',
-      '--surface-card': '#202020',
-      '--surface-floating': '#202020',
-      '--surface-input': '#202020',
+      '--surface-card': '#252525',
+      '--surface-floating': '#282828',
+      '--surface-input': '#181818',
       '--surface-node': '#363636',
       '--state-hover-bg': '#363636',
       '--border-default': '#545454',
@@ -1050,6 +1060,13 @@ function normalizeThemeTokenOverrides(overrides: CssVariableMap | undefined): Cs
     '--surface-panel': '#202020',
     '--surface-card': '#202020',
   };
+  const netiorSurfaceTokenMigrations: CssVariableMap = {
+    '--surface-chrome': '#111111',
+    '--surface-panel': '#202020',
+    '--surface-card': '#252525',
+    '--surface-floating': '#282828',
+    '--surface-input': '#181818',
+  };
   const legacyNetiorDynamicOverrides: CssVariableMap = {
     '--surface-node-selected': '#404040',
     '--state-selected-bg': '#568b5f',
@@ -1075,8 +1092,11 @@ function normalizeThemeTokenOverrides(overrides: CssVariableMap | undefined): Cs
     const value = overrides[token.cssVar];
     if (typeof value === 'string' && /^#[0-9a-fA-F]{6}$/.test(value.trim())) {
       let normalizedValue = normalizeHexColor(value, value);
-      if (hasLegacyNetiorSurfacePreset && token.cssVar === '--surface-chrome' && normalizedValue === '#181818') {
-        normalizedValue = '#111111';
+      if (hasLegacyNetiorSurfacePreset) {
+        const migratedSurfaceValue = netiorSurfaceTokenMigrations[token.cssVar];
+        if (migratedSurfaceValue && (normalizedValue === '#181818' || normalizedValue === '#202020')) {
+          normalizedValue = migratedSurfaceValue;
+        }
       }
       if (shouldDropLegacyNetiorDynamicOverrides && legacyNetiorDynamicOverrides[token.cssVar] === normalizedValue) {
         return next;
@@ -1230,8 +1250,6 @@ export interface SettingsStore {
   detachedAgentToastMode: DetachedAgentToastMode;
   nativeAgentNotificationsEnabled: boolean;
   agentNotificationSoundEnabled: boolean;
-  fieldComplexityLevel: FieldComplexityLevel;
-  networkViewerPlacement: NetworkViewerPlacement;
   typography: TypographyConfig;
   terminalPresetId: TerminalPresetId;
   terminalAppearance: TerminalAppearanceConfig;
@@ -1250,8 +1268,6 @@ export interface SettingsStore {
   setDetachedAgentToastMode: (mode: DetachedAgentToastMode) => void;
   setNativeAgentNotificationsEnabled: (enabled: boolean) => void;
   setAgentNotificationSoundEnabled: (enabled: boolean) => void;
-  setFieldComplexityLevel: (level: FieldComplexityLevel) => void;
-  setNetworkViewerPlacement: (placement: NetworkViewerPlacement) => void;
   updateTypography: (role: AppFontRole, patch: Partial<FontRoleConfig>) => void;
   setTerminalPresetId: (presetId: TerminalPresetId) => void;
   updateTerminalAppearance: (patch: Partial<TerminalAppearanceConfig>) => void;
@@ -1279,9 +1295,7 @@ function getSettingsSyncState(state: Pick<
   | 'detachedAgentToastMode'
   | 'nativeAgentNotificationsEnabled'
   | 'agentNotificationSoundEnabled'
-  | 'networkViewerPlacement'
 > & {
-  fieldComplexityLevel?: FieldComplexityLevel;
   typography?: Partial<TypographyConfig>;
   terminalPresetId?: TerminalPresetId;
   terminalAppearance?: Partial<TerminalAppearanceConfig>;
@@ -1296,8 +1310,6 @@ function getSettingsSyncState(state: Pick<
     detachedAgentToastMode: state.detachedAgentToastMode,
     nativeAgentNotificationsEnabled: state.nativeAgentNotificationsEnabled,
     agentNotificationSoundEnabled: state.agentNotificationSoundEnabled,
-    networkViewerPlacement: state.networkViewerPlacement ?? 'network-left',
-    fieldComplexityLevel: state.fieldComplexityLevel ?? 'standard',
     typography: normalizeTypographyConfig(state.typography),
     terminalPresetId,
     terminalAppearance: normalizeTerminalAppearanceConfig(state.terminalAppearance, terminalPresetId),
@@ -1332,8 +1344,6 @@ export const useSettingsStore = create<SettingsStore>()(
       detachedAgentToastMode: 'inactive-only',
       nativeAgentNotificationsEnabled: true,
       agentNotificationSoundEnabled: true,
-      fieldComplexityLevel: 'standard',
-      networkViewerPlacement: 'network-left',
       typography: getDefaultTypographyConfig(),
       terminalPresetId: DEFAULT_TERMINAL_PRESET_ID,
       terminalAppearance: getTerminalAppearanceFromPreset(DEFAULT_TERMINAL_PRESET_ID),
@@ -1487,8 +1497,6 @@ export const useSettingsStore = create<SettingsStore>()(
       setDetachedAgentToastMode: (detachedAgentToastMode) => set({ detachedAgentToastMode }),
       setNativeAgentNotificationsEnabled: (nativeAgentNotificationsEnabled) => set({ nativeAgentNotificationsEnabled }),
       setAgentNotificationSoundEnabled: (agentNotificationSoundEnabled) => set({ agentNotificationSoundEnabled }),
-      setFieldComplexityLevel: (fieldComplexityLevel) => set({ fieldComplexityLevel }),
-      setNetworkViewerPlacement: (networkViewerPlacement) => set({ networkViewerPlacement }),
       updateTypography: (role, patch) => {
         set((state) => ({
           typography: normalizeTypographyConfig({
@@ -1541,8 +1549,6 @@ export const useSettingsStore = create<SettingsStore>()(
         detachedAgentToastMode: state.detachedAgentToastMode,
         nativeAgentNotificationsEnabled: state.nativeAgentNotificationsEnabled,
         agentNotificationSoundEnabled: state.agentNotificationSoundEnabled,
-        fieldComplexityLevel: state.fieldComplexityLevel,
-        networkViewerPlacement: state.networkViewerPlacement,
         typography: state.typography,
         terminalPresetId: state.terminalPresetId,
         terminalAppearance: state.terminalAppearance,
@@ -1554,7 +1560,6 @@ export const useSettingsStore = create<SettingsStore>()(
           appearanceMode: state.appearanceMode,
           lightTheme: normalizeThemeSlot(state.lightTheme),
           darkTheme: normalizeThemeSlot(state.darkTheme),
-          networkViewerPlacement: state.networkViewerPlacement ?? 'network-left',
           typography: normalizeTypographyConfig(state.typography),
           terminalAppearance: normalizeTerminalAppearanceConfig(
             state.terminalAppearance,
@@ -1565,7 +1570,6 @@ export const useSettingsStore = create<SettingsStore>()(
         const resolvedThemeMode = applyThemeToDocument(normalizedState);
         state.lightTheme = normalizedState.lightTheme;
         state.darkTheme = normalizedState.darkTheme;
-        state.networkViewerPlacement = normalizedState.networkViewerPlacement;
         state.typography = normalizedState.typography;
         state.resolvedThemeMode = resolvedThemeMode;
         state.terminalPresetId = findTerminalPreset(state.terminalPresetId ?? DEFAULT_TERMINAL_PRESET_ID).id;
@@ -1622,12 +1626,10 @@ export function initializeSettingsStore(): void {
         nextState.lightTheme === prevState.lightTheme &&
         nextState.darkTheme === prevState.darkTheme &&
         nextState.locale === prevState.locale &&
-        nextState.detachedAgentToastMode === prevState.detachedAgentToastMode &&
-        nextState.nativeAgentNotificationsEnabled === prevState.nativeAgentNotificationsEnabled &&
-        nextState.agentNotificationSoundEnabled === prevState.agentNotificationSoundEnabled &&
-        nextState.fieldComplexityLevel === prevState.fieldComplexityLevel &&
-        nextState.networkViewerPlacement === prevState.networkViewerPlacement &&
-        nextState.typography === prevState.typography &&
+            nextState.detachedAgentToastMode === prevState.detachedAgentToastMode &&
+            nextState.nativeAgentNotificationsEnabled === prevState.nativeAgentNotificationsEnabled &&
+            nextState.agentNotificationSoundEnabled === prevState.agentNotificationSoundEnabled &&
+            nextState.typography === prevState.typography &&
         nextState.terminalPresetId === prevState.terminalPresetId &&
         nextState.terminalAppearance === prevState.terminalAppearance &&
         nextState.browser === prevState.browser

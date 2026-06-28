@@ -2,7 +2,7 @@
 
 export type ShortcutScope =
   | 'global'
-  | 'network'
+  | 'canvas'
   | 'terminal'
   | 'fileTree'
   | 'narreChat'
@@ -13,7 +13,7 @@ export type ShortcutScope =
 
 export type ShortcutOwner =
   | 'globalDispatcher'
-  | 'networkContext'
+  | 'canvasView'
   | 'terminalEditor'
   | 'fileTree'
   | 'narreChat'

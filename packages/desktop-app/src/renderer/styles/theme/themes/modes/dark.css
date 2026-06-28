@@ -4,12 +4,12 @@
     /* Surface roles */
     --surface-chrome: var(--theme-dark-surface-chrome, #242424);
     --surface-rail: var(--theme-dark-surface-rail, #262626);
-    --surface-canvas: var(--theme-dark-surface-canvas, #242424);
-    --surface-editor: var(--theme-dark-surface-editor, #242424);
-    --surface-panel: var(--theme-dark-surface-panel, #2c2c2c);
-    --surface-card: var(--theme-dark-surface-card, #363636);
-    --surface-floating: var(--theme-dark-surface-floating, #303030);
-    --surface-input: var(--theme-dark-surface-input, #242424);
+    --surface-canvas: var(--theme-dark-surface-canvas, #1e1e1e);
+    --surface-editor: var(--theme-dark-surface-editor, #1e1e1e);
+    --surface-panel: var(--theme-dark-surface-panel, #202020);
+    --surface-card: var(--theme-dark-surface-card, #252525);
+    --surface-floating: var(--theme-dark-surface-floating, #282828);
+    --surface-input: var(--theme-dark-surface-input, #181818);
     --surface-overlay: rgba(0, 0, 0, 0.66);
     --surface-document: hsl(220, 18%, 97%);
     --surface-document-shadow: rgba(0, 0, 0, 0.32);

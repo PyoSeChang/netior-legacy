@@ -1,20 +1,15 @@
 import React, { useEffect, useRef } from 'react';
-import type { EditorTab } from '@netior/shared/types';
-import { InstanceEditor } from './InstanceEditor';
+import type { EditorTab } from '../../types/editor';
 import { FileEditor } from './FileEditor';
-import { SchemaEditor } from './SchemaEditor';
-import { MeaningEditor } from './MeaningEditor';
 import { TerminalEditor } from './TerminalEditor';
-import { EdgeEditor } from './EdgeEditor';
-import { NetworkEditor } from './NetworkEditor';
-import { NetworkViewerEditor } from './NetworkViewerEditor';
-import { RootNetworkEditor } from './RootNetworkEditor';
-import { WorldEditor } from './WorldEditor';
 import { NarreEditor } from './NarreEditor';
 import { AgentEditor } from './AgentEditor';
-import { FileMetadataEditor } from './FileMetadataEditor';
-import { ContextEditor } from './ContextEditor';
 import { BrowserEditor } from './BrowserEditor';
+import { ModelEditor } from './ModelEditor';
+import { KindEditor } from './KindEditor';
+import { RelationKindEditor } from './RelationKindEditor';
+import { InstanceEditor } from './InstanceEditor';
+import { PlaceholderEditor } from './PlaceholderEditor';
 import { useEditorStore, MAIN_HOST_ID } from '../../stores/editor-store';
 import { focusHyperTerminalSurface } from '../../lib/terminal/hyper-fork/term-registry';
 
@@ -22,11 +17,13 @@ interface EditorContentProps {
   tab: EditorTab;
 }
 
-/**
- * Content router: resolves tab.type to the appropriate editor component.
- * This is the single entry point for all editor content rendering.
- * Shell components (FloatWindow, side pane, full mode, detached) render this.
- */
+const DOMAIN_PLACEHOLDER_TYPES = new Set([
+  'world',
+  'property',
+  'resource',
+  'view',
+]);
+
 export function EditorContent({ tab }: EditorContentProps): JSX.Element {
   const isActive = useEditorStore((s) => {
     if (tab.hostId === MAIN_HOST_ID) return s.activeTabId === tab.id;
@@ -35,66 +32,61 @@ export function EditorContent({ tab }: EditorContentProps): JSX.Element {
   });
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Focus the editor content when this tab becomes globally active.
-  // Terminals handle their own focus via focusWhenReady() on mount,
-  // but need explicit focus on pane switch (already mounted).
   useEffect(() => {
     if (!isActive || !containerRef.current) return;
     const el = containerRef.current;
-    // Defer to let the editor render first
     const timer = requestAnimationFrame(() => {
       if (!el || el.contains(document.activeElement)) return;
       if (tab.type === 'terminal') {
         focusHyperTerminalSurface(tab.targetId);
         return;
       }
-      // CodeMirror (markdown / code editors)
       const cmContent = el.querySelector<HTMLElement>('.cm-content');
-      if (cmContent) { cmContent.focus(); return; }
-      // Fallback: first focusable element
+      if (cmContent) {
+        cmContent.focus();
+        return;
+      }
       const focusable = el.querySelector<HTMLElement>('input, textarea, [contenteditable], [tabindex]');
-      if (focusable) { focusable.focus(); }
+      if (focusable) focusable.focus();
     });
     return () => cancelAnimationFrame(timer);
   }, [isActive, tab.targetId, tab.type]);
+
   let content: JSX.Element;
-  switch (tab.type) {
-    case 'instance':
-      content = <InstanceEditor tab={tab} />; break;
-    case 'file':
-      content = <FileEditor tab={tab} />; break;
-    case 'schema':
-      content = <SchemaEditor tab={tab} />; break;
-    case 'meaning':
-      content = <MeaningEditor tab={tab} />; break;
-    case 'terminal':
-      content = <TerminalEditor tab={tab} />; break;
-    case 'edge':
-      content = <EdgeEditor tab={tab} />; break;
-    case 'network':
-      content = <NetworkEditor tab={tab} />; break;
-    case 'networkViewer':
-      content = <NetworkViewerEditor tab={tab} />; break;
-    case 'rootNetwork':
-      content = <RootNetworkEditor tab={tab} />; break;
-    case 'world':
-      content = <WorldEditor tab={tab} />; break;
-    case 'narre':
-      content = <NarreEditor tab={tab} />; break;
-    case 'agent':
-      content = <AgentEditor tab={tab} />; break;
-    case 'fileMetadata':
-      content = <FileMetadataEditor tab={tab} />; break;
-    case 'context':
-      content = <ContextEditor tab={tab} />; break;
-    case 'browser':
-      content = <BrowserEditor tab={tab} />; break;
-    default:
-      content = (
-        <div className="flex h-full items-center justify-center text-xs text-muted">
-          Unknown editor type
-        </div>
-      );
+  if (tab.type === 'model') {
+    content = <ModelEditor tab={tab} />;
+  } else if (tab.type === 'kind') {
+    content = <KindEditor tab={tab} />;
+  } else if (tab.type === 'relationKind') {
+    content = <RelationKindEditor tab={tab} />;
+  } else if (tab.type === 'instance') {
+    content = <InstanceEditor tab={tab} />;
+  } else if (DOMAIN_PLACEHOLDER_TYPES.has(tab.type)) {
+    content = <PlaceholderEditor tab={tab} label={tab.type} />;
+  } else {
+    switch (tab.type) {
+      case 'file':
+        content = <FileEditor tab={tab} />;
+        break;
+      case 'terminal':
+        content = <TerminalEditor tab={tab} />;
+        break;
+      case 'narre':
+        content = <NarreEditor tab={tab} />;
+        break;
+      case 'agent':
+        content = <AgentEditor tab={tab} />;
+        break;
+      case 'browser':
+        content = <BrowserEditor tab={tab} />;
+        break;
+      default:
+        content = (
+          <div className="flex h-full items-center justify-center text-xs text-muted">
+            Unknown editor type
+          </div>
+        );
+    }
   }
 
   return <div ref={containerRef} className="h-full min-h-0 w-full min-w-0 bg-surface-editor">{content}</div>;

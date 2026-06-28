@@ -22,11 +22,23 @@ const instancePropertyFilterSchema = z.object({
   match: z.enum(['equals', 'contains']).optional().describe('Whether to require exact match or substring/array containment'),
 });
 
+const instanceInitialPropertySchema = z.object({
+  field_id: z.string().optional().describe('Exact schema field ID to set'),
+  field_name: z.string().optional().describe('Schema field name to resolve within schema_id'),
+  meaning_binding: z.string().optional().describe('Meaning binding key to resolve within schema_id'),
+  value: z.string().nullable().describe('Serialized value for the field, or null. Use JSON text for arrays/objects.'),
+});
+
 type InstancePropertyFilterInput = z.infer<typeof instancePropertyFilterSchema>;
+type InstanceInitialPropertyInput = z.infer<typeof instanceInitialPropertySchema>;
 type ResolvedInstancePropertyFilter = {
   field_id: string;
   value: string;
   match: 'equals' | 'contains';
+};
+type ResolvedInstanceInitialProperty = {
+  field_id: string;
+  value: string | null;
 };
 
 function normalizeOptionalVisualValue(value: string | null | undefined): string | null | undefined {
@@ -162,6 +174,66 @@ async function resolvePropertyFilters(
   });
 }
 
+async function resolveInitialProperties(
+  schemaId: string | undefined,
+  properties: InstanceInitialPropertyInput[] | undefined,
+): Promise<ResolvedInstanceInitialProperty[]> {
+  if (!properties || properties.length === 0) {
+    return [];
+  }
+
+  if (!schemaId) {
+    throw new Error('schema_id is required when creating an instance with properties');
+  }
+
+  const fieldMapById = new Map<string, SchemaField>();
+  const fieldMapByName = new Map<string, SchemaField>();
+  const fieldMapByMeaning = new Map<string, SchemaField>();
+  const fields = await listSchemaFields(schemaId);
+
+  for (const field of fields) {
+    fieldMapById.set(field.id, field);
+    fieldMapByName.set(field.name, field);
+    for (const meaning of field.meaning_bindings ?? []) {
+      if (!fieldMapByMeaning.has(meaning)) {
+        fieldMapByMeaning.set(meaning, field);
+      }
+    }
+  }
+
+  const seenFieldIds = new Set<string>();
+
+  return properties.map((property) => {
+    const selectors = [property.field_id, property.field_name, property.meaning_binding].filter(Boolean);
+    if (selectors.length !== 1) {
+      throw new Error('Each property must provide exactly one of field_id, field_name, or meaning_binding');
+    }
+
+    const resolvedField = property.field_id
+      ? fieldMapById.get(property.field_id)
+      : property.field_name
+        ? fieldMapByName.get(property.field_name)
+        : property.meaning_binding
+          ? fieldMapByMeaning.get(property.meaning_binding)
+          : undefined;
+
+    if (!resolvedField?.id) {
+      const label = property.field_name ?? property.meaning_binding ?? property.field_id ?? '(unknown property)';
+      throw new Error(`Could not resolve initial instance property: ${label}`);
+    }
+
+    if (seenFieldIds.has(resolvedField.id)) {
+      throw new Error(`Duplicate initial property for field: ${resolvedField.id}`);
+    }
+    seenFieldIds.add(resolvedField.id);
+
+    return {
+      field_id: resolvedField.id,
+      value: property.value,
+    };
+  });
+}
+
 async function filterInstancesByProperties(
   instances: Instance[],
   propertyFilters: ResolvedInstancePropertyFilter[],
@@ -229,10 +301,12 @@ export function registerInstanceTools(server: McpServer): void {
       icon: z.string().nullable().optional().describe('Icon identifier or emoji text. Use this when not setting profile_image.'),
       profile_image: z.string().nullable().optional().describe('Profile image source. Can be an image URL, data URL, file URL, or local file path. Stored in the instance icon field.'),
       content: z.string().nullable().optional().describe('Optional instance body content. May include Netior Editor semantic tokens such as [[target:...]] or ::netior-embed{...}.'),
+      properties: z.array(instanceInitialPropertySchema).optional().describe('Initial schema field values to set while creating the instance. Requires schema_id. Resolve by field_id, field_name, or meaning_binding.'),
     },
-    async ({ root_network_id, title, schema_id, color, icon, profile_image, content }) => {
+    async ({ root_network_id, title, schema_id, color, icon, profile_image, content, properties }) => {
       try {
         const visual = resolveInstanceVisualValue({ icon, profile_image });
+        const initialProperties = await resolveInitialProperties(schema_id, properties);
         const result = await createInstance({
           root_network_id: resolveRootNetworkId(root_network_id),
           title,
@@ -240,6 +314,7 @@ export function registerInstanceTools(server: McpServer): void {
           color,
           ...(content !== undefined && content !== null ? { content } : {}),
           ...(visual !== undefined && visual !== null ? { icon: visual } : {}),
+          ...(initialProperties.length > 0 ? { properties: initialProperties } : {}),
         });
         emitChange({ type: 'instance', action: 'create', id: result.id });
         return {

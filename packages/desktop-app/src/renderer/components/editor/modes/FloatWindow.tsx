@@ -1,6 +1,6 @@
 ﻿import React, { useCallback, useRef } from 'react';
 import { X, GripVertical } from 'lucide-react';
-import type { EditorTab } from '@netior/shared/types';
+import type { EditorTab } from '../../../types/editor';
 import { useEditorStore } from '../../../stores/editor-store';
 import { EditorViewModeSwitch } from '../EditorViewModeSwitch';
 import { EditorContent } from '../EditorContent';

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import type { EditorTab } from '@netior/shared/types';
+import type { EditorTab } from '../../types/editor';
 import { AlertTriangle, ArrowLeft, ArrowRight, Bookmark, Copy, Download, ExternalLink, Globe, Lock, MoreVertical, RefreshCw, RotateCcw, Star, Trash2, X } from 'lucide-react';
 import { IconButton } from '../ui/IconButton';
 import { Input } from '../ui/Input';

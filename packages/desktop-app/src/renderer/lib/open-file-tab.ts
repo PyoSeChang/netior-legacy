@@ -1,4 +1,4 @@
-﻿import type { EditorTab, EditorTabType, SplitDirection, SplitLeaf, SplitNode } from '@netior/shared/types';
+import type { EditorTab, EditorTabType, SplitDirection, SplitLeaf, SplitNode } from '../types/editor';
 import { useEditorStore, collectLeaves, containsTab, getRememberedActiveTabFromLayout } from '../stores/editor-store';
 import { useWorldStore } from '../stores/world-store';
 

@@ -1,0 +1,1635 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Netior Editor Forms Mockup</title>
+    <style>
+      :root {
+        --app: #0f1011;
+        --chrome: #151719;
+        --chrome-2: #191b1e;
+        --panel: #1d2024;
+        --panel-2: #24282d;
+        --panel-3: #2b3036;
+        --surface: #17191c;
+        --field: #111315;
+        --line: #31363c;
+        --line-soft: #262a2f;
+        --text: #ecf0f3;
+        --muted: #a1a8b1;
+        --faint: #727b86;
+        --accent: #70a37f;
+        --accent-soft: rgba(112, 163, 127, 0.18);
+        --blue: #7ca7f7;
+        --blue-soft: rgba(124, 167, 247, 0.16);
+        --warn: #d8b45d;
+        --warn-soft: rgba(216, 180, 93, 0.16);
+        --danger: #d76f64;
+        --danger-soft: rgba(215, 111, 100, 0.15);
+        --radius-pane: 13px;
+        --topbar-h: 38px;
+        color-scheme: dark;
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        width: 100vw;
+        height: 100vh;
+        overflow: hidden;
+        background: var(--app);
+        color: var(--text);
+      }
+
+      button,
+      input,
+      select,
+      textarea {
+        font: inherit;
+      }
+
+      button {
+        cursor: default;
+      }
+
+      .app {
+        height: 100vh;
+        display: grid;
+        grid-template-rows: 34px minmax(0, 1fr);
+      }
+
+      .titlebar {
+        display: grid;
+        grid-template-columns: 260px minmax(0, 1fr) 260px;
+        align-items: center;
+        padding: 0 10px;
+        background: var(--chrome);
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .title-left,
+      .title-center,
+      .title-right {
+        min-width: 0;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .title-center {
+        justify-content: center;
+      }
+
+      .title-right {
+        justify-content: flex-end;
+      }
+
+      .brand {
+        color: var(--text);
+        font-weight: 740;
+      }
+
+      .workspace {
+        min-height: 0;
+        display: grid;
+        grid-template-columns: 40px 236px minmax(0, 1fr);
+        gap: 8px;
+        padding: 0 8px 8px 0;
+        background: var(--app);
+      }
+
+      .rail {
+        min-height: 0;
+        display: grid;
+        grid-template-rows: auto 1fr auto;
+        padding: 8px 4px 6px;
+        background: var(--chrome);
+      }
+
+      .rail-group {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 7px;
+      }
+
+      .rail-button {
+        width: 30px;
+        height: 30px;
+        border: 0;
+        border-radius: 8px;
+        background: transparent;
+        color: var(--muted);
+        display: grid;
+        place-items: center;
+        font-size: 11px;
+        font-weight: 760;
+      }
+
+      .rail-button.active {
+        background: var(--accent-soft);
+        color: #d7f0de;
+      }
+
+      .sidebar {
+        min-height: 0;
+        display: grid;
+        grid-template-rows: var(--topbar-h) minmax(0, 1fr) auto;
+        overflow: hidden;
+        border: 1px solid var(--line);
+        border-radius: var(--radius-pane);
+        background: var(--panel);
+      }
+
+      .sidebar-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 11px;
+        border-bottom: 1px solid var(--line-soft);
+        background: var(--chrome-2);
+      }
+
+      .sidebar-head strong {
+        font-size: 12px;
+      }
+
+      .sidebar-scroll {
+        min-height: 0;
+        overflow: auto;
+        padding: 10px 8px;
+      }
+
+      .section-title {
+        margin: 12px 7px 6px;
+        color: var(--faint);
+        font-size: 10px;
+        font-weight: 780;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .nav-row {
+        width: 100%;
+        min-height: 31px;
+        border: 0;
+        display: grid;
+        grid-template-columns: 22px minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 8px;
+        padding: 0 8px;
+        border-radius: 8px;
+        background: transparent;
+        color: var(--muted);
+        font-size: 12px;
+        text-align: left;
+      }
+
+      .nav-row.active {
+        color: var(--text);
+        background: var(--panel-3);
+      }
+
+      .icon {
+        width: 19px;
+        height: 19px;
+        display: grid;
+        place-items: center;
+        border-radius: 6px;
+        background: rgba(255, 255, 255, 0.06);
+        color: var(--muted);
+        font-size: 10px;
+        font-weight: 760;
+      }
+
+      .nav-row.active .icon,
+      .tab.active .icon {
+        color: #d9f2e0;
+        background: var(--accent-soft);
+      }
+
+      .badge {
+        min-width: 18px;
+        height: 18px;
+        display: inline-grid;
+        place-items: center;
+        padding: 0 6px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.06);
+        color: var(--faint);
+        font-size: 10px;
+        white-space: nowrap;
+      }
+
+      .sidebar-foot {
+        padding: 8px;
+        border-top: 1px solid var(--line-soft);
+      }
+
+      .status-card {
+        border-radius: 10px;
+        background: var(--surface);
+        padding: 10px;
+        color: var(--muted);
+        font-size: 11px;
+        line-height: 1.45;
+      }
+
+      .main {
+        min-width: 0;
+        min-height: 0;
+        display: grid;
+        grid-template-rows: var(--topbar-h) minmax(0, 1fr);
+        overflow: hidden;
+        border: 1px solid var(--line-soft);
+        border-radius: var(--radius-pane);
+        background: var(--panel);
+      }
+
+      .tabbar {
+        min-width: 0;
+        display: flex;
+        align-items: end;
+        gap: 2px;
+        padding: 5px 10px 0;
+        background: var(--chrome);
+      }
+
+      .tab {
+        height: 33px;
+        min-width: 128px;
+        border: 1px solid transparent;
+        border-bottom: 0;
+        border-radius: 12px 12px 0 0;
+        background: transparent;
+        color: var(--muted);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 0 12px;
+        font-size: 12px;
+      }
+
+      .tab.active {
+        border-color: var(--line-soft);
+        background: var(--panel);
+        color: var(--text);
+      }
+
+      .tab-spacer {
+        flex: 1;
+      }
+
+      .tab-action {
+        height: 26px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--surface);
+        color: var(--muted);
+        padding: 0 9px;
+        font-size: 11px;
+        margin-bottom: 6px;
+      }
+
+      .editor-scroll {
+        min-width: 0;
+        min-height: 0;
+        overflow: auto;
+        padding: 14px;
+        background: var(--panel);
+      }
+
+      .editor-view {
+        display: none;
+      }
+
+      .editor-view.active {
+        display: block;
+      }
+
+      .editor-header {
+        display: grid;
+        grid-template-columns: 48px minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 13px;
+        margin-bottom: 12px;
+        border: 1px solid var(--line-soft);
+        border-radius: 13px;
+        background: var(--surface);
+        padding: 13px;
+      }
+
+      .object-icon {
+        width: 46px;
+        height: 46px;
+        display: grid;
+        place-items: center;
+        border-radius: 13px;
+        background:
+          radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.8) 0 2px, transparent 3px),
+          linear-gradient(135deg, rgba(112, 163, 127, 0.72), rgba(124, 167, 247, 0.42));
+        color: #fff;
+        font-size: 14px;
+        font-weight: 800;
+      }
+
+      .object-title {
+        min-width: 0;
+      }
+
+      .object-title h1 {
+        margin: 0;
+        font-size: 21px;
+        line-height: 1.2;
+        letter-spacing: 0;
+      }
+
+      .object-title p {
+        margin: 5px 0 0;
+        color: var(--muted);
+        font-size: 12px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .header-actions {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 6px;
+      }
+
+      .button {
+        height: 30px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel-2);
+        color: var(--text);
+        padding: 0 10px;
+        font-size: 12px;
+        font-weight: 620;
+      }
+
+      .button.primary {
+        border-color: rgba(112, 163, 127, 0.44);
+        background: var(--accent-soft);
+        color: #d8f0df;
+      }
+
+      .button.warning {
+        border-color: rgba(216, 180, 93, 0.42);
+        background: var(--warn-soft);
+        color: #f1dca2;
+      }
+
+      .form-grid {
+        display: grid;
+        grid-template-columns: minmax(420px, 1fr) 360px;
+        gap: 12px;
+        align-items: start;
+      }
+
+      .column {
+        min-width: 0;
+        display: grid;
+        gap: 12px;
+      }
+
+      .card {
+        border: 1px solid var(--line-soft);
+        border-radius: 13px;
+        background: var(--surface);
+        overflow: hidden;
+      }
+
+      .card-head {
+        min-height: 42px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 0 13px;
+        border-bottom: 1px solid var(--line-soft);
+        background: var(--chrome-2);
+      }
+
+      .card-head strong {
+        font-size: 13px;
+      }
+
+      .card-head span {
+        color: var(--faint);
+        font-size: 11px;
+      }
+
+      .card-body {
+        padding: 13px;
+      }
+
+      .fields {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .fields.single {
+        grid-template-columns: 1fr;
+      }
+
+      .field {
+        min-width: 0;
+      }
+
+      .field label {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin-bottom: 6px;
+        color: var(--faint);
+        font-size: 10px;
+        font-weight: 760;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+
+      .input,
+      .select,
+      .textarea {
+        width: 100%;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--field);
+        color: var(--text);
+        font-size: 12px;
+      }
+
+      .input,
+      .select {
+        height: 32px;
+        padding: 0 9px;
+      }
+
+      .textarea {
+        min-height: 72px;
+        padding: 9px;
+        resize: vertical;
+        line-height: 1.5;
+      }
+
+      .checkbox-row {
+        height: 32px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12px;
+      }
+
+      th {
+        height: 30px;
+        padding: 0 9px;
+        border-bottom: 1px solid var(--line-soft);
+        color: var(--faint);
+        font-size: 10px;
+        font-weight: 780;
+        letter-spacing: 0.06em;
+        text-align: left;
+        text-transform: uppercase;
+      }
+
+      td {
+        height: 42px;
+        padding: 6px 9px;
+        border-bottom: 1px solid var(--line-soft);
+        vertical-align: middle;
+      }
+
+      tr:last-child td {
+        border-bottom: 0;
+      }
+
+      .cell-main {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+        min-width: 0;
+      }
+
+      .cell-main strong {
+        font-weight: 700;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .cell-main span {
+        color: var(--faint);
+        font-size: 11px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .mini-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+      }
+
+      .mini-button {
+        height: 24px;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        background: var(--field);
+        color: var(--muted);
+        padding: 0 7px;
+        font-size: 11px;
+      }
+
+      .pill {
+        height: 20px;
+        display: inline-flex;
+        align-items: center;
+        border-radius: 999px;
+        padding: 0 7px;
+        background: rgba(255, 255, 255, 0.07);
+        color: var(--muted);
+        font-size: 10px;
+        white-space: nowrap;
+      }
+
+      .pill.green {
+        background: var(--accent-soft);
+        color: #d7f0de;
+      }
+
+      .pill.blue {
+        background: var(--blue-soft);
+        color: #dbe7ff;
+      }
+
+      .pill.warn {
+        background: var(--warn-soft);
+        color: #f0db9d;
+      }
+
+      .pill.danger {
+        background: var(--danger-soft);
+        color: #efb7b0;
+      }
+
+      .section-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 12px;
+      }
+
+      .preview-line {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 8px;
+        min-height: 46px;
+        border: 1px solid var(--line-soft);
+        border-radius: 10px;
+        background: var(--panel);
+        padding: 10px;
+      }
+
+      .box {
+        min-height: 30px;
+        display: inline-flex;
+        align-items: center;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel-2);
+        padding: 0 10px;
+        color: var(--text);
+        font-size: 12px;
+      }
+
+      .arrow {
+        color: var(--faint);
+        font-size: 12px;
+      }
+
+      .side-list {
+        display: grid;
+        gap: 8px;
+      }
+
+      .side-card {
+        border: 1px solid var(--line-soft);
+        border-radius: 10px;
+        background: var(--panel);
+        padding: 10px;
+      }
+
+      .side-card.review {
+        border-color: rgba(216, 180, 93, 0.38);
+      }
+
+      .side-card.ok {
+        border-color: rgba(112, 163, 127, 0.42);
+      }
+
+      .side-card.issue {
+        border-color: rgba(215, 111, 100, 0.4);
+      }
+
+      .side-card-title {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        font-size: 12px;
+        font-weight: 720;
+      }
+
+      .side-card-body {
+        margin-top: 6px;
+        color: var(--muted);
+        font-size: 11px;
+        line-height: 1.45;
+      }
+
+      .sticky-save {
+        position: sticky;
+        bottom: -14px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-top: 12px;
+        border: 1px solid var(--line-soft);
+        border-radius: 13px 13px 0 0;
+        background: rgba(21, 23, 25, 0.96);
+        padding: 10px 13px;
+        backdrop-filter: blur(12px);
+      }
+
+      .save-note {
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .save-actions {
+        display: flex;
+        gap: 7px;
+      }
+
+      @media (max-width: 1180px) {
+        .workspace {
+          grid-template-columns: 40px 210px minmax(0, 1fr);
+        }
+
+        .form-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .fields {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <header class="titlebar">
+        <div class="title-left">
+          <span class="brand">Netior</span>
+          <span>Novel Lab</span>
+        </div>
+        <div class="title-center">
+          <span>Form-based editors</span>
+        </div>
+        <div class="title-right">
+          <span>Command</span>
+          <span>Sync idle</span>
+          <span>- [] x</span>
+        </div>
+      </header>
+
+      <div class="workspace">
+        <nav class="rail" aria-label="Activity rail">
+          <div class="rail-group">
+            <button class="rail-button">H</button>
+            <button class="rail-button active">E</button>
+            <button class="rail-button">C</button>
+            <button class="rail-button">N</button>
+          </div>
+          <div></div>
+          <div class="rail-group">
+            <button class="rail-button">T</button>
+            <button class="rail-button">B</button>
+            <button class="rail-button">S</button>
+          </div>
+        </nav>
+
+        <aside class="sidebar">
+          <header class="sidebar-head">
+            <strong>Editors</strong>
+            <span class="badge">forms</span>
+          </header>
+          <div class="sidebar-scroll">
+            <div class="section-title">Definition</div>
+            <button class="nav-row active" data-tab-button="model">
+              <span class="icon">M</span>
+              <span>Cast Model</span>
+              <span class="badge">open</span>
+            </button>
+            <button class="nav-row" data-tab-button="kind">
+              <span class="icon">K</span>
+              <span>Character Kind</span>
+              <span></span>
+            </button>
+            <button class="nav-row" data-tab-button="relation">
+              <span class="icon">R</span>
+              <span>appearsIn RelationKind</span>
+              <span></span>
+            </button>
+
+            <div class="section-title">Application</div>
+            <button class="nav-row" data-tab-button="instance">
+              <span class="icon">I</span>
+              <span>Yuna Han Instance</span>
+              <span></span>
+            </button>
+
+            <div class="section-title">Pinned Actions</div>
+            <div class="nav-row">
+              <span class="icon">+</span>
+              <span>New Kind</span>
+              <span></span>
+            </div>
+            <div class="nav-row">
+              <span class="icon">AI</span>
+              <span>Review Proposals</span>
+              <span class="badge">5</span>
+            </div>
+            <div class="nav-row">
+              <span class="icon">V</span>
+              <span>Validation Issues</span>
+              <span class="badge">2</span>
+            </div>
+          </div>
+          <footer class="sidebar-foot">
+            <div class="status-card">
+              This mockup treats each editor as a form surface. Actions live inside the
+              sections they modify.
+            </div>
+          </footer>
+        </aside>
+
+        <main class="main">
+          <header class="tabbar">
+            <button class="tab active" data-tab-button="model">
+              <span class="icon">M</span>
+              <span>Model</span>
+            </button>
+            <button class="tab" data-tab-button="kind">
+              <span class="icon">K</span>
+              <span>Kind</span>
+            </button>
+            <button class="tab" data-tab-button="relation">
+              <span class="icon">R</span>
+              <span>RelationKind</span>
+            </button>
+            <button class="tab" data-tab-button="instance">
+              <span class="icon">I</span>
+              <span>Instance</span>
+            </button>
+            <div class="tab-spacer"></div>
+            <button class="tab-action">Open View</button>
+            <button class="tab-action">More</button>
+          </header>
+
+          <section class="editor-scroll">
+            <article class="editor-view active" data-view="model">
+              <header class="editor-header">
+                <div class="object-icon">M</div>
+                <div class="object-title">
+                  <h1>Cast Model</h1>
+                  <p>World: Novel Lab / semantic working unit / directory-backed</p>
+                </div>
+                <div class="header-actions">
+                  <button class="button">Open Explorer</button>
+                  <button class="button">Open Canvas</button>
+                  <button class="button warning">Detect Changes</button>
+                  <button class="button primary">Save</button>
+                </div>
+              </header>
+
+              <div class="form-grid">
+                <div class="column">
+                  <section class="card">
+                    <header class="card-head">
+                      <strong>Identity</strong>
+                      <span>Model definition</span>
+                    </header>
+                    <div class="card-body">
+                      <div class="fields">
+                        <div class="field">
+                          <label>Name</label>
+                          <input class="input" value="Cast" />
+                        </div>
+                        <div class="field">
+                          <label>Key</label>
+                          <input class="input" value="cast" />
+                        </div>
+                        <div class="field">
+                          <label>Parent</label>
+                          <select class="select">
+                            <option>Novel Lab</option>
+                            <option>World Root</option>
+                          </select>
+                        </div>
+                        <div class="field">
+                          <label>Icon</label>
+                          <input class="input" value="lucide:users" />
+                        </div>
+                        <div class="field" style="grid-column: 1 / -1">
+                          <label>Description</label>
+                          <textarea class="textarea">Characters, factions, and point-of-view notes for the novel world.</textarea>
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section class="card">
+                    <header class="card-head">
+                      <strong>Directory Bindings</strong>
+                      <span>observable resource scope</span>
+                    </header>
+                    <div class="card-body">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Path</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr>
+                            <td>
+                              <div class="cell-main">
+                                <strong>/novel/characters</strong>
+                                <span>14 resources</span>
+                              </div>
+                            </td>
+                            <td><span class="pill green">active</span></td>
+                            <td>
+                              <div class="mini-actions">
+                                <button class="mini-button">Scan</button>
+                                <button class="mini-button">Remove</button>
+                              </div>
+                            </td>
+                          </tr>
+                          <tr>
+                            <td>
+                              <div class="cell-main">
+                                <strong>/novel/pov-notes</strong>
+                                <span>4 resources</span>
+                              </div>
+                            </td>
+                            <td><span class="pill green">active</span></td>
+                            <td>
+                              <div class="mini-actions">
+                                <button class="mini-button">Scan</button>
+                                <button class="mini-button">Remove</button>
+                              </div>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                      <div class="section-actions">
+                        <button class="button primary">Bind Directory</button>
+                        <button class="button">Detect Changes</button>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section class="card">
+                    <header class="card-head">
+                      <strong>Definitions In This Model</strong>
+                      <span>create grammar here</span>
+                    </header>
+                    <div class="card-body">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Type</th>
+                            <th>Name</th>
+                            <th>Usage</th>
+                            <th>Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr>
+                            <td><span class="pill blue">Kind</span></td>
+                            <td>Character</td>
+                            <td>15 instances</td>
+                            <td><button class="mini-button">Open</button></td>
+                          </tr>
+                          <tr>
+                            <td><span class="pill blue">Kind</span></td>
+                            <td>Faction</td>
+                            <td>3 instances</td>
+                            <td><button class="mini-button">Open</button></td>
+                          </tr>
+                          <tr>
+                            <td><span class="pill">RelationKind</span></td>
+                            <td>appearsIn</td>
+                            <td>31 relations</td>
+                            <td><button class="mini-button">Open</button></td>
+                          </tr>
+                        </tbody>
+                      </table>
+                      <div class="section-actions">
+                        <button class="button primary">Create Kind</button>
+                        <button class="button">Create RelationKind</button>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+
+                <aside class="column">
+                  <section class="card">
+                    <header class="card-head">
+                      <strong>Views</strong>
+                      <span>projections</span>
+                    </header>
+                    <div class="card-body">
+                      <div class="side-list">
+                        <div class="side-card ok">
+                          <div class="side-card-title">
+                            <span>Cast Explorer</span>
+                            <span class="pill green">explorer</span>
+                          </div>
+                          <div class="side-card-body">Shows model tree, resources, instances, assignments.</div>
+                        </div>
+                        <div class="side-card ok">
+                          <div class="side-card-title">
+                            <span>Cast Canvas</span>
+                            <span class="pill blue">canvas</span>
+                          </div>
+                          <div class="side-card-body">Spatial projection of instances, resources, and relations.</div>
+                        </div>
+                      </div>
+                      <div class="section-actions">
+                        <button class="button primary">Create View</button>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section class="card">
+                    <header class="card-head">
+                      <strong>Review</strong>
+                      <span>model state</span>
+                    </header>
+                    <div class="card-body">
+                      <div class="side-list">
+                        <div class="side-card review">
+                          <div class="side-card-title">
+                            <span>3 unassigned resources</span>
+                            <span class="pill warn">review</span>
+                          </div>
+                          <div class="side-card-body">Open Explorer to assign or ignore newly detected files.</div>
+                        </div>
+                        <div class="side-card ok">
+                          <div class="side-card-title">
+                            <span>No directory overlap</span>
+                            <span class="pill green">ok</span>
+                          </div>
+                          <div class="side-card-body">Directory bindings are MECE with sibling Models.</div>
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+                </aside>
+              </div>
+
+              <footer class="sticky-save">
+                <span class="save-note">Unsaved changes affect Model metadata, bindings, and definitions.</span>
+                <div class="save-actions">
+                  <button class="button">Revert</button>
+                  <button class="button primary">Save Model</button>
+                </div>
+              </footer>
+            </article>
+
+            <article class="editor-view" data-view="kind">
+              <header class="editor-header">
+                <div class="object-icon">K</div>
+                <div class="object-title">
+                  <h1>Character</h1>
+                  <p>Kind / Model: Cast / property definitions only</p>
+                </div>
+                <div class="header-actions">
+                  <button class="button">Show Instances</button>
+                  <button class="button">Create Instance</button>
+                  <button class="button warning">Suggest Properties</button>
+                  <button class="button primary">Save</button>
+                </div>
+              </header>
+
+              <div class="form-grid">
+                <div class="column">
+                  <section class="card">
+                    <header class="card-head">
+                      <strong>Identity</strong>
+                      <span>Kind definition</span>
+                    </header>
+                    <div class="card-body">
+                      <div class="fields">
+                        <div class="field">
+                          <label>Name</label>
+                          <input class="input" value="Character" />
+                        </div>
+                        <div class="field">
+                          <label>Key</label>
+                          <input class="input" value="character" />
+                        </div>
+                        <div class="field">
+                          <label>Model</label>
+                          <input class="input" value="Cast" />
+                        </div>
+                        <div class="field">
+                          <label>Default Icon</label>
+                          <input class="input" value="lucide:user" />
+                        </div>
+                        <div class="field" style="grid-column: 1 / -1">
+                          <label>Description</label>
+                          <textarea class="textarea">A person-like entity who can appear in scenes, join factions, and carry narrative state.</textarea>
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section class="card">
+                    <header class="card-head">
+                      <strong>Properties</strong>
+                      <span>definition rows, not values</span>
+                    </header>
+                    <div class="card-body">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Key</th>
+                            <th>Name</th>
+                            <th>Type</th>
+                            <th>Cardinality</th>
+                            <th>Required</th>
+                            <th>Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr>
+                            <td>age</td>
+                            <td>Age</td>
+                            <td><span class="pill">number</span></td>
+                            <td>single</td>
+                            <td>optional</td>
+                            <td><button class="mini-button">Edit</button></td>
+                          </tr>
+                          <tr>
+                            <td>faction</td>
+                            <td>Faction</td>
+                            <td><span class="pill">text</span></td>
+                            <td>single</td>
+                            <td>optional</td>
+                            <td><button class="mini-button">Edit</button></td>
+                          </tr>
+                          <tr>
+                            <td>arc_state</td>
+                            <td>Arc State</td>
+                            <td><span class="pill">text</span></td>
+                            <td>single</td>
+                            <td>optional</td>
+                            <td><button class="mini-button">Edit</button></td>
+                          </tr>
+                        </tbody>
+                      </table>
+                      <div class="section-actions">
+                        <button class="button primary">Add Property</button>
+                        <button class="button warning">Ask AI</button>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+
+                <aside class="column">
+                  <section class="card">
+                    <header class="card-head">
+                      <strong>Canvas Defaults</strong>
+                      <span>presentation</span>
+                    </header>
+                    <div class="card-body">
+                      <div class="fields single">
+                        <div class="field">
+                          <label>Default Node Type</label>
+                          <select class="select">
+                            <option>instance_card</option>
+                            <option>compact_name_tag</option>
+                          </select>
+                        </div>
+                        <div class="field">
+                          <label>Node Fields</label>
+                          <input class="input" value="name, faction, arc_state" />
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section class="card">
+                    <header class="card-head">
+                      <strong>Usage</strong>
+                      <span>read-only summary</span>
+                    </header>
+                    <div class="card-body">
+                      <div class="side-list">
+                        <div class="side-card ok">
+                          <div class="side-card-title">
+                            <span>15 assigned instances</span>
+                            <span class="pill green">usage</span>
+                          </div>
+                          <div class="side-card-body">Open filtered Explorer to inspect Character assignments.</div>
+                        </div>
+                        <div class="side-card review">
+                          <div class="side-card-title">
+                            <span>Property candidate</span>
+                            <span class="pill warn">AI</span>
+                          </div>
+                          <div class="side-card-body">AI suggests property "motivation" from character files.</div>
+                          <div class="section-actions">
+                            <button class="mini-button">Accept</button>
+                            <button class="mini-button">Reject</button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+                </aside>
+              </div>
+
+              <footer class="sticky-save">
+                <span class="save-note">Changing required policies may create validation issues for existing Instances.</span>
+                <div class="save-actions">
+                  <button class="button">Revert</button>
+                  <button class="button primary">Save Kind</button>
+                </div>
+              </footer>
+            </article>
+
+            <article class="editor-view" data-view="relation">
+              <header class="editor-header">
+                <div class="object-icon">R</div>
+                <div class="object-title">
+                  <h1>appearsIn</h1>
+                  <p>RelationKind / binary MVP / endpoint-constrained</p>
+                </div>
+                <div class="header-actions">
+                  <button class="button">Show Relations</button>
+                  <button class="button">Create Relation</button>
+                  <button class="button warning">Validate</button>
+                  <button class="button primary">Save</button>
+                </div>
+              </header>
+
+              <div class="form-grid">
+                <div class="column">
+                  <section class="card">
+                    <header class="card-head">
+                      <strong>Identity</strong>
+                      <span>RelationKind definition</span>
+                    </header>
+                    <div class="card-body">
+                      <div class="fields">
+                        <div class="field">
+                          <label>Name</label>
+                          <input class="input" value="appearsIn" />
+                        </div>
+                        <div class="field">
+                          <label>Key</label>
+                          <input class="input" value="appears_in" />
+                        </div>
+                        <div class="field">
+                          <label>Icon</label>
+                          <input class="input" value="lucide:film" />
+                        </div>
+                        <div class="field">
+                          <label>Direction</label>
+                          <div class="checkbox-row">
+                            <input type="checkbox" checked />
+                            <span>Directed relation</span>
+                          </div>
+                        </div>
+                        <div class="field" style="grid-column: 1 / -1">
+                          <label>Description</label>
+                          <textarea class="textarea">A Character appears in a Scene. Canonical direction is Character to Scene.</textarea>
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section class="card">
+                    <header class="card-head">
+                      <strong>Endpoint Constraints</strong>
+                      <span>service validates assertions</span>
+                    </header>
+                    <div class="card-body">
+                      <div class="fields">
+                        <div class="field">
+                          <label>Subject endpoint</label>
+                          <select class="select">
+                            <option>Character</option>
+                            <option>Faction</option>
+                          </select>
+                        </div>
+                        <div class="field">
+                          <label>Object endpoint</label>
+                          <select class="select">
+                            <option>Scene</option>
+                            <option>Document</option>
+                          </select>
+                        </div>
+                        <div class="field">
+                          <label>Subject cardinality</label>
+                          <select class="select">
+                            <option>many</option>
+                            <option>one</option>
+                          </select>
+                        </div>
+                        <div class="field">
+                          <label>Object cardinality</label>
+                          <select class="select">
+                            <option>many</option>
+                            <option>one</option>
+                          </select>
+                        </div>
+                      </div>
+                      <div class="section-actions">
+                        <button class="button primary">Add Allowed Kind</button>
+                        <button class="button">Validate Existing</button>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section class="card">
+                    <header class="card-head">
+                      <strong>Preview</strong>
+                      <span>canonical grammar</span>
+                    </header>
+                    <div class="card-body">
+                      <div class="preview-line">
+                        <span class="box">Character</span>
+                        <span class="arrow">appearsIn</span>
+                        <span class="box">Scene</span>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+
+                <aside class="column">
+                  <section class="card">
+                    <header class="card-head">
+                      <strong>Assertions</strong>
+                      <span>usage summary</span>
+                    </header>
+                    <div class="card-body">
+                      <div class="side-list">
+                        <div class="side-card ok">
+                          <div class="side-card-title">
+                            <span>31 accepted</span>
+                            <span class="pill green">valid</span>
+                          </div>
+                          <div class="side-card-body">Accepted RelationAssertions satisfy endpoint constraints.</div>
+                        </div>
+                        <div class="side-card issue">
+                          <div class="side-card-title">
+                            <span>1 invalid candidate</span>
+                            <span class="pill danger">conflict</span>
+                          </div>
+                          <div class="side-card-body">Scene 1 appearsIn Yuna reverses canonical direction.</div>
+                          <div class="section-actions">
+                            <button class="mini-button">Flip</button>
+                            <button class="mini-button">Reject</button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section class="card">
+                    <header class="card-head">
+                      <strong>Canvas Defaults</strong>
+                      <span>edge presentation</span>
+                    </header>
+                    <div class="card-body">
+                      <div class="fields single">
+                        <div class="field">
+                          <label>Default Edge Type</label>
+                          <select class="select">
+                            <option>relation_edge</option>
+                            <option>dashed_relation_edge</option>
+                          </select>
+                        </div>
+                        <div class="field">
+                          <label>Label</label>
+                          <input class="input" value="appearsIn" />
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+                </aside>
+              </div>
+
+              <footer class="sticky-save">
+                <span class="save-note">Endpoint changes can invalidate existing RelationAssertions.</span>
+                <div class="save-actions">
+                  <button class="button">Revert</button>
+                  <button class="button primary">Save RelationKind</button>
+                </div>
+              </footer>
+            </article>
+
+            <article class="editor-view" data-view="instance">
+              <header class="editor-header">
+                <div class="object-icon">I</div>
+                <div class="object-title">
+                  <h1>Yuna Han</h1>
+                  <p>Instance / home Model: Cast / primary Resource: yuna-han.md</p>
+                </div>
+                <div class="header-actions">
+                  <button class="button">Open Resource</button>
+                  <button class="button">Open Interactive</button>
+                  <button class="button warning">Extract Values</button>
+                  <button class="button primary">Save</button>
+                </div>
+              </header>
+
+              <div class="form-grid">
+                <div class="column">
+                  <section class="card">
+                    <header class="card-head">
+                      <strong>Identity</strong>
+                      <span>Instance target</span>
+                    </header>
+                    <div class="card-body">
+                      <div class="fields">
+                        <div class="field">
+                          <label>Display Name</label>
+                          <input class="input" value="Yuna Han" />
+                        </div>
+                        <div class="field">
+                          <label>Key</label>
+                          <input class="input" value="char.yuna" />
+                        </div>
+                        <div class="field">
+                          <label>Home Model</label>
+                          <select class="select">
+                            <option>Cast</option>
+                            <option>Scenes</option>
+                          </select>
+                        </div>
+                        <div class="field">
+                          <label>Icon</label>
+                          <input class="input" value="image:yuna-portrait.png" />
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section class="card">
+                    <header class="card-head">
+                      <strong>Kind Assignments</strong>
+                      <span>visible Kinds only</span>
+                    </header>
+                    <div class="card-body">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Kind</th>
+                            <th>Status</th>
+                            <th>Source</th>
+                            <th>Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr>
+                            <td>Character</td>
+                            <td><span class="pill green">accepted</span></td>
+                            <td>user</td>
+                            <td><button class="mini-button">Unassign</button></td>
+                          </tr>
+                          <tr>
+                            <td>POV</td>
+                            <td><span class="pill green">accepted</span></td>
+                            <td>AI reviewed</td>
+                            <td><button class="mini-button">Unassign</button></td>
+                          </tr>
+                        </tbody>
+                      </table>
+                      <div class="section-actions">
+                        <button class="button primary">Assign Kind</button>
+                        <button class="button warning">Suggest Kind</button>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section class="card">
+                    <header class="card-head">
+                      <strong>Property Values</strong>
+                      <span>actual values live here</span>
+                    </header>
+                    <div class="card-body">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Kind</th>
+                            <th>Property</th>
+                            <th>Value</th>
+                            <th>Evidence</th>
+                            <th>Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr>
+                            <td>Character</td>
+                            <td>age</td>
+                            <td><input class="input" value="29" /></td>
+                            <td><span class="pill">manual</span></td>
+                            <td><button class="mini-button">Clear</button></td>
+                          </tr>
+                          <tr>
+                            <td>Character</td>
+                            <td>faction</td>
+                            <td><input class="input" value="North Harbor" /></td>
+                            <td><span class="pill blue">resource</span></td>
+                            <td><button class="mini-button">Open</button></td>
+                          </tr>
+                          <tr>
+                            <td>Character</td>
+                            <td>arc_state</td>
+                            <td><input class="input" value="exile to reluctant leader" /></td>
+                            <td><span class="pill warn">AI</span></td>
+                            <td><button class="mini-button">Review</button></td>
+                          </tr>
+                        </tbody>
+                      </table>
+                      <div class="section-actions">
+                        <button class="button primary">Add Value</button>
+                        <button class="button warning">Extract Values</button>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+
+                <aside class="column">
+                  <section class="card">
+                    <header class="card-head">
+                      <strong>Resources</strong>
+                      <span>source mappings</span>
+                    </header>
+                    <div class="card-body">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Resource</th>
+                            <th>Primary</th>
+                            <th>Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr>
+                            <td>
+                              <div class="cell-main">
+                                <strong>yuna-han.md</strong>
+                                <span>/novel/characters/yuna-han.md</span>
+                              </div>
+                            </td>
+                            <td><span class="pill green">yes</span></td>
+                            <td><button class="mini-button">Open</button></td>
+                          </tr>
+                          <tr>
+                            <td>
+                              <div class="cell-main">
+                                <strong>yuna-portrait.png</strong>
+                                <span>/novel/characters/assets/yuna-portrait.png</span>
+                              </div>
+                            </td>
+                            <td><span class="pill">no</span></td>
+                            <td><button class="mini-button">Open</button></td>
+                          </tr>
+                        </tbody>
+                      </table>
+                      <div class="section-actions">
+                        <button class="button primary">Map Resource</button>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section class="card">
+                    <header class="card-head">
+                      <strong>Relations</strong>
+                      <span>Instance to Instance</span>
+                    </header>
+                    <div class="card-body">
+                      <div class="side-list">
+                        <div class="side-card ok">
+                          <div class="side-card-title">
+                            <span>appearsIn Scene 12</span>
+                            <span class="pill green">accepted</span>
+                          </div>
+                          <div class="side-card-body">RelationKind endpoint constraints are satisfied.</div>
+                        </div>
+                        <div class="side-card ok">
+                          <div class="side-card-title">
+                            <span>memberOf North Harbor</span>
+                            <span class="pill green">accepted</span>
+                          </div>
+                          <div class="side-card-body">Yuna is linked to a Faction Instance.</div>
+                        </div>
+                      </div>
+                      <div class="section-actions">
+                        <button class="button primary">Create Relation</button>
+                        <button class="button">Open Canvas</button>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section class="card">
+                    <header class="card-head">
+                      <strong>Review</strong>
+                      <span>AI and validation</span>
+                    </header>
+                    <div class="card-body">
+                      <div class="side-list">
+                        <div class="side-card review">
+                          <div class="side-card-title">
+                            <span>Value candidate</span>
+                            <span class="pill warn">AI</span>
+                          </div>
+                          <div class="side-card-body">arc_state was proposed from yuna-han.md and needs acceptance.</div>
+                          <div class="section-actions">
+                            <button class="mini-button">Accept</button>
+                            <button class="mini-button">Edit</button>
+                            <button class="mini-button">Reject</button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+                </aside>
+              </div>
+
+              <footer class="sticky-save">
+                <span class="save-note">Instance edits update assignments, values, source mappings, and relations.</span>
+                <div class="save-actions">
+                  <button class="button">Revert</button>
+                  <button class="button primary">Save Instance</button>
+                </div>
+              </footer>
+            </article>
+          </section>
+        </main>
+      </div>
+    </div>
+
+    <script>
+      const buttons = Array.from(document.querySelectorAll("[data-tab-button]"));
+      const views = Array.from(document.querySelectorAll("[data-view]"));
+
+      function activate(key) {
+        buttons.forEach((button) => {
+          button.classList.toggle("active", button.dataset.tabButton === key);
+        });
+        views.forEach((view) => {
+          view.classList.toggle("active", view.dataset.view === key);
+        });
+      }
+
+      buttons.forEach((button) => {
+        button.addEventListener("click", () => activate(button.dataset.tabButton));
+      });
+    </script>
+  </body>
+</html>

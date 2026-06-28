@@ -1,73 +1,8 @@
-import { existsSync } from 'fs';
 import Database from 'better-sqlite3';
 
-import { migrate001 } from './migrations/001-initial';
-import { migrate002 } from './migrations/002-modules-and-hierarchical-canvas';
-import { migrate003 } from './migrations/003-schemas';
-import { migrate004 } from './migrations/004-concept-content';
-import { migrate005 } from './migrations/005-app-settings';
-import { migrate006 } from './migrations/006-canvas-1n-and-types';
-import { migrate007 } from './migrations/007-edge-visual-overrides';
-import { migrate008 } from './migrations/008-canvas-layout';
-import { migrate009 } from './migrations/009-file-entity';
-import { migrate010 } from './migrations/010-canvas-to-network';
-import { migrate011 } from './migrations/011-network-structure-and-layouts';
-import { migrate012 } from './migrations/012-objects-and-entity-nodes';
-import { migrate013 } from './migrations/013-contexts';
-import { migrate014 } from './migrations/014-schema-ref-field';
-import { migrate015 } from './migrations/015-type-groups';
-import { migrate016 } from './migrations/016-backfill-object-records';
-import { migrate017 } from './migrations/017-edge-relation-meaning-and-group-node-type';
-import { migrate018 } from './migrations/018-unify-hierarchy-parent-meaning';
-import { migrate019 } from './migrations/019-module-path';
-import { migrate020 } from './migrations/020-schema-meaning-foundation';
-import { migrate021 } from './migrations/021-concept-recurrence-materialization';
-import { migrate022 } from './migrations/022-network-universe-ontology';
-import { migrate023 } from './migrations/023-schema-field-meanings';
-import { migrate024 } from './migrations/024-field-meaning-bindings-v1';
-import { migrate025 } from './migrations/025-schema-meanings';
-import { migrate026 } from './migrations/026-structured-recurrence-meaning';
-import { migrate027 } from './migrations/027-semantic-models-and-meanings';
-import { migrate028 } from './migrations/028-semantic-model-objects';
-import { migrate029 } from './migrations/029-semantic-model-descriptions';
-import { migrate030 } from './migrations/030-semantic-model-recipes';
-import { migrate031 } from './migrations/031-field-meaning-bindings';
-import { migrate032 } from './migrations/032-domain-term-cleanup';
-import { migrate033 } from './migrations/033-ontology-network-name-cleanup';
-import { migrate034 } from './migrations/034-model-storage-canonicalization';
-import { migrate035 } from './migrations/035-node-config-meaning-binding-canonicalization';
-import { migrate036 } from './migrations/036-edge-models-and-relation-type-retirement';
-import { migrate038 } from './migrations/038-schema-model-resplit';
-import { migrate039 } from './migrations/039-field-meaning-bindings-schema-fk';
-import { migrate040 } from './migrations/040-model-type-groups';
-import { migrate041 } from './migrations/041-network-node-exclusions';
-import { migrate042 } from './migrations/042-remove-type-groups';
-import { migrate043 } from './migrations/043-remove-concept-model-id';
-import { migrate044 } from './migrations/044-concept-properties-schema-field-fk';
-import { migrate045 } from './migrations/045-source-provenance-and-model-category-concepts';
-import { migrate046 } from './migrations/046-instance-rename';
-import { migrate047 } from './migrations/047-schema-field-bindings';
-import { migrate048 } from './migrations/048-interactive-view-state';
-import { migrate049 } from './migrations/049-interactive-view-templates';
-import { migrate050 } from './migrations/050-interactive-view-inheritance';
-import { migrate051 } from './migrations/051-interactive-view-user-authored-templates';
-import { migrate052 } from './migrations/052-remove-schema-node-shape';
-import { migrate053 } from './migrations/053-network-representation-grammar';
-import { migrate054 } from './migrations/054-relationships';
-import { migrate055 } from './migrations/055-relation-model-target-kind';
-import { migrate056 } from './migrations/056-meaning-domain-rename';
-import { migrate057 } from './migrations/057-meaning-ontology-node-metadata';
-import { migrate058 } from './migrations/058-remove-field-behavior-meanings';
-import { migrate059 } from './migrations/059-add-dependency-meaning';
-import { migrate060 } from './migrations/060-network-owned-ontology-scope';
-import { migrate061 } from './migrations/061-root-network-world-boundary';
-import { migrate062 } from './migrations/062-repair-root-network-owners';
-import { migrate063 } from './migrations/063-module-description';
-import {
-  ensureRootNetworkNodeInUniverseForDb,
-  syncRootNetworkOntologyForDb,
-  ensureUniverseNetworkForDb,
-} from './repositories/system-networks';
+import { migrate001 } from './migrations/001-baseline';
+import { migrate002 } from './migrations/002-relation-kind-endpoint-policy';
+import { migrate003 } from './migrations/003-relation-assertion-endpoint-kinds';
 
 let db: Database.Database | null = null;
 
@@ -76,70 +11,26 @@ interface Migration {
   migrate: (db: Database.Database) => void;
 }
 
+const SCHEMA_EPOCH = 'domain-model-v1';
+
 const migrations: Migration[] = [
   { version: 1, migrate: migrate001 },
   { version: 2, migrate: migrate002 },
   { version: 3, migrate: migrate003 },
-  { version: 4, migrate: migrate004 },
-  { version: 5, migrate: migrate005 },
-  { version: 6, migrate: migrate006 },
-  { version: 7, migrate: migrate007 },
-  { version: 8, migrate: migrate008 },
-  { version: 9, migrate: migrate009 },
-  { version: 10, migrate: migrate010 },
-  { version: 11, migrate: migrate011 },
-  { version: 12, migrate: migrate012 },
-  { version: 13, migrate: migrate013 },
-  { version: 14, migrate: migrate014 },
-  { version: 15, migrate: migrate015 },
-  { version: 16, migrate: migrate016 },
-  { version: 17, migrate: migrate017 },
-  { version: 18, migrate: migrate018 },
-  { version: 19, migrate: migrate019 },
-  { version: 20, migrate: migrate020 },
-  { version: 21, migrate: migrate021 },
-  { version: 22, migrate: migrate022 },
-  { version: 23, migrate: migrate023 },
-  { version: 24, migrate: migrate024 },
-  { version: 25, migrate: migrate025 },
-  { version: 26, migrate: migrate026 },
-  { version: 27, migrate: migrate027 },
-  { version: 28, migrate: migrate028 },
-  { version: 29, migrate: migrate029 },
-  { version: 30, migrate: migrate030 },
-  { version: 31, migrate: migrate031 },
-  { version: 32, migrate: migrate032 },
-  { version: 33, migrate: migrate033 },
-  { version: 34, migrate: migrate034 },
-  { version: 35, migrate: migrate035 },
-  { version: 36, migrate: migrate036 },
-  { version: 38, migrate: migrate038 },
-  { version: 39, migrate: migrate039 },
-  { version: 40, migrate: migrate040 },
-  { version: 41, migrate: migrate041 },
-  { version: 42, migrate: migrate042 },
-  { version: 43, migrate: migrate043 },
-  { version: 44, migrate: migrate044 },
-  { version: 45, migrate: migrate045 },
-  { version: 46, migrate: migrate046 },
-  { version: 47, migrate: migrate047 },
-  { version: 48, migrate: migrate048 },
-  { version: 49, migrate: migrate049 },
-  { version: 50, migrate: migrate050 },
-  { version: 51, migrate: migrate051 },
-  { version: 52, migrate: migrate052 },
-  { version: 53, migrate: migrate053 },
-  { version: 54, migrate: migrate054 },
-  { version: 55, migrate: migrate055 },
-  { version: 56, migrate: migrate056 },
-  { version: 57, migrate: migrate057 },
-  { version: 58, migrate: migrate058 },
-  { version: 59, migrate: migrate059 },
-  { version: 60, migrate: migrate060 },
-  { version: 61, migrate: migrate061 },
-  { version: 62, migrate: migrate062 },
-  { version: 63, migrate: migrate063 },
 ];
+
+const BASELINE_TABLES = [
+  'netior_metadata',
+  'world_nodes',
+  'model_directory_bindings',
+  'kinds',
+  'properties',
+  'relation_kinds',
+  'instances',
+  'resources',
+  'views',
+  'view_items',
+] as const;
 
 export function hasColumn(db: Database.Database, table: string, column: string): boolean {
   const cols = db.pragma(`table_info(${table})`) as { name: string }[];
@@ -165,79 +56,18 @@ export function initDatabase(dbPath: string, options?: InitDatabaseOptions): voi
 
   db = new Database(dbPath, dbOptions);
 
-  // Enable WAL mode, foreign keys, and busy timeout
   db.pragma('journal_mode = WAL');
   db.pragma('foreign_keys = ON');
   db.pragma('busy_timeout = 5000');
 
-  // Ensure migrations table exists
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS _migrations (
-      version INTEGER PRIMARY KEY,
-      applied_at TEXT NOT NULL
-    )
-  `);
-
-  // Run pending migrations
-  const applied = new Set(
-    (db.prepare('SELECT version FROM _migrations').all() as { version: number }[])
-      .map((r) => r.version),
-  );
-
-  console.log(`[DB] Applied migrations: ${[...applied].join(', ') || 'none'}`);
-  console.log(`[DB] Pending: ${migrations.filter((m) => !applied.has(m.version)).map((m) => m.version).join(', ') || 'none'}`);
-
-  // Log existing tables
-  const tables = (db.prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name").all() as { name: string }[]).map((r) => r.name);
-  console.log(`[DB] Existing tables: ${tables.join(', ')}`);
-
-  for (const m of migrations) {
-    if (!applied.has(m.version)) {
-      console.log(`[DB] Running migration v${m.version}...`);
-      db.pragma('foreign_keys = OFF');
-      try {
-        db.transaction(() => {
-          m.migrate(db!);
-          db!.prepare('INSERT INTO _migrations (version, applied_at) VALUES (?, ?)').run(
-            m.version,
-            new Date().toISOString(),
-          );
-        })();
-        console.log(`[DB] Migration v${m.version} applied.`);
-      } catch (err) {
-        console.error(`[DB] Migration v${m.version} FAILED:`, err);
-        throw err;
-      }
-      db.pragma('foreign_keys = ON');
-    }
+  if (needsFreshBaseline(db)) {
+    console.warn('[DB] Legacy Netior database detected. Resetting to the new domain baseline.');
+    resetDatabase(db);
   }
 
-  // Patch partial databases after the storage rename has completed.
-  if (tableExists(db, 'instances') && !tableExists(db, 'instance_editor_prefs')) {
-    console.log('[DB] Patching: creating missing instance_editor_prefs table');
-    db.exec(`
-      CREATE TABLE instance_editor_prefs (
-        id TEXT PRIMARY KEY,
-        instance_id TEXT NOT NULL REFERENCES instances(id) ON DELETE CASCADE,
-        view_mode TEXT NOT NULL DEFAULT 'float',
-        float_x REAL,
-        float_y REAL,
-        float_width REAL DEFAULT 600,
-        float_height REAL DEFAULT 450,
-        side_split_ratio REAL DEFAULT 0.5,
-        updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-        UNIQUE(instance_id)
-      )
-    `);
-  }
-
-  ensureUniverseNetworkForDb(db);
-
-  const worldRows = db.prepare("SELECT id FROM networks WHERE kind = 'root'").all() as { id: string }[];
-  for (const world of worldRows) {
-    syncRootNetworkOntologyForDb(db, world.id);
-    ensureRootNetworkNodeInUniverseForDb(db, world.id);
-  }
+  ensureMigrationsTable(db);
+  runPendingMigrations(db);
+  ensureRuntimeSupportTables(db);
 }
 
 export function getDatabase(): Database.Database {
@@ -251,3 +81,92 @@ export function closeDatabase(): void {
     db = null;
   }
 }
+
+function ensureMigrationsTable(database: Database.Database): void {
+  database.exec(`
+    CREATE TABLE IF NOT EXISTS _migrations (
+      version INTEGER PRIMARY KEY,
+      applied_at TEXT NOT NULL
+    )
+  `);
+}
+
+function runPendingMigrations(database: Database.Database): void {
+  const applied = new Set(
+    (database.prepare('SELECT version FROM _migrations').all() as { version: number }[])
+      .map((row) => row.version),
+  );
+
+  for (const migration of migrations) {
+    if (applied.has(migration.version)) continue;
+
+    database.pragma('foreign_keys = OFF');
+    try {
+      database.transaction(() => {
+        migration.migrate(database);
+        database
+          .prepare('INSERT INTO _migrations (version, applied_at) VALUES (?, ?)')
+          .run(migration.version, new Date().toISOString());
+      })();
+    } finally {
+      database.pragma('foreign_keys = ON');
+    }
+  }
+}
+
+function ensureRuntimeSupportTables(database: Database.Database): void {
+  database.exec(`
+    CREATE TABLE IF NOT EXISTS app_settings (
+      key TEXT PRIMARY KEY,
+      value_json TEXT,
+      updated_at TEXT NOT NULL
+    )
+  `);
+}
+
+function needsFreshBaseline(database: Database.Database): boolean {
+  const tables = listUserTables(database);
+  if (tables.length === 0) return false;
+
+  if (!tableExists(database, 'netior_metadata')) return true;
+
+  for (const table of BASELINE_TABLES) {
+    if (!tableExists(database, table)) return true;
+  }
+
+  const row = database
+    .prepare("SELECT value FROM netior_metadata WHERE key = 'schema_epoch'")
+    .get() as { value: string } | undefined;
+
+  return row?.value !== SCHEMA_EPOCH;
+}
+
+function resetDatabase(database: Database.Database): void {
+  database.pragma('foreign_keys = OFF');
+  try {
+    const tables = listUserTables(database);
+    database.transaction(() => {
+      for (const table of tables) {
+        database.prepare(`DROP TABLE IF EXISTS "${table.replace(/"/g, '""')}"`).run();
+      }
+    })();
+  } finally {
+    database.pragma('foreign_keys = ON');
+  }
+}
+
+function listUserTables(database: Database.Database): string[] {
+  return (
+    database
+      .prepare(
+        `SELECT name
+           FROM sqlite_master
+          WHERE type = 'table'
+            AND name NOT LIKE 'sqlite_%'
+          ORDER BY name`,
+      )
+      .all() as { name: string }[]
+  ).map((row) => row.name);
+}
+
+export const NETIOR_SCHEMA_EPOCH = SCHEMA_EPOCH;

@@ -2,14 +2,13 @@
 import {
   Activity,
   Bot,
-  Boxes,
+  Box,
   FolderTree,
   Globe2,
   Orbit,
   Settings,
   Sparkles,
   Terminal,
-  Waypoints,
   type LucideIcon,
 } from 'lucide-react';
 import type { ActivityBarBottomItemKey, ActivityBarTopItemKey } from './activity-bar-layout';
@@ -25,7 +24,7 @@ export const ACTIVITY_BAR_TOP_ITEM_DEFINITIONS: Record<
   ActivityBarItemDefinition<ActivityBarTopItemKey>
 > = {
   worlds: { key: 'worlds', icon: Orbit, labelKey: 'world.title' },
-  networks: { key: 'networks', icon: Waypoints, labelKey: 'sidebar.networks' },
+  models: { key: 'models', icon: Box, labelKey: 'sidebar.models' },
   files: { key: 'files', icon: FolderTree, labelKey: 'sidebar.files' },
   sessions: { key: 'sessions', icon: Activity, labelKey: 'sidebar.sessions' },
 };
@@ -34,7 +33,6 @@ export const ACTIVITY_BAR_BOTTOM_ITEM_DEFINITIONS: Record<
   ActivityBarBottomItemKey,
   ActivityBarItemDefinition<ActivityBarBottomItemKey>
 > = {
-  rootNetwork: { key: 'rootNetwork', icon: Boxes, labelKey: 'sidebar.rootNetwork' },
   narre: { key: 'narre', icon: Sparkles, labelKey: 'narre.title' },
   terminal: { key: 'terminal', icon: Terminal, labelKey: 'sidebar.terminal' },
   agents: { key: 'agents', icon: Bot, labelKey: 'sidebar.agents' },

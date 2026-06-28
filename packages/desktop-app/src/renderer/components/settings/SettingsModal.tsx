@@ -1,6 +1,6 @@
 ﻿import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Search, Palette, Globe, Bell, Boxes, Sparkles, Pin, Compass } from 'lucide-react';
+import { X, Search, Palette, Globe, Bell, Sparkles, Pin, Compass } from 'lucide-react';
 import type { NarreBehaviorSettings, NarreCodexSettings } from '@netior/shared/types';
 import {
   buildRoleFontFamily,
@@ -1458,8 +1458,6 @@ export function SettingsModal({ open, onClose }: SettingsModalProps): JSX.Elemen
     detachedAgentToastMode,
     nativeAgentNotificationsEnabled,
     agentNotificationSoundEnabled,
-    fieldComplexityLevel,
-    networkViewerPlacement,
     typography,
     terminalPresetId,
     terminalAppearance,
@@ -1475,8 +1473,6 @@ export function SettingsModal({ open, onClose }: SettingsModalProps): JSX.Elemen
     setDetachedAgentToastMode,
     setNativeAgentNotificationsEnabled,
     setAgentNotificationSoundEnabled,
-    setFieldComplexityLevel,
-    setNetworkViewerPlacement,
     updateTypography,
     setTerminalPresetId,
     updateTerminalAppearance,
@@ -1499,7 +1495,6 @@ export function SettingsModal({ open, onClose }: SettingsModalProps): JSX.Elemen
       label: t('settings.categoryAppearance'),
       anchors: [
         t('settings.appearanceMode'),
-        t('settings.networkViewerPlacement' as never),
         t('settings.primaryPalette'),
         '토큰 색상',
         t('settings.typography'),
@@ -1524,18 +1519,11 @@ export function SettingsModal({ open, onClose }: SettingsModalProps): JSX.Elemen
       ],
     },
     {
-      key: 'modeling',
-      icon: Boxes,
-      label: t('settings.categoryModeling' as never),
-      anchors: [t('settings.fieldComplexity' as never)],
-    },
-    {
       key: 'sidebar',
       icon: Pin,
       label: t('settings.categorySidebar' as never),
       anchors: [
         t('settings.sidebarTopItems' as never),
-        t('settings.sidebarBookmarkedNetworks' as never),
         t('settings.sidebarBottomItems' as never),
       ],
     },
@@ -1622,10 +1610,6 @@ export function SettingsModal({ open, onClose }: SettingsModalProps): JSX.Elemen
   const showAppearance = [
     t('settings.categoryAppearance'),
     t('settings.appearanceMode'),
-    t('settings.networkViewerPlacement' as never),
-    t('settings.networkViewerPlacementDesc' as never),
-    t('settings.networkViewerPlacementNetworkLeft' as never),
-    t('settings.networkViewerPlacementNetworkRight' as never),
     t('settings.primaryPalette'),
     t('settings.typography'),
     t('settings.typographyDesc'),
@@ -1662,27 +1646,13 @@ export function SettingsModal({ open, onClose }: SettingsModalProps): JSX.Elemen
     t('settings.notificationsEnabled'),
     t('settings.notificationsDisabled'),
   ].some(matchesSearch);
-  const showModeling = [
-    t('settings.categoryModeling' as never),
-    t('settings.fieldComplexity' as never),
-    t('settings.fieldComplexityBasic' as never),
-    t('settings.fieldComplexityStandard' as never),
-    t('settings.fieldComplexityAdvanced' as never),
-  ].some(matchesSearch);
   const showSidebar = [
     t('settings.categorySidebar' as never),
     t('settings.sidebarTopItems' as never),
     t('settings.sidebarTopItemsDesc' as never),
-    t('settings.sidebarBookmarkedNetworks' as never),
-    t('settings.sidebarBookmarkedNetworksDesc' as never),
-    t('settings.sidebarAvailableNetworks' as never),
-    t('settings.sidebarAvailableNetworksDesc' as never),
     t('settings.sidebarBottomItems' as never),
     t('settings.sidebarBottomItemsDesc' as never),
     t('settings.sidebarNoWorld' as never),
-    t('settings.sidebarNoBookmarks' as never),
-    t('settings.sidebarNoAvailableNetworks' as never),
-    t('sidebar.networks'),
     t('sidebar.objects'),
     t('sidebar.files'),
     t('sidebar.sessions' as never),
@@ -1804,29 +1774,6 @@ export function SettingsModal({ open, onClose }: SettingsModalProps): JSX.Elemen
                   </div>
                   <div className="mt-3 text-xs text-muted">
                     {t('settings.currentResolvedMode')}: <span className="font-medium text-default">{resolvedThemeMode === 'dark' ? t('settings.dark') : t('settings.light')}</span>
-                  </div>
-                </section>
-
-                <section data-section={t('settings.networkViewerPlacement' as never).toLowerCase().replace(/\s+/g, '-')} className="mb-10">
-                  <h3 className="text-base font-semibold text-default">{t('settings.networkViewerPlacement' as never)}</h3>
-                  <p className="mb-4 text-sm text-secondary">{t('settings.networkViewerPlacementDesc' as never)}</p>
-                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                    {([
-                      { key: 'network-left' as const, label: t('settings.networkViewerPlacementNetworkLeft' as never) },
-                      { key: 'network-right' as const, label: t('settings.networkViewerPlacementNetworkRight' as never) },
-                    ]).map(({ key, label }) => (
-                      <button
-                        key={key}
-                        className={`rounded-xl border p-4 text-left transition-all ${
-                          networkViewerPlacement === key
-                            ? 'border-accent bg-state-selected text-accent shadow-sm'
-                            : 'border-subtle bg-surface-card text-secondary hover:border-default hover:bg-state-hover/60 hover:text-default'
-                        }`}
-                        onClick={() => setNetworkViewerPlacement(key)}
-                      >
-                        <div className="text-sm font-semibold">{label}</div>
-                      </button>
-                    ))}
                   </div>
                 </section>
 
@@ -1976,47 +1923,6 @@ export function SettingsModal({ open, onClose }: SettingsModalProps): JSX.Elemen
               </div>
             )}
 
-            {(activeCategory === 'modeling' || searchQuery) && showModeling && (
-              <div data-section="modeling">
-                <section data-section="field-complexity" className="mb-8">
-                  <h3 className="text-base font-semibold text-default">{t('settings.fieldComplexity' as never)}</h3>
-                  <p className="mb-4 text-sm text-secondary">{t('settings.fieldComplexityDesc' as never)}</p>
-                  <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-                    {([
-                      {
-                        key: 'basic' as const,
-                        label: t('settings.fieldComplexityBasic' as never),
-                        description: t('settings.fieldComplexityBasicDesc' as never),
-                      },
-                      {
-                        key: 'standard' as const,
-                        label: t('settings.fieldComplexityStandard' as never),
-                        description: t('settings.fieldComplexityStandardDesc' as never),
-                      },
-                      {
-                        key: 'advanced' as const,
-                        label: t('settings.fieldComplexityAdvanced' as never),
-                        description: t('settings.fieldComplexityAdvancedDesc' as never),
-                      },
-                    ]).map(({ key, label, description }) => (
-                      <button
-                        key={key}
-                        className={`rounded-xl border p-4 text-left transition-all ${
-                          fieldComplexityLevel === key
-                            ? 'border-accent bg-state-selected text-accent shadow-sm'
-                            : 'border-subtle bg-surface-card text-secondary hover:border-default hover:bg-state-hover/60 hover:text-default'
-                        }`}
-                        onClick={() => setFieldComplexityLevel(key)}
-                      >
-                        <div className="text-sm font-semibold">{label}</div>
-                        <div className="mt-2 text-xs leading-5 text-muted">{description}</div>
-                      </button>
-                    ))}
-                  </div>
-                </section>
-              </div>
-            )}
-
             {(activeCategory === 'sidebar' || searchQuery) && showSidebar && (
               <SidebarSettingsPanel />
             )}
@@ -2032,7 +1938,7 @@ export function SettingsModal({ open, onClose }: SettingsModalProps): JSX.Elemen
               <NarreSettingsPanel open={open} t={t} />
             )}
 
-            {searchQuery && !showAppearance && !showLanguage && !showDetachedAgentToasts && !showModeling && !showSidebar && !showBrowser && !showNarre && (
+            {searchQuery && !showAppearance && !showLanguage && !showDetachedAgentToasts && !showSidebar && !showBrowser && !showNarre && (
               <div className="flex flex-col items-center justify-center py-16 text-muted">
                 <Search size={32} className="mb-3 opacity-40" />
                 <p className="text-sm">{t('common.noResults')}</p>

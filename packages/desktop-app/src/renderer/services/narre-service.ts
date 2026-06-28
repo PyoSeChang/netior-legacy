@@ -12,6 +12,9 @@
   AgentAssignment,
   AgentEvent,
   AgentApprovalRequest,
+  NarrePromptRuntimeOverride,
+  NarrePromptRuntimeProvider,
+  NarreRuntimeModelOption,
 } from '@netior/shared/types';
 import { unwrapIpc } from './ipc';
 
@@ -129,12 +132,17 @@ export async function searchMentions(rootNetworkId: string, query: string): Prom
   return unwrapIpc(await window.electron.narre.searchMentions(rootNetworkId, query));
 }
 
+export async function listRuntimeModels(provider: NarrePromptRuntimeProvider): Promise<NarreRuntimeModelOption[]> {
+  return unwrapIpc(await window.electron.narre.listRuntimeModels(provider));
+}
+
 export async function sendMessage(data: {
   sessionId?: string;
   rootNetworkId: string;
   message: string;
   mentions?: NarreMention[];
   skillIds?: string[];
+  runtimeOverride?: NarrePromptRuntimeOverride;
 }): Promise<void> {
   // Fire-and-forget: streaming events come via onStreamEvent
   unwrapIpc(await window.electron.narre.sendMessage(data as Record<string, unknown>));
@@ -182,6 +190,7 @@ export const narreService = {
   getApiKeyStatus,
   setApiKey,
   searchMentions,
+  listRuntimeModels,
   sendMessage,
   onStreamEvent,
   respondToCard,

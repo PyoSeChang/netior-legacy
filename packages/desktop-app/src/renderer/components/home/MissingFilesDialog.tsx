@@ -29,7 +29,7 @@ export function MissingFilesDialog(): JSX.Element | null {
             >
               <div className="flex items-center gap-2 min-w-0">
                 <span className="text-sm shrink-0">
-                  {entry.fileEntity.type === 'directory' ? '?뱚' : '?뱞'}
+                  {entry.fileEntity.type === 'folder' ? '?뱚' : '?뱞'}
                 </span>
                 <span className="text-xs text-default truncate">
                   {entry.fileEntity.path}

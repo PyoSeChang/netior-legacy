@@ -1,19 +1,18 @@
-﻿export type ActivityBarTopItemKey =
+export type ActivityBarTopItemKey =
   | 'worlds'
-  | 'networks'
+  | 'models'
   | 'files'
   | 'sessions';
-export type ActivityBarBottomItemKey = 'rootNetwork' | 'narre' | 'terminal' | 'agents' | 'browser' | 'settings';
+export type ActivityBarBottomItemKey = 'narre' | 'terminal' | 'agents' | 'browser' | 'settings';
 
 export const ACTIVITY_BAR_TOP_ITEM_KEYS = [
   'worlds',
-  'networks',
+  'models',
   'files',
   'sessions',
 ] as const satisfies readonly ActivityBarTopItemKey[];
 
 export const ACTIVITY_BAR_BOTTOM_ITEM_KEYS = [
-  'rootNetwork',
   'narre',
   'terminal',
   'agents',
@@ -24,7 +23,6 @@ export const ACTIVITY_BAR_BOTTOM_ITEM_KEYS = [
 export interface ActivityBarLayoutConfig {
   topItemOrder: ActivityBarTopItemKey[];
   bottomItemOrder: ActivityBarBottomItemKey[];
-  networkBookmarksByWorld: Record<string, string[]>;
 }
 
 export const ACTIVITY_BAR_LAYOUT_CONFIG_KEY = 'ui.activityBarLayout';
@@ -32,7 +30,6 @@ export const ACTIVITY_BAR_LAYOUT_CONFIG_KEY = 'ui.activityBarLayout';
 export const DEFAULT_ACTIVITY_BAR_LAYOUT_CONFIG: ActivityBarLayoutConfig = {
   topItemOrder: [...ACTIVITY_BAR_TOP_ITEM_KEYS],
   bottomItemOrder: [...ACTIVITY_BAR_BOTTOM_ITEM_KEYS],
-  networkBookmarksByWorld: {},
 };
 
 function normalizeStringArray(value: unknown): string[] {
@@ -64,39 +61,11 @@ function normalizeItemOrder<T extends string>(value: unknown, defaults: readonly
 
 function normalizeTopItemOrder(value: unknown): ActivityBarTopItemKey[] {
   const entries = normalizeStringArray(value);
-  if (entries.includes('objects')) {
-    return [...ACTIVITY_BAR_TOP_ITEM_KEYS];
-  }
   return normalizeItemOrder(entries, ACTIVITY_BAR_TOP_ITEM_KEYS);
 }
 
 function normalizeBottomItemOrder(value: unknown): ActivityBarBottomItemKey[] {
-  const entries = normalizeStringArray(value);
-  if (entries.includes('sessions')) {
-    return [...ACTIVITY_BAR_BOTTOM_ITEM_KEYS];
-  }
-  return normalizeItemOrder(entries, ACTIVITY_BAR_BOTTOM_ITEM_KEYS);
-}
-
-function normalizeNetworkBookmarksByWorld(value: unknown): Record<string, string[]> {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    return {};
-  }
-
-  const next: Record<string, string[]> = {};
-  for (const [rootNetworkId, bookmarkIds] of Object.entries(value as Record<string, unknown>)) {
-    const normalizedRootNetworkId = rootNetworkId.trim();
-    if (!normalizedRootNetworkId) {
-      continue;
-    }
-
-    const normalizedBookmarkIds = normalizeStringArray(bookmarkIds);
-    if (normalizedBookmarkIds.length > 0) {
-      next[normalizedRootNetworkId] = normalizedBookmarkIds;
-    }
-  }
-
-  return next;
+  return normalizeItemOrder(value, ACTIVITY_BAR_BOTTOM_ITEM_KEYS);
 }
 
 export function normalizeActivityBarLayoutConfig(value: unknown): ActivityBarLayoutConfig {
@@ -107,7 +76,6 @@ export function normalizeActivityBarLayoutConfig(value: unknown): ActivityBarLay
   return {
     topItemOrder: normalizeTopItemOrder(source.topItemOrder),
     bottomItemOrder: normalizeBottomItemOrder(source.bottomItemOrder),
-    networkBookmarksByWorld: normalizeNetworkBookmarksByWorld(source.networkBookmarksByWorld),
   };
 }
 
@@ -138,40 +106,4 @@ export function moveOrderedItem<T>(
   const next = [...items];
   [next[index], next[targetIndex]] = [next[targetIndex], next[index]];
   return next;
-}
-
-export function getWorldNetworkBookmarkIds(
-  config: ActivityBarLayoutConfig,
-  rootNetworkId: string | null | undefined,
-): string[] {
-  if (!rootNetworkId) {
-    return [];
-  }
-
-  return config.networkBookmarksByWorld[rootNetworkId] ?? [];
-}
-
-export function setWorldNetworkBookmarkIds(
-  config: ActivityBarLayoutConfig,
-  rootNetworkId: string,
-  bookmarkIds: readonly string[],
-): ActivityBarLayoutConfig {
-  const normalizedRootNetworkId = rootNetworkId.trim();
-  if (!normalizedRootNetworkId) {
-    return config;
-  }
-
-  const nextBookmarksByWorld = { ...config.networkBookmarksByWorld };
-  const normalizedBookmarkIds = normalizeStringArray(bookmarkIds);
-
-  if (normalizedBookmarkIds.length === 0) {
-    delete nextBookmarksByWorld[normalizedRootNetworkId];
-  } else {
-    nextBookmarksByWorld[normalizedRootNetworkId] = normalizedBookmarkIds;
-  }
-
-  return normalizeActivityBarLayoutConfig({
-    ...config,
-    networkBookmarksByWorld: nextBookmarksByWorld,
-  });
 }

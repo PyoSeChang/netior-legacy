@@ -1,145 +1,112 @@
-# Netior Docs
+# Netior Documentation
 
-Netior 문서는 목적과 도메인 기준으로 나눈다. 새 문서를 추가할 때는 "무엇을 설명하는가"보다 "어디서 쓰이는가"를 먼저 기준으로 잡는다.
+이 문서는 Netior 설계 문서의 폴더 체계와 읽기 순서를 정리한다.
 
-## 빠른 길
+## 읽기 순서
 
-- 전체 런타임 구조: [architecture/runtime.md](architecture/runtime.md)
-- 현재 도메인 모델: [architecture/domain-model.md](architecture/domain-model.md)
-- desktop-app 구조: [architecture/desktop-app/main-and-preload.md](architecture/desktop-app/main-and-preload.md), [architecture/desktop-app/renderer-logic.md](architecture/desktop-app/renderer-logic.md), [architecture/desktop-app/components.md](architecture/desktop-app/components.md)
-- 제품 기능 범위: [product/feature-list-ko.md](product/feature-list-ko.md)
-- Narre 책임 표면: [narre/architecture/responsibility-surface-ko.md](narre/architecture/responsibility-surface-ko.md)
-- Narre eval 사용법: [narre/eval/guide-ko.md](narre/eval/guide-ko.md)
-- 다음 단계 계획: [plans/next-phase/next-phase-implementation-plan.md](plans/next-phase/next-phase-implementation-plan.md)
-- 작업 중 문제/운영 노트: [operations/worktree-debugging.md](operations/worktree-debugging.md)
+1. [Product](00-product/README.md)
+2. [Architecture](01-architecture/NETIOR_ARCHITECTURE_DRAFT.md)
+3. [Definition Model](02-domain/NETIOR_DEFINITION_MODEL.md)
+4. [Domain Operations](02-domain/NETIOR_DOMAIN_OPERATIONS.md)
+5. [View Model](02-domain/view/NETIOR_VIEW_MODEL.md)
+6. [Interactive View Capability](02-domain/capability/interactive-view.md)
+7. [UI Layout](03-ui/NETIOR_UI_LAYOUT.md)
+8. [Plan](04-plan/README.md)
+9. [Development Log](05-development-log/README.md)
+10. [Test](06-test/README.md)
 
 ## 폴더 체계
 
-```text
-docs/
-  README.md
-  architecture/        현재 코드 구조, 런타임, 패키지 레퍼런스
-  product/             제품 정체성, 기능 범위, 개념 언어
-  features/            캔버스, 레이아웃, 터미널 등 기능별 설계/계획
-  narre/               Narre 전용 아키텍처, eval, 리팩터링 계획
-  plans/               여러 영역에 걸친 실행 계획
-  reference/           정적 자료와 에셋
-  operations/          디버깅, 이슈, 운영 메모
-  research/            탐색적 아이디어와 장기 연구 메모
-```
+### `00-product`
 
-## 작성 규칙
+Netior가 어떤 제품인지, 무엇을 해결하려는지, 어떤 방향으로 성장해야 하는지 정리한다.
 
-- 현재 동작을 설명하는 문서는 `architecture/` 또는 `narre/architecture/`에 둔다.
-- 기능 하나의 설계/리팩터링 계획은 `features/{domain}/`에 둔다.
-- Narre 전용 문서는 `narre/` 아래에 둔다. eval 관련 문서는 `narre/eval/`, 리팩터링 계획은 `narre/plans/`를 쓴다.
-- 제품 언어, 정체성, 기능 범위는 `product/`에 둔다.
-- 여러 패키지나 제품 방향을 한 번에 건드리는 계획은 `plans/`에 둔다.
-- 임시 운영 메모, 디버깅 기록, 조사성 이슈는 `operations/`에 둔다.
-- 브랜드 시안, SVG, HTML 미리보기 같은 에셋은 `reference/branding/`에 둔다.
-- 내부 링크는 절대 경로 대신 상대 경로를 쓴다.
+- [README.md](00-product/README.md)
+- [NETIOR_PHILOSOPHY.md](00-product/NETIOR_PHILOSOPHY.md)
+- [NETIOR_PHILOSOPHY_V2.md](00-product/NETIOR_PHILOSOPHY_V2.md)
+- [NETIOR_ROADMAP_DRAFT.md](00-product/roadmap/NETIOR_ROADMAP_DRAFT.md)
+- [Interactive SDK Roadmap](00-product/roadmap/interactiveSDK-roadmap.md)
 
-## Architecture
+### `01-architecture`
 
-- [domain-model.md](architecture/domain-model.md)
-- [runtime.md](architecture/runtime.md)
-- [desktop-app/components.md](architecture/desktop-app/components.md)
-- [desktop-app/main-and-preload.md](architecture/desktop-app/main-and-preload.md)
-- [desktop-app/renderer-logic.md](architecture/desktop-app/renderer-logic.md)
-- [desktop-app/shortcuts.md](architecture/desktop-app/shortcuts.md)
-- [packages/narre-server.md](architecture/packages/narre-server.md)
+Electron, netior-service, MCP, desktop renderer, interactive view runtime, transport boundary를 정리한다.
 
-## Product
+- [NETIOR_ARCHITECTURE_DRAFT.md](01-architecture/NETIOR_ARCHITECTURE_DRAFT.md)
 
-- [feature-list-ko.md](product/feature-list-ko.md)
-- [identity-ko.md](product/identity-ko.md)
-- [identity-internal.md](product/identity-internal.md)
-- [manifesto-draft.md](product/manifesto-draft.md)
-- [networkics-ko.md](product/networkics-ko.md)
+### `02-domain`
 
-## Features
+World, Model, Kind, RelationKind, Instance, Resource, Assignment, Evidence 같은 Netior의 핵심 언어를 정리한다.
 
-Canvas:
+- [NETIOR_DEFINITION_MODEL.md](02-domain/NETIOR_DEFINITION_MODEL.md)
+- [NETIOR_DOMAIN_OPERATIONS.md](02-domain/NETIOR_DOMAIN_OPERATIONS.md)
+- [NETIOR_DOMAIN_MODEL_DRAFT.md](02-domain/NETIOR_DOMAIN_MODEL_DRAFT.md)
 
-- [canvas/app-root-canvas-implementation-plan-ko.md](features/canvas/app-root-canvas-implementation-plan-ko.md)
-- [canvas/group-tree-implementation-plan.md](features/canvas/group-tree-implementation-plan.md)
+`NETIOR_DEFINITION_MODEL.md`를 현재 기준 문서로 보고, `NETIOR_DOMAIN_MODEL_DRAFT.md`는 이전 논의 맥락이 필요한 경우 참고한다.
 
-Calendar:
+#### `02-domain/view`
 
-- [calendar/recurring-v1-ko.md](features/calendar/recurring-v1-ko.md)
+View는 Netior 도메인의 일부다. Explorer와 Canvas가 무엇을 보여주고, View가 subject를 어떻게 참조하고 저장하는지 정리한다.
 
-Layout:
+- [NETIOR_VIEW_MODEL.md](02-domain/view/NETIOR_VIEW_MODEL.md)
+- [Explorer View Mockup](02-domain/view/mockups/NETIOR_EXPLORER_VIEW_MOCKUP.html)
 
-- [layout/layout-plugin-direction-ko.md](features/layout/layout-plugin-direction-ko.md)
-- [layout/network-ui-rebuild-plan.md](features/layout/network-ui-rebuild-plan.md)
+#### `02-domain/capability`
 
-Meaning Model:
+Capability는 Netior core 밖의 실행 능력이 World와 어떻게 연결되는지 정리한다.
 
-- [semantics/model-meaning-field-agent-contract-ko.md](features/semantics/model-meaning-field-agent-contract-ko.md)
-- [semantics/meaning-slot-binding-model-ko.md](features/semantics/meaning-slot-binding-model-ko.md)
-- [semantics/development-plan-ko.md](features/semantics/development-plan-ko.md)
-- [semantics/implementation-plan-ko.md](features/semantics/implementation-plan-ko.md)
-- [semantics/models-v1-ko.md](features/semantics/models-v1-ko.md)
+- [Interactive View Capability](02-domain/capability/interactive-view.md)
 
-Terminal:
+### `03-ui`
 
-- [terminal/refactor-plan.md](features/terminal/refactor-plan.md)
-- [terminal/hyper-fork-plan.md](features/terminal/hyper-fork-plan.md)
+Home/Workspace 화면 구조, titlebar/app chrome, sidebar, view remote, editor tab strip, form editor 방향을 정리한다.
 
-## Narre
+- [NETIOR_UI_LAYOUT.md](03-ui/NETIOR_UI_LAYOUT.md)
+- [Editor Forms Mockup](03-ui/mockups/NETIOR_EDITOR_FORMS_MOCKUP.html)
+- [Workspace Layout Mockup V2](03-ui/mockups/NETIOR_LAYOUT_WORKSPACE_MOCKUP_V2.html)
+- [Color Token Reference](03-ui/reference/color-token-values.md)
 
-Architecture:
+`03-ui/mockups/archive`에는 세션 중 만들어졌지만 현재 기준에서 선호하지 않는 실험 목업을 보관한다.
 
-- [architecture/responsibility-surface-ko.md](narre/architecture/responsibility-surface-ko.md)
-- [architecture/mcp-coverage-ko.md](narre/architecture/mcp-coverage-ko.md)
-- [architecture/mcp-coverage-by-surface-ko.md](narre/architecture/mcp-coverage-by-surface-ko.md)
+- [Archived Workspace Layout Mockup](03-ui/mockups/archive/NETIOR_LAYOUT_WORKSPACE_MOCKUP.html)
+- [Archived Editor Action Flow Mockup](03-ui/mockups/archive/NETIOR_EDITOR_ACTION_FLOW_MOCKUP.html)
 
-Eval:
+### `04-plan`
 
-- [eval/guide-ko.md](narre/eval/guide-ko.md)
-- [eval/reference-ko.md](narre/eval/reference-ko.md)
-- [eval/package-and-config.md](narre/eval/package-and-config.md)
-- [eval/tui-guide-ko.md](narre/eval/tui-guide-ko.md)
-- [eval/tui-spec-ko.md](narre/eval/tui-spec-ko.md)
-- [eval/scenario-index-ko.md](narre/eval/scenario-index-ko.md)
-- [eval/scenario-index-by-surface-ko.md](narre/eval/scenario-index-by-surface-ko.md)
-- [eval/codex-owned-loop-ko.md](narre/eval/codex-owned-loop-ko.md)
-- [eval/tester-refactor-plan-ko.md](narre/eval/tester-refactor-plan-ko.md)
-- [eval/v2-refactor-plan-ko.md](narre/eval/v2-refactor-plan-ko.md)
+당장 실행할 작업 단위, 마이그레이션 범위, 완료 조건, 검증 기준을 정리한다.
 
-Plans:
+- [README.md](04-plan/README.md)
+- [template.md](04-plan/template.md)
+- [NETIOR_RENDERER_MIGRATION_PLAN.md](04-plan/NETIOR_RENDERER_MIGRATION_PLAN.md)
 
-- [plans/mcp-expansion-plan.md](narre/plans/mcp-expansion-plan.md)
-- [plans/openai-refactor-plan.md](narre/plans/openai-refactor-plan.md)
-- [plans/prompting-refactor-plan-ko.md](narre/plans/prompting-refactor-plan-ko.md)
-- [plans/prompting-strategy-redesign-ko.md](narre/plans/prompting-strategy-redesign-ko.md)
-- [plans/responsibility-surface-refactor-plan-ko.md](narre/plans/responsibility-surface-refactor-plan-ko.md)
-- [plans/scenario-driven-design-ko.md](narre/plans/scenario-driven-design-ko.md)
+### `05-development-log`
 
-## Plans
+설계 변경, 구현 중 결정, 마이그레이션 기록을 시간순으로 남길 공간이다.
 
-Agent Supervisor:
+Codex로 빠르게 구현할 때 설계 의도와 판단 근거가 누락되지 않도록, 단순 변경 사항보다 문제, 맥락, 결정, 근거, 대안, 검증을 중심으로 남긴다.
 
-- [agent-supervisor/orchestration-plan-ko.md](plans/agent-supervisor/orchestration-plan-ko.md)
-- [agent-supervisor/skill-unification-plan-ko.md](plans/agent-supervisor/skill-unification-plan-ko.md)
+- [README.md](05-development-log/README.md)
+- [template.md](05-development-log/template.md)
 
-Next Phase:
+### `06-test`
 
-- [next-phase/network-object-domain-definition-ko.md](plans/next-phase/network-object-domain-definition-ko.md)
-- [next-phase/next-phase-comprehensive-ko.md](plans/next-phase/next-phase-comprehensive-ko.md)
-- [next-phase/next-phase-implementation-plan.md](plans/next-phase/next-phase-implementation-plan.md)
+테스트 전략, 검증 시나리오, QA checklist를 정리할 공간이다.
 
-## Reference
+- [README.md](06-test/README.md)
 
-- Branding assets: [reference/branding/](reference/branding/)
+## 현재 기준 문서
 
-## Operations
+현재 설계 판단의 기준은 다음 문서다.
 
-- [agent-runtime-issue.md](operations/agent-runtime-issue.md)
-- [worktree-debugging.md](operations/worktree-debugging.md)
+- `00-product/NETIOR_PHILOSOPHY.md`
+- `00-product/NETIOR_PHILOSOPHY_V2.md`
+- `01-architecture/NETIOR_ARCHITECTURE_DRAFT.md`
+- `02-domain/NETIOR_DEFINITION_MODEL.md`
+- `02-domain/NETIOR_DOMAIN_OPERATIONS.md`
+- `02-domain/capability/interactive-view.md`
+- `02-domain/view/NETIOR_VIEW_MODEL.md`
+- `03-ui/NETIOR_UI_LAYOUT.md`
 
-## Research
+목업 기준은 다음 두 파일이다.
 
-- [predictive-context-architecture.md](research/predictive-context-architecture.md)
-- [ontology-network-db-dsl-ko.md](research/ontology-network-db-dsl-ko.md)
-- [netior-dsl-mvp-implementation-ko.md](research/netior-dsl-mvp-implementation-ko.md)
+- `03-ui/mockups/NETIOR_EDITOR_FORMS_MOCKUP.html`
+- `03-ui/mockups/NETIOR_LAYOUT_WORKSPACE_MOCKUP_V2.html`

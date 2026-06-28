@@ -1,7 +1,8 @@
 ﻿import { create } from 'zustand';
-import type { World, FileEntity } from '@netior/shared/types';
-import { worldService, moduleService, fileService } from '../services';
+import type { World } from '@netior/shared/types';
+import { worldService, type FileEntity } from '../services';
 import { unwrapIpc } from '../services/ipc';
+import { getWorldRootDir } from '../utils/world-utils';
 import {
   saveAppState,
   saveWorldState,
@@ -20,6 +21,8 @@ export interface MissingFileEntry {
 
 export const WORLD_ROOT_DIR_DUPLICATE_ERROR = 'WORLD_ROOT_DIR_DUPLICATE';
 
+type WorldUpdateInput = Partial<{ name: string; root_uri: string }>;
+
 interface WorldStore {
   worlds: World[];
   currentWorld: World | null;
@@ -30,7 +33,7 @@ interface WorldStore {
   loadWorlds: () => Promise<void>;
   restoreLastWorld: () => Promise<void>;
   createWorld: (name: string, rootDir: string) => Promise<World>;
-  updateWorld: (id: string, data: Partial<Pick<World, 'name' | 'root_dir'>>) => Promise<World>;
+  updateWorld: (id: string, data: WorldUpdateInput) => Promise<World>;
   openWorld: (world: World) => Promise<void>;
   resolveMissingPath: () => Promise<void>;
   dismissMissingPath: () => void;
@@ -53,19 +56,6 @@ function createDuplicateRootDirError(rootDir: string): Error {
   return new Error(`${WORLD_ROOT_DIR_DUPLICATE_ERROR}:${rootDir}`);
 }
 
-function isAbsolutePath(path: string): boolean {
-  return /^[A-Za-z]:[\\/]/.test(path) || path.startsWith('/') || path.startsWith('\\\\');
-}
-
-function resolveFileEntityAbsolutePath(worldRoot: string, filePath: string): string {
-  if (isAbsolutePath(filePath)) {
-    return filePath;
-  }
-  const normalizedRoot = normalizePath(worldRoot).replace(/\/+$/, '');
-  const normalizedFilePath = normalizePath(filePath).replace(/^\/+/, '');
-  return `${normalizedRoot}/${normalizedFilePath}`;
-}
-
 export const useWorldStore = create<WorldStore>((set, get) => ({
   worlds: [],
   currentWorld: null,
@@ -85,7 +75,7 @@ export const useWorldStore = create<WorldStore>((set, get) => ({
 
   restoreLastWorld: async () => {
     try {
-      const lastId = unwrapIpc(await window.electron.config.get('lastRootNetworkId')) as string | null;
+      const lastId = unwrapIpc(await window.electron.config.get('lastWorldId')) as string | null;
       if (!lastId) return;
       const { worlds, openWorld } = get();
       const world = worlds.find((p) => p.id === lastId);
@@ -99,19 +89,19 @@ export const useWorldStore = create<WorldStore>((set, get) => ({
 
   createWorld: async (name, rootDir) => {
     const normalizedRootDir = normalizeRootDir(rootDir);
-    const existingWorld = get().worlds.find((world) => normalizeRootDir(world.root_dir) === normalizedRootDir);
+    const existingWorld = get().worlds.find((world) => normalizeRootDir(getWorldRootDir(world)) === normalizedRootDir);
     if (existingWorld) {
       throw createDuplicateRootDirError(rootDir);
     }
 
     let world: World;
     try {
-      world = await worldService.create({ name, root_dir: rootDir });
+      world = await worldService.create({ name, root_uri: rootDir });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       if (
         message.startsWith(`${WORLD_ROOT_DIR_DUPLICATE_ERROR}:`) ||
-        message.includes('UNIQUE constraint failed: worlds.root_dir')
+        message.includes('UNIQUE constraint failed: world_nodes.root_uri')
       ) {
         throw createDuplicateRootDirError(rootDir);
       }
@@ -132,10 +122,10 @@ export const useWorldStore = create<WorldStore>((set, get) => ({
   },
 
   openWorld: async (world) => {
-    // Check if root_dir exists; if not, show missing path dialog
+    // Check if root_uri exists; if not, show missing path dialog
     let resolvedWorld = world;
     try {
-      const exists = unwrapIpc(await window.electron.fs.exists(world.root_dir));
+      const exists = unwrapIpc(await window.electron.fs.exists(getWorldRootDir(world)));
       if (!exists) {
         set({ missingPathWorld: world });
         return;
@@ -157,40 +147,19 @@ export const useWorldStore = create<WorldStore>((set, get) => ({
     }
 
     set({ currentWorld: resolvedWorld });
-    window.electron.config.set('lastRootNetworkId', resolvedWorld.id).catch(() => {});
+    window.electron.config.set('lastWorldId', resolvedWorld.id).catch(() => {});
 
-    // Validate file entity paths in background
-    get().validateFilePaths(resolvedWorld).catch(() => {});
+    set({ missingFiles: [] });
   },
 
   validateFilePaths: async (world) => {
-    try {
-      const files = await fileService.getByRootNetwork(world.id);
-      const missing: MissingFileEntry[] = [];
-      for (const f of files) {
-        const absPath = resolveFileEntityAbsolutePath(world.root_dir, f.path);
-        const exists = unwrapIpc(await window.electron.fs.exists(absPath));
-        if (!exists) {
-          missing.push({ fileEntity: f });
-        }
-      }
-      if (missing.length > 0) {
-        set({ missingFiles: missing });
-      }
-    } catch {
-      // ignore validation errors
-    }
+    void world;
+    set({ missingFiles: [] });
   },
 
   resolveMissingFile: async (fileId, action, newPath) => {
-    if (action === 'delete') {
-      await fileService.delete(fileId);
-    } else if (action === 'reconnect' && newPath) {
-      // Update the file entity path (need to figure out relative path)
-      // For now just update metadata ??actual path update would need a new API
-      // TODO: implement path update in FileRepository
-    }
-    // Remove from missing list
+    void action;
+    void newPath;
     set((s) => ({
       missingFiles: s.missingFiles.filter((m) => m.fileEntity.id !== fileId),
     }));
@@ -213,14 +182,6 @@ export const useWorldStore = create<WorldStore>((set, get) => ({
     const newPath = paths[0];
     const updated = await worldService.updateRootDir(missingPathWorld.id, newPath);
 
-    // Also update module paths that pointed to the old root_dir
-    const modules = await moduleService.list(missingPathWorld.id);
-    for (const mod of modules) {
-      if (mod.path === missingPathWorld.root_dir) {
-        await moduleService.update(mod.id, { path: newPath });
-      }
-    }
-
     set((s) => ({
       missingPathWorld: null,
       worlds: s.worlds.map((p) => (p.id === updated.id ? updated : p)),
@@ -242,15 +203,15 @@ export const useWorldStore = create<WorldStore>((set, get) => ({
       clearAllWorldStores();
     }
     set({ currentWorld: null });
-    window.electron.config.set('lastRootNetworkId', '').catch(() => {});
+    window.electron.config.set('lastWorldId', '').catch(() => {});
   },
 
   deleteWorld: async (id) => {
     await worldService.delete(id);
     deleteWorldState(id);
-    const lastId = unwrapIpc(await window.electron.config.get('lastRootNetworkId').catch(() => ({ success: true, data: null }))) as string | null;
+    const lastId = unwrapIpc(await window.electron.config.get('lastWorldId').catch(() => ({ success: true, data: null }))) as string | null;
     if (lastId === id) {
-      window.electron.config.set('lastRootNetworkId', '').catch(() => {});
+      window.electron.config.set('lastWorldId', '').catch(() => {});
     }
     const wasCurrent = get().currentWorld?.id === id;
     if (wasCurrent) {

@@ -1,5 +1,5 @@
-﻿import React, { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
-import type { EditorTab } from '@netior/shared/types';
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
+import type { EditorTab } from '../../types/editor';
 import type { TranslationKey } from '@netior/shared/i18n';
 import { useEditorStore, MAIN_HOST_ID } from '../../stores/editor-store';
 import { useWorldStore } from '../../stores/world-store';

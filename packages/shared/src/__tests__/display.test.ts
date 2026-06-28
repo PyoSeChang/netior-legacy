@@ -3,83 +3,84 @@ import {
   createOntologyDisplayResolver,
   getOntologyDisplayDescriptionKey,
   getOntologyDisplayLabelKey,
-  toMeaningDisplaySource,
+  toKindDisplaySource,
+  toRelationKindDisplaySource,
 } from '../display';
 
 const translations: Record<string, string> = {
-  'semantic.meaning.contains.label': 'Contains',
-  'semantic.meaning.contains.description': 'Shows containment',
-  'semantic.category.time.label': 'Time',
-  'semantic.category.time.description': 'Temporal category',
-  'narre.tools.create_schema.name': 'Create Schema',
-  'narre.tools.create_schema.description': 'Creates schemas',
+  'domain.kind.character.name': 'Character',
+  'domain.kind.character.description': 'A story character',
+  'domain.relationKind.appears_in.name': 'Appears In',
+  'domain.relationKind.appears_in.description': 'Connects a character to a scene',
+  'narre.tools.instance_create.name': 'Create Instance',
+  'narre.tools.instance_create.description': 'Creates instances',
 };
 
 const t = (key: string) => translations[key] ?? key;
 
 describe('ontology display resolver', () => {
-  it('resolves built-in meaning display text from source metadata', () => {
+  it('resolves built-in kind display text from source metadata', () => {
     const display = createOntologyDisplayResolver(t);
-    const meaning = {
-      id: 'm1',
-      key: 'contains',
-      name: 'Fallback Contains',
+    const kind = {
+      id: 'k1',
+      key: 'character',
+      name: 'Fallback Character',
       description: 'Fallback description',
       source_kind: 'system' as const,
-      source_ref: 'meaning.contains',
+      source_ref: 'kind.character',
     };
 
-    expect(display.meaningName(meaning)).toBe('Contains');
-    expect(display.meaningDescription(meaning)).toBe('Shows containment');
-    expect(display.meaningOption(meaning)).toEqual({
-      value: 'm1',
-      label: 'Contains',
-      description: 'Shows containment',
+    expect(display.kindName(kind)).toBe('Character');
+    expect(display.kindDescription(kind)).toBe('A story character');
+    expect(display.kindOption(kind)).toEqual({
+      value: 'k1',
+      label: 'Character',
+      description: 'A story character',
     });
   });
 
-  it('uses instance source_ref for meaning category instances', () => {
+  it('resolves relation kind display text', () => {
     const display = createOntologyDisplayResolver(t);
-    const source = {
-      kind: 'instance' as const,
-      title: 'Fallback Time',
+    const source = toRelationKindDisplaySource({
+      key: 'appears_in',
+      name: 'Fallback Appears In',
       description: 'Fallback description',
-      source_kind: 'system' as const,
-      source_ref: 'meaning-category.time',
-    };
+      source_kind: 'system',
+      source_ref: 'relation-kind.appears_in',
+    });
 
-    expect(getOntologyDisplayLabelKey(source)).toBe('semantic.category.time.label');
-    expect(getOntologyDisplayDescriptionKey(source)).toBe('semantic.category.time.description');
-    expect(display.name(source)).toBe('Time');
-    expect(display.description(source)).toBe('Temporal category');
+    expect(getOntologyDisplayLabelKey(source)).toBe('domain.relationKind.appears_in.name');
+    expect(getOntologyDisplayDescriptionKey(source)).toBe('domain.relationKind.appears_in.description');
+    expect(display.name(source)).toBe('Appears In');
+    expect(display.description(source)).toBe('Connects a character to a scene');
   });
 
   it('falls back to stored text when localization is missing', () => {
     const display = createOntologyDisplayResolver(t);
-    const source = toMeaningDisplaySource({
-      key: 'custom.meaning',
-      name: 'Custom Meaning',
-      description: 'World-owned meaning',
-      source_kind: 'world',
+    const source = toKindDisplaySource({
+      key: 'custom.kind',
+      name: 'Custom Kind',
+      description: 'World-owned kind',
+      source_kind: 'user',
       source_ref: null,
     });
 
-    expect(display.name(source)).toBe('Custom Meaning');
-    expect(display.description(source)).toBe('World-owned meaning');
+    expect(display.name(source)).toBe('Custom Kind');
+    expect(display.description(source)).toBe('World-owned kind');
   });
 
   it('resolves MCP tool display text through the shared Narre tool namespace', () => {
     const display = createOntologyDisplayResolver(t);
     const source = {
       kind: 'mcp_tool' as const,
-      key: 'create_schema',
-      name: 'Fallback Create Schema',
+      key: 'instance_create',
+      name: 'Fallback Create Instance',
       description: 'Fallback description',
     };
 
-    expect(getOntologyDisplayLabelKey(source)).toBe('narre.tools.create_schema.name');
-    expect(getOntologyDisplayDescriptionKey(source)).toBe('narre.tools.create_schema.description');
-    expect(display.name(source)).toBe('Create Schema');
-    expect(display.description(source)).toBe('Creates schemas');
+    expect(getOntologyDisplayLabelKey(source)).toBe('narre.tools.instance_create.name');
+    expect(getOntologyDisplayDescriptionKey(source)).toBe('narre.tools.instance_create.description');
+    expect(display.name(source)).toBe('Create Instance');
+    expect(display.description(source)).toBe('Creates instances');
   });
 });

@@ -1,55 +1,39 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
   AGENT_SKILL_STORAGE,
+  ASSIGNMENT_STATUSES,
   BUILT_IN_SKILLS,
   DEFAULTS,
   findSkillBySlashTrigger,
   getNarreToolMetadata,
   getNetiorMcpToolSpec,
-  IPC_CHANNELS,
   listNetiorMcpToolSpecs,
+  PROPERTY_VALUE_TYPES,
+  RESOURCE_SOURCE_KINDS,
   SLASH_TRIGGER_SKILLS,
+  VIEW_TYPES,
+  WORLD_NODE_TYPES,
 } from '../constants';
 
-describe('IPC_CHANNELS', () => {
-  it('should have world channels', () => {
-    expect(IPC_CHANNELS.WORLD_CREATE).toBe('world:create');
-    expect(IPC_CHANNELS.WORLD_LIST).toBe('world:list');
-    expect(IPC_CHANNELS.WORLD_DELETE).toBe('world:delete');
-  });
-
-  it('should have instance channels', () => {
-    expect(IPC_CHANNELS.INSTANCE_CREATE).toBe('instance:create');
-    expect(IPC_CHANNELS.INSTANCE_GET_BY_ROOT_NETWORK).toBe('instance:getByRootNetwork');
-  });
-
-  it('should have network channels', () => {
-    expect(IPC_CHANNELS.NETWORK_CREATE).toBe('network:create');
-    expect(IPC_CHANNELS.NETWORK_GET_FULL).toBe('network:getFull');
-  });
-
-  it('should have fs channels', () => {
-    expect(IPC_CHANNELS.FS_READ_DIR).toBe('fs:readDir');
-    expect(IPC_CHANNELS.FS_WRITE_FILE).toBe('fs:writeFile');
-  });
-
-  it('should have all channels as strings', () => {
-    for (const value of Object.values(IPC_CHANNELS)) {
-      expect(typeof value).toBe('string');
-      expect(value).toMatch(/^[a-zA-Z]+:[a-zA-Z]+$/);
-    }
+describe('domain constants', () => {
+  it('exposes the new world/model and domain enum values', () => {
+    expect(WORLD_NODE_TYPES).toEqual(['world', 'model']);
+    expect(PROPERTY_VALUE_TYPES).toContain('resource-ref');
+    expect(ASSIGNMENT_STATUSES).toContain('candidate');
+    expect(RESOURCE_SOURCE_KINDS).toContain('sub-resource');
+    expect(VIEW_TYPES).toEqual(['explorer', 'canvas']);
   });
 });
 
 describe('DEFAULTS', () => {
-  it('should have window defaults', () => {
+  it('has window defaults', () => {
     expect(DEFAULTS.WINDOW_WIDTH).toBe(1200);
     expect(DEFAULTS.WINDOW_HEIGHT).toBe(800);
   });
 });
 
 describe('AGENT_SKILL_STORAGE', () => {
-  it('should expose the user agent skill package layout', () => {
+  it('exposes the user agent skill package layout', () => {
     expect(AGENT_SKILL_STORAGE.WORLD_CONFIG_DIR).toBe('.netior');
     expect(AGENT_SKILL_STORAGE.AGENTS_DIR).toBe('agents');
     expect(AGENT_SKILL_STORAGE.AGENT_FILE_NAME).toBe('agent.json');
@@ -59,45 +43,44 @@ describe('AGENT_SKILL_STORAGE', () => {
 });
 
 describe('BUILT_IN_SKILLS', () => {
-  it('should expose built-in slash-triggered skills', () => {
+  it('keeps only current agent-facing slash skills', () => {
     expect(SLASH_TRIGGER_SKILLS.map((skill) => skill.id)).toEqual([
       'bootstrap',
       'index',
-      'interactive-view',
-      'network-representation-authoring',
-      'schema-field-behavior',
     ]);
+    expect(BUILT_IN_SKILLS.some((skill) => skill.id === 'interactive-view')).toBe(false);
     expect(findSkillBySlashTrigger('bootstrap')?.id).toBe('bootstrap');
     expect(findSkillBySlashTrigger('missing')).toBeNull();
   });
 });
 
 describe('NETIOR_MCP_TOOL_SPECS', () => {
-  it('should expose shared MCP tool specs', () => {
-    const spec = getNetiorMcpToolSpec('create_instance');
+  it('exposes new domain tool specs', () => {
+    const spec = getNetiorMcpToolSpec('instance_create');
 
     expect(spec).not.toBeNull();
-    expect(spec?.key).toBe('create_instance');
-    expect(spec?.category).toBe('instances');
+    expect(spec?.key).toBe('instance_create');
+    expect(spec?.category).toBe('instance');
     expect(spec?.kind).toBe('mutation');
   });
 
-  it('should build Narre tool metadata from the shared tool registry', () => {
-    const metadata = getNarreToolMetadata('get_world_summary');
+  it('builds Narre tool metadata from the shared registry', () => {
+    const metadata = getNarreToolMetadata('model_summary');
 
-    expect(metadata.displayName).toBe('World Summary');
-    expect(metadata.category).toBe('world');
+    expect(metadata.displayName).toBe('Model Summary');
+    expect(metadata.category).toBe('model');
     expect(metadata.kind).toBe('analysis');
     expect(metadata.isMutation).toBe(false);
   });
 
-  it('should expose Universe and Root network tool specs', () => {
-    expect(getNetiorMcpToolSpec('get_universe_network')?.scope).toBe('app');
-    expect(getNetiorMcpToolSpec('get_root_network')?.scope).toBe('world');
+  it('does not expose removed legacy tool specs', () => {
+    expect(getNetiorMcpToolSpec('create_schema')).toBeNull();
+    expect(getNetiorMcpToolSpec('validate_dsl')).toBeNull();
+    expect(getNetiorMcpToolSpec('create_interactive_view_template')).toBeNull();
   });
 
-  it('should list registered MCP tool specs', () => {
+  it('lists registered MCP tool specs', () => {
     const specs = listNetiorMcpToolSpecs();
-    expect(specs.length).toBeGreaterThan(50);
+    expect(specs.length).toBeGreaterThan(30);
   });
 });

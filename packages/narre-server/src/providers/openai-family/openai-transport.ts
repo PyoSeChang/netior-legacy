@@ -4,6 +4,7 @@
   connectMcpServers,
   isOpenAIResponsesRawModelStreamEvent,
   run,
+  type ModelSettings,
   type RunItem,
   type RunToolCallItem,
   type RunToolCallOutputItem,
@@ -31,9 +32,13 @@ export class OpenAIDirectTransport implements OpenAIFamilyTransport {
       throw new Error('OPENAI_API_KEY is required when NARRE_PROVIDER=openai');
     }
 
+    const model = context.runtimeProfile?.model?.trim() || this.options.model;
+    const modelSettings = buildModelSettings(context.runtimeProfile);
+
     console.log(
       `[narre:${this.name}] trace=${traceId} Starting run session=${context.sessionId} world=${context.rootNetworkId} ` +
-      `resume=${context.isResume ? 'yes' : 'no'} model=${this.options.model ?? 'default'}`,
+      `resume=${context.isResume ? 'yes' : 'no'} model=${model ?? 'default'} ` +
+      `reasoning=${context.runtimeProfile?.reasoningEffort ?? 'default'}`,
     );
 
     const session = new OpenAIFileSession(this.options.dataDir, context.rootNetworkId, context.sessionId);
@@ -79,7 +84,8 @@ export class OpenAIDirectTransport implements OpenAIFamilyTransport {
       const agent = new Agent({
         name: 'Narre',
         instructions: context.systemPrompt,
-        ...(this.options.model ? { model: this.options.model } : {}),
+        ...(model ? { model } : {}),
+        ...(Object.keys(modelSettings).length > 0 ? { modelSettings } : {}),
         tools: createOpenAIFamilyConversationTools(context, context.uiBridge),
         mcpServers: servers.active,
       });
@@ -173,6 +179,17 @@ export class OpenAIDirectTransport implements OpenAIFamilyTransport {
       await servers.close();
     }
   }
+}
+
+function buildModelSettings(runtimeProfile: OpenAIFamilyTransportRunContext['runtimeProfile']): ModelSettings {
+  const settings: ModelSettings = {};
+  if (runtimeProfile?.reasoningEffort) {
+    settings.reasoning = { effort: runtimeProfile.reasoningEffort };
+  }
+  if (typeof runtimeProfile?.temperature === 'number') {
+    settings.temperature = runtimeProfile.temperature;
+  }
+  return settings;
 }
 
 function extractToolStart(item: RunItem): { callId: string; toolCall: NarreToolCall } | null {

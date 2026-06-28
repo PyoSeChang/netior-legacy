@@ -1,5 +1,5 @@
 ﻿import type { NarreBehaviorSettings, NarreCodexSettings } from '@netior/shared/types';
-import { getRemoteConfig, setRemoteConfig } from '../netior-service/netior-service-client';
+import { getDesktopConfig, setDesktopConfig } from '../config/desktop-config-store';
 import { startNarreServer, stopNarreServer, type NarreProviderName } from '../process/narre-server-manager';
 import { getRuntimeDataDir } from '../runtime/runtime-paths';
 
@@ -45,11 +45,11 @@ export function normalizeNarreProvider(value: unknown): NarreProviderName {
 }
 
 export async function readNarreSetting(key: string): Promise<unknown> {
-  return await getRemoteConfig(key);
+  return getDesktopConfig(key);
 }
 
 export async function writeNarreSetting(key: string, value: unknown): Promise<void> {
-  await setRemoteConfig(key, value);
+  setDesktopConfig(key, value);
 }
 
 export function getApiKeySettingKey(provider: NarreProviderName): 'anthropic_api_key' | 'openai_api_key' | null {
@@ -105,7 +105,13 @@ export async function getConfiguredCodexSettings(): Promise<NarreCodexSettings> 
 
 export async function syncNarreServerWithSettings(): Promise<boolean> {
   const provider = await getConfiguredNarreProvider();
-  const apiKey = await getConfiguredNarreApiKey(provider);
+  const anthropicApiKey = await getConfiguredNarreApiKey('claude');
+  const openaiApiKey = await getConfiguredNarreApiKey('openai');
+  const apiKey = provider === 'openai'
+    ? openaiApiKey
+    : provider === 'claude'
+      ? anthropicApiKey
+      : '';
   const openaiModel = provider === 'openai'
     ? await getConfiguredOpenAIModel()
     : undefined;
@@ -122,6 +128,8 @@ export async function syncNarreServerWithSettings(): Promise<boolean> {
   return await startNarreServer({
     provider,
     apiKey,
+    anthropicApiKey,
+    openaiApiKey,
     openaiModel,
     behaviorSettings,
     codexSettings,

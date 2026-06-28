@@ -1,6 +1,7 @@
-﻿import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, FileText, Plus, RefreshCw, Save, Trash2 } from 'lucide-react';
-import type { EditorTab, NarreUserAgentType, UserAgentRecord, UserAgentSkillSummary } from '@netior/shared/types';
+import type { NarreUserAgentType, UserAgentRecord, UserAgentSkillSummary } from '@netior/shared/types';
+import type { EditorTab } from '../../types/editor';
 import { agentService } from '../../services/agent-service';
 import { useI18n } from '../../hooks/useI18n';
 import { useWorldStore } from '../../stores/world-store';

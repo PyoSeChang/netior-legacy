@@ -21,11 +21,27 @@ interface WorldApprovalFileV2 {
 
 type WorldApprovalFile = WorldApprovalFileV1 | WorldApprovalFileV2;
 
+const LEGACY_OPERATION_KEYS: Record<string, string> = {
+  create_concept: 'create_instance',
+  update_concept: 'update_instance',
+  delete_concept: 'delete_instance',
+  upsert_concept_property: 'upsert_instance_property',
+};
+
 function createEmptyApprovalFile(): WorldApprovalFileV2 {
   return {
     version: 2,
     grants: [],
   };
+}
+
+function normalizeApprovalOperationKey(operationKey: string): string {
+  const normalized = normalizeNetiorToolName(operationKey);
+  return LEGACY_OPERATION_KEYS[normalized] ?? normalized;
+}
+
+function isAllowedApprovalScope(scope: unknown): scope is 'world' | 'project' {
+  return scope === 'world' || scope === 'project';
 }
 
 export class ApprovalStore {
@@ -56,13 +72,14 @@ export class ApprovalStore {
               && typeof grant.operationKey === 'string'
               && grant.operationKey.trim().length > 0
               && grant.decision === 'allow'
-              && grant.scope === 'world'
+              && isAllowedApprovalScope(grant.scope)
               && typeof grant.createdAt === 'string'
               && grant.createdAt.trim().length > 0,
             )
             .map((grant) => ({
               ...grant,
-              operationKey: normalizeNetiorToolName(grant.operationKey),
+              operationKey: normalizeApprovalOperationKey(grant.operationKey),
+              scope: 'world',
             })),
         };
       }
@@ -73,7 +90,7 @@ export class ApprovalStore {
           grants: (parsed as Partial<WorldApprovalFileV1>).allowedTools!
             .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
             .map((value) => ({
-              operationKey: normalizeNetiorToolName(value),
+              operationKey: normalizeApprovalOperationKey(value),
               decision: 'allow' as const,
               scope: 'world' as const,
               createdAt: new Date(0).toISOString(),
@@ -94,13 +111,13 @@ export class ApprovalStore {
 
   async isOperationAllowed(rootNetworkId: string, operationKey: string): Promise<boolean> {
     const file = await this.readApprovalFile(rootNetworkId);
-    const normalizedOperationKey = normalizeNetiorToolName(operationKey);
+    const normalizedOperationKey = normalizeApprovalOperationKey(operationKey);
     return file.grants.some((grant) => grant.operationKey === normalizedOperationKey && grant.decision === 'allow');
   }
 
   async allowOperation(rootNetworkId: string, operationKey: string): Promise<void> {
     const file = await this.readApprovalFile(rootNetworkId);
-    const normalizedOperationKey = normalizeNetiorToolName(operationKey);
+    const normalizedOperationKey = normalizeApprovalOperationKey(operationKey);
     if (file.grants.some((grant) => grant.operationKey === normalizedOperationKey && grant.decision === 'allow')) {
       return;
     }

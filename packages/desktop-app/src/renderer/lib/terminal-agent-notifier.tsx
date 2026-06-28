@@ -1,10 +1,10 @@
-﻿import React from 'react';
+import React from 'react';
 import {
   getAllAgentTerminalStates,
   subscribeAgentSessionStore,
   type AgentSessionState,
 } from './agent-session-store';
-import type { EditorTab } from '@netior/shared/types';
+import type { EditorTab } from '../types/editor';
 import completionSoundUrl from '../assets/agent-sounds/completion-pixabay-universfield-new-notification-07-210334.mp3';
 import attentionSoundUrl from '../assets/agent-sounds/attention-pixabay-dragon-studio-new-notification-3-398649.mp3';
 import { dismissToastByKey, showCustomToast } from '../components/ui/Toast';

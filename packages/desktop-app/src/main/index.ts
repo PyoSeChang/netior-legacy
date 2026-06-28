@@ -9,7 +9,7 @@ import { stopNarreServer } from './process/narre-server-manager';
 import { startNetiorService, stopNetiorService } from './process/netior-service-manager';
 import { agentRuntimeManager } from './agent-runtime/agent-runtime-manager';
 import { getConfiguredNarreProvider, syncNarreServerWithSettings } from './narre/narre-config';
-import { getRemoteConfig, setRemoteConfig } from './netior-service/netior-service-client';
+import { getDesktopConfig, setDesktopConfig } from './config/desktop-config-store';
 import { initMainLogging } from './logging';
 import {
   getNetiorServicePort,
@@ -489,7 +489,7 @@ function openProductionDevTools(win: BrowserWindow): void {
 
 async function loadWindowBounds(): Promise<StoredWindowBounds> {
   const raw = await withTimeout(
-    getRemoteConfig('windowBounds'),
+    Promise.resolve(getDesktopConfig('windowBounds')),
     1000,
     null,
     'loadWindowBounds',
@@ -513,7 +513,7 @@ async function saveWindowBounds(win: BrowserWindow): Promise<void> {
   // actual display that was active when the window closed.
   const bounds = isMaximized ? (win as any)._lastNormalBounds ?? win.getNormalBounds() : currentBounds;
   await withTimeout(
-    setRemoteConfig('windowBounds', JSON.stringify({
+    Promise.resolve(setDesktopConfig('windowBounds', {
       ...bounds,
       isMaximized,
       displayId: activeDisplay.id,

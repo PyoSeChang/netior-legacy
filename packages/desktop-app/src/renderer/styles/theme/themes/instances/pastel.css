@@ -41,11 +41,13 @@
         radial-gradient(circle at top left, hsla(258, 72%, 69%, 0.17), transparent 28%),
         radial-gradient(circle at bottom right, hsla(198, 60%, 76%, 0.15), transparent 30%);
     --theme-dark-surface-chrome: hsl(242, 30%, 9%);
-    --theme-dark-surface-panel: hsl(238, 26%, 12%);
-    --theme-dark-surface-card: hsl(236, 22%, 15%);
+    --theme-dark-surface-canvas: hsl(236, 22%, 12%);
+    --theme-dark-surface-editor: hsl(236, 22%, 12%);
+    --theme-dark-surface-panel: hsl(236, 22%, 13%);
+    --theme-dark-surface-card: hsl(236, 20%, 17%);
     --theme-dark-state-hover-bg: hsl(233, 18%, 20%);
-    --theme-dark-surface-floating: hsl(238, 26%, 11%);
-    --theme-dark-surface-input: hsl(236, 22%, 14%);
+    --theme-dark-surface-floating: hsl(236, 21%, 18%);
+    --theme-dark-surface-input: hsl(236, 22%, 10%);
     --theme-light-surface-chrome: hsl(254, 54%, 96%);
     --theme-light-surface-panel: hsl(250, 28%, 98%);
     --theme-light-surface-card: hsl(251, 30%, 96%);

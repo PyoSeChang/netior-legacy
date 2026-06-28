@@ -1,285 +1,286 @@
-// ============================================
-// World
-// ============================================
+import type {
+  ArchiveStatus,
+  AssignmentStatus,
+  CanvasSubjectType,
+  DecisionType,
+  DomainSnapshot,
+  EvidenceSupportType,
+  EvidenceTargetType,
+  EvidenceType,
+  IconType,
+  InstanceRecord,
+  ModelRecord,
+  NetiorRpcMethod,
+  PropertyCardinality,
+  PropertyValueType,
+  RequiredPolicy,
+  ResourceObservedStatus,
+  ResourceSourceKind,
+  SourceKind,
+  ViewRecord,
+  ViewType,
+  WorldNodeRecord,
+  WorldRecord,
+} from '../domain.js';
 
-export type OntologySourceKind = 'system' | 'package' | 'world' | 'imported';
+export type {
+  ArchiveStatus,
+  AssignmentStatus,
+  CanvasActionHandler,
+  CanvasActionParamBinding,
+  CanvasEdgeTypeRecord,
+  CanvasInteractionBehavior,
+  CanvasInteractionBinding,
+  CanvasMode,
+  CanvasNodeAction,
+  CanvasNodeEvent,
+  CanvasNodeTypeRecord,
+  CanvasSubjectType,
+  DecisionRecord,
+  DecisionType,
+  DomainEventRecord,
+  DomainSnapshot,
+  EvidenceLinkRecord,
+  EvidenceRecord,
+  EvidenceSupportType,
+  EvidenceTargetType,
+  EvidenceType,
+  IconFields,
+  IconType,
+  InstanceRecord,
+  InstanceResourceLinkRecord,
+  JsonRpcErrorObject,
+  JsonRpcFailure,
+  JsonRpcRequest,
+  JsonRpcResponse,
+  JsonRpcSuccess,
+  KindAssignmentRecord,
+  KindRecord,
+  ModelDirectoryBindingRecord,
+  ModelRecord,
+  NetiorRpcMethod,
+  NetiorServiceEvent,
+  PropertyCardinality,
+  PropertyRecord,
+  PropertyValueRecord,
+  PropertyValueType,
+  RelationAssertionRecord,
+  RelationKindRecord,
+  RequiredPolicy,
+  ResourceObservedStatus,
+  ResourceRecord,
+  ResourceSourceKind,
+  SourceFields,
+  SourceKind,
+  ViewItemKind,
+  ViewItemRecord,
+  ViewItemSubjectType,
+  ViewRecord,
+  ViewType,
+  WorldNodeRecord,
+  WorldNodeType,
+  WorldRecord,
+} from '../domain.js';
 
-export interface OntologySourceFields {
-  source_kind: OntologySourceKind;
-  source_id: string | null;
-  source_ref: string | null;
-  source_version: string | null;
-}
+export type EntityId = string;
+export type JsonObject = Record<string, unknown>;
 
-export interface World {
-  id: string;
-  name: string;
-  root_dir: string;
-  created_at: string;
-  updated_at: string;
-}
+export type World = WorldRecord;
+export type Model = ModelRecord;
+export type Instance = InstanceRecord;
+export type View = ViewRecord;
 
 export interface WorldCreate {
+  key?: string;
   name: string;
-  root_dir: string;
+  root_uri: string;
+  description?: string | null;
 }
 
 export interface WorldUpdate {
   name?: string;
-  root_dir?: string;
+  description?: string | null;
+  root_uri?: string;
 }
 
-// ============================================
-// Instance
-// ============================================
+export interface ModelCreate {
+  parent_id: string;
+  key?: string;
+  name: string;
+  description?: string | null;
+}
 
-export interface Instance {
-  id: string;
-  root_network_id: string;
-  owner_network_id: string | null;
-  schema_id: string | null;
-  recurrence_source_instance_id: string | null;
-  recurrence_occurrence_key: string | null;
-  title: string;
-  color: string | null;
-  icon: string | null;
-  content: string | null;
-  agent_content: string | null;
-  source_kind: OntologySourceKind;
-  source_id: string | null;
-  source_ref: string | null;
-  source_version: string | null;
-  created_at: string;
-  updated_at: string;
+export interface ModelUpdate {
+  parent_id?: string;
+  name?: string;
+  description?: string | null;
+  sort_order?: number;
+}
+
+export interface KindCreate {
+  model_id: string;
+  key: string;
+  name: string;
+  description?: string | null;
+  icon_type?: IconType;
+  icon_key?: string | null;
+  icon_resource_id?: string | null;
+  source_kind?: SourceKind;
+  source_id?: string | null;
+  source_ref?: string | null;
+  source_version?: string | null;
+}
+
+export interface PropertyCreate {
+  kind_id: string;
+  key: string;
+  name: string;
+  description?: string | null;
+  value_type: PropertyValueType;
+  cardinality?: PropertyCardinality;
+  required_policy?: RequiredPolicy;
+  sort_order?: number;
+}
+
+export interface RelationKindCreate {
+  model_id: string;
+  key: string;
+  name: string;
+  description?: string | null;
+  directed?: boolean;
+  subject_kind_policy?: string | null;
+  object_kind_policy?: string | null;
+  cardinality_policy?: string | null;
+  icon_type?: IconType;
+  icon_key?: string | null;
+  icon_resource_id?: string | null;
+  source_kind?: SourceKind;
+  source_id?: string | null;
+  source_ref?: string | null;
+  source_version?: string | null;
 }
 
 export interface InstanceCreate {
-  root_network_id: string;
-  owner_network_id?: string | null;
-  title: string;
-  schema_id?: string;
-  recurrence_source_instance_id?: string | null;
-  recurrence_occurrence_key?: string | null;
-  color?: string;
-  icon?: string;
-  content?: string;
-  agent_content?: string;
-  source_kind?: OntologySourceKind;
-  source_id?: string | null;
-  source_ref?: string | null;
-  source_version?: string | null;
+  home_model_id: string;
+  key?: string;
+  display_name: string;
+  icon_type?: IconType;
+  icon_key?: string | null;
+  icon_resource_id?: string | null;
 }
 
 export interface InstanceUpdate {
-  owner_network_id?: string | null;
-  title?: string;
-  schema_id?: string | null;
-  recurrence_source_instance_id?: string | null;
-  recurrence_occurrence_key?: string | null;
-  color?: string | null;
-  icon?: string | null;
-  content?: string | null;
-  agent_content?: string | null;
-  source_kind?: OntologySourceKind;
+  home_model_id?: string;
+  key?: string;
+  display_name?: string;
+  icon_type?: IconType;
+  icon_key?: string | null;
+  icon_resource_id?: string | null;
+  status?: ArchiveStatus;
+}
+
+export interface ResourceCreate {
+  root_id: string;
+  source_kind: ResourceSourceKind;
+  source_uri?: string | null;
+  relative_path?: string | null;
+  parent_resource_id?: string | null;
+  locator?: string | null;
+  handler_key?: string | null;
+  fingerprint?: string | null;
+  observed_status?: ResourceObservedStatus;
+}
+
+export interface KindAssignmentCreate {
+  instance_id: string;
+  kind_id: string;
+  status?: AssignmentStatus;
+  created_by?: string | null;
+}
+
+export interface PropertyValueCreate {
+  instance_id: string;
+  property_id: string;
+  value_json?: string | null;
+  status?: AssignmentStatus;
+  created_by?: string | null;
+}
+
+export interface RelationCreate {
+  subject_instance_id: string;
+  relation_kind_id: string;
+  object_instance_id: string;
+  status?: AssignmentStatus;
+  created_by?: string | null;
+}
+
+export interface EvidenceCreate {
+  evidence_type: EvidenceType;
+  resource_id?: string | null;
+  locator?: string | null;
+  summary?: string | null;
+  created_by?: string | null;
+}
+
+export interface EvidenceLinkCreate {
+  evidence_id: string;
+  target_type: EvidenceTargetType;
+  target_id: string;
+  support_type?: EvidenceSupportType;
+}
+
+export interface DecisionCreate {
+  target_type: EvidenceTargetType;
+  target_id: string;
+  decision_type: DecisionType;
+  decided_status: AssignmentStatus;
+  reason?: string | null;
+  created_by?: string | null;
+}
+
+export interface ViewCreate {
+  owner_model_id: string;
+  type: ViewType;
+  name: string;
+  description?: string | null;
+  config_json?: string | null;
+  source_kind?: SourceKind;
   source_id?: string | null;
   source_ref?: string | null;
   source_version?: string | null;
 }
 
-// ============================================
-// Network
-// ============================================
+export interface DomainMutationResult<TRecord = unknown> {
+  record: TRecord;
+  eventId?: string;
+  revision?: number;
+}
 
-export interface Network {
-  id: string;
-  root_network_id: string | null;
-  network_type_id: string | null;
-  scope: string;
-  kind: NetworkKind;
-  parent_network_id: string | null;
-  root_dir: string | null;
+export interface DomainQueryResult<TRecord = unknown> {
+  data: TRecord;
+  snapshot?: DomainSnapshot;
+}
+
+export interface IpcResult<T> {
+  success: boolean;
+  data?: T;
+  error?: string;
+}
+
+export interface NetiorServiceResponse<T = unknown> {
+  success: boolean;
+  data?: T;
+  error?: string;
+}
+
+export interface FileTreeNode {
   name: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export type NetworkKind = 'universe' | 'root' | 'network';
-
-export interface NetworkCreate {
-  root_network_id: string | null;
-  name: string;
-  scope?: string;
-  kind?: NetworkKind;
-  parent_network_id?: string;
-  network_type_id?: string | null;
-}
-
-export interface NetworkUpdate {
-  name?: string;
-  scope?: string;
-  parent_network_id?: string | null;
-  network_type_id?: string | null;
-}
-
-export type SurfaceRuntimeKey = 'canvas' | 'grid';
-
-export interface NetworkType {
-  id: string;
-  root_network_id: string | null;
-  key: string;
-  name: string;
-  description: string | null;
-  source_kind: OntologySourceKind;
-  source_id: string | null;
-  source_ref: string | null;
-  source_version: string | null;
-  surface_runtime: SurfaceRuntimeKey;
-  grammar_json: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface NetworkTypeCreate {
-  root_network_id?: string | null;
-  key: string;
-  name: string;
-  description?: string | null;
-  source_kind?: OntologySourceKind;
-  source_id?: string | null;
-  source_ref?: string | null;
-  source_version?: string | null;
-  surface_runtime: SurfaceRuntimeKey;
-  grammar_json?: string;
-}
-
-export interface NetworkTypeUpdate {
-  name?: string;
-  description?: string | null;
-  grammar_json?: string;
-}
-
-export interface NetworkNodeType {
-  id: string;
-  network_type_id: string;
-  key: string;
-  name: string;
-  description: string | null;
-  source_kind: OntologySourceKind;
-  source_id: string | null;
-  source_ref: string | null;
-  source_version: string | null;
-  renderer_key: string;
-  presentation_json: string;
-  projection_json: string;
-  interface_json: string;
-  placement_json: string;
-  interaction_json: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface NetworkNodeTypeCreate {
-  network_type_id: string;
-  key: string;
-  name: string;
-  description?: string | null;
-  source_kind?: OntologySourceKind;
-  source_id?: string | null;
-  source_ref?: string | null;
-  source_version?: string | null;
-  renderer_key: string;
-  presentation_json?: string;
-  projection_json?: string;
-  interface_json?: string;
-  placement_json?: string;
-  interaction_json?: string;
-}
-
-export interface NetworkNodeTypeUpdate {
-  name?: string;
-  description?: string | null;
-  renderer_key?: string;
-  presentation_json?: string;
-  projection_json?: string;
-  interface_json?: string;
-  placement_json?: string;
-  interaction_json?: string;
-}
-
-export interface NetworkEdgeType {
-  id: string;
-  network_type_id: string;
-  key: string;
-  name: string;
-  description: string | null;
-  source_kind: OntologySourceKind;
-  source_id: string | null;
-  source_ref: string | null;
-  source_version: string | null;
-  renderer_key: string;
-  presentation_json: string;
-  routing_json: string;
-  interface_json: string;
-  interaction_json: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface NetworkEdgeTypeCreate {
-  network_type_id: string;
-  key: string;
-  name: string;
-  description?: string | null;
-  source_kind?: OntologySourceKind;
-  source_id?: string | null;
-  source_ref?: string | null;
-  source_version?: string | null;
-  renderer_key: string;
-  presentation_json?: string;
-  routing_json?: string;
-  interface_json?: string;
-  interaction_json?: string;
-}
-
-export interface NetworkEdgeTypeUpdate {
-  name?: string;
-  description?: string | null;
-  renderer_key?: string;
-  presentation_json?: string;
-  routing_json?: string;
-  interface_json?: string;
-  interaction_json?: string;
-}
-
-// ============================================
-// File (1급 엔티티 — 파일/디렉토리)
-// ============================================
-
-export type FileEntityType = 'file' | 'directory';
-
-export interface FileEntity {
-  id: string;
-  root_network_id: string;
   path: string;
-  type: FileEntityType;
-  metadata: string | null;
-  created_at: string;
-  updated_at: string;
+  type: 'file' | 'directory';
+  extension?: string;
+  hasChildren?: boolean;
+  children?: FileTreeNode[];
 }
-
-export interface FileEntityCreate {
-  root_network_id: string;
-  path: string;
-  type: FileEntityType;
-}
-
-export interface FileEntityUpdate {
-  metadata?: string | null;
-}
-
-// ============================================
-// PDF TOC (file.metadata.pdf_toc)
-// ============================================
 
 export interface PdfTocEntry {
   id: string;
@@ -295,1417 +296,57 @@ export interface PdfToc {
   sourceMethod: 'text' | 'vision';
 }
 
-// ============================================
-// Context
-// ============================================
-
-export interface Context {
-  id: string;
-  network_id: string;
-  name: string;
-  description: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface ContextCreate {
-  network_id: string;
-  name: string;
-  description?: string;
-}
-
-export interface ContextUpdate {
-  name?: string;
-  description?: string | null;
-}
-
-export interface ContextMember {
-  id: string;
-  context_id: string;
-  member_type: 'object' | 'edge';
-  member_id: string;
-}
-
-// ============================================
-// Network Object
-// ============================================
-
-export type NetworkObjectType =
-  | 'instance' | 'network' | 'schema' | 'meaning'
-  | 'agent' | 'context'
-  | 'file' | 'module' | 'folder';
-
-export type NodeType = 'basic' | 'portal' | 'group' | 'hierarchy';
-export type NodeConfigKind = 'freeform' | 'grid' | 'list';
-export type NodeSortDirection = 'asc' | 'desc';
-export type NodeSortEmptyPlacement = 'first' | 'last';
-
-export type NodeSortConfig =
-  | {
-      kind: 'meaning_binding';
-      meaning: FieldMeaningBindingKey;
-      direction?: NodeSortDirection;
-      emptyPlacement?: NodeSortEmptyPlacement;
-    }
-  | {
-      kind: 'property';
-      fieldId: string;
-      direction?: NodeSortDirection;
-      emptyPlacement?: NodeSortEmptyPlacement;
-    };
-
-export interface NodeFreeformConfig {
-  kind: 'freeform';
-}
-
-export interface NodeGridConfig {
-  kind: 'grid';
-  columns?: number;
-  gapX?: number;
-  gapY?: number;
-  padding?: number;
-  itemWidth?: number;
-  itemHeight?: number;
-  sort?: NodeSortConfig | null;
-}
-
-export interface NodeListConfig {
-  kind: 'list';
-  gap?: number;
-  padding?: number;
-  itemHeight?: number;
-  sort?: NodeSortConfig | null;
-}
-
-export type NodeConfig = NodeFreeformConfig | NodeGridConfig | NodeListConfig;
-
-export interface ObjectScopeBinding {
-  id: string;
-  object_id: string;
-  scope_network_id: string;
-  include_descendants: boolean;
-  binding_kind: string;
-  source_kind: OntologySourceKind;
-  source_id: string | null;
-  source_ref: string | null;
-  source_version: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface ObjectRecord {
-  id: string;
-  object_type: NetworkObjectType;
-  scope: string;
-  root_network_id: string | null;
-  ref_id: string;
-  created_at: string;
-}
-
-// ============================================
-// NetworkNode
-// ============================================
-
-export interface NetworkNode {
-  id: string;
-  network_id: string;
-  object_id: string;
-  node_type: NodeType;
-  node_type_id: string | null;
-  parent_node_id: string | null;
-  metadata: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface NetworkNodeCreate {
-  network_id: string;
-  object_id: string;
-  node_type?: NodeType;
-  node_type_id?: string | null;
-  parent_node_id?: string;
-  metadata?: string | null;
-}
-
-export interface NetworkNodeUpdate {
-  node_type?: NodeType;
-  node_type_id?: string | null;
-  parent_node_id?: string | null;
-  metadata?: string | null;
-}
-
-// ============================================
-// Edge
-// ============================================
-
-export interface Edge {
-  id: string;
-  network_id: string;
-  source_node_id: string;
-  target_node_id: string;
-  relationship_id: string | null;
-  meaning_id: string | null;
-  edge_type_id: string | null;
-  source_port_key: string | null;
-  target_port_key: string | null;
-  route_json: string | null;
-  description: string | null;
-  created_at: string;
-}
-
-export interface EdgeCreate {
-  network_id: string;
-  source_node_id: string;
-  target_node_id: string;
-  relationship_id?: string | null;
-  meaning_id?: string | null;
-  edge_type_id?: string | null;
-  source_port_key?: string | null;
-  target_port_key?: string | null;
-  route_json?: string | null;
-  description?: string;
-}
-
-export interface EdgeUpdate {
-  relationship_id?: string | null;
-  meaning_id?: string | null;
-  edge_type_id?: string | null;
-  source_port_key?: string | null;
-  target_port_key?: string | null;
-  route_json?: string | null;
-  description?: string | null;
-}
-
-// ============================================
-// Relationship
-// ============================================
-
-export interface Relationship {
-  id: string;
-  root_network_id: string;
-  owner_network_id: string | null;
-  source_object_id: string;
-  target_object_id: string;
-  meaning_id: string | null;
-  description: string | null;
-  properties_json: string | null;
-  source_kind: OntologySourceKind;
-  source_id: string | null;
-  source_ref: string | null;
-  source_version: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface RelationshipCreate {
-  root_network_id: string;
-  owner_network_id?: string | null;
-  source_object_id: string;
-  target_object_id: string;
-  meaning_id?: string | null;
-  description?: string | null;
-  properties_json?: string | null;
-  source_kind?: OntologySourceKind;
-  source_id?: string | null;
-  source_ref?: string | null;
-  source_version?: string | null;
-}
-
-export interface RelationshipUpdate {
-  owner_network_id?: string | null;
-  meaning_id?: string | null;
-  description?: string | null;
-  properties_json?: string | null;
-  source_kind?: OntologySourceKind;
-  source_id?: string | null;
-  source_ref?: string | null;
-  source_version?: string | null;
-}
-
-export interface RelationshipListFilters {
-  root_network_id: string;
-  source_object_id?: string;
-  target_object_id?: string;
-  meaning_id?: string;
-}
-
-// ============================================
-// Meaning Meaning
-// ============================================
-
-export type SemanticCategoryKey =
-  | 'time'
-  | 'workflow'
-  | 'structure'
-  | 'knowledge'
-  | 'space'
-  | 'quant'
-  | 'governance';
-
-export type SemanticCategoryRefKey = SemanticCategoryKey | (string & {});
-
-export type MeaningKey =
-  | 'temporal'
-  | 'dueable'
-  | 'recurring'
-  | 'statusful'
-  | 'assignable'
-  | 'prioritizable'
-  | 'progressable'
-  | 'estimable'
-  | 'hierarchical'
-  | 'ordered'
-  | 'taggable'
-  | 'categorizable'
-  | 'sourceable'
-  | 'attachable'
-  | 'versioned'
-  | 'locatable'
-  | 'measurable'
-  | 'budgeted'
-  | 'ownable'
-  | 'approvable'
-  | 'contains'
-  | 'entry_portal'
-  | 'parent'
-  | 'references'
-  | 'explains'
-  | 'evidence_for'
-  | 'supports'
-  | 'contradicts'
-  | 'causes'
-  | 'depends_on'
-  | 'derived_from'
-  | 'summarizes'
-  | 'details'
-  | 'example_of';
-
-export type MeaningRefKey = MeaningKey | (string & {});
-
-export type SemanticMeaningKey =
-  | 'time_interval'
-  | 'deadline'
-  | 'recurrence'
-  | 'workflow_state'
-  | 'assignment'
-  | 'priority'
-  | 'progress'
-  | 'estimate'
-  | 'hierarchy'
-  | 'ordering'
-  | 'tagging'
-  | 'classification'
-  | 'source'
-  | 'attachment'
-  | 'versioning'
-  | 'location'
-  | 'measurement'
-  | 'budget'
-  | 'ownership'
-  | 'approval';
-
-export type MeaningSlotKey =
-  | 'start_at'
-  | 'end_at'
-  | 'all_day'
-  | 'timezone'
-  | 'due_at'
-  | 'recurrence_rule'
-  | 'recurrence_frequency'
-  | 'recurrence_interval'
-  | 'recurrence_weekdays'
-  | 'recurrence_monthday'
-  | 'recurrence_until'
-  | 'recurrence_count'
-  | 'status'
-  | 'status_changed_at'
-  | 'assignee_refs'
-  | 'primary_assignee_ref'
-  | 'priority'
-  | 'progress_ratio'
-  | 'completed_at'
-  | 'estimate_value'
-  | 'estimate_unit'
-  | 'actual_value'
-  | 'parent_ref'
-  | 'order_index'
-  | 'tag_keys'
-  | 'category_key'
-  | 'source_url'
-  | 'source_ref'
-  | 'citation'
-  | 'attachment_refs'
-  | 'version'
-  | 'revision'
-  | 'supersedes_ref'
-  | 'place_ref'
-  | 'address'
-  | 'lat'
-  | 'lng'
-  | 'measure_value'
-  | 'measure_unit'
-  | 'target_value'
-  | 'budget_amount'
-  | 'budget_currency'
-  | 'budget_limit'
-  | 'owner_ref'
-  | 'approval_state'
-  | 'approved_by_ref'
-  | 'approved_at';
-
-export type FieldMeaningKey =
-  | 'time.start'
-  | 'time.end'
-  | 'time.all_day'
-  | 'time.timezone'
-  | 'time.due'
-  | 'time.recurrence_rule'
-  | 'time.recurrence_frequency'
-  | 'time.recurrence_interval'
-  | 'time.recurrence_weekdays'
-  | 'time.recurrence_monthday'
-  | 'time.recurrence_until'
-  | 'time.recurrence_count'
-  | 'workflow.status'
-  | 'workflow.status_changed_at'
-  | 'workflow.assignees'
-  | 'workflow.primary_assignee'
-  | 'workflow.priority'
-  | 'workflow.progress'
-  | 'workflow.completed_at'
-  | 'workflow.estimate_value'
-  | 'workflow.estimate_unit'
-  | 'workflow.actual_value'
-  | 'structure.parent'
-  | 'structure.order'
-  | 'structure.tags'
-  | 'structure.category'
-  | 'knowledge.source_url'
-  | 'knowledge.source_ref'
-  | 'knowledge.citation'
-  | 'knowledge.attachments'
-  | 'knowledge.version'
-  | 'knowledge.revision'
-  | 'knowledge.supersedes'
-  | 'space.place'
-  | 'space.address'
-  | 'space.lat'
-  | 'space.lng'
-  | 'quant.measure_value'
-  | 'quant.measure_unit'
-  | 'quant.target_value'
-  | 'quant.budget_amount'
-  | 'quant.budget_currency'
-  | 'quant.budget_limit'
-  | 'governance.owner'
-  | 'governance.approval_state'
-  | 'governance.approved_by'
-  | 'governance.approved_at';
-
-export type FieldMeaningBindingKey = FieldMeaningKey | `${string}.${string}`;
-export type FieldMeaningBindingSource = 'manual' | 'meaning' | 'migration' | 'system';
-export type MeaningBindingKey = FieldMeaningBindingKey;
-export type MeaningSourceKind = 'manual' | 'meaning' | 'migration' | 'system';
-export type SlotBindingTargetKind = 'field' | 'edge' | 'derived';
-
-export type SlotConstraintLevel = 'strict' | 'constrained' | 'loose';
-
-export type MeaningRepresentationKind = 'single_field' | 'field_group' | 'relation' | 'computed';
-export type MeaningTargetKind = 'object' | 'relation' | 'both';
-export type SchemaFieldBindingKind =
-  | 'instance_select'
-  | 'instance_multi_select'
-  | 'schema_composition'
-  | 'schema_extension'
-  | 'conditional_field'
-  | 'computed_field'
-  | 'derived_collection';
-export type SchemaFieldBindingCardinality = 'none' | 'one' | 'many' | 'object';
-export type EdgeLineStyle = 'solid' | 'dashed' | 'dotted';
-
-export interface MeaningFieldRecipe {
-  id: string;
-  key: string;
-  name: string;
-  field_types: FieldType[];
-  required: boolean;
-  description?: string | null;
-  options?: string | null;
-}
-
-export interface MeaningAspectRecipe {
-  id: string;
-  key: string;
-  name: string;
-  description?: string | null;
-  representation: MeaningRepresentationKind;
-  fields: MeaningFieldRecipe[];
-}
-
-export interface MeaningRuleRecipe {
-  id: string;
-  description: string;
-}
-
-export interface MeaningContract {
-  meanings: MeaningAspectRecipe[];
-  rules: MeaningRuleRecipe[];
-}
-
-export interface Meaning {
-  id: string;
-  root_network_id: string;
-  owner_network_id: string | null;
-  key: MeaningRefKey;
-  name: string;
-  description: string | null;
-  category_instance_id: string | null;
-  category_instance_title?: string | null;
-  category_instance_source_ref?: string | null;
-  target_kind: MeaningTargetKind;
-  meaning_keys: SemanticMeaningKey[];
-  core_slots: MeaningSlotKey[];
-  optional_slots: MeaningSlotKey[];
-  recipe: MeaningContract;
-  color: string | null;
-  icon: string | null;
-  line_style: EdgeLineStyle | null;
-  directed: boolean | null;
-  built_in: boolean;
-  source_kind: OntologySourceKind;
-  source_id: string | null;
-  source_ref: string | null;
-  source_version: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface MeaningCreate {
-  root_network_id: string;
-  owner_network_id?: string | null;
-  key?: MeaningRefKey;
-  name: string;
-  description?: string | null;
-  category_instance_id?: string | null;
-  target_kind?: MeaningTargetKind;
-  meaning_keys?: SemanticMeaningKey[];
-  core_slots?: MeaningSlotKey[];
-  optional_slots?: MeaningSlotKey[];
-  recipe?: MeaningContract;
-  color?: string | null;
-  icon?: string | null;
-  line_style?: EdgeLineStyle | null;
-  directed?: boolean | null;
-  built_in?: boolean;
-  source_kind?: OntologySourceKind;
-  source_id?: string | null;
-  source_ref?: string | null;
-  source_version?: string | null;
-}
-
-export interface MeaningUpdate {
-  owner_network_id?: string | null;
-  key?: MeaningRefKey;
-  name?: string;
-  description?: string | null;
-  category_instance_id?: string | null;
-  target_kind?: MeaningTargetKind;
-  meaning_keys?: SemanticMeaningKey[];
-  core_slots?: MeaningSlotKey[];
-  optional_slots?: MeaningSlotKey[];
-  recipe?: MeaningContract;
-  color?: string | null;
-  icon?: string | null;
-  line_style?: EdgeLineStyle | null;
-  directed?: boolean | null;
-  built_in?: boolean;
-  source_kind?: OntologySourceKind;
-  source_id?: string | null;
-  source_ref?: string | null;
-  source_version?: string | null;
-}
-
-// ============================================
-// Layout
-// ============================================
-
-export interface Layout {
-  id: string;
-  layout_type: string;
-  layout_config_json: string | null;
-  viewport_json: string | null;
-  network_id: string | null;
-  context_id: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface LayoutUpdate {
-  layout_type?: string;
-  layout_config_json?: string | null;
-  viewport_json?: string | null;
-}
-
-export interface LayoutNodePosition {
-  id: string;
-  layout_id: string;
-  node_id: string;
-  position_json: string;
-}
-
-export interface LayoutEdgeVisual {
-  id: string;
-  layout_id: string;
-  edge_id: string;
-  visual_json: string;
-}
-
-// ============================================
-// Service DTOs
-// ============================================
-
-export interface NodePosition {
-  nodeId: string;
-  positionJson: string;
-}
-
-export interface EdgeVisual {
-  edgeId: string;
-  visualJson: string;
-}
-
-export interface NetworkFullData {
-  network: Network;
-  networkType?: NetworkType;
-  layout: Layout | undefined;
-  nodes: (NetworkNode & {
-    object?: ObjectRecord;
-    instance?: Instance;
-    file?: FileEntity;
-    representationType?: NetworkNodeType;
-  })[];
-  edges: (Edge & {
-    meaning?: Meaning;
-    relationship?: Relationship & { meaning?: Meaning };
-    representationType?: NetworkEdgeType;
-  })[];
-  nodeTypes?: NetworkNodeType[];
-  edgeTypes?: NetworkEdgeType[];
-  nodePositions: NodePosition[];
-  edgeVisuals: EdgeVisual[];
-}
-
-// ============================================
-// IPC
-// ============================================
-
-export type IpcResult<T> =
-  | { success: true; data: T }
-  | { success: false; error: string };
-
-export interface NetiorServiceSuccess<T> {
-  ok: true;
-  data: T;
-}
-
-export interface NetiorServiceError {
-  ok: false;
-  error: string;
-}
-
-export type NetiorServiceResponse<T> = NetiorServiceSuccess<T> | NetiorServiceError;
-
-// ============================================
-// File System
-// ============================================
-
-export interface FileTreeNode {
-  name: string;
-  path: string;
-  type: 'file' | 'directory';
-  children?: FileTreeNode[];
-  extension?: string;
-  /** Directory exists but children not yet loaded (lazy loading) */
-  hasChildren?: boolean;
-}
-
-// ============================================
-// Module
-// ============================================
-
-export interface Module {
-  id: string;
-  root_network_id: string;
-  name: string;
-  description: string | null;
-  path: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface ModuleCreate {
-  root_network_id: string;
-  name: string;
-  description?: string | null;
-  path: string;
-}
-
-export interface ModuleUpdate {
-  name?: string;
-  description?: string | null;
-  path?: string;
-}
-
-export interface ModuleDirectory {
-  id: string;
-  module_id: string;
-  dir_path: string;
-  created_at: string;
-}
-
-export interface ModuleDirectoryCreate {
-  module_id: string;
-  dir_path: string;
-}
-
-// ============================================
-// Schema
-// ============================================
-
-export interface Schema {
-  id: string;
-  root_network_id: string;
-  owner_network_id: string | null;
-  name: string;
-  description: string | null;
-  icon: string | null;
-  color: string | null;
-  file_template: string | null;
-  meanings: MeaningRefKey[];
-  source_kind: OntologySourceKind;
-  source_id: string | null;
-  source_ref: string | null;
-  source_version: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface SchemaCreate {
-  root_network_id: string;
-  owner_network_id?: string | null;
-  name: string;
-  description?: string;
-  icon?: string;
-  color?: string;
-  file_template?: string;
-  meanings?: MeaningRefKey[];
-  source_kind?: OntologySourceKind;
-  source_id?: string | null;
-  source_ref?: string | null;
-  source_version?: string | null;
-}
-
-export interface SchemaUpdate {
-  owner_network_id?: string | null;
-  name?: string;
-  description?: string | null;
-  icon?: string | null;
-  color?: string | null;
-  file_template?: string | null;
-  meanings?: MeaningRefKey[];
-  source_kind?: OntologySourceKind;
-  source_id?: string | null;
-  source_ref?: string | null;
-  source_version?: string | null;
-}
-
-// ============================================
-// Schema Field
-// ============================================
-
-export type FieldType =
-  | 'text'
-  | 'textarea'
-  | 'number'
-  | 'boolean'
-  | 'date'
-  | 'datetime'
-  | 'select'
-  | 'multi-select'
-  | 'radio'
-  | 'relation'
-  | 'object'
+export type EditorTabType =
+  | 'world'
+  | 'model'
+  | 'kind'
+  | 'property'
+  | 'relationKind'
+  | 'instance'
+  | 'resource'
+  | 'view'
   | 'file'
-  | 'url'
-  | 'color'
-  | 'rating'
-  | 'tags'
-  | 'meaning_ref';
+  | 'terminal'
+  | 'browser'
+  | 'agent'
+  | 'narre';
 
-export interface SchemaFieldBinding {
-  id: string;
-  field_id: string;
-  meaning_id: string | null;
-  binding_kind: SchemaFieldBindingKind;
-  source_schema_id: string | null;
-  source_field_id: string | null;
-  cardinality: SchemaFieldBindingCardinality;
-  read_only: boolean;
-  config: string | null;
-  sort_order: number;
-  source_kind: OntologySourceKind;
-  source_id: string | null;
-  source_ref: string | null;
-  source_version: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface SchemaFieldBindingCreate {
-  field_id?: string;
-  meaning_id?: string | null;
-  binding_kind: SchemaFieldBindingKind;
-  source_schema_id?: string | null;
-  source_field_id?: string | null;
-  cardinality?: SchemaFieldBindingCardinality;
-  read_only?: boolean;
-  config?: string | null;
-  sort_order?: number;
-  source_kind?: OntologySourceKind;
-  source_id?: string | null;
-  source_ref?: string | null;
-  source_version?: string | null;
-}
-
-export interface SchemaFieldBindingUpdate {
-  meaning_id?: string | null;
-  binding_kind?: SchemaFieldBindingKind;
-  source_schema_id?: string | null;
-  source_field_id?: string | null;
-  cardinality?: SchemaFieldBindingCardinality;
-  read_only?: boolean;
-  config?: string | null;
-  sort_order?: number;
-  source_kind?: OntologySourceKind;
-  source_id?: string | null;
-  source_ref?: string | null;
-  source_version?: string | null;
-}
-
-export interface SchemaField {
-  id: string;
-  schema_id: string;
-  name: string;
-  field_type: FieldType;
-  options: string | null;
-  sort_order: number;
-  required: boolean;
-  default_value: string | null;
-  bindings: SchemaFieldBinding[];
-  meaning_bindings: FieldMeaningBindingKey[];
-  slot_binding_locked: boolean;
-  generated_by_meaning: boolean;
-  source_kind: OntologySourceKind;
-  source_id: string | null;
-  source_ref: string | null;
-  source_version: string | null;
-  created_at: string;
-}
-
-export interface SchemaFieldCreate {
-  schema_id: string;
-  name: string;
-  field_type: FieldType;
-  options?: string;
-  sort_order: number;
-  required?: boolean;
-  default_value?: string;
-  bindings?: SchemaFieldBindingCreate[];
-  meaning_slot?: MeaningSlotKey | null;
-  meaning_key?: FieldMeaningKey | null;
-  meaning_bindings?: FieldMeaningBindingKey[];
-  slot_binding_locked?: boolean;
-  generated_by_meaning?: boolean;
-  source_kind?: OntologySourceKind;
-  source_id?: string | null;
-  source_ref?: string | null;
-  source_version?: string | null;
-}
-
-export interface SchemaFieldUpdate {
-  name?: string;
-  field_type?: FieldType;
-  options?: string | null;
-  sort_order?: number;
-  required?: boolean;
-  default_value?: string | null;
-  bindings?: SchemaFieldBindingCreate[];
-  meaning_slot?: MeaningSlotKey | null;
-  meaning_key?: FieldMeaningKey | null;
-  meaning_bindings?: FieldMeaningBindingKey[];
-  slot_binding_locked?: boolean;
-  generated_by_meaning?: boolean;
-  source_kind?: OntologySourceKind;
-  source_id?: string | null;
-  source_ref?: string | null;
-  source_version?: string | null;
-}
-
-export interface SchemaMeaningSlotBinding {
-  id: string;
-  meaning_id: string;
-  slot_key: MeaningSlotKey;
-  target_kind: SlotBindingTargetKind;
-  field_id: string | null;
-  required: boolean;
-  sort_order: number;
-  created_at: string;
-}
-
-export interface SchemaMeaning {
-  id: string;
-  schema_id: string;
-  meaning_key: SemanticMeaningKey;
-  label: string | null;
-  source: MeaningSourceKind;
-  source_meaning: MeaningRefKey | null;
-  sort_order: number;
-  slots: SchemaMeaningSlotBinding[];
-  source_kind: OntologySourceKind;
-  source_id: string | null;
-  source_ref: string | null;
-  source_version: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface SchemaMeaningCreate {
-  schema_id: string;
-  meaning_key: SemanticMeaningKey;
-  label?: string | null;
-  source?: MeaningSourceKind;
-  source_meaning?: MeaningRefKey | null;
-  sort_order?: number;
-  source_kind?: OntologySourceKind;
-  source_id?: string | null;
-  source_ref?: string | null;
-  source_version?: string | null;
-}
-
-export interface SchemaMeaningUpdate {
-  label?: string | null;
-  sort_order?: number;
-}
-
-export interface SchemaMeaningSlotBindingUpdate {
-  target_kind?: SlotBindingTargetKind;
-  field_id?: string | null;
-}
-
-export type SchemaSlot = SchemaField;
-export type SchemaSlotCreate = SchemaFieldCreate;
-export type SchemaSlotUpdate = SchemaFieldUpdate;
-
-// ============================================
-// Instance Property
-// ============================================
-
-export interface InstanceProperty {
-  id: string;
-  instance_id: string;
-  field_id: string;
-  value: string | null;
-}
-
-export interface InstancePropertyUpsert {
-  instance_id: string;
-  field_id: string;
-  value: string | null;
-}
-
-// ============================================
-// Network Tree
-// ============================================
-
-export interface NetworkTreeNode {
-  network: Network;
-  children: NetworkTreeNode[];
-}
-
-// ============================================
-// Network Breadcrumb
-// ============================================
-
-export interface NetworkBreadcrumbItem {
-  networkId: string;
-  networkName: string;
-}
-
-// ============================================
-// Editor System
-// ============================================
-
-export type EditorViewMode = 'float' | 'full' | 'side' | 'detached';
-export type EditorTabType = 'instance' | 'file' | 'schema' | 'meaning' | 'terminal' | 'edge' | 'network' | 'networkViewer' | 'rootNetwork' | 'world' | 'narre' | 'agent' | 'fileMetadata' | 'context' | 'browser';
-
-/** Identifies a window that hosts editor tabs (main window or detached window) */
-export interface EditorHostState {
-  id: string;
-  /** Display label for the window (shown in context menu "Move to > ...") */
-  label: string;
-  /** 'main' for the primary window, 'detached' for pop-out windows */
-  kind: 'main' | 'detached';
-  /** Per-host active tab id */
-  activeTabId: string | null;
-  /** Split layout tree for side-mode tabs in this host */
-  sideLayout: SplitNode | null;
-  /** Split layout tree for full-mode tabs in this host */
-  fullLayout: SplitNode | null;
-}
-
-// Split layout tree for side/full editor panes
-export type SplitDirection = 'horizontal' | 'vertical';
-
-export interface SplitLeaf {
-  type: 'leaf';
-  tabIds: string[];
-  activeTabId: string;
-}
-
-export interface SplitBranch {
-  type: 'branch';
-  direction: SplitDirection;
-  ratio: number;
-  children: [SplitNode, SplitNode];
-}
-
-export type SplitNode = SplitLeaf | SplitBranch;
-export type NetworkObjectEditorViewMode = 'body' | 'details' | 'interactive';
+export type EditorViewMode = 'details' | 'source' | 'preview';
 
 export interface EditorTab {
   id: string;
   type: EditorTabType;
-  /** Display name for tab bar */
   title: string;
-  /** Target entity identifier: instanceId for instance tabs, absolutePath for file tabs */
-  targetId: string;
-  /** Owning root network id for world-scoped tabs */
-  rootNetworkId?: string;
-  /** Host window this tab belongs to */
-  hostId: string;
-  viewMode: EditorViewMode;
-  floatRect: { x: number; y: number; width: number; height: number };
-  isMinimized: boolean;
-  sideSplitRatio: number;
-  isDirty: boolean;
-  isStale?: boolean;
-  /** Active sub-file within a instance editor */
-  activeFilePath: string | null;
-  /** Override editor type for file tabs (when user switches via context menu) */
-  editorType?: string;
-  /** Preferred sub-view inside object editors such as body/details/interactive. */
-  objectViewMode?: NetworkObjectEditorViewMode;
-  /** Network context for object tabs opened from a network node */
-  networkId?: string;
-  /** Network node context for object tabs opened from a concrete node */
-  nodeId?: string;
-  /** Working directory override for terminal tabs */
-  terminalCwd?: string;
-  /** Launch override for terminal tabs (for example agent-specific terminals) */
-  terminalLaunchConfig?: Pick<TerminalLaunchConfig, 'shell' | 'args' | 'agent'>;
-  /** Favicon URL for embedded browser tabs */
-  browserFaviconUrl?: string;
-  /** Current URL for embedded browser tabs, preserved across editor remounts. */
-  browserUrl?: string;
-  /** Draft data for unsaved new entities (instance creation flow) */
-  draftData?: {
-    networkId?: string;
-    parentGroupNodeId?: string;
-    slotIndex?: number;
-    positionX?: number;
-    positionY?: number;
-    allowedMeaningIds?: string[];
-    allowedSchemaIds?: string[];
-  };
-  /** Whether the user manually renamed this tab (prevents auto-title updates) */
-  isManuallyRenamed?: boolean;
-}
-
-export interface InstanceEditorPrefs {
-  id: string;
-  instance_id: string;
-  view_mode: EditorViewMode;
-  float_x: number | null;
-  float_y: number | null;
-  float_width: number;
-  float_height: number;
-  side_split_ratio: number;
-  updated_at: string;
-}
-
-export interface InstanceEditorPrefsUpdate {
-  view_mode?: EditorViewMode;
-  float_x?: number;
-  float_y?: number;
-  float_width?: number;
-  float_height?: number;
-  side_split_ratio?: number;
-}
-
-export interface InteractiveViewState {
-  id: string;
-  root_network_id: string;
-  instance_id: string;
-  view_template_id: string;
-  state_json: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface InteractiveViewStateUpsert {
-  instance_id: string;
-  view_template_id: string;
-  state_json: string;
-}
-
-export type InteractiveViewTemplateTargetKind = 'schema' | 'instance';
-export type InteractiveViewTemplateSourceKind = 'manual' | 'narre';
-export type InteractiveViewTrustLevel = 'untrusted' | 'validated' | 'trusted';
-export type InteractiveViewRuntime = 'host' | 'sandbox';
-export type InteractiveViewValidationStatus = 'unknown' | 'passed' | 'failed';
-
-export interface InteractiveViewManifest {
-  kind: 'interactive-view';
-  sdkVersion: number;
-  target?: {
-    kind?: 'world' | 'schema' | 'instance';
-    id?: string;
-    schemaId?: string;
-    instanceId?: string;
-  };
-  permissions?: {
-    readFields?: string[];
-    writeFields?: string[];
-    viewState?: boolean;
-    dsl?: boolean;
-  };
-  runtime?: InteractiveViewRuntime;
-}
-
-export interface InteractiveViewTemplate {
-  id: string;
-  root_network_id: string;
-  target_kind: InteractiveViewTemplateTargetKind;
-  target_id: string | null;
-  name: string;
-  description: string | null;
-  source_code: string;
-  manifest_json: string;
-  source_kind: InteractiveViewTemplateSourceKind;
-  trust_level: InteractiveViewTrustLevel;
-  default_runtime: InteractiveViewRuntime;
-  enabled: number;
-  validation_status: InteractiveViewValidationStatus;
-  validation_errors_json: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface InteractiveViewTemplateCreate {
-  root_network_id: string;
-  target_kind: InteractiveViewTemplateTargetKind;
-  target_id?: string | null;
-  name: string;
-  description?: string | null;
-  source_code: string;
-  manifest_json: string;
-  source_kind?: InteractiveViewTemplateSourceKind;
-  trust_level?: InteractiveViewTrustLevel;
-  default_runtime?: InteractiveViewRuntime;
-  enabled?: number;
-  validation_status?: InteractiveViewValidationStatus;
-  validation_errors_json?: string;
-}
-
-export interface InteractiveViewTemplateUpdate {
-  target_kind?: InteractiveViewTemplateTargetKind;
-  target_id?: string | null;
-  name?: string;
-  description?: string | null;
-  source_code?: string;
-  manifest_json?: string;
-  source_kind?: InteractiveViewTemplateSourceKind;
-  trust_level?: InteractiveViewTrustLevel;
-  default_runtime?: InteractiveViewRuntime;
-  enabled?: number;
-  validation_status?: InteractiveViewValidationStatus;
-  validation_errors_json?: string;
-}
-
-export interface InteractiveViewTemplateListQuery {
-  rootNetworkId: string;
-  schemaId?: string | null;
-  instanceId?: string | null;
-}
-
-export interface InteractiveViewPreference {
-  id: string;
-  root_network_id: string;
-  instance_id: string;
-  preference_mode: 'inherit' | 'template' | 'none';
-  selected_view_template_id: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface InteractiveViewPreferenceUpsert {
-  instance_id: string;
-  preference_mode?: 'inherit' | 'template' | 'none';
-  selected_view_template_id: string | null;
-}
-
-export interface InteractiveViewSchemaPreference {
-  id: string;
-  root_network_id: string;
-  schema_id: string;
-  selected_view_template_id: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface InteractiveViewSchemaPreferenceUpsert {
-  schema_id: string;
-  selected_view_template_id: string | null;
-}
-
-// ============================================
-// Narre Types
-// ============================================
-
-export interface NarreSession {
-  id: string;
-  title: string;
-  created_at: string;
-  last_message_at: string;
-  message_count: number;
-  agentKey?: string | null;
-}
-
-export interface NarreMessage {
-  role: 'user' | 'assistant';
-  content: string;
-  mentions?: NarreMention[];
-  tool_calls?: NarreToolCall[];
-  timestamp: string;
-}
-
-export interface NarreMention {
-  type: 'instance' | 'network' | 'edge' | 'schema' | 'meaning' | 'module' | 'file' | 'agent';
-  id?: string;
+  entityId?: string;
   path?: string;
-  display: string;
+  rootId?: string;
+  modelId?: string;
+  viewMode?: EditorViewMode;
+  metadata?: Record<string, string>;
 }
 
-export interface NarreToolCall {
-  tool: string;
-  input: Record<string, unknown>;
-  status: 'pending' | 'running' | 'success' | 'error';
-  metadata?: NarreToolMetadata;
-  result?: string;
-  error?: string;
-}
+export type SplitDirection = 'horizontal' | 'vertical';
 
-export type NarreToolCategory =
-  | 'world'
-  | 'types'
-  | 'instances'
-  | 'graph'
-  | 'files'
-  | 'modules'
-  | 'search'
-  | 'analysis';
-
-export type NarreToolKind = 'query' | 'mutation' | 'analysis';
-export type NarreToolApprovalMode = 'auto' | 'prompt';
-export type NetiorMcpToolProfile =
-  | 'core'
-  | 'discovery'
-  | 'bootstrap-skill'
-  | 'bootstrap-interview'
-  | 'bootstrap-execution'
-  | 'index-skill'
-  | 'interactive-view-authoring'
-  | 'network-representation-authoring'
-  | 'schema-field-behavior';
-export type NetiorMcpToolScope = 'app' | 'world' | 'network' | 'object' | 'file' | 'mixed';
-
-export interface NetiorMcpToolSpec {
-  key: string;
-  displayName?: string;
-  description: string;
-  category: NarreToolCategory;
-  kind: NarreToolKind;
-  isMutation: boolean;
-  approvalMode: NarreToolApprovalMode;
-  profiles?: readonly NetiorMcpToolProfile[];
-  scope?: NetiorMcpToolScope;
-  defaultWorldBinding?: boolean;
-}
-
-export interface NarreToolMetadata {
-  displayName: string;
-  description?: string;
-  category: NarreToolCategory;
-  kind: NarreToolKind;
-  isMutation: boolean;
-  approvalMode: NarreToolApprovalMode;
-  profiles?: readonly NetiorMcpToolProfile[];
-  scope?: NetiorMcpToolScope;
-  defaultWorldBinding?: boolean;
-}
-
-export type NarreActorProvider = 'narre' | 'claude' | 'openai' | 'codex' | 'custom';
-
-export interface NarreActor {
-  provider: NarreActorProvider;
-  id?: string;
-  label?: string;
-}
-
-export interface NarreRichTextBlock {
+export interface SplitLeaf {
   id: string;
-  type: 'rich_text';
-  text: string;
-  mentions?: NarreMention[];
+  type: 'leaf';
+  tabIds: string[];
+  activeTabId: string | null;
 }
 
-export interface NarreSkillInvocationBlock {
+export interface SplitBranch {
   id: string;
-  type: 'skill';
-  skillId: string;
-  name: string;
-  label: string;
-  args?: Record<string, string>;
-  refs?: NarreMention[];
+  type: 'branch';
+  direction: SplitDirection;
+  children: SplitNode[];
+  sizes: number[];
 }
 
-export interface NarreLegacyCommandBlock {
-  id: string;
-  type: 'command';
-  name: string;
-  label: string;
-  args?: Record<string, string>;
-  refs?: NarreMention[];
-}
-
-export interface NarreDraftBlock {
-  id: string;
-  type: 'draft';
-  format: 'markdown';
-  content: string;
-}
-
-export interface NarreToolBlock {
-  id: string;
-  type: 'tool';
-  toolKey: string;
-  displayName?: string;
-  metadata?: NarreToolMetadata;
-  input: Record<string, unknown>;
-  output?: string;
-  error?: string;
-}
-
-export interface NarreCardBlock {
-  id: string;
-  type: 'card';
-  card: NarreCard;
-}
-
-export interface NarreTranscriptTurn {
-  id: string;
-  role: 'user' | 'assistant';
-  createdAt: string;
-  completedAt?: string;
-  actor?: NarreActor;
-  blocks: NarreTranscriptBlock[];
-}
-
-export type NarreTranscriptBlock =
-  | NarreRichTextBlock
-  | NarreSkillInvocationBlock
-  | NarreLegacyCommandBlock
-  | NarreDraftBlock
-  | NarreToolBlock
-  | NarreCardBlock;
-
-export interface NarreTranscript {
-  turns: NarreTranscriptTurn[];
-}
-
-export interface NarreSessionFileV1 {
-  messages: NarreMessage[];
-}
-
-export interface NarreSessionFileV2 {
-  version: 2;
-  transcript: NarreTranscript;
-}
-
-export interface NarreSessionDetail extends NarreSession {
-  rootNetworkId?: string;
-  messages: NarreMessage[];
-  transcript?: NarreTranscript;
-}
-
-export type NarreGraphPriority = 'balanced' | 'strict';
-
-export interface NarreBehaviorSettings {
-  graphPriority: NarreGraphPriority;
-  discourageLocalWorkspaceActions: boolean;
-  extraInstructions?: string;
-}
-
-export type NarreCodexSandboxMode = 'read-only' | 'workspace-write' | 'danger-full-access';
-export type NarreCodexApprovalPolicy = 'untrusted' | 'on-request' | 'never';
-
-export interface NarreCodexSettings {
-  model?: string;
-  useWorldRootAsWorkingDirectory: boolean;
-  sandboxMode: NarreCodexSandboxMode;
-  approvalPolicy: NarreCodexApprovalPolicy;
-  enableShellTool: boolean;
-  enableMultiAgent: boolean;
-  enableWebSearch: boolean;
-  enableViewImage: boolean;
-  enableApps: boolean;
-}
-
-export interface NarreStreamEvent {
-  type: 'text' | 'tool_start' | 'tool_end' | 'error' | 'done' | 'card';
-  content?: string;
-  tool?: string;
-  toolInput?: Record<string, unknown>;
-  toolMetadata?: NarreToolMetadata;
-  toolResult?: string;
-  error?: string;
-  card?: NarreCard;
-  sessionId?: string;
-  rootNetworkId?: string;
-}
-
-// ============================================
-// Skill Types
-// ============================================
+export type SplitNode = SplitLeaf | SplitBranch;
 
 export type SkillId = string;
 export type SkillSource = 'builtin' | 'file';
-export type BuiltInSkillId =
-  | 'bootstrap'
-  | 'index'
-  | 'interactive-view'
-  | 'network-representation-authoring'
-  | 'schema-field-behavior';
+export type BuiltInSkillId = 'bootstrap' | 'index';
 export type SkillArgType = 'string' | 'enum' | 'number' | 'number_list';
 
 export interface SkillArg {
@@ -1741,12 +382,247 @@ export interface SkillInvocation {
   args: Record<string, string>;
 }
 
-// ============================================
-// Narre Response Card Types
-// ============================================
+export type NarreMentionType =
+  | 'world'
+  | 'model'
+  | 'kind'
+  | 'property'
+  | 'relationKind'
+  | 'instance'
+  | 'resource'
+  | 'view'
+  | 'file'
+  | 'agent';
+
+export interface NarreMention {
+  type: NarreMentionType;
+  id?: string;
+  label?: string;
+  path?: string;
+}
+
+export type NarreToolCategory =
+  | 'world'
+  | 'model'
+  | 'definition'
+  | 'instance'
+  | 'resource'
+  | 'relation'
+  | 'evidence'
+  | 'decision'
+  | 'event'
+  | 'view'
+  | 'files'
+  | 'search'
+  | 'agent'
+  | 'analysis';
+
+export type NarreToolKind = 'query' | 'mutation' | 'analysis';
+export type NarreToolApprovalMode = 'auto' | 'prompt';
+export type NetiorMcpToolProfile =
+  | 'core'
+  | 'discovery'
+  | 'bootstrap-skill'
+  | 'bootstrap-interview'
+  | 'bootstrap-execution'
+  | 'index-skill';
+export type NetiorMcpToolScope = 'app' | 'world' | 'model' | 'object' | 'resource' | 'file' | 'mixed';
+
+export interface NetiorMcpToolSpec {
+  key: string;
+  displayName?: string;
+  description: string;
+  category: NarreToolCategory;
+  kind: NarreToolKind;
+  isMutation: boolean;
+  approvalMode: NarreToolApprovalMode;
+  profiles?: readonly NetiorMcpToolProfile[];
+  scope: NetiorMcpToolScope;
+  defaultWorldBinding?: boolean;
+}
+
+export interface NarreToolMetadata {
+  displayName: string;
+  description?: string;
+  category: NarreToolCategory;
+  kind: NarreToolKind;
+  isMutation: boolean;
+  approvalMode: NarreToolApprovalMode;
+  profiles?: readonly NetiorMcpToolProfile[];
+  scope: NetiorMcpToolScope;
+  defaultWorldBinding?: boolean;
+}
+
+export interface NarreToolCall {
+  id?: string;
+  name?: string;
+  tool?: string;
+  input: Record<string, unknown>;
+  metadata?: NarreToolMetadata;
+  status?: 'pending' | 'running' | 'completed' | 'failed' | 'success' | 'error';
+  result?: string;
+  error?: string;
+}
+
+export type NarreRole = 'user' | 'assistant' | 'system';
+export type NarreActor = 'user' | 'narre' | 'agent';
+
+export interface NarreMessage {
+  id?: string;
+  role: NarreRole;
+  content: string;
+  createdAt?: string;
+  timestamp?: string;
+  toolCalls?: NarreToolCall[];
+  tool_calls?: NarreToolCall[];
+  mentions?: NarreMention[];
+  card?: NarreCard;
+}
+
+export interface NarreSession {
+  id: string;
+  title: string;
+  createdAt?: string;
+  updatedAt?: string;
+  created_at?: string;
+  last_message_at?: string;
+  message_count?: number;
+  agentKey?: string | null;
+}
+
+export interface NarreSessionFileV1 {
+  messages: NarreMessage[];
+}
+
+export interface NarreSessionFileV2 {
+  version: 2;
+  transcript: NarreTranscript;
+}
+
+export interface NarreRichTextBlock {
+  id: string;
+  type: 'rich_text';
+  text: string;
+  mentions?: NarreMention[];
+}
+
+export interface NarreSkillInvocationBlock {
+  id: string;
+  type: 'skill';
+  skillId: string;
+  name: string;
+  label: string;
+  args?: Record<string, string>;
+  refs?: NarreMention[];
+}
+
+export interface NarreDraftBlock {
+  id: string;
+  type: 'draft';
+  format: 'markdown';
+  content: string;
+}
+
+export interface NarreToolBlock {
+  id: string;
+  type: 'tool';
+  toolKey: string;
+  displayName?: string;
+  metadata?: NarreToolMetadata;
+  input: Record<string, unknown>;
+  output?: string;
+  error?: string;
+}
+
+export interface NarreCardBlock {
+  id: string;
+  type: 'card';
+  card: NarreCard;
+}
+
+export type NarreTranscriptBlock =
+  | NarreRichTextBlock
+  | NarreSkillInvocationBlock
+  | NarreDraftBlock
+  | NarreToolBlock
+  | NarreCardBlock;
+
+export interface NarreTranscriptTurn {
+  id: string;
+  role: 'user' | 'assistant';
+  createdAt: string;
+  completedAt?: string;
+  actor?: NarreActor;
+  blocks: NarreTranscriptBlock[];
+}
+
+export interface NarreTranscript {
+  turns: NarreTranscriptTurn[];
+}
+
+export interface NarreSessionDetail extends NarreSession {
+  rootId?: string;
+  rootNetworkId?: string;
+  messages: NarreMessage[];
+  transcript?: NarreTranscript;
+}
+
+export type NarreGraphPriority = 'balanced' | 'strict';
+
+export interface NarreBehaviorSettings {
+  graphPriority: NarreGraphPriority;
+  discourageLocalWorkspaceActions: boolean;
+  extraInstructions?: string;
+}
+
+export type NarreCodexSandboxMode = 'read-only' | 'workspace-write' | 'danger-full-access';
+export type NarreCodexApprovalPolicy = 'untrusted' | 'on-request' | 'never';
+
+export interface NarreCodexSettings {
+  model?: string;
+  useWorldRootAsWorkingDirectory: boolean;
+  sandboxMode: NarreCodexSandboxMode;
+  approvalPolicy: NarreCodexApprovalPolicy;
+  enableShellTool: boolean;
+  enableMultiAgent: boolean;
+  enableWebSearch: boolean;
+  enableViewImage: boolean;
+  enableApps: boolean;
+}
+
+export type NarrePromptRuntimeProvider = 'claude' | 'openai' | 'codex';
+
+export interface NarreRuntimeModelOption {
+  id: string;
+  label: string;
+}
+
+export interface NarrePromptCodexRuntimeOverride {
+  sandboxMode?: NarreCodexSandboxMode;
+  approvalPolicy?: NarreCodexApprovalPolicy;
+}
+
+export interface NarrePromptRuntimeOverride {
+  model?: string;
+  reasoningEffort?: AgentReasoningEffort;
+  codex?: NarrePromptCodexRuntimeOverride;
+}
+
+export interface NarreStreamEvent {
+  type: 'text' | 'tool_start' | 'tool_end' | 'error' | 'done' | 'card';
+  content?: string;
+  tool?: string;
+  toolInput?: Record<string, unknown>;
+  toolMetadata?: NarreToolMetadata;
+  toolResult?: string;
+  error?: string;
+  card?: NarreCard;
+  sessionId?: string;
+  rootId?: string;
+  rootNetworkId?: string;
+}
 
 export type NarreCardType = 'draft' | 'proposal' | 'permission' | 'interview' | 'summary';
-
 export type ProposalCellType = 'text' | 'icon' | 'color' | 'enum' | 'boolean' | 'readonly';
 
 export interface ProposalColumn {
@@ -1786,13 +662,12 @@ export interface NarreOperationPreviewItem {
   label: string;
   value?: string;
   detail?: string;
-  kind?: 'text' | 'icon' | 'color' | 'meaning_list';
-  meanings?: Array<{
+  kind?: 'text' | 'icon' | 'color' | 'definition_list';
+  definitions?: Array<{
     key: string;
     name: string;
     description?: string | null;
-    built_in?: boolean;
-    source_kind?: OntologySourceKind;
+    source_kind?: SourceKind;
     source_ref?: string | null;
   }>;
 }
@@ -1852,18 +727,26 @@ export type NarreCard =
   | NarreSummaryCard;
 
 export interface NetiorChangeEvent {
-  type: 'schemas' | 'meanings' | 'instances' | 'relationTypes' | 'relationships' | 'networks' | 'edges' | 'layouts' | 'contexts';
-  action: 'created' | 'updated' | 'deleted';
+  type:
+    | 'worldNodes'
+    | 'kinds'
+    | 'properties'
+    | 'relationKinds'
+    | 'instances'
+    | 'resources'
+    | 'assignments'
+    | 'relations'
+    | 'evidence'
+    | 'decisions'
+    | 'events'
+    | 'views';
+  action: 'created' | 'updated' | 'deleted' | 'archived' | 'restored';
   id: string;
 }
 
-// ============================================
-// Agent Definition Types
-// ============================================
-
 export type AgentDefinitionKind = 'narre' | 'terminal';
 export type NarreAgentType = 'system' | 'user';
-export type NarreSystemAgentType = 'network-builder' | 'network-finder' | 'agent-operator';
+export type NarreSystemAgentType = 'world-builder' | 'world-finder' | 'agent-operator';
 export type NarreUserAgentType = 'global' | 'world';
 export type TerminalAgentType = 'codex-cli' | 'claude-code';
 export type AgentSkillPackageFormat = 'skill-md-directory';
@@ -1899,6 +782,7 @@ export interface UserAgentRecord {
   description: string;
   systemPrompt: string;
   userAgentType: NarreUserAgentType;
+  rootId?: string;
   rootNetworkId?: string;
   rootDir: string;
   createdAt: string;
@@ -1912,12 +796,14 @@ export interface UpsertUserAgentInput {
   description?: string;
   systemPrompt?: string;
   userAgentType: NarreUserAgentType;
+  rootId?: string;
   rootNetworkId?: string;
 }
 
 export interface UpsertUserAgentSkillInput {
   agentId: string;
   userAgentType: NarreUserAgentType;
+  rootId?: string;
   rootNetworkId?: string;
   skillId?: string;
   name: string;
@@ -1928,6 +814,7 @@ export interface UpsertUserAgentSkillInput {
 export interface DeleteUserAgentInput {
   agentId: string;
   userAgentType: NarreUserAgentType;
+  rootId?: string;
   rootNetworkId?: string;
 }
 
@@ -1961,7 +848,8 @@ export interface NarreWorldUserAgentDefinition extends BaseAgentDefinition {
   kind: 'narre';
   narreAgentType: 'user';
   userAgentType: 'world';
-  rootNetworkId: string;
+  rootId?: string;
+  rootNetworkId?: string;
   skills: AgentSkillRef[];
 }
 
@@ -1982,66 +870,12 @@ export type AgentDefinition =
   | NarreAgentDefinition
   | TerminalAgentDefinition;
 
-export type SupervisorEventType =
-  | 'session_started'
-  | 'session_updated'
-  | 'session_completed'
-  | 'session_failed'
-  | 'session_reported';
-
-export interface SupervisorAgentSessionSnapshot {
-  id: string;
-  agentKey: string;
-  agentId: string;
-  agent: AgentDefinition;
-  status: AgentStatus;
-  reason: AgentAttentionReason | null;
-  surface: AgentSurfaceRef;
-  externalSessionId: string | null;
-  rootNetworkId?: string;
-  currentRunId: string | null;
-  currentTaskId: string | null;
-  title?: string | null;
-  skillId?: SkillId | null;
-  createdAt: string;
-  updatedAt: string;
-  metadata?: Record<string, string>;
-}
-
-export interface SupervisorEvent {
-  seq: number;
-  type: SupervisorEventType;
-  sessionId: string;
-  agentKey: string;
-  status: AgentStatus;
-  createdAt: string;
-  snapshot: SupervisorAgentSessionSnapshot;
-}
-
-export interface SupervisorSessionReport {
-  agent: AgentDefinition;
-  surface: AgentSurfaceRef;
-  sessionId: string;
-  externalSessionId?: string | null;
-  rootNetworkId?: string;
-  currentRunId?: string | null;
-  currentTaskId?: string | null;
-  title?: string | null;
-  status?: AgentStatus;
-  reason?: AgentAttentionReason | null;
-  skillId?: SkillId | null;
-  metadata?: Record<string, string>;
-}
-
-// ============================================
-// Terminal Types
-// ============================================
-
-export type TerminalSessionState = 'created' | 'starting' | 'running' | 'exited';
-
 export type AgentProvider = 'claude' | 'codex' | 'narre';
 export type AgentRuntimeProvider = 'terminal' | 'claude' | 'codex' | 'openai' | 'narre';
 export type AgentReasoningEffort = 'low' | 'medium' | 'high' | 'xhigh';
+export type AgentStatus = 'idle' | 'working' | 'blocked' | 'error' | 'offline';
+export type AgentAttentionReason = 'approval' | 'user_input' | 'unknown';
+export type AgentUxState = 'working' | 'needs_attention' | 'idle' | 'error' | 'offline';
 
 export interface AgentRuntimeProfile {
   provider: AgentRuntimeProvider;
@@ -2065,20 +899,98 @@ export interface AgentRuntimeOverride {
   metadata?: Record<string, string>;
 }
 
-export type ConversationMode = 'direct' | 'orchestration';
-
-export interface Conversation {
+export interface AgentSurfaceRef {
+  kind: 'terminal' | 'editor';
   id: string;
-  rootNetworkId: string;
-  mode: ConversationMode;
-  title: string;
-  participantAgentKeys: string[];
-  activeRunId: string | null;
-  createdAt: string;
-  updatedAt: string;
-  metadata?: Record<string, string>;
 }
 
+export interface AgentSessionEvent {
+  provider: AgentProvider;
+  sessionId: string;
+  surface: AgentSurfaceRef;
+  externalSessionId?: string | null;
+  type: 'start' | 'stop';
+}
+
+export interface AgentStatusEvent {
+  provider: AgentProvider;
+  sessionId: string;
+  status: AgentStatus;
+  reason?: AgentAttentionReason | null;
+}
+
+export interface AgentNameEvent {
+  provider: AgentProvider;
+  sessionId: string;
+  name: string;
+}
+
+export interface AgentTurnEvent {
+  provider: AgentProvider;
+  sessionId: string;
+  turnId?: string | null;
+  type: 'start' | 'complete';
+}
+
+export interface AgentSessionSnapshot {
+  provider: AgentProvider;
+  sessionId: string;
+  surface: AgentSurfaceRef;
+  externalSessionId: string | null;
+  status: AgentStatus;
+  reason: AgentAttentionReason | null;
+  name: string | null;
+  turnState: 'idle' | 'working';
+}
+
+export type TerminalSessionState = 'created' | 'starting' | 'running' | 'exited';
+
+export interface TerminalAgentLaunchConfig {
+  provider: Exclude<AgentProvider, 'narre'>;
+  remoteUrl?: string;
+}
+
+export interface TerminalLaunchConfig {
+  cwd: string;
+  shell?: string;
+  args?: string[];
+  title?: string;
+  env?: Record<string, string>;
+  agent?: TerminalAgentLaunchConfig;
+}
+
+export interface TerminalSessionInfo {
+  sessionId: string;
+  cwd: string;
+  title: string;
+  shellPath: string;
+  shellArgs: string[];
+  state: TerminalSessionState;
+  pid: number | null;
+  exitCode: number | null;
+  cols: number;
+  rows: number;
+}
+
+export type ClaudeCodeStatus = 'idle' | 'working';
+
+export interface ClaudeSessionEvent {
+  ptySessionId: string;
+  claudeSessionId: string | null;
+  type: 'start' | 'stop';
+}
+
+export interface ClaudeStatusEvent {
+  ptySessionId: string;
+  status: ClaudeCodeStatus;
+}
+
+export interface ClaudeNameEvent {
+  ptySessionId: string;
+  sessionName: string;
+}
+
+export type ConversationMode = 'direct' | 'orchestration';
 export type OrchestrationRunStatus = 'planning' | 'running' | 'blocked' | 'completed' | 'failed' | 'cancelled';
 export type OrchestrationTaskStatus = 'pending' | 'assigned' | 'running' | 'blocked' | 'completed' | 'failed' | 'cancelled';
 export type AgentAssignmentStatus = 'pending' | 'running' | 'blocked' | 'completed' | 'failed' | 'cancelled';
@@ -2100,10 +1012,24 @@ export type AgentEventType =
   | 'agent_message'
   | 'error';
 
+export interface Conversation {
+  id: string;
+  rootId?: string;
+  rootNetworkId?: string;
+  mode: ConversationMode;
+  title: string;
+  participantAgentKeys: string[];
+  activeRunId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  metadata?: Record<string, string>;
+}
+
 export interface OrchestrationRun {
   id: string;
   conversationId: string | null;
-  rootNetworkId: string;
+  rootId?: string;
+  rootNetworkId?: string;
   mode: ConversationMode;
   userRequest: string;
   status: OrchestrationRunStatus;
@@ -2182,7 +1108,8 @@ export interface AgentEvent {
 }
 
 export interface CreateConversationInput {
-  rootNetworkId: string;
+  rootId?: string;
+  rootNetworkId?: string;
   mode?: ConversationMode;
   title?: string;
   participantAgentKeys?: string[];
@@ -2190,7 +1117,8 @@ export interface CreateConversationInput {
 }
 
 export interface CreateOrchestrationRunInput {
-  rootNetworkId: string;
+  rootId?: string;
+  rootNetworkId?: string;
   conversationId?: string | null;
   mode?: ConversationMode;
   userRequest: string;
@@ -2231,7 +1159,8 @@ export type AgentExecutorCommandStatus = 'queued' | 'running' | 'completed' | 'f
 
 export interface AgentExecutorRegistration {
   id: string;
-  rootNetworkId: string | null;
+  rootId: string | null;
+  rootNetworkId?: string | null;
   provider: AgentProvider | AgentRuntimeProvider;
   surface: AgentSurfaceRef;
   status: AgentExecutorStatus;
@@ -2259,103 +1188,55 @@ export interface AgentExecutorCommand {
   completedAt: string | null;
 }
 
-export interface TerminalAgentLaunchConfig {
-  provider: Exclude<AgentProvider, 'narre'>;
-  remoteUrl?: string;
-}
+export type SupervisorEventType =
+  | 'session_started'
+  | 'session_updated'
+  | 'session_completed'
+  | 'session_failed'
+  | 'session_reported';
 
-export interface TerminalLaunchConfig {
-  cwd: string;
-  shell?: string;
-  args?: string[];
-  title?: string;
-  env?: Record<string, string>;
-  agent?: TerminalAgentLaunchConfig;
-}
-
-export interface TerminalSessionInfo {
-  sessionId: string;
-  cwd: string;
-  title: string;
-  shellPath: string;
-  shellArgs: string[];
-  state: TerminalSessionState;
-  pid: number | null;
-  exitCode: number | null;
-  cols: number;
-  rows: number;
-}
-
-// ============================================
-// Agent Runtime Types
-// ============================================
-
-export type AgentStatus = 'idle' | 'working' | 'blocked' | 'error' | 'offline';
-export type AgentAttentionReason = 'approval' | 'user_input' | 'unknown';
-export type AgentUxState = 'working' | 'needs_attention' | 'idle' | 'error' | 'offline';
-
-export interface AgentSurfaceRef {
-  kind: 'terminal' | 'editor';
+export interface SupervisorAgentSessionSnapshot {
   id: string;
-}
-
-export interface AgentSessionEvent {
-  provider: AgentProvider;
-  sessionId: string;
-  surface: AgentSurfaceRef;
-  externalSessionId?: string | null;
-  type: 'start' | 'stop';
-}
-
-export interface AgentStatusEvent {
-  provider: AgentProvider;
-  sessionId: string;
-  status: AgentStatus;
-  reason?: AgentAttentionReason | null;
-}
-
-export interface AgentNameEvent {
-  provider: AgentProvider;
-  sessionId: string;
-  name: string;
-}
-
-export interface AgentTurnEvent {
-  provider: AgentProvider;
-  sessionId: string;
-  turnId?: string | null;
-  type: 'start' | 'complete';
-}
-
-export interface AgentSessionSnapshot {
-  provider: AgentProvider;
-  sessionId: string;
-  surface: AgentSurfaceRef;
-  externalSessionId: string | null;
+  agentKey: string;
+  agentId: string;
+  agent: AgentDefinition;
   status: AgentStatus;
   reason: AgentAttentionReason | null;
-  name: string | null;
-  turnState: 'idle' | 'working';
+  surface: AgentSurfaceRef;
+  externalSessionId: string | null;
+  rootId?: string;
+  rootNetworkId?: string;
+  currentRunId: string | null;
+  currentTaskId: string | null;
+  title?: string | null;
+  skillId?: SkillId | null;
+  createdAt: string;
+  updatedAt: string;
+  metadata?: Record<string, string>;
 }
 
-// ============================================
-// Claude Code Integration Types
-// ============================================
-
-export type ClaudeCodeStatus = 'idle' | 'working';
-
-export interface ClaudeSessionEvent {
-  ptySessionId: string;
-  claudeSessionId: string | null;
-  type: 'start' | 'stop';
+export interface SupervisorEvent {
+  seq: number;
+  type: SupervisorEventType;
+  sessionId: string;
+  agentKey: string;
+  status: AgentStatus;
+  createdAt: string;
+  snapshot: SupervisorAgentSessionSnapshot;
 }
 
-export interface ClaudeStatusEvent {
-  ptySessionId: string;
-  status: ClaudeCodeStatus;
-}
-
-export interface ClaudeNameEvent {
-  ptySessionId: string;
-  sessionName: string;
+export interface SupervisorSessionReport {
+  agent: AgentDefinition;
+  surface: AgentSurfaceRef;
+  sessionId: string;
+  externalSessionId?: string | null;
+  rootId?: string;
+  rootNetworkId?: string;
+  currentRunId?: string | null;
+  currentTaskId?: string | null;
+  title?: string | null;
+  status?: AgentStatus;
+  reason?: AgentAttentionReason | null;
+  skillId?: SkillId | null;
+  metadata?: Record<string, string>;
 }

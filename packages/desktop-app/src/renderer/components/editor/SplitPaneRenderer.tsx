@@ -1,5 +1,5 @@
 ﻿import React, { useCallback, useRef } from 'react';
-import type { SplitNode, SplitLeaf } from '@netior/shared/types';
+import type { SplitNode, SplitLeaf } from '../../types/editor';
 import { ResizeHandle } from '../ui/ResizeHandle';
 
 interface SplitPaneRendererProps {
